@@ -1,0 +1,34 @@
+# Project: We:form (Sports Center ERP SaaS)
+
+## 1. Identity & Design
+- Brand Name: We:form
+- Primary Color: Deep Teal (#0F4C5C)
+- Accent Color: Electric Lime (#E0FB4A)
+- Style: Clean, Minimal, Bento Grid, Data-Centric
+- UI Library: Shadcn UI + Tailwind CSS
+
+## 2. Tech Stack
+- Framework: Next.js 14+ (App Router)
+- Language: TypeScript
+- Database: Supabase (PostgreSQL)
+- Auth: Supabase Auth
+- State: TanStack Query (React Query)
+- Scheduler: FullCalendar
+
+## 3. Key Architecture Rules (DO NOT BREAK)
+- **Multi-tenancy:** All DB queries must filter by `gym_id`.
+- **Routing:**
+  - `/login`: Entry point.
+  - `/staff/*`: Mobile-optimized view for instructors.
+  - `/admin/*`: Desktop-optimized dashboard for managers.
+- **Payroll Logic:**
+  - Staff can edit schedules only in the current month.
+  - Past month edits require Admin approval.
+  - Status: `completed` (green), `no_show_deducted` (red), `no_show` (gray), `service` (blue).
+
+## 4. Coding Behavior
+- Use functional components and hooks.
+- Always implement RLS policies in SQL generation.
+- Do not hard-code logic; use DB configuration tables.
+
+
