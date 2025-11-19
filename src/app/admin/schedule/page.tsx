@@ -75,7 +75,6 @@ export default function AdminSchedulePage() {
   const router = useRouter();
 
   const [gymId, setGymId] = useState<string | null>(null);
-
   const [staffs, setStaffs] = useState<StaffOption[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
 
@@ -257,40 +256,40 @@ export default function AdminSchedulePage() {
 
   return (
     <>
-      {/* 상단 필터 영역 */}
-      <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-            통합 스케줄
-          </h1>
-          <p className="text-xs text-slate-500">
-            센터 전체 강사 스케줄을 한 번에 조회하고 관리할 수 있습니다.
-          </p>
-        </div>
+      <section className="border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+              통합 스케줄
+            </h1>
+            <p className="text-xs text-slate-500">
+              센터 전체 강사 스케줄을 한 번에 조회하고 관리할 수 있습니다.
+            </p>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500">강사 선택</span>
-          <Select
-            value={selectedStaffId}
-            onValueChange={(value) => setSelectedStaffId(value)}
-          >
-            <SelectTrigger className="w-44 h-8 text-xs">
-              <SelectValue placeholder="전체 강사 보기" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 강사 보기</SelectItem>
-              {staffs.map((staff) => (
-                <SelectItem key={staff.id} value={staff.id}>
-                  {staff.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500">강사 선택</span>
+            <Select
+              value={selectedStaffId}
+              onValueChange={(value) => setSelectedStaffId(value)}
+            >
+              <SelectTrigger className="w-44 h-8 text-xs">
+                <SelectValue placeholder="전체 강사 보기" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 강사 보기</SelectItem>
+                {staffs.map((staff) => (
+                  <SelectItem key={staff.id} value={staff.id}>
+                    {staff.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </header>
+      </section>
 
-      {/* FullCalendar 영역 */}
-      <section className="notranslate flex-1 p-4">
+      <section className="notranslate px-6 py-4">
         <div className="h-full rounded-xl border border-slate-200 bg-slate-50/80 p-2">
           <FullCalendar
             plugins={[

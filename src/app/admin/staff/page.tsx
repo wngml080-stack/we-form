@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { CalendarRange, LayoutDashboard, LogOut, Users2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -21,286 +19,242 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-type StaffRow = {
-  id: string;
-  name: string;
-  job_title: string | null;
-  employment_status: string | null;
-  hired_at: string | null;
-  gyms?: {
-    name: string;
-  } | null;
-};
-
-function getStatusBadgeColor(status: string | null | undefined) {
-  switch (status) {
-    case "재직":
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    case "퇴사":
-      return "bg-slate-100 text-slate-500 border-slate-200";
-    case "휴직":
-      return "bg-amber-100 text-amber-700 border-amber-200";
-    case "지점이동":
-      return "bg-sky-100 text-sky-700 border-sky-200";
-    case "보직변경":
-      return "bg-indigo-100 text-indigo-700 border-indigo-200";
-    default:
-      return "bg-slate-100 text-slate-500 border-slate-200";
-  }
-}
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Plus } from "lucide-react";
 
 export default function AdminStaffPage() {
-  const router = useRouter();
-
+  // 상태 관리
+  const [staffs, setStaffs] = useState<any[]>([]);
   const [gymId, setGymId] = useState<string | null>(null);
+  const [gymName, setGymName] = useState("");
+  
+  // 🚨 아까 에러난 부분 해결 (변수 추가)
+  const [adminName, setAdminName] = useState(""); 
 
-  const [staffs, setStaffs] = useState<StaffRow[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
+  // 모달 상태
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<StaffRow | null>(null);
+  const [editTarget, setEditTarget] = useState<any>(null);
   const [editJobTitle, setEditJobTitle] = useState("");
-  const [editStatus, setEditStatus] = useState<string>("재직");
-  const [isSaving, setIsSaving] = useState(false);
+  const [editStatus, setEditStatus] = useState("");
 
+  // 등록 모달 상태
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newJobTitle, setNewJobTitle] = useState("트레이너");
+  const [isCreating, setIsCreating] = useState(false);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  // 1. 초기 데이터 로드
   useEffect(() => {
     const init = async () => {
-      setIsLoading(true);
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        if (!user) {
-          router.push("/login");
-          return;
-        }
+      const { data: me } = await supabase
+        .from("staffs")
+        .select("gym_id, name, gyms(name)")
+        .eq("user_id", user.id)
+        .single();
 
-        const { data: me, error } = await supabase
-          .from("staffs")
-          .select(
-            `
-            id,
-            gym_id,
-            name,
-            gyms ( name )
-          `
-          )
-          .eq("user_id", user.id)
-          .single();
-
-        if (error || !me) {
-          console.error("관리자 정보 로딩 실패:", error);
-          return;
-        }
-
+      if (me) {
         setGymId(me.gym_id);
-        setAdminName(me.name);
+        setAdminName(me.name); // 👈 이제 에러 안 남!
         // @ts-ignore
         setGymName(me.gyms?.name ?? "We:form");
-
-        await fetchStaffs(me.gym_id);
-      } finally {
-        setIsLoading(false);
+        fetchStaffs(me.gym_id);
       }
     };
-
     init();
-  }, [router]);
+  }, []);
 
-  const fetchStaffs = async (gymIdValue: string) => {
-    const { data, error } = await supabase
+  // 2. 직원 목록 조회
+  const fetchStaffs = async (targetGymId: string) => {
+    const { data } = await supabase
       .from("staffs")
-      .select(
-        `
+      .select(`
         id,
         name,
         job_title,
         employment_status,
-        hired_at,
+        joined_at,
+        email: user_id ( email ), 
         gyms ( name )
-      `
-      )
-      .eq("gym_id", gymIdValue)
+      `)
+      .eq("gym_id", targetGymId)
       .order("name", { ascending: true });
-
-    if (error) {
-      console.error("직원 목록 로딩 실패:", error);
-      return;
-    }
-
-    setStaffs((data ?? []) as StaffRow[]);
+      
+    // user_id로 조인된 email 정보 등 처리 필요시 여기서 가공
+    // 현재는 단순 조회
+    if (data) setStaffs(data);
   };
 
-  const openEditModal = (staff: StaffRow) => {
+  // 3. 직원 정보 수정 (직책/상태)
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+
+    const { error } = await supabase
+      .from("staffs")
+      .update({
+        job_title: editJobTitle,
+        employment_status: editStatus,
+      })
+      .eq("id", editTarget.id);
+
+    if (!error) {
+      setIsEditOpen(false);
+      if (gymId) fetchStaffs(gymId);
+    } else {
+      alert("수정 실패: " + error.message);
+    }
+  };
+
+  // 4. 수정 모달 열기
+  const openEditModal = (staff: any) => {
     setEditTarget(staff);
-    setEditJobTitle(staff.job_title ?? "");
-    setEditStatus(staff.employment_status ?? "재직");
+    setEditJobTitle(staff.job_title || "");
+    setEditStatus(staff.employment_status || "재직");
     setIsEditOpen(true);
   };
 
-  const handleSave = async () => {
-    if (!editTarget || !gymId) return;
-
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from("staffs")
-        .update({
-          job_title: editJobTitle,
-          employment_status: editStatus,
-        })
-        .eq("id", editTarget.id)
-        .eq("gym_id", gymId);
-
-      if (error) {
-        console.error("직원 수정 실패:", error);
+  // 5. 직원 신규 등록 (API 호출)
+  const handleCreateStaff = async () => {
+    if (!newName || !newEmail || !newPassword || !gymId) {
+        alert("모든 정보를 입력해주세요.");
         return;
-      }
+    }
+    setIsCreating(true);
 
-      await fetchStaffs(gymId);
-      setIsEditOpen(false);
-      setEditTarget(null);
+    try {
+        const response = await fetch("/api/admin/create-staff", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: newEmail,
+                password: newPassword,
+                name: newName,
+                job_title: newJobTitle,
+                gym_id: gymId
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) throw new Error(result.error || "등록 실패");
+
+        alert("직원이 성공적으로 등록되었습니다!");
+        setIsCreateOpen(false);
+        // 입력폼 초기화
+        setNewName(""); setNewEmail(""); setNewPassword("");
+        // 목록 새로고침
+        fetchStaffs(gymId);
+
+    } catch (error: any) {
+        alert("오류 발생: " + error.message);
     } finally {
-      setIsSaving(false);
+        setIsCreating(false);
+    }
+  };
+
+  // 상태 뱃지 색상
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "재직": return "bg-emerald-100 text-emerald-700 hover:bg-emerald-100";
+      case "퇴사": return "bg-slate-100 text-slate-500 hover:bg-slate-100";
+      case "휴직": return "bg-amber-100 text-amber-700 hover:bg-amber-100";
+      default: return "bg-blue-100 text-blue-700 hover:bg-blue-100";
     }
   };
 
   return (
-  return (
-    <>
-      <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div className="space-y-6">
+      {/* 헤더 */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-            직원 관리
-          </h1>
-          <p className="text-xs text-slate-500">
-            센터에 소속된 모든 직원의 정보를 조회하고, 직책과 상태를 관리합니다.
+          <h2 className="text-2xl font-bold tracking-tight">직원 관리</h2>
+          <p className="text-muted-foreground">
+            {gymName}의 직원 현황을 관리합니다.
           </p>
         </div>
-      </header>
+        <Button 
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-[#0F4C5C] hover:bg-[#09313b]"
+        >
+            <Plus className="mr-2 h-4 w-4" /> 직원 등록
+        </Button>
+      </div>
 
-      <section className="flex-1 px-6 py-4">
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                  이름
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                  지점
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                  직책
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                  상태
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                  입사일
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">
-                  관리
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {staffs.map((staff) => {
-                const badgeClass = getStatusBadgeColor(staff.employment_status);
-                const hiredLabel = staff.hired_at
-                  ? new Date(staff.hired_at).toLocaleDateString("ko-KR")
-                  : "-";
-                return (
-                  <tr key={staff.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-2 text-sm text-slate-800">
-                      {staff.name}
-                    </td>
-                    <td className="px-4 py-2 text-xs text-slate-600">
-                      {staff.gyms?.name ?? gymName}
-                    </td>
-                    <td className="px-4 py-2 text-xs text-slate-700">
-                      {staff.job_title ?? "-"}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}
-                      >
-                        {staff.employment_status ?? "미지정"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-xs text-slate-600">
-                      {hiredLabel}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-3 text-xs"
-                        onClick={() => openEditModal(staff)}
-                      >
-                        수정
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {staffs.length === 0 && !isLoading && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-6 text-center text-xs text-slate-400"
+      {/* 테이블 */}
+      <div className="rounded-md border bg-white">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="px-4 py-3 font-medium text-gray-500">이름</th>
+              <th className="px-4 py-3 font-medium text-gray-500">직책</th>
+              <th className="px-4 py-3 font-medium text-gray-500">상태</th>
+              <th className="px-4 py-3 font-medium text-gray-500">입사일</th>
+              <th className="px-4 py-3 font-medium text-gray-500 text-right">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {staffs.map((staff) => (
+              <tr key={staff.id} className="border-b last:border-0 hover:bg-gray-50">
+                <td className="px-4 py-3 font-medium">{staff.name}</td>
+                <td className="px-4 py-3 text-gray-600">{staff.job_title || "-"}</td>
+                <td className="px-4 py-3">
+                  <Badge className={`border-0 ${getStatusColor(staff.employment_status)}`}>
+                    {staff.employment_status || "미지정"}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3 text-gray-500">
+                  {staff.joined_at || "-"}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditModal(staff)}
                   >
-                    등록된 직원이 없습니다.
-                  </td>
+                    <Pencil className="h-4 w-4 text-gray-500" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+            {staffs.length === 0 && (
+                <tr>
+                    <td colSpan={5} className="text-center py-10 text-gray-500">
+                        등록된 직원이 없습니다.
+                    </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-          {isLoading && (
-            <p className="px-4 py-3 text-xs text-slate-400">
-              직원 정보를 불러오는 중입니다...
-            </p>
-          )}
-        </div>
-      </section>
+            )}
+          </tbody>
+        </table>
+      </div>
+
       {/* 수정 모달 */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[420px] rounded-xl bg-white">
+        <DialogContent className="bg-white">
           <DialogHeader>
-            <DialogTitle className="space-y-1">
-              <div className="text-sm font-semibold text-slate-500">
-                직원 정보 수정
-              </div>
-              <div className="text-lg font-bold text-slate-900">
-                {editTarget?.name}
-              </div>
-            </DialogTitle>
+            <DialogTitle>직원 정보 수정 ({editTarget?.name})</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-4 pt-2 text-sm">
-            <div className="space-y-1">
-              <label className="text-xs text-slate-500">직책</label>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>직책</Label>
               <Input
                 value={editJobTitle}
                 onChange={(e) => setEditJobTitle(e.target.value)}
-                placeholder="예: 수석 트레이너"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-slate-500">상태</label>
-              <Select
-                value={editStatus}
-                onValueChange={(value) => setEditStatus(value)}
-              >
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="상태 선택" />
+            <div className="space-y-2">
+              <Label>상태</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="재직">재직</SelectItem>
@@ -312,30 +266,63 @@ export default function AdminStaffPage() {
               </Select>
             </div>
           </div>
+          <DialogFooter>
+            <Button onClick={handleUpdate} className="bg-[#0F4C5C]">저장하기</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-          <DialogFooter className="mt-3 flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-3 text-xs text-slate-600"
-              onClick={() => setIsEditOpen(false)}
-              disabled={isSaving}
+      {/* 신규 등록 모달 */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle>신규 직원 등록</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>이름</Label>
+              <Input
+                placeholder="예: 김신입"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>이메일 (아이디)</Label>
+              <Input
+                placeholder="user@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>비밀번호</Label>
+              <Input
+                type="password"
+                placeholder="초기 비밀번호 설정"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>직책</Label>
+              <Input
+                value={newJobTitle}
+                onChange={(e) => setNewJobTitle(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+                onClick={handleCreateStaff} 
+                className="bg-[#0F4C5C]"
+                disabled={isCreating}
             >
-              취소
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 bg-[#0F4C5C] px-3 text-xs font-semibold text-white hover:bg-[#09313b]"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? "저장 중..." : "저장"}
+                {isCreating ? "등록 중..." : "등록하기"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
-
-
