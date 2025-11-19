@@ -179,6 +179,26 @@ export default function StaffPage() {
       setIsAddModalOpen(false);
       setNewMemberName("");
       fetchSchedules(myStaffId);
+
+      // n8n 웹훅으로 알림 전송 (실패해도 사용자에게는 알리지 않음)
+      try {
+        await fetch("/api/n8n", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            date: selectedDate,
+            time: startTime,
+            member_name: newMemberName,
+            type: newClassType,
+            status: "reserved",
+            staff_id: myStaffId,
+          }),
+        });
+      } catch (n8nError) {
+        console.error("n8n 알림 전송 실패:", n8nError);
+      }
     }
   };
 
