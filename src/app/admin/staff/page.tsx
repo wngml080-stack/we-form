@@ -59,8 +59,6 @@ export default function AdminStaffPage() {
   const router = useRouter();
 
   const [gymId, setGymId] = useState<string | null>(null);
-  const [gymName, setGymName] = useState<string>("We:form");
-  const [adminName, setAdminName] = useState<string>("");
 
   const [staffs, setStaffs] = useState<StaffRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -174,159 +172,104 @@ export default function AdminStaffPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
-
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      {/* 왼쪽 사이드바 */}
-      <aside className="flex w-64 flex-col gap-6 bg-[#0F4C5C] px-6 py-8 text-slate-50">
-        <div className="flex items-center gap-2 text-xl font-bold">
-          <CalendarRange className="h-6 w-6 text-[#E0FB4A]" />
-          <span>We:form</span>
+  return (
+    <>
+      <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            직원 관리
+          </h1>
+          <p className="text-xs text-slate-500">
+            센터에 소속된 모든 직원의 정보를 조회하고, 직책과 상태를 관리합니다.
+          </p>
         </div>
-        <div className="text-xs text-slate-200/80">{gymName}</div>
+      </header>
 
-        <nav className="mt-4 space-y-2 text-sm">
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-slate-200/80 hover:bg-white/10"
-            onClick={() => router.push("/admin")}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            <span>Dashboard</span>
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-slate-200/80 hover:bg-white/10"
-            onClick={() => router.push("/admin/schedule")}
-          >
-            <CalendarRange className="h-4 w-4" />
-            <span>스케줄</span>
-          </button>
-          <div className="flex w-full items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-left font-semibold">
-            <Users2 className="h-4 w-4 text-[#E0FB4A]" />
-            <span>직원 관리</span>
-          </div>
-        </nav>
-
-        <div className="mt-auto flex items-center justify-between text-xs text-slate-200/80">
-          <span>{adminName}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="flex items-center gap-1 border-slate-200/40 bg-transparent px-2 py-1 text-[11px] text-slate-50 hover:bg-white/10"
-          >
-            <LogOut className="h-3 w-3" />
-            로그아웃
-          </Button>
-        </div>
-      </aside>
-
-      {/* 오른쪽 메인 영역 */}
-      <main className="flex flex-1 flex-col bg-white">
-        <header className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-              직원 관리
-            </h1>
-            <p className="text-xs text-slate-500">
-              센터에 소속된 모든 직원의 정보를 조회하고, 직책과 상태를 관리합니다.
-            </p>
-          </div>
-        </header>
-
-        <section className="flex-1 px-6 py-4">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-100">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                    이름
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                    지점
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                    직책
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                    상태
-                  </th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
-                    입사일
-                  </th>
-                  <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">
-                    관리
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {staffs.map((staff) => {
-                  const badgeClass = getStatusBadgeColor(
-                    staff.employment_status
-                  );
-                  const hiredLabel = staff.hired_at
-                    ? new Date(staff.hired_at).toLocaleDateString("ko-KR")
-                    : "-";
-                  return (
-                    <tr key={staff.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-2 text-sm text-slate-800">
-                        {staff.name}
-                      </td>
-                      <td className="px-4 py-2 text-xs text-slate-600">
-                        {staff.gyms?.name ?? gymName}
-                      </td>
-                      <td className="px-4 py-2 text-xs text-slate-700">
-                        {staff.job_title ?? "-"}
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}
-                        >
-                          {staff.employment_status ?? "미지정"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-xs text-slate-600">
-                        {hiredLabel}
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 px-3 text-xs"
-                          onClick={() => openEditModal(staff)}
-                        >
-                          수정
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {staffs.length === 0 && !isLoading && (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-6 text-center text-xs text-slate-400"
-                    >
-                      등록된 직원이 없습니다.
+      <section className="flex-1 px-6 py-4">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/80">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-100">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
+                  이름
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
+                  지점
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
+                  직책
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
+                  상태
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">
+                  입사일
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">
+                  관리
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {staffs.map((staff) => {
+                const badgeClass = getStatusBadgeColor(staff.employment_status);
+                const hiredLabel = staff.hired_at
+                  ? new Date(staff.hired_at).toLocaleDateString("ko-KR")
+                  : "-";
+                return (
+                  <tr key={staff.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2 text-sm text-slate-800">
+                      {staff.name}
+                    </td>
+                    <td className="px-4 py-2 text-xs text-slate-600">
+                      {staff.gyms?.name ?? gymName}
+                    </td>
+                    <td className="px-4 py-2 text-xs text-slate-700">
+                      {staff.job_title ?? "-"}
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}
+                      >
+                        {staff.employment_status ?? "미지정"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-xs text-slate-600">
+                      {hiredLabel}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3 text-xs"
+                        onClick={() => openEditModal(staff)}
+                      >
+                        수정
+                      </Button>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-            {isLoading && (
-              <p className="px-4 py-3 text-xs text-slate-400">
-                직원 정보를 불러오는 중입니다...
-              </p>
-            )}
-          </div>
-        </section>
-      </main>
-
+                );
+              })}
+              {staffs.length === 0 && !isLoading && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-xs text-slate-400"
+                  >
+                    등록된 직원이 없습니다.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          {isLoading && (
+            <p className="px-4 py-3 text-xs text-slate-400">
+              직원 정보를 불러오는 중입니다...
+            </p>
+          )}
+        </div>
+      </section>
       {/* 수정 모달 */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[420px] rounded-xl bg-white">
@@ -391,7 +334,7 @@ export default function AdminStaffPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
 
