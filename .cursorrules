@@ -1,34 +1,93 @@
 # Project: We:form (Sports Center ERP SaaS)
 
-## 1. Identity & Design
-- Brand Name: We:form
-- Primary Color: Deep Teal (#0F4C5C)
-- Accent Color: Electric Lime (#E0FB4A)
-- Style: Clean, Minimal, Bento Grid, Data-Centric
-- UI Library: Shadcn UI + Tailwind CSS
+Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 **ERP SaaS** 프로젝트이다.  
+회원 관리, 강사 스케줄, 급여 정산, 외부 연동(n8n, 구글 시트 등)을 **한 곳에서** 관리하는 것이 핵심 목표다.
 
-## 2. Tech Stack
-- Framework: Next.js 14+ (App Router)
-- Language: TypeScript
-- Database: Supabase (PostgreSQL)
-- Auth: Supabase Auth
-- State: TanStack Query (React Query)
-- Scheduler: FullCalendar
+---
+
+## 1. Identity & Design (브랜드 & 디자인 시스템)
+
+- **Brand Name**: We:form
+- **Primary Color (브랜드 메인)**: Deep Teal `#0F4C5C`
+- **Accent Color (강조)**: Electric Lime `#E0FB4A`
+- **Style**: Clean, Minimal, Bento Grid, Data-Centric
+- **UI Library**: Shadcn UI + Tailwind CSS (Tailwind v4)
+
+### 1-1. UI/UX 원칙
+
+- **모바일 우선(Mobile First)**: 강사용 화면(`/staff/*`)은 모바일 해상도 기준으로 먼저 설계한다.
+- **데이터 우선(Data-Centric)**: 차트/카드/리스트를 통해 "한 눈에 이해 가능한" 데이터 표현을 지향한다.
+- **일관된 색 사용**:
+  - 메인 배경/헤더/사이드바: Deep Teal (`#0F4C5C`)
+  - Call-to-Action 버튼: Electric Lime (`#E0FB4A`) + **검정 텍스트, 굵게**
+
+---
+
+## 2. Tech Stack (기술 스택)
+
+- **Framework**: Next.js 14+ (App Router)
+- **Language**: TypeScript
+- **Database**: Supabase (PostgreSQL)
+- **Auth**: Supabase Auth
+- **State**: TanStack Query (React Query) – 서버 상태 관리에 사용
+- **Scheduler**: FullCalendar (React)
+  - Plugins: `dayGrid`, `timeGrid`, `interaction`, `list`
+- **UI Components**: Shadcn UI (Button, Card, Input, Label, Dialog 등)
+
+---
 
 ## 3. Key Architecture Rules (DO NOT BREAK)
-- **Multi-tenancy:** All DB queries must filter by `gym_id`.
-- **Routing:**
-  - `/login`: Entry point.
-  - `/staff/*`: Mobile-optimized view for instructors.
-  - `/admin/*`: Desktop-optimized dashboard for managers.
-- **Payroll Logic:**
-  - Staff can edit schedules only in the current month.
-  - Past month edits require Admin approval.
-  - Status: `completed` (green), `no_show_deducted` (red), `no_show` (gray), `service` (blue).
 
-## 4. Coding Behavior
-- Use functional components and hooks.
-- Always implement RLS policies in SQL generation.
-- Do not hard-code logic; use DB configuration tables.
+### 3-1. 멀티 테넌시 (Multi-tenancy)
 
+- 모든 주요 도메인 테이블에는 **반드시 `gym_id` 컬럼이 있어야 한다.**
+- 모든 DB 조회/수정 쿼리에는 `where gym_id = ?` 필터가 들어가야 한다.
+- RLS 정책에서도 `gym_id` + `staffs` 테이블을 통해 권한을 강제한다.
+
+### 3-2. 라우팅 규칙
+
+- `/login` : 진입점(로그인 페이지)
+- `/staff/*` : 강사용 모바일 뷰
+  - 예: `/staff` (오늘의 스케줄 리스트), 향후 `/staff/profile`, `/staff/history` 등
+- `/admin/*` : 관리자용 데스크톱 대시보드
+  - 예: `/admin` (운영 현황 대시보드), `/admin/payroll`, `/admin/settings` 등
+
+### 3-3. 급여 & 스케줄 관련 핵심 정책
+
+- **스케줄 수정 권한**
+  - Staff(강사)는 **"현재 달(Current Month)"에 속한 자신의 스케줄만** 생성/수정할 수 있다.
+  - 과거 달(지난 달 포함)의 스케줄 수정은 **Admin 승인/수정만 허용**한다.
+- **상태(Status) 코드**
+  - `completed` (녹색)       : 출석 완료
+  - `no_show_deducted` (빨강): 노쇼(공제 대상)
+  - `no_show` (회색)         : 단순 노쇼
+  - `service` (파랑)         : 서비스 / 무료 수업
+- **상태 설정/매핑**
+  - 상태 코드는 **테이블(`attendance_statuses`) + 설정 테이블(`salary_settings`)** 로 관리한다.
+  - 프론트엔드에 상태 로직을 하드코딩하지 말고, **DB 설정을 읽어서** 의미/색상/급여 규칙을 반영한다.
+
+---
+
+## 4. Coding Behavior (코딩 스타일 & AI 행동 강령)
+
+- **함수형 컴포넌트 + Hooks** 만 사용 (클래스형 컴포넌트 사용 금지).
+- **RLS 우선**:
+  - SQL/쿼리 설계 시 항상 **Row Level Security 정책**을 고려한다.
+  - Supabase RLS 정책이 존재하지 않으면 먼저 정의하는 것을 우선시한다.
+- **비즈니스 로직 하드코딩 금지**:
+  - 급여 규칙, 상태 매핑, 권한 로직 등은 **DB의 설정 테이블**(예: `salary_settings`, `attendance_statuses`)로 관리한다.
+- **명시적 타입 사용**:
+  - TypeScript에서 `any` 사용은 최소화하고, 도메인 타입(`ScheduleStatus`, `StaffRole` 등)을 정의해 사용한다.
+- **UX 친절성**:
+  - 에러 메시지는 **한국어**로, 사용자가 이해하기 쉬운 문장으로 안내한다.
+  - 로딩/저장 중 상태(스피너, "저장 중..." 텍스트 등)를 명확히 표시한다.
+
+---
+
+## 5. AI 사용 정책 (Cursor / AI Agent Guideline)
+
+- 사용자의 **역할/권한 규칙(강사/관리자)** 을 항상 존중하는 방향으로 제안할 것.
+- Supabase, Shadcn, FullCalendar 등 **공식 가이드**와 최대한 일치하게 설정/예제를 구성할 것.
+- 사용자에게 `pnpm run dev` 같은 서버 실행 명령은 **직접 실행하도록 안내만** 하고, 도구로는 실행하지 않는다.
+- 한국어를 기본 응답 언어로 사용하고, 비개발자도 이해할 수 있게 **쉬운 설명**을 우선한다.
 
