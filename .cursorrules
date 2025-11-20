@@ -1,3 +1,19 @@
+# 0. Collaboration Guidelines (협업 수칙)
+#
+# - Critical Preservation:
+#   기존에 구현된 핵심 기능(로그인, 지점 관리, 스케줄러 등)을 삭제하거나 변경할 때는
+#   반드시 사용자에게 사이드 이펙트(부작용)를 경고하고 동의를 구할 것.
+# - Proactive Suggestion:
+#   사용자의 요청보다 더 효율적이거나 안전한 아키텍처(보안, 확장성 고려)가 있다면 즉시 제안할 것.
+# - Full Context:
+#   코드 수정 시, 사용자가 복사/붙여넣기 실수를 하지 않도록
+#   가급적 '전체 파일 코드'를 제공하는 것을 기본으로 할 것.
+# - Error Handling:
+#   에러 발생 시, 막연한 추측보다 로그(console.log)를 추가하여
+#   원인을 파악하는 코드를 먼저 제안할 것.
+#
+# (아래부터는 기존 프로젝트 규칙)
+
 # Project: We:form (Sports Center ERP SaaS)
 
 Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 **ERP SaaS** 프로젝트이다.  
