@@ -1,116 +1,119 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { CalendarRange, LayoutDashboard, LogOut, Users2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-function NavItem({
-  label,
-  icon,
-  href,
-  active,
-  onClick,
-}: {
-  label: string;
-  icon: ReactNode;
-  href: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const base =
-    "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors";
-  const activeClass = "bg-white/10 font-semibold text-slate-50";
-  const inactiveClass = "text-slate-200/80 hover:bg-white/10";
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${base} ${active ? activeClass : inactiveClass}`}
-      aria-current={active ? "page" : undefined}
-    >
-      {icon}
-      <span>{label}</span>
-    </button>
-  );
-}
+import {
+  LayoutDashboard,
+  CalendarDays,
+  Users,
+  Building2, // 👈 본사 아이콘 추가
+  LogOut,
+} from "lucide-react";
 
 export default function AdminLayout({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [userRole, setUserRole] = useState(""); // 내 권한 상태
 
-  const isDashboard = pathname === "/admin" || pathname === "/admin/";
-  const isSchedule = pathname.startsWith("/admin/schedule");
-  const isStaff = pathname.startsWith("/admin/staff");
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  useEffect(() => {
+    const getUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from("staffs")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        if (data) setUserRole(data.role);
+      }
+    };
+    getUserRole();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
   };
 
+  const menuItems = [
+    { name: "대시보드", href: "/admin", icon: LayoutDashboard },
+    { name: "통합 스케줄", href: "/admin/schedule", icon: CalendarDays },
+    { name: "직원 관리", href: "/admin/staff", icon: Users },
+  ];
+
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      {/* 공통 사이드바 */}
-      <aside className="flex w-64 flex-col gap-6 bg-[#0F4C5C] px-6 py-8 text-slate-50">
-        <div className="flex items-center gap-2 text-xl font-bold">
-          <CalendarRange className="h-6 w-6 text-[#E0FB4A]" />
-          <span>We:form Admin</span>
+    <div className="flex h-screen bg-gray-100">
+      {/* 사이드바 */}
+      <aside className="w-64 bg-[#0F4C5C] text-white flex flex-col shadow-xl">
+        <div className="p-6">
+          <h1 className="text-xl font-bold flex items-center gap-2">
+            <CalendarDays className="text-[#E0FB4A]" />
+            We:form Admin
+          </h1>
+          <p className="text-xs text-white/70 mt-2 ml-8">센터 운영 관리자</p>
         </div>
 
-        <nav className="mt-4 space-y-2">
-          <NavItem
-            label="대시보드"
-            href="/admin"
-            active={isDashboard}
-            onClick={() => router.push("/admin")}
-            icon={<LayoutDashboard className="h-4 w-4" />}
-          />
-          <NavItem
-            label="통합 스케줄"
-            href="/admin/schedule"
-            active={isSchedule}
-            onClick={() => router.push("/admin/schedule")}
-            icon={<CalendarRange className="h-4 w-4" />}
-          />
-          <NavItem
-            label="직원 관리"
-            href="/admin/staff"
-            active={isStaff}
-            onClick={() => router.push("/admin/staff")}
-            icon={<Users2 className="h-4 w-4" />}
-          />
+        <nav className="flex-1 px-4 space-y-2">
+            {/* 👑 슈퍼 관리자 전용 메뉴 */}
+            {userRole === "super_admin" && (
+                <Link
+                href="/admin/hq"
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    pathname === "/admin/hq"
+                    ? "bg-white/10 text-[#E0FB4A]"
+                    : "text-white/80 hover:bg-white/5 hover:text-white"
+                }`}
+                >
+                <Building2 className="mr-3 h-5 w-5" />
+                본사(HQ) 관리
+                </Link>
+            )}
+
+            <div className="my-2 border-t border-white/10"></div>
+
+            {/* 일반 메뉴 */}
+            {menuItems.map((item) => (
+                <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    pathname === item.href
+                    ? "bg-white/10 text-[#E0FB4A]"
+                    : "text-white/80 hover:bg-white/5 hover:text-white"
+                }`}
+                >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+                </Link>
+            ))}
         </nav>
 
-        <div className="mt-auto flex items-center justify-between text-xs text-slate-200/80">
-          <span>관리자</span>
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="p-4 border-t border-white/10">
+          <button
             onClick={handleLogout}
-            className="flex items-center gap-1 border-slate-200/40 bg-transparent px-2 py-1 text-[11px] text-slate-50 hover:bg-white/10"
+            className="flex items-center w-full px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
           >
-            <LogOut className="h-3 w-3" />
+            <LogOut className="mr-3 h-5 w-5" />
             로그아웃
-          </Button>
+          </button>
         </div>
       </aside>
 
-      {/* 우측 콘텐츠 영역 */}
-      <main className="flex flex-1 flex-col bg-white">{children}</main>
+      {/* 메인 콘텐츠 */}
+      <main className="flex-1 overflow-auto p-8">
+        {children}
+      </main>
     </div>
   );
 }
-
-

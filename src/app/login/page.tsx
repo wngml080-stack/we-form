@@ -15,7 +15,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Supabase 클라이언트 생성
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -37,18 +36,32 @@ export default function LoginPage() {
         throw new Error("이메일 또는 비밀번호를 확인해주세요.");
       }
 
-      // 2. 로그인 성공 시, 직원(staffs) 테이블에서 역할(role) 조회
+      // 2. 직원 정보 조회 (employment_status 추가!)
       const { data: staffData, error: staffError } = await supabase
         .from("staffs")
-        .select("role")
+        .select("role, employment_status, gyms ( status )")
         .eq("user_id", data.user.id)
-        .maybeSingle();
+        .single();
 
       if (staffError || !staffData) {
         throw new Error("직원 정보를 찾을 수 없습니다. 관리자에게 문의하세요.");
       }
 
-      // 3. 역할에 따라 페이지 이동
+      // 🚨 [보안 체크 1] 퇴사자 차단
+      if (staffData.employment_status === '퇴사') {
+        await supabase.auth.signOut(); // 즉시 로그아웃
+        throw new Error("퇴사 처리된 계정입니다. 이용이 제한됩니다.");
+      }
+
+      // 🚨 [보안 체크 2] 센터 승인 대기 차단
+      // @ts-ignore
+      const gymStatus = staffData.gyms?.status;
+      if (gymStatus === 'pending') {
+        await supabase.auth.signOut();
+        throw new Error("센터 가입 승인 대기 중입니다. 승인 후 이용 가능합니다.");
+      }
+
+      // 3. 통과 시 페이지 이동
       if (staffData.role === "admin") {
         router.push("/admin");
       } else {
@@ -56,17 +69,17 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setErrorMsg(err.message);
+      // 에러 발생 시 세션 정리
+      await supabase.auth.signOut();
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    // 배경색: Deep Teal (#0F4C5C)
     <div className="flex min-h-screen w-full items-center justify-center bg-[#0F4C5C] p-4">
       <Card className="w-full max-w-md border-none shadow-2xl">
         <CardHeader className="space-y-2 text-center">
-          {/* 로고 영역 */}
           <h1 className="text-3xl font-extrabold tracking-tight text-[#0F4C5C]">
             We:form
           </h1>
@@ -106,7 +119,6 @@ export default function LoginPage() {
               </p>
             )}
             
-            {/* 로그인 버튼: Electric Lime (#E0FB4A) */}
             <Button
               type="submit"
               className="w-full bg-[#E0FB4A] text-black hover:bg-[#d4f030] font-bold text-base py-5"
@@ -114,6 +126,10 @@ export default function LoginPage() {
             >
               {isLoading ? "로그인 중..." : "로그인"}
             </Button>
+
+            <div className="text-center text-sm text-gray-500 mt-2">
+                아직 계정이 없으신가요? <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => router.push('/signup')}>가입신청</span>
+            </div>
           </form>
         </CardContent>
         <CardFooter className="justify-center">

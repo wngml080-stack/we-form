@@ -1,104 +1,71 @@
-import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!SUPABASE_URL) {
-  // 서버 부팅 시점에만 보이는 로그
-  console.error("NEXT_PUBLIC_SUPABASE_URL 환경 변수가 설정되지 않았습니다.");
-}
-
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("SUPABASE_SERVICE_ROLE_KEY 환경 변수가 설정되지 않았습니다.");
-}
-
-const supabaseAdmin =
-  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
-    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      })
-    : null;
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  if (!supabaseAdmin) {
-    return NextResponse.json(
-      { error: "서버 설정이 올바르지 않습니다. 관리자에게 문의해 주세요." },
-      { status: 500 }
-    );
-  }
-
   try {
     const body = await request.json();
-    const { email, password, name, job_title, gym_id } = body ?? {};
+    // 👇 phone, joined_at 추가됨!
+    const { email, password, name, job_title, gym_id, phone, joined_at } = body;
 
-    if (!email || !password || !name || !gym_id) {
-      return NextResponse.json(
-        { error: "이메일, 비밀번호, 이름, 지점(gym_id)은 필수 값입니다." },
-        { status: 400 }
-      );
+    console.log("🚀 직원 생성 요청:", { email, name, gym_id, phone });
+
+    // 1. 마스터키 확인
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+    if (!serviceRoleKey) {
+      throw new Error("서버에 마스터키(SERVICE_ROLE_KEY)가 없습니다.");
     }
 
-    // 1) Supabase Auth 사용자 생성 (이메일 인증 자동 완료 처리)
-    const {
-      data: userData,
-      error: userError,
-    } = await supabaseAdmin.auth.admin.createUser({
+    // 2. 관리자 권한으로 Supabase 접속
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    // 3. 유저 생성 (이메일 인증 자동 완료 처리)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
+      user_metadata: { name },
     });
 
-    if (userError || !userData.user) {
-      console.error("직원 계정 생성 실패:", userError);
-      return NextResponse.json(
-        { error: "직원 계정 생성에 실패했습니다." },
-        { status: 500 }
-      );
-    }
+    if (authError) throw authError;
+    if (!authData.user) throw new Error("유저 생성 실패");
 
-    const userId = userData.user.id;
+    console.log("✅ Auth 유저 생성 완료 ID:", authData.user.id);
 
-    // 2) staffs 테이블에 직원 정보 등록
-    const { data: staffData, error: staffError } = await supabaseAdmin
+    // 4. staffs 테이블에 정보 입력
+    const { error: dbError } = await supabaseAdmin
       .from("staffs")
       .insert({
-        gym_id,
-        user_id: userId,
-        name,
-        job_title: job_title ?? null,
+        user_id: authData.user.id,
+        gym_id: gym_id,
+        name: name,
+        email: email,
+        job_title: job_title,
         role: "staff",
-        is_active: true,
-      })
-      .select("id")
-      .maybeSingle();
+        employment_status: "재직",
+        // 👇 여기가 핵심! 추가된 필드 저장
+        phone: phone,
+        joined_at: joined_at || new Date().toISOString().split('T')[0], // 없으면 오늘 날짜
+      });
 
-    if (staffError || !staffData) {
-      console.error("staffs 테이블 insert 실패:", staffError);
-      return NextResponse.json(
-        { error: "직원 정보를 저장하는 중 오류가 발생했습니다." },
-        { status: 500 }
-      );
+    if (dbError) {
+      console.error("❌ DB 저장 실패, 유저 생성 취소:", dbError.message);
+      // DB 실패 시 Auth 유저도 같이 삭제 (롤백)
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      throw dbError;
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        user_id: userId,
-        staff_id: staffData.id,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("직원 생성 API 오류:", error);
-    return NextResponse.json(
-      { error: "직원 생성 중 알 수 없는 오류가 발생했습니다." },
-      { status: 500 }
-    );
+    console.log("✅ DB 입력 완료");
+    return NextResponse.json({ success: true });
+
+  } catch (error: any) {
+    console.error("❌ 직원 생성 에러:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-

@@ -1,26 +1,15 @@
 ## We:form TODO 리스트
 
-### ✅ 완료된 작업
+### ✅ 진행 상황 체크리스트
 
-- [x] 프로젝트 세팅 (Next.js + Supabase + Shadcn UI)
-- [x] DB 스키마 설계 및 구축 (gyms, staffs, schedules, attendance_statuses, salary_settings + RLS)
-- [x] 로그인 페이지 & 권한별 리다이렉트 (`/login` → `/admin` / `/staff`)
-- [x] 강사 전용 스케줄러 (`/staff`) – FullCalendar `listWeek`, 수업 등록/상태 변경 모달
-- [x] n8n 자동화 연동 – Next.js API Proxy(`/api/n8n`) → n8n Webhook → 구글 시트 저장 플로우
-
-### 🔄 진행 중인 작업
-
-- (현재 스프린트 기준 진행 중 항목 없음 – 다음 작업 정의 시 여기에 추가)
-
-### ⏳ 예정된 작업
-
-- [ ] 관리자 통합 스케줄러
-  - [ ] 전체 직원 스케줄 리스트/캘린더 조회
-  - [ ] 직원/지점/상태별 필터링 및 검색
-- [ ] 급여 규칙 설정 페이지
-  - [ ] `salary_settings` CRUD UI (상태별 급여 규칙, PT/OT별 단가 등)
-  - [ ] `attendance_statuses` 설정 화면 (색상/라벨/메타데이터 편집)
-  - [ ] 스케줄 → 급여 계산/정산 파이프라인 설계
+- [x] 1. 기초 공사: Next.js + Supabase + Shadcn UI 세팅, DB 테이블 구축.
+- [x] 2. 인증 & 보안: 로그인(Role 기반 리다이렉트), 퇴사자 및 승인 대기 센터 로그인 차단 로직.
+- [x] 3. 강사 앱 (Mobile): FullCalendar 스케줄러, 수업 등록/상태변경(4버튼), FAB 버튼, 한글 패치.
+- [x] 4. 자동화 (n8n): API Proxy(`/api/n8n`) 구축, 구글 시트 실시간 연동, 데이터 매핑.
+- [x] 5. 지점 관리자 (Admin): 직원 목록 조회, 정보 수정(직책/상태), 직원 수동 등록(마스터키 API).
+- [x] 6. 본사(HQ) 기능: 슈퍼 관리자 전용 지점 생성 및 지점장 임명 페이지(`/admin/hq`).
+- [x] 7. 고도화된 가입: 회원가입 페이지(`signup`)를 "센터 신규 등록"과 "직원 입사 신청" 탭으로 분리.
+- [x] 8. 승인 시스템: 지점 관리자가 "가입 대기" 직원을 승인하는 기능.
 
 ### 📌 참고
 

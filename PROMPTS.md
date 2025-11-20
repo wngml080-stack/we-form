@@ -128,6 +128,19 @@ We:form 프로젝트에서 사용한 주요 프롬프트와 개발 히스토리�
 
 ---
 
+### 6. 오늘 핵심 프롬프트 요약 (2025-11-19)
+
+- **n8n 구글 시트 연동을 위한 Proxy API 생성**
+  - `/api/n8n` 을 통해 n8n Webhook으로 스케줄 데이터를 전달하고, Google Sheets에 적재하는 흐름 정의.
+- **FullCalendar 모바일 최적화 및 번역 오류 방지(`notranslate`)**
+  - 강사용 `/staff` 스케줄러를 `listWeek` 기반 모바일 뷰로 구성하고, 최상위 컨테이너에 `notranslate` 클래스를 적용.
+- **Supabase 마스터키를 이용한 유저 생성 API 구현**
+  - Service Role 키를 사용해 센터 대표/지점장/직원 계정을 생성하고, `staffs`/`gyms` 테이블에 연동 저장하는 API (`/api/auth/signup`, `/api/auth/join`, `/api/admin/create-staff`, `/api/admin/create-branch`) 설계.
+- **직원 관리 페이지의 수정/등록 모달 및 상태 뱃지 구현**
+  - `/admin/staff` 페이지에서 직원 목록 조회, 수정/등록 모달, `employment_status` 에 따른 Shadcn `Badge` 색상 매핑, "가입대기" 승인 플로우 구현.
+
+---
+
 ## 앞으로 사용할 프롬프트 기록 템플릿
 
 > 새 작업을 요청할 때마다, 이 템플릿을 복사해서 날짜/섹션을 추가하면 됩니다.
