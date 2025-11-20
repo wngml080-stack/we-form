@@ -8,7 +8,8 @@ import {
   LayoutDashboard,
   CalendarDays,
   Users,
-  Building2, // 👈 본사 아이콘 추가
+  Building2,
+  Settings, // 시스템 관리 아이콘
   LogOut,
 } from "lucide-react";
 
@@ -19,7 +20,7 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [userRole, setUserRole] = useState(""); // 내 권한 상태
+  const [userRole, setUserRole] = useState(""); 
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,51 +47,70 @@ export default function AdminLayout({
     router.push("/login");
   };
 
+  // 일반 관리자용 메뉴
   const menuItems = [
     { name: "대시보드", href: "/admin", icon: LayoutDashboard },
     { name: "통합 스케줄", href: "/admin/schedule", icon: CalendarDays },
-    { name: "직원 관리", href: "/admin/staff", icon: Users },
+    { name: "직원 리스트", href: "/admin/staff", icon: Users },
   ];
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* 사이드바 */}
-      <aside className="w-64 bg-[#0F4C5C] text-white flex flex-col shadow-xl">
+      {/* 사이드바: 파란색(#2F80ED) 테마 */}
+      <aside className="w-64 bg-[#2F80ED] text-white flex flex-col shadow-xl">
         <div className="p-6">
           <h1 className="text-xl font-bold flex items-center gap-2">
-            <CalendarDays className="text-[#E0FB4A]" />
+            <CalendarDays className="text-[#F2994A]" />
             We:form Admin
           </h1>
-          <p className="text-xs text-white/70 mt-2 ml-8">센터 운영 관리자</p>
+          <p className="text-xs text-white/80 mt-2 ml-8">센터 운영 관리자</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
-            {/* 👑 슈퍼 관리자 전용 메뉴 */}
-            {userRole === "super_admin" && (
-                <Link
-                href="/admin/hq"
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-                    pathname === "/admin/hq"
-                    ? "bg-white/10 text-[#E0FB4A]"
-                    : "text-white/80 hover:bg-white/5 hover:text-white"
-                }`}
-                >
-                <Building2 className="mr-3 h-5 w-5" />
-                본사(HQ) 관리
-                </Link>
+            {/* 👑 1. 개발자(시스템 관리자) 전용 메뉴 */}
+            {userRole === "system_admin" && (
+                <>
+                    <div className="text-xs font-semibold text-white/50 px-4 mt-4 mb-2">SYSTEM</div>
+                    <Link
+                    href="/admin/system"
+                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                        pathname === "/admin/system"
+                        ? "bg-white text-[#2F80ED]"
+                        : "text-white/90 hover:bg-white/10"
+                    }`}
+                    >
+                    <Settings className="mr-3 h-5 w-5" />
+                    고객사(Company) 관리
+                    </Link>
+                    <div className="my-2 border-t border-white/20"></div>
+                </>
             )}
 
-            <div className="my-2 border-t border-white/10"></div>
+            {/* 🏢 2. 회사 대표(Company Admin) 전용 메뉴 */}
+            {(userRole === "company_admin" || userRole === "system_admin") && (
+                 <Link
+                 href="/admin/hq"
+                 className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                     pathname === "/admin/hq"
+                     ? "bg-white text-[#2F80ED]"
+                     : "text-white/90 hover:bg-white/10"
+                 }`}
+                 >
+                 <Building2 className="mr-3 h-5 w-5" />
+                 본사(HQ) 관리
+                 </Link>
+            )}
 
-            {/* 일반 메뉴 */}
+            {/* 3. 일반 메뉴 */}
+            <div className="text-xs font-semibold text-white/50 px-4 mt-4 mb-2">MENU</div>
             {menuItems.map((item) => (
                 <Link
                 key={item.href}
                 href={item.href}
                 className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                     pathname === item.href
-                    ? "bg-white/10 text-[#E0FB4A]"
-                    : "text-white/80 hover:bg-white/5 hover:text-white"
+                    ? "bg-white text-[#2F80ED]"
+                    : "text-white/90 hover:bg-white/10"
                 }`}
                 >
                 <item.icon className="mr-3 h-5 w-5" />
@@ -99,10 +119,10 @@ export default function AdminLayout({
             ))}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/20">
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+            className="flex items-center w-full px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
           >
             <LogOut className="mr-3 h-5 w-5" />
             로그아웃
@@ -110,7 +130,6 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 */}
       <main className="flex-1 overflow-auto p-8">
         {children}
       </main>

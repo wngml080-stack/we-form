@@ -35,7 +35,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0F4C5C] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#2F80ED] p-4">
       <Card className="w-full max-w-md">
         <CardHeader><CardTitle className="text-center">We:form 가입신청</CardTitle></CardHeader>
         <CardContent className="space-y-4">
@@ -50,7 +50,13 @@ export default function SignupPage() {
                 <SelectContent>{JOB_TITLES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <Button onClick={handleSignup} className="w-full bg-[#0F4C5C] hover:bg-[#09313b]" disabled={isLoading}>가입 신청</Button>
+          <Button
+            onClick={handleSignup}
+            className="w-full bg-[#2F80ED] hover:bg-[#1c6cd7]"
+            disabled={isLoading}
+          >
+            가입 신청
+          </Button>
         </CardContent>
       </Card>
     </div>

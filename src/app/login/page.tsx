@@ -77,10 +77,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#0F4C5C] p-4">
+    <div className="flex min-h-screen w-full items-center justify-center bg-[#2F80ED] p-4">
       <Card className="w-full max-w-md border-none shadow-2xl">
         <CardHeader className="space-y-2 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#0F4C5C]">
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#2F80ED]">
             We:form
           </h1>
           <p className="text-sm text-gray-500">
@@ -98,7 +98,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="border-gray-300 focus:ring-[#0F4C5C]"
+                className="border-gray-300 focus:ring-[#2F80ED]"
               />
             </div>
             <div className="space-y-2">
@@ -110,7 +110,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="border-gray-300 focus:ring-[#0F4C5C]"
+                className="border-gray-300 focus:ring-[#2F80ED]"
               />
             </div>
             {errorMsg && (
@@ -121,7 +121,7 @@ export default function LoginPage() {
             
             <Button
               type="submit"
-              className="w-full bg-[#E0FB4A] text-black hover:bg-[#d4f030] font-bold text-base py-5"
+              className="w-full bg-[#F2994A] text-black hover:bg-[#e27f34] font-bold text-base py-5"
               disabled={isLoading}
             >
               {isLoading ? "로그인 중..." : "로그인"}

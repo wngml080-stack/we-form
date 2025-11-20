@@ -107,11 +107,11 @@ export default function StaffPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed": return "#E0FB4A";
+      case "completed": return "#F2994A"; // Point Orange
       case "no_show_deducted": return "#EF4444";
       case "no_show": return "#9CA3AF";
       case "service": return "#3B82F6";
-      default: return "#0F4C5C";
+      default: return "#2F80ED"; // Primary Blue
     }
   };
 
@@ -224,7 +224,7 @@ export default function StaffPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 relative">
-      <header className="bg-[#0F4C5C] p-4 text-white shadow-md sticky top-0 z-10 flex justify-between items-center">
+      <header className="bg-[#2F80ED] p-4 text-white shadow-md sticky top-0 z-10 flex justify-between items-center">
         <h1 className="text-lg font-bold">We:form 스케줄러</h1>
         <Button 
             onClick={() => router.push('/login')} 
@@ -291,7 +291,7 @@ export default function StaffPage() {
 
       <button
         onClick={handleFabClick}
-        className="fixed bottom-6 right-6 bg-[#E0FB4A] text-black p-4 rounded-full shadow-xl hover:bg-[#d4f030] transition-all active:scale-95 z-50 flex items-center justify-center"
+        className="fixed bottom-6 right-6 bg-[#F2994A] text-black p-4 rounded-full shadow-xl hover:bg-[#e27f34] transition-all active:scale-95 z-50 flex items-center justify-center"
       >
         <Plus className="w-8 h-8 stroke-[3px]" />
       </button>
@@ -358,7 +358,7 @@ export default function StaffPage() {
           <DialogFooter>
             <Button 
                 onClick={handleAddClass} 
-                className="bg-[#0F4C5C] hover:bg-[#09313b] text-white w-full h-12 text-lg font-bold"
+                className="bg-[#2F80ED] hover:bg-[#1c6cd7] text-white w-full h-12 text-lg font-bold"
             >
               등록하기
             </Button>
@@ -385,7 +385,7 @@ export default function StaffPage() {
             <button
               type="button"
               onClick={() => handleStatusChange("completed")}
-              className="w-full rounded-lg bg-[#E0FB4A] px-3 py-2 text-sm font-bold text-black shadow-sm hover:bg-[#d4f030]"
+              className="w-full rounded-lg bg-[#F2994A] px-3 py-2 text-sm font-bold text-black shadow-sm hover:bg-[#e27f34]"
             >
               🟢 출석 완료
             </button>

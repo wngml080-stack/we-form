@@ -9,8 +9,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#0F4C5C",
-        accent: "#E0FB4A",
+        primary: "hsl(var(--primary))",
+        accent: "hsl(var(--accent))",
+        point: "hsl(var(--point))",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],

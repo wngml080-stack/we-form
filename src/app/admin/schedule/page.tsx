@@ -128,10 +128,10 @@ export default function AdminSchedulePage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed": return "#E0FB4A"; // Lime
+      case "completed": return "#F2994A"; // Point Orange
       case "no_show_deducted": return "#EF4444"; // Red
       case "service": return "#3B82F6"; // Blue
-      default: return "#0F4C5C"; // Deep Teal
+      default: return "#2F80ED"; // Primary Blue
     }
   };
 

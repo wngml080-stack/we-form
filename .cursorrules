@@ -24,8 +24,8 @@ Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 *
 ## 1. Identity & Design (브랜드 & 디자인 시스템)
 
 - **Brand Name**: We:form
-- **Primary Color (브랜드 메인)**: Deep Teal `#0F4C5C`
-- **Accent Color (강조)**: Electric Lime `#E0FB4A`
+- **Primary Color (브랜드 메인)**: Bright Blue `#2F80ED`
+- **Accent / Point Color (강조)**: Orange `#F2994A`
 - **Style**: Clean, Minimal, Bento Grid, Data-Centric
 - **UI Library**: Shadcn UI + Tailwind CSS (Tailwind v4)
 
@@ -34,8 +34,8 @@ Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 *
 - **모바일 우선(Mobile First)**: 강사용 화면(`/staff/*`)은 모바일 해상도 기준으로 먼저 설계한다.
 - **데이터 우선(Data-Centric)**: 차트/카드/리스트를 통해 "한 눈에 이해 가능한" 데이터 표현을 지향한다.
 - **일관된 색 사용**:
-  - 메인 배경/헤더/사이드바: Deep Teal (`#0F4C5C`)
-  - Call-to-Action 버튼: Electric Lime (`#E0FB4A`) + **검정 텍스트, 굵게**
+  - 메인 배경/헤더/사이드바: Primary Blue (`#2F80ED`)
+  - Call-to-Action 버튼: Accent/Point Orange (`#F2994A`) + **흰색 또는 진한 텍스트, 굵게**
 
 ---
 

@@ -1,17 +1,26 @@
 @import "tailwindcss";
 
-/* 베이스 컬러: slate 계열 */
+/* 베이스 컬러: slate 계열 + 브랜드 컬러 (HSL) */
 :root {
   /* 라이트 모드 기본 배경/텍스트 (slate 기반) */
   --background: #f8fafc; /* slate-50 */
   --foreground: #020617; /* slate-950 */
 
-  /* 브랜드 컬러 */
-  --primary: #0f4c5c; /* Deep Teal */
-  --primary-foreground: #f9fafb;
+  /* 브랜드 컬러 (HSL 값만 저장, hsl(var(--primary)) 형태로 사용) */
+  /* Primary Blue #2F80ED ≒ hsl(214 84% 56%) */
+  --primary: 214 84% 56%;
+  /* 전경 컬러: 흰색 */
+  --primary-foreground: 0 0% 100%;
 
-  --accent: #e0fb4a; /* Electric Lime */
-  --accent-foreground: #052e16;
+  /* Accent / Point Orange #F2994A ≒ hsl(28 90% 62%) */
+  --accent: 28 90% 62%;
+  --accent-foreground: 0 0% 100%;
+
+  /* 별도 포인트 컬러 변수 (Point Color) */
+  --point: 28 90% 62%;
+
+  /* 포커스 링 컬러도 Primary 기반으로 통일 */
+  --ring: 214 84% 56%;
 }
 
 @theme inline {
@@ -19,11 +28,13 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-point: hsl(var(--point));
 
   /* Sans-serif 계열 폰트 (Geist + 시스템 폰트) */
   --font-sans: var(--font-geist-sans);
