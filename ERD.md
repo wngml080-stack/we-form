@@ -8,6 +8,74 @@
 
 ---
 
+### 0. 현재 기능 & 리팩터링 목표 요약
+
+#### 0-1. 현재까지 구현된 주요 기능
+
+- **인증/가입 플로우**
+  - 회사 대표 가입 (`/signup` → `POST /api/auth/join-company`)
+    - Supabase Auth 유저 생성 후 `companies`, `staffs`(company_admin) 레코드 생성.
+    - `companies.status = 'pending'` 으로 시작하며, 시스템 관리자가 승인해야 실제 이용 가능.
+  - 직원 자체 가입 (`/signup` → `POST /api/auth/signup`)
+    - 기존 회사에 속하는 *가입 대기 직원*을 생성.  
+    - Supabase Auth 유저 + `staffs` 레코드(`employment_status = '가입대기'`, `gym_id = null`) 생성.
+  - 로그인 후 회사/직원 정보 조회 (`/login` 및 레이아웃)
+    - `staffs.user_id` 를 기준으로 현재 로그인한 직원/권한/소속 지점 확인.
+
+- **관리자 화면 (`/admin/*`)**
+  - `/admin/system` (system_admin 전용)
+    - 전체 `companies` 리스트, 가입 승인/상태 변경, 회사 상세로 이동.
+  - `/admin/system/[id]`
+    - 선택한 회사 상세/지점/직원 관리(향후 확장).
+  - `/admin/hq`
+    - 회사 본사 관점에서 지점/직원 현황 요약(초안).
+  - `/admin/staff`
+    - 특정 지점/회사 기준 직원 리스트, 가입 대기자 승인, 직원 정보/지점 이동, 신규 직원 생성 (`POST /api/admin/create-staff`).
+  - `/admin/schedule` (설계 예정)
+    - 지점 단위 FullCalendar 스케줄 관리 화면(ERD 상 `schedules`와 연결).
+
+- **강사용 화면 (`/staff`)**
+  - 로그인한 강사 기준 **본인 스케줄/출석 관리** 화면(초안).
+  - 향후 FullCalendar `listWeek` + FAB 기반 수업 등록/상태 변경을 연동 예정.
+
+- **시스템/지점 생성 관련 API**
+  - `POST /api/admin/create-branch`
+    - 새 `gyms` 레코드 생성 후, 선택한 `staffs.id` 를 지점장(`role = 'admin'`)으로 업데이트.
+  - `POST /api/admin/create-staff`
+    - Supabase Auth와 `staffs` 레코드(재직 직원) 동시 생성.
+  - `POST /api/auth/find-company`
+    - 사업자번호로 `companies` 검색하여 기존 가입 여부 확인.
+  - `POST /api/admin/system/update-company`
+    - `companies`의 기본 정보/상태 수정.
+
+- **향후 연동 예정**
+  - FullCalendar (지점/강사 스케줄 관리)
+  - n8n Webhook (스케줄/매출 데이터 외부 전송)
+  - 급여/정산(`sales_logs`, 급여 규칙 테이블 등)
+
+#### 0-2. 이번 ERD 리팩터링의 핵심 목표
+
+- **멀티 테넌시 구조 정리**
+  - 모든 주요 도메인 테이블에서 `gym_id` / `company_id` 를 명확히 두고,  
+    조회/수정 시 항상 해당 키로 필터링하는 것을 기본 원칙으로 문서화.
+- **도메인 분리**
+  - 회사/지점/직원(조직) 도메인  
+  - 회원/매출/정산 도메인  
+  - 스케줄/출석 도메인  
+  을 ERD 상에서 구분해, 각 도메인별 테이블·관계를 명확히 함.
+- **RLS + 권한 정책 정의**
+  - `auth.uid()` → `staffs` → `companies`/`gyms` 로 이어지는 권한 체인을 기준으로,
+    - system_admin / company_admin / admin / staff 권한별 허용 범위를 명시.
+    - `employment_status`, `companies.status`, `gyms.status` 에 따른 접근 차단 규칙 정의.
+- **상태/급여 규칙의 테이블화**
+  - 출석 상태(`completed`, `no_show_deducted` 등), 급여/수당 규칙을  
+    별도 코드/설정 테이블에서 관리하고, 프론트에는 하드코딩하지 않는 방향으로 정리.
+- **마이그레이션/테스트 전략 수립**
+  - 기존 스키마와 새 ERD 차이를 비교해,  
+    “새 컬럼/테이블 추가 → API/화면 겸용 → 데이터 이전 → 구 스키마 제거” 순서의 전략을 문서로 남김.
+
+---
+
 ### 1. Mermaid ERD
 
 ```mermaid
@@ -78,19 +146,118 @@ erDiagram
     timestamptz created_at      "로그 생성 일시"
   }
 
+  MEMBERS {
+    uuid      id                PK "회원 ID"
+    uuid      company_id        FK "회사 ID (companies.id)"
+    uuid      gym_id            FK "주 이용 지점 ID (gyms.id)"
+    text      name              "이름"
+    text      phone             "연락처"
+    date      birth_date        "생년월일"
+    text      gender            "성별 (선택)"
+    text      status            "상태: active / paused / expired 등"
+    text      memo              "메모"
+    text      profile_image_url "프로필 이미지 (Supabase Storage 경로)"
+    timestamptz created_at      "등록 일시"
+  }
+
+  MEMBER_MEMBERSHIPS {
+    uuid      id                PK "회원권 ID"
+    uuid      gym_id            FK "지점 ID (gyms.id)"
+    uuid      member_id         FK "회원 ID (members.id)"
+    text      name              "상품명 (예: PT 30회)"
+    int       total_sessions    "총 횟수"
+    int       used_sessions     "소진 횟수"
+    date      start_date        "시작일"
+    date      end_date          "종료일"
+    text      status            "상태: active / frozen / finished 등"
+    timestamptz created_at      "생성 일시"
+  }
+
+  MEMBER_PAYMENTS {
+    uuid      id                PK "결제 ID"
+    uuid      company_id        FK "회사 ID (companies.id)"
+    uuid      gym_id            FK "지점 ID (gyms.id)"
+    uuid      member_id         FK "회원 ID (members.id)"
+    uuid      membership_id     FK "연결된 회원권 ID (member_memberships.id, 선택)"
+    uuid      sales_log_id      FK "연결된 매출 로그 ID (sales_logs.id, 선택)"
+    numeric   amount            "결제 금액"
+    text      method            "결제 수단"
+    text      memo              "비고"
+    timestamptz paid_at         "결제 일시"
+    timestamptz created_at      "기록 생성 일시"
+  }
+
+  ATTENDANCE_STATUSES {
+    text      code              PK "상태 코드 (completed / no_show 등)"
+    text      label             "표시 이름 (예: 출석, 노쇼)"
+    text      color             "표시 색상 (Tailwind/HEX)"
+    text      description       "설명"
+  }
+
+  SALARY_SETTINGS {
+    uuid      id                PK "급여 설정 ID"
+    uuid      gym_id            FK "지점 ID (gyms.id)"
+    text      attendance_code   FK "참조 상태 코드 (attendance_statuses.code)"
+    text      pay_type          "정산 방식: fixed / rate / none 등"
+    numeric   amount            "정액 또는 기본 단가"
+    numeric   rate              "비율(%)"
+    text      memo              "비고"
+    timestamptz created_at      "생성 일시"
+  }
+
+  ATTENDANCES {
+    uuid      id                PK "출석 ID"
+    uuid      gym_id            FK "지점 ID (gyms.id)"
+    uuid      schedule_id       FK "스케줄 ID (schedules.id)"
+    uuid      staff_id          FK "담당 강사 ID (staffs.id)"
+    uuid      member_id         FK "회원 ID (members.id, 선택)"
+    text      status_code       FK "출석 상태 코드 (attendance_statuses.code)"
+    timestamptz attended_at     "출석 처리 시각"
+    text      memo              "메모"
+  }
+
+  SYSTEM_LOGS {
+    uuid      id                PK "시스템 로그 ID"
+    uuid      company_id        FK "회사 ID (companies.id)"
+    uuid      gym_id            FK "지점 ID (gyms.id, 선택)"
+    uuid      staff_id          FK "직원 ID (staffs.id, 선택)"
+    text      action            "행동 키 (예: login, create_schedule)"
+    jsonb     payload           "관련 데이터(JSON)"
+    timestamptz created_at      "로그 시각"
+  }
+
   %% 관계 정의
   COMPANIES ||--o{ GYMS : "1:N 회사-지점"
   COMPANIES ||--o{ STAFFS : "1:N 회사-직원"
   COMPANIES ||--o{ SALES_LOGS : "1:N 회사-매출로그"
+  COMPANIES ||--o{ MEMBERS : "1:N 회사-회원"
+  COMPANIES ||--o{ MEMBER_PAYMENTS : "1:N 회사-결제"
+  COMPANIES ||--o{ SYSTEM_LOGS : "1:N 회사-로그"
 
   GYMS ||--o{ STAFFS : "1:N 지점-직원"
   GYMS ||--o{ SCHEDULES : "1:N 지점-스케줄"
   GYMS ||--o{ SALES_LOGS : "1:N 지점-매출로그"
+   GYMS ||--o{ MEMBERS : "1:N 지점-회원"
+   GYMS ||--o{ MEMBER_MEMBERSHIPS : "1:N 지점-회원권"
+   GYMS ||--o{ MEMBER_PAYMENTS : "1:N 지점-결제"
+   GYMS ||--o{ ATTENDANCES : "1:N 지점-출석"
+   GYMS ||--o{ SALARY_SETTINGS : "1:N 지점-급여설정"
+   GYMS ||--o{ SYSTEM_LOGS : "1:N 지점-로그"
 
   STAFFS ||--o{ SCHEDULES : "1:N 직원-스케줄"
   STAFFS ||--o{ SALES_LOGS : "1:N 직원-매출로그"
+  STAFFS ||--o{ ATTENDANCES : "1:N 직원-출석"
+  STAFFS ||--o{ SYSTEM_LOGS : "1:N 직원-로그"
 
   SCHEDULES ||--o{ SALES_LOGS : "1:N 수업-매출(옵션)"
+  SCHEDULES ||--o{ ATTENDANCES : "1:N 수업-출석"
+
+  MEMBERS ||--o{ MEMBER_MEMBERSHIPS : "1:N 회원-회원권"
+  MEMBERS ||--o{ MEMBER_PAYMENTS : "1:N 회원-결제"
+  MEMBERS ||--o{ ATTENDANCES : "1:N 회원-출석(옵션)"
+
+  ATTENDANCE_STATUSES ||--o{ ATTENDANCES : "1:N 상태-출석"
+  ATTENDANCE_STATUSES ||--o{ SALARY_SETTINGS : "1:N 상태-급여설정"
 ```
 
 ---
@@ -268,6 +435,139 @@ erDiagram
 
 ---
 
+#### 2-6. `members` – 센터 회원 기본 정보
+
+- **역할**
+  - 센터를 이용하는 **회원(고객)** 의 기본 정보를 관리하는 테이블입니다.
+  - 회원권, 결제, 출석 기록 등 대부분의 회원 관련 데이터의 기준이 됩니다.
+- **주요 컬럼**
+  - `id (uuid)`  
+    - 회원 PK.
+  - `company_id (uuid)` / `gym_id (uuid)`  
+    - 어느 회사/지점 소속 회원인지 구분하는 멀티 테넌시 키.
+  - `name (text)` / `phone (text)`  
+    - 기본 인적 정보.
+  - `birth_date (date)` / `gender (text)`  
+    - 선택 입력. 마케팅/통계용.
+  - `status (text)`  
+    - `"active"`: 이용 중, `"paused"`: 일시 정지, `"expired"`: 만료 등.
+  - `profile_image_url (text)`  
+    - Supabase Storage 경로를 저장.
+
+---
+
+#### 2-7. `member_memberships` – 회원권(수강권) 정보
+
+- **역할**
+  - PT 30회권, 필라 3개월 회원권 등 **상품 단위 이용권** 정보를 저장합니다.
+  - 회원 1명당 여러 회원권을 가질 수 있습니다.
+- **주요 컬럼**
+  - `id (uuid)`  
+    - 회원권 PK.
+  - `gym_id (uuid)` / `member_id (uuid)`  
+    - 어느 지점, 어느 회원의 회원권인지 구분.
+  - `name (text)`  
+    - 상품명 (예: `"PT 30회(정가)"`).
+  - `total_sessions (int)` / `used_sessions (int)`  
+    - 총 횟수 / 소진 횟수.
+  - `start_date (date)` / `end_date (date)`  
+    - 이용 가능 기간.
+  - `status (text)`  
+    - `"active"`, `"frozen"`, `"finished"` 등.
+
+---
+
+#### 2-8. `member_payments` – 회원 결제 이력
+
+- **역할**
+  - 회원이 실제로 결제한 **결제 이력(카드/현금 등)** 을 저장합니다.
+  - 매출 로그(`sales_logs`)와 1:1 또는 1:N으로 연결할 수 있도록 설계합니다.
+- **주요 컬럼**
+  - `id (uuid)`  
+    - 결제 PK.
+  - `company_id (uuid)` / `gym_id (uuid)`  
+    - 회사/지점 단위 리포트용 키.
+  - `member_id (uuid)` / `membership_id (uuid | null)`  
+    - 어떤 회원/회원권에 대한 결제인지 연결.
+  - `sales_log_id (uuid | null)`  
+    - 매출 로그와 연동할 때 사용 (정산/리포트용).
+  - `amount (numeric)` / `method (text)` / `paid_at (timestamptz)`  
+    - 결제 금액/수단/시각.
+
+---
+
+#### 2-9. `attendance_statuses` – 출석 상태 코드 정의
+
+- **역할**
+  - 출석/노쇼/서비스 수업 등 **출석 상태 코드의 “사전”** 을 관리합니다.
+  - 색상, 한글 라벨, 설명을 여기서 정의하고 프론트는 이 값을 그대로 사용합니다.
+- **주요 컬럼**
+  - `code (text)`  
+    - `"completed"`, `"no_show_deducted"` 등 **변하지 않는 코드 값**.
+  - `label (text)`  
+    - UI에 표시할 이름 (예: `"출석"`, `"노쇼(공제)"`).
+  - `color (text)`  
+    - Tailwind 클래스 또는 HEX 코드 (예: `"bg-emerald-500"`).
+  - `description (text)`  
+    - 상태에 대한 설명.
+
+---
+
+#### 2-10. `salary_settings` – 출석 상태별 급여 규칙
+
+- **역할**
+  - 각 지점마다 출석 상태 코드에 따라 **어떻게 급여를 계산할지** 정의하는 테이블입니다.
+  - 예: `completed` → 회당 20,000원 / `no_show_deducted` → 0원 등.
+- **주요 컬럼**
+  - `id (uuid)`  
+    - 급여 설정 PK.
+  - `gym_id (uuid)`  
+    - 지점별로 서로 다른 규칙을 가질 수 있게 함.
+  - `attendance_code (text)`  
+    - `attendance_statuses.code` 를 참조.
+  - `pay_type (text)`  
+    - `"fixed"`(정액), `"rate"`(비율), `"none"`(미지급) 등.
+  - `amount (numeric)` / `rate (numeric)`  
+    - 급여 계산 기준 값.
+
+---
+
+#### 2-11. `attendances` – 실제 출석 기록
+
+- **역할**
+  - 한 스케줄에 대해 **실제 출석/노쇼 결과** 를 기록하는 테이블입니다.
+  - 스케줄(`schedules`)과 분리해 두면, 과거 스케줄이라도 급여/정산 로직을 안정적으로 유지할 수 있습니다.
+- **주요 컬럼**
+  - `id (uuid)`  
+    - 출석 PK.
+  - `gym_id (uuid)` / `schedule_id (uuid)` / `staff_id (uuid)`  
+    - 어느 지점/스케줄/강사에 대한 출석인지 구분.
+  - `member_id (uuid | null)`  
+    - 회원 테이블을 실제로 사용할 때 연결.
+  - `status_code (text)`  
+    - `attendance_statuses.code` 를 참조하여 상태 관리.
+  - `attended_at (timestamptz)` / `memo (text)`  
+    - 출석 처리 시각과 비고.
+
+---
+
+#### 2-12. `system_logs` – 시스템 이벤트 로그
+
+- **역할**
+  - 로그인, 스케줄 생성, 급여 정산 등 **중요 이벤트를 남기는 감사(audit) 로그** 용도입니다.
+  - 장애 분석·보안·이력 조회에 활용합니다.
+- **주요 컬럼**
+  - `id (uuid)`  
+    - 로그 PK.
+  - `company_id (uuid)` / `gym_id (uuid | null)` / `staff_id (uuid | null)`  
+    - 어떤 회사/지점/직원이 남긴 이벤트인지 구분.
+  - `action (text)`  
+    - `"login"`, `"create_schedule"`, `"update_member"` 등.
+  - `payload (jsonb)`  
+    - 관련 정보(JSON) – PII는 최소한만 저장.
+
+---
+
 ### 3. 멀티 테넌시 관점에서의 요약
 
 - **회사 단위**: `companies`  
@@ -276,6 +576,11 @@ erDiagram
 - **운영 데이터**:  
   - 스케줄: `schedules` (반드시 `gym_id` + `staff_id` 포함)  
   - 매출: `sales_logs` (회사/지점/직원/스케줄과 연동 가능한 구조)
+- **회원/출석/급여 데이터**:  
+  - 회원: `members` (회사/지점 기준으로 관리)  
+  - 회원권: `member_memberships` (지점별 상품 단위)  
+  - 결제: `member_payments` (회사/지점/회원/회원권 연결)  
+  - 출석: `attendances` + `attendance_statuses` + `salary_settings`
 
 앞으로 DB 구조가 헷갈릴 때는:
 
