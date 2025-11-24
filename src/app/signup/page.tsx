@@ -1,34 +1,70 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Building2, CheckCircle2, Search, ArrowLeft } from "lucide-react";
 
-const JOB_TITLES = ["대표", "이사", "지점장", "팀장", "트레이너", "FC", "기타"];
+const JOB_TITLES = ["지점장", "팀장", "트레이너", "FC", "필라테스", "골프프로", "기타"];
 
 export default function SignupPage() {
   const router = useRouter();
+  const [step, setStep] = useState(1); // 1: 회사찾기, 2: 정보입력
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 회사 검색용 상태
+  const [bizNum, setBizNum] = useState("");
+  const [foundCompany, setFoundCompany] = useState<any>(null);
+
+  // 직원 정보 상태
   const [formData, setFormData] = useState({
     email: "", password: "", name: "", phone: "", job_title: "", joined_at: ""
   });
 
+  // 🏢 Step 1: 회사 찾기
+  const handleSearchCompany = async () => {
+    if (!bizNum) return alert("사업자 번호를 입력해주세요.");
+    setIsLoading(true);
+    try {
+        const res = await fetch("/api/auth/find-company", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ businessNumber: bizNum })
+        });
+        const data = await res.json();
+        
+        if (data.found) {
+            setFoundCompany(data.company);
+        } else {
+            alert("등록된 회사가 없습니다. 사업자 번호를 확인해주세요.");
+            setFoundCompany(null);
+        }
+    } catch (e) { alert("검색 중 오류가 발생했습니다."); }
+    setIsLoading(false);
+  };
+
+  // 📝 Step 2: 가입 신청
   const handleSignup = async () => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+            ...formData,
+            company_id: foundCompany.id // 👈 찾은 회사 ID 포함
+        }),
       });
+      
       if (res.ok) {
         alert("가입 신청 완료! 본사 승인 후 이용 가능합니다.");
         router.push("/login");
       } else {
-        alert("가입 실패");
+        const err = await res.json();
+        alert("가입 실패: " + err.error);
       }
     } catch (e) { alert("에러 발생"); }
     setIsLoading(false);
@@ -36,27 +72,85 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#2F80ED] p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader><CardTitle className="text-center">We:form 가입신청</CardTitle></CardHeader>
+      <Card className="w-full max-w-md shadow-2xl bg-white border-0">
+        <CardHeader className="text-center pb-2">
+          <CardTitle className="text-2xl font-bold text-[#2F80ED]">
+            {step === 1 ? "소속 회사 찾기" : "직원 정보 입력"}
+          </CardTitle>
+          <CardDescription className="text-gray-500">
+            {step === 1 ? "근무하시는 센터(본사)의 사업자 번호를 입력해주세요." : `${foundCompany?.name} 소속으로 가입을 신청합니다.`}
+          </CardDescription>
+        </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2"><Label>이름</Label><Input onChange={(e) => setFormData({...formData, name: e.target.value})}/></div>
-          <div className="space-y-2"><Label>연락처</Label><Input onChange={(e) => setFormData({...formData, phone: e.target.value})}/></div>
-          <div className="space-y-2"><Label>이메일</Label><Input type="email" onChange={(e) => setFormData({...formData, email: e.target.value})}/></div>
-          <div className="space-y-2"><Label>비밀번호</Label><Input type="password" onChange={(e) => setFormData({...formData, password: e.target.value})}/></div>
-          <div className="space-y-2"><Label>입사일</Label><Input type="date" onChange={(e) => setFormData({...formData, joined_at: e.target.value})}/></div>
-          <div className="space-y-2"><Label>직급</Label>
-            <Select onValueChange={(v) => setFormData({...formData, job_title: v})}>
-                <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                <SelectContent>{JOB_TITLES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <Button
-            onClick={handleSignup}
-            className="w-full bg-[#2F80ED] hover:bg-[#1c6cd7]"
-            disabled={isLoading}
-          >
-            가입 신청
-          </Button>
+          
+          {/* Step 1: 회사 검색 */}
+          {step === 1 && (
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label className="text-gray-700">사업자 등록번호 (숫자만)</Label>
+                    <div className="flex gap-2">
+                        <Input 
+                            placeholder="예: 1234567890" 
+                            value={bizNum}
+                            onChange={(e) => setBizNum(e.target.value)}
+                            className="bg-white"
+                        />
+                        <Button onClick={handleSearchCompany} className="bg-[#2F80ED] hover:bg-blue-600" disabled={isLoading}>
+                            <Search className="w-4 h-4"/>
+                        </Button>
+                    </div>
+                </div>
+
+                {/* 검색 결과 표시 */}
+                {foundCompany && (
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mt-4 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center gap-2 text-[#2F80ED] font-bold mb-1">
+                            <Building2 className="w-5 h-5"/> {foundCompany.name}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">대표자: {foundCompany.representative_name}</p>
+                        <Button 
+                            className="w-full bg-[#F2994A] hover:bg-[#d68238] text-black font-bold"
+                            onClick={() => setStep(2)}
+                        >
+                            이 회사로 가입 진행 <CheckCircle2 className="w-4 h-4 ml-2"/>
+                        </Button>
+                    </div>
+                )}
+                
+                <div className="border-t pt-4 mt-6 text-center">
+                    <p className="text-xs text-gray-400 mb-2">혹시 회사를 새로 등록하시나요?</p>
+                    <Button variant="outline" className="text-[#2F80ED] border-[#2F80ED] hover:bg-blue-50" onClick={() => router.push('/join-company')}>
+                        회사(대표) 계정 생성하기
+                    </Button>
+                </div>
+            </div>
+          )}
+
+          {/* Step 2: 정보 입력 */}
+          {step === 2 && (
+             <div className="space-y-3 animate-in fade-in slide-in-from-right-4">
+                <div className="p-2 bg-gray-100 rounded text-center text-sm text-gray-500 mb-2">
+                    소속: <span className="font-bold text-black">{foundCompany.name}</span>
+                </div>
+                <div className="space-y-1"><Label>이름 <span className="text-red-500">*</span></Label><Input onChange={(e) => setFormData({...formData, name: e.target.value})}/></div>
+                <div className="space-y-1"><Label>연락처 <span className="text-red-500">*</span></Label><Input onChange={(e) => setFormData({...formData, phone: e.target.value})}/></div>
+                <div className="space-y-1"><Label>이메일 (아이디) <span className="text-red-500">*</span></Label><Input type="email" onChange={(e) => setFormData({...formData, email: e.target.value})}/></div>
+                <div className="space-y-1"><Label>비밀번호 <span className="text-red-500">*</span></Label><Input type="password" onChange={(e) => setFormData({...formData, password: e.target.value})}/></div>
+                <div className="space-y-1"><Label>입사일</Label><Input type="date" onChange={(e) => setFormData({...formData, joined_at: e.target.value})}/></div>
+                <div className="space-y-1"><Label>직급</Label>
+                    <Select onValueChange={(v) => setFormData({...formData, job_title: v})}>
+                        <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                        <SelectContent className="bg-white">{JOB_TITLES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+                <div className="flex gap-2 mt-6">
+                    <Button variant="ghost" onClick={() => setStep(1)} className="w-1/3 text-gray-500"><ArrowLeft className="w-4 h-4 mr-1"/> 이전</Button>
+                    <Button onClick={handleSignup} className="w-2/3 bg-[#F2994A] text-black font-bold hover:bg-[#d68238]" disabled={isLoading}>
+                        {isLoading ? "처리 중..." : "가입 신청 완료"}
+                    </Button>
+                </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

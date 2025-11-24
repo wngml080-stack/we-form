@@ -9,7 +9,7 @@ import {
   CalendarDays,
   Users,
   Building2,
-  Settings, // 시스템 관리 아이콘
+  Settings, 
   LogOut,
 } from "lucide-react";
 
@@ -47,7 +47,6 @@ export default function AdminLayout({
     router.push("/login");
   };
 
-  // 일반 관리자용 메뉴
   const menuItems = [
     { name: "대시보드", href: "/admin", icon: LayoutDashboard },
     { name: "통합 스케줄", href: "/admin/schedule", icon: CalendarDays },
@@ -130,6 +129,7 @@ export default function AdminLayout({
         </div>
       </aside>
 
+      {/* 메인 콘텐츠 */}
       <main className="flex-1 overflow-auto p-8">
         {children}
       </main>

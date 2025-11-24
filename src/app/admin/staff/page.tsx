@@ -20,10 +20,17 @@ export default function AdminStaffPage() {
   const [gymId, setGymId] = useState<string | null>(null);
   const [gymName, setGymName] = useState("");
 
+  // 지점 목록 (이동 발령용)
+  const [gymList, setGymList] = useState<any[]>([]);
+
   // 모달 상태
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", job_title: "", employment_status: "", joined_at: "" });
+  
+  // 수정 폼 (gym_id 추가됨)
+  const [editForm, setEditForm] = useState({ 
+    name: "", email: "", phone: "", job_title: "", employment_status: "", joined_at: "", gym_id: "" 
+  });
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", phone: "", job_title: "트레이너", joined_at: "" });
@@ -39,7 +46,7 @@ export default function AdminStaffPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 내 정보 가져오기
+      // 1. 내 정보 가져오기
       const { data: me } = await supabase
         .from("staffs")
         .select("gym_id, role, gyms(name)")
@@ -50,14 +57,20 @@ export default function AdminStaffPage() {
         setGymId(me.gym_id);
         setMyRole(me.role);
         // @ts-ignore
-        setGymName(me.gyms?.name || "We:form");
+        setGymName(me.gyms?.name ?? "We:form");
+        
+        // 2. 직원 목록 조회
         fetchStaffs(me.gym_id, me.role);
+
+        // 3. 지점 목록 조회 (이동 발령을 위해 미리 가져옴)
+        const { data: gyms } = await supabase.from("gyms").select("id, name").order("name");
+        if (gyms) setGymList(gyms);
       }
     };
     init();
   }, []);
 
-  // 직원 목록 조회 (권한에 따라 다르게 조회)
+  // 직원 목록 조회
   const fetchStaffs = async (targetGymId: string | null, role: string) => {
     let query = supabase
       .from("staffs")
@@ -67,8 +80,9 @@ export default function AdminStaffPage() {
       `)
       .order("name", { ascending: true });
 
-    // 슈퍼 관리자가 아니면 자기 지점만 조회
-    if (role !== 'super_admin' && targetGymId) {
+    // 🚨 슈퍼 관리자가 아니면 자기 지점만 조회
+    // 슈퍼 관리자는 조건 없이 다 가져옴 (gym_id가 null인 사람도 포함하기 위해)
+    if (role !== 'super_admin' && role !== 'system_admin' && targetGymId) {
         query = query.eq("gym_id", targetGymId);
     }
 
@@ -102,21 +116,36 @@ export default function AdminStaffPage() {
       job_title: staff.job_title || "트레이너",
       employment_status: staff.employment_status || "재직",
       joined_at: staff.joined_at || "",
+      gym_id: staff.gym_id || "none", // 현재 지점 ID (없으면 none)
     });
     setIsEditOpen(true);
   };
 
-  // 수정 실행
+  // 수정 실행 (지점 이동 포함)
   const handleUpdate = async () => {
     if (!editTarget) return;
-    const { error } = await supabase.from("staffs").update(editForm).eq("id", editTarget.id);
-    if (!error) { setIsEditOpen(false); fetchStaffs(gymId, myRole); } else alert("실패: " + error.message);
+    
+    const updateData: any = { ...editForm };
+    // 'none'이나 빈값이면 null로 처리 (소속 없음)
+    if (updateData.gym_id === "none" || updateData.gym_id === "") {
+        updateData.gym_id = null;
+    }
+
+    const { error } = await supabase.from("staffs").update(updateData).eq("id", editTarget.id);
+    if (!error) { 
+        alert("정보가 수정되었습니다.");
+        setIsEditOpen(false); 
+        fetchStaffs(gymId, myRole); 
+    } else { 
+        alert("실패: " + error.message); 
+    }
   };
 
   // 신규 등록 실행
   const handleCreateStaff = async () => {
     if (!createForm.name || !createForm.email || !createForm.password) return alert("필수 정보를 입력해주세요.");
     
+    // 슈퍼관리자면 현재 gymId 사용 (없으면 null)
     const targetGymId = gymId; 
     
     setIsCreating(true);
@@ -145,15 +174,12 @@ export default function AdminStaffPage() {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">직원 리스트</h2>
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          className="bg-[#2F80ED] hover:bg-[#1c6cd7]"
-        >
+        <Button onClick={() => setIsCreateOpen(true)} className="bg-[#0F4C5C] hover:bg-[#09313b]">
             <Plus className="mr-2 h-4 w-4"/> 직원 등록
         </Button>
       </div>
 
-      {/* 대기 인원 섹션 */}
+      {/* 대기 인원 */}
       <div className="border rounded-lg bg-amber-50/50 border-amber-200 p-4">
         <h3 className="font-semibold text-amber-800 mb-4 flex items-center">
             ⏳ 승인 대기 인원 ({pendingStaffs.length})
@@ -175,7 +201,7 @@ export default function AdminStaffPage() {
         }
       </div>
 
-      {/* 직원 리스트 테이블 */}
+      {/* 직원 리스트 */}
       <div className="rounded-md border bg-white">
         <table className="w-full text-sm text-left">
           <thead className="bg-gray-50 border-b">
@@ -197,7 +223,7 @@ export default function AdminStaffPage() {
                     <div className="text-xs text-gray-400">{staff.email}</div>
                 </td>
                 <td className="px-4 py-3 text-gray-600 font-medium">
-                    {staff.gyms?.name || "-"}
+                    {staff.gyms?.name || <span className="text-red-400">미지정</span>}
                 </td>
                 <td className="px-4 py-3 text-gray-600">{staff.phone || "-"}</td>
                 <td className="px-4 py-3 text-gray-600">{staff.job_title}</td>
@@ -215,42 +241,26 @@ export default function AdminStaffPage() {
         </table>
       </div>
 
-      {/* 신규 등록 모달 */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="bg-white">
-          <DialogHeader><DialogTitle>신규 직원 등록</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-4">
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>이름 <span className="text-red-500">*</span></Label><Input value={createForm.name} onChange={(e) => setCreateForm({...createForm, name: e.target.value})}/></div>
-                <div className="space-y-2"><Label>연락처</Label><Input value={createForm.phone} onChange={(e) => setCreateForm({...createForm, phone: e.target.value})}/></div>
-            </div>
-            <div className="space-y-2"><Label>이메일 <span className="text-red-500">*</span></Label><Input value={createForm.email} onChange={(e) => setCreateForm({...createForm, email: e.target.value})}/></div>
-            <div className="space-y-2"><Label>비밀번호 <span className="text-red-500">*</span></Label><Input type="password" value={createForm.password} onChange={(e) => setCreateForm({...createForm, password: e.target.value})}/></div>
-            <div className="space-y-2"><Label>입사일</Label><Input type="date" value={createForm.joined_at} onChange={(e) => setCreateForm({...createForm, joined_at: e.target.value})}/></div>
-            <div className="space-y-2"><Label>직책</Label>
-                <Select value={createForm.job_title} onValueChange={(v) => setCreateForm({...createForm, job_title: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{JOB_TITLES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleCreateStaff}
-              className="bg-[#2F80ED] hover:bg-[#1c6cd7]"
-              disabled={isCreating}
-            >
-              등록하기
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* 수정 모달 */}
+      {/* 수정 모달 (지점 변경 기능 추가됨) */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="bg-white">
-          <DialogHeader><DialogTitle>직원 수정</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>직원 정보 수정</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
+            
+            {/* 👇 소속 지점 변경 (Select 추가) */}
+            <div className="space-y-2">
+                <Label className="text-[#0F4C5C]">🏢 소속 지점 이동</Label>
+                <Select value={editForm.gym_id} onValueChange={(v) => setEditForm({...editForm, gym_id: v})}>
+                    <SelectTrigger><SelectValue placeholder="지점 선택" /></SelectTrigger>
+                    <SelectContent className="bg-white max-h-[200px]">
+                        <SelectItem value="none">-- 소속 없음 (대기) --</SelectItem>
+                        {gymList.map(g => (
+                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>이름</Label><Input value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})}/></div>
                 <div className="space-y-2"><Label>연락처</Label><Input value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})}/></div>
@@ -269,13 +279,31 @@ export default function AdminStaffPage() {
                 </Select>
             </div>
           </div>
+          <DialogFooter><Button onClick={handleUpdate} className="bg-[#0F4C5C]">저장</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 신규 등록 모달 (기존과 동일) */}
+       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader><DialogTitle>신규 직원 등록</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>이름 <span className="text-red-500">*</span></Label><Input value={createForm.name} onChange={(e) => setCreateForm({...createForm, name: e.target.value})}/></div>
+                <div className="space-y-2"><Label>연락처</Label><Input value={createForm.phone} onChange={(e) => setCreateForm({...createForm, phone: e.target.value})}/></div>
+            </div>
+            <div className="space-y-2"><Label>이메일 <span className="text-red-500">*</span></Label><Input value={createForm.email} onChange={(e) => setCreateForm({...createForm, email: e.target.value})}/></div>
+            <div className="space-y-2"><Label>비밀번호 <span className="text-red-500">*</span></Label><Input type="password" value={createForm.password} onChange={(e) => setCreateForm({...createForm, password: e.target.value})}/></div>
+            <div className="space-y-2"><Label>입사일</Label><Input type="date" value={createForm.joined_at} onChange={(e) => setCreateForm({...createForm, joined_at: e.target.value})}/></div>
+            <div className="space-y-2"><Label>직책</Label>
+                <Select value={createForm.job_title} onValueChange={(v) => setCreateForm({...createForm, job_title: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{JOB_TITLES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                </Select>
+            </div>
+          </div>
           <DialogFooter>
-            <Button
-              onClick={handleUpdate}
-              className="bg-[#2F80ED] hover:bg-[#1c6cd7]"
-            >
-              저장
-            </Button>
+            <Button onClick={handleCreateStaff} className="bg-[#0F4C5C]" disabled={isCreating}>등록하기</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
