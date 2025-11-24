@@ -590,4 +590,264 @@ erDiagram
 
 를 먼저 떠올리고, 이 `ERD.md`의 관계도를 같이 보면 전체 구조를 쉽게 이해할 수 있습니다.
 
+---
+
+### 4. RLS / 권한 정책 설계 초안
+
+> 이 섹션은 **Supabase RLS 정책을 실제로 작성하기 전에** 개념을 정리하는 문서입니다.  
+> 이후 SQL 마이그레이션을 만들 때 이 내용을 그대로 옮겨 적는 것을 목표로 합니다.
+
+#### 4-1. 공통 원칙
+
+- 로그인한 사용자는 항상 `auth.uid()` 를 통해 **Supabase Auth 유저 ID** 로 식별합니다.
+- `staffs.user_id = auth.uid()` 인 레코드를 기준으로,
+  - 현재 사용자의 `company_id`, `gym_id`, `role`, `employment_status` 를 가져옵니다.
+- 아래 조건을 모든 RLS에서 공통으로 고려합니다.
+  - `staffs.employment_status != '퇴사'`
+  - `companies.status = 'active'`
+  - `gyms.status = 'active'` (지점 소속인 경우)
+
+#### 4-2. `staffs` 테이블
+
+- **SELECT**
+  - 본인: `user_id = auth.uid()` 인 레코드는 항상 조회 가능.
+  - 같은 지점 관리자/본사:  
+    - `role IN ('company_admin','admin','system_admin')` 인 직원은  
+      - 같은 `company_id`(본사/시스템) 또는 같은 `gym_id`(지점) 의 직원을 조회할 수 있음.
+- **INSERT**
+  - 일반 사용자는 직접 insert 불가.  
+  - 대표 가입, 직원 가입 등은 **Service Role 키를 사용하는 서버(API route)** 에서만 수행.
+- **UPDATE**
+  - 본인 정보(이름/전화번호 등) 일부만 수정 허용할지 여부는 추후 결정.  
+  - 권한/재직 상태/지점 이동 등은 `company_admin` 이상만 수정 가능.
+- **DELETE**
+  - 실제 삭제는 하지 않고, `employment_status = '퇴사'` 로 관리하도록 가이드.
+
+#### 4-3. `companies` / `gyms`
+
+- **companies**
+  - SELECT:
+    - `system_admin` 은 전체 조회 가능.
+    - 그 외 직원은 **자신이 속한 회사 1개**만 조회 가능 (`companies.id = staffs.company_id`).
+  - INSERT/UPDATE/DELETE:
+    - 모두 `system_admin` 또는 Service Role API만 허용.
+
+- **gyms**
+  - SELECT:
+    - `system_admin` 은 전체.
+    - `company_admin` 은 같은 회사(`company_id`)의 모든 지점.
+    - `admin`/`staff` 는 자신이 속한 `gym_id` 한 건만.
+  - INSERT:
+    - `company_admin` 이상 또는 Service Role API (지점 생성 API).
+  - UPDATE:
+    - `company_admin` 이상 (지점 상태 변경 등).
+
+#### 4-4. `schedules` / `attendances`
+
+- **공통 필터**
+  - `schedules.gym_id` / `attendances.gym_id` 는 항상 현재 사용자의  
+    `staffs.gym_id` 와 일치해야만 접근 가능.
+
+- **schedules – SELECT**
+  - 같은 지점 직원/강사는 모두 볼 수 있다고 가정 (지점 일정 보드).
+
+- **schedules – INSERT/UPDATE/DELETE**
+  - `staff` 권한:
+    - `schedules.staff_id = staffs.id` 인 **본인 스케줄만** 수정 가능.
+    - `start_time` 이 **현재 달(YYYY-MM) 범위** 안에 있을 때만 UPDATE/DELETE 허용.
+  - `admin` 이상:
+    - 같은 지점(`gym_id`)의 스케줄은 과거/미래 관계없이 모두 수정 가능.
+
+- **attendances – SELECT**
+  - 같은 지점 직원은 모두 조회 가능.
+
+- **attendances – INSERT/UPDATE**
+  - 기본적으로 `schedules` 와 동일한 권한을 따르되,
+    - 급여/정산 안정성을 위해 **과거 달 데이터는 `admin` 이상만 수정 가능**하게 설계.
+
+#### 4-5. `members` / `member_memberships` / `member_payments`
+
+- **공통 필터**
+  - `company_id` / `gym_id` 가 현재 사용자의 회사/지점과 일치하는 행만 접근 가능.
+
+- **SELECT**
+  - `company_admin` / `admin` / `staff` 모두 같은 지점의 회원/회원권/결제를 조회 가능.
+  - 향후 개인정보 이슈에 따라 `staff` 의 접근 범위를 더 줄일 수 있습니다.
+
+- **INSERT/UPDATE**
+  - 기본적으로 `admin` 이상이 책임지고 등록/수정.  
+  - 프론트 정책에 따라 일부 화면에서 `staff` 도 신규 회원 등록 가능하게 열어둘 수 있음.
+
+#### 4-6. `sales_logs` / `system_logs`
+
+- **sales_logs**
+  - SELECT:
+    - 같은 회사/지점 데이터만 조회.
+  - INSERT:
+    - 결제/정산 관련 서버 로직(API, n8n 등)에서만 수행.
+  - UPDATE/DELETE:
+    - 원칙적으로 허용하지 않거나, `system_admin` 만 허용.
+
+- **system_logs**
+  - SELECT:
+    - `system_admin` 은 전체.
+    - `company_admin` 은 자신의 회사 로그만.
+  - INSERT:
+    - 애플리케이션 서버 코드에서만 사용 (사용자 직접 삽입 불가).
+
+> 위 정책을 기반으로 실제 Supabase RLS SQL을 만들면,  
+> 프론트/백엔드에서는 **“내가 어떤 역할/지점인지”만 알고 있으면 자동으로 안전한 범위 내에서만 접근**하게 됩니다.
+
+---
+
+### 5. API ↔ ERD 매핑 요약
+
+> 현재 코드(`src/app/api/*`) 기준으로, 각 API가 어떤 테이블을 다루는지 한눈에 정리한 표입니다.
+
+#### 5-1. Auth / 가입 도메인 (`/api/auth/*`)
+
+- **`POST /api/auth/join-company`**
+  - 관련 테이블: `companies`, `staffs`
+  - 동작: 회사 대표 신규 가입
+    - Supabase Auth 유저 생성 → `companies` 레코드 생성(`status = 'pending'`) → 대표자 `staffs` 레코드(`role = 'company_admin'`).
+- **`POST /api/auth/find-company`**
+  - 관련 테이블: `companies`
+  - 동작: 사업자등록번호로 기존 회사 존재 여부 확인 (가입/조인 분기용).
+- **`POST /api/auth/signup`**
+  - 관련 테이블: `staffs`
+  - 동작: 기존 회사에 소속될 **가입 대기 직원** 생성  
+    (`employment_status = '가입대기'`, `gym_id = null` 또는 회사 기준).
+- **`POST /api/auth/join`**
+  - 관련 테이블: `staffs`
+  - 동작: 특정 지점(`gym_id`)에 직원이 직접 입사 신청하는 플로우  
+    (`employment_status = '가입대기'`, `gym_id` 지정).
+
+#### 5-2. Admin / 조직 관리 도메인 (`/api/admin/*`)
+
+- **`POST /api/admin/create-branch`**
+  - 관련 테이블: `gyms`, `staffs`
+  - 동작: 새 지점 생성 + 선택한 직원에게 지점장 권한 부여  
+    (`gyms` insert, 지점장 `staffs` 레코드 `gym_id`/`role`/`employment_status` 업데이트).
+- **`POST /api/admin/update-branch`**
+  - 관련 테이블: `gyms`, `staffs`
+  - 동작: 기존 지점 정보 수정(상태/카테고리/규모/오픈일/메모) + 지점장 교체.
+- **`POST /api/admin/create-staff`**
+  - 관련 테이블: `staffs`
+  - 동작: 지점 관리자가 직원 계정을 직접 생성  
+    (`employment_status = '재직'`, `gym_id` 지정).
+- **`POST /api/admin/system/update-company`**
+  - 관련 테이블: `companies`
+  - 동작: 시스템 관리자가 회사 이름/대표자/연락처/상태를 수정.
+
+#### 5-3. 외부 연동 도메인 (`/api/n8n`)
+
+- **`POST /api/n8n`**
+  - 관련 테이블: 직접적으로는 없음(단순 Proxy).
+  - 동작: 클라이언트(주로 `/staff` 스케줄/출석 화면)에서 보낸 데이터를  
+    n8n Webhook 으로 전달합니다.
+  - 연동 대상 데이터:
+    - 스케줄/출석: `schedules`, `attendances`, `attendance_statuses`
+    - 회원/매출: `members`, `member_memberships`, `member_payments`, `sales_logs`
+  - 향후 개선: `N8N_WEBHOOK_URL` 환경 변수를 사용해 주소를 관리하고,  
+    전송 포맷을 ERD 기반 공통 스키마로 맞추는 것을 목표로 합니다.
+
+---
+
+### 6. 프론트엔드 화면 ↔ ERD 매핑 요약
+
+> 주요 라우트별로 어떤 테이블 데이터를 보고/수정하는지, 어떤 역할이 사용하는 화면인지 정리합니다.
+
+#### 6-1. 인증/가입 관련
+
+- `/login`
+  - 목적: Supabase Auth 로그인.
+  - 사용 데이터: (직접 쿼리는 없지만) 로그인 후 `staffs` 를 통해 권한/지점 확인.
+- `/signup`
+  - 목적: 회사 대표 가입 / 직원 개별 가입 중 선택.
+  - 사용 API: `/api/auth/join-company`, `/api/auth/signup`.
+- `/join-company`
+  - 목적: 이미 가입된 회사에 직원이 조인할 때 사용.
+  - 사용 API: `/api/auth/find-company`, `/api/auth/signup`.
+
+#### 6-2. 관리자 대시보드 (`/admin/*`)
+
+- `/admin` (루트)
+  - 목적: 로그인 후 기본 진입 대시보드 (회사/지점/직원 요약 – 향후 구현).
+  - 사용 예정 데이터: `companies`, `gyms`, `staffs`, `schedules`, `sales_logs`.
+- `/admin/system`
+  - 대상 사용자: `system_admin`
+  - 역할: 전체 `companies` 리스트 + 가입 승인/상태 변경.
+  - 사용 데이터: `companies`.
+- `/admin/system/[id]`
+  - 대상 사용자: `system_admin`
+  - 역할: 특정 회사 상세/지점/직원/이용 현황 관리 (확장 예정).
+  - 사용 데이터: `companies`, `gyms`, `staffs`, (향후) `members`, `sales_logs`.
+- `/admin/hq`
+  - 대상 사용자: `company_admin`
+  - 역할: 한 회사 안의 **모든 지점 현황** 요약 화면.
+  - 사용 데이터: `gyms`, `staffs`, (향후) `members`, `sales_logs`.
+- `/admin/staff`
+  - 대상 사용자: `admin`(지점장) / `company_admin`
+  - 역할: 직원 리스트, 가입 대기자 승인, 지점 이동, 신규 직원 생성.
+  - 사용 데이터: `staffs`, `gyms`.
+  - 사용 API: `/api/admin/create-staff`.
+- `/admin/schedule` (예정)
+  - 대상 사용자: `admin` / `company_admin`
+  - 역할: 지점 단위 FullCalendar 스케줄 관리.
+  - 사용 데이터: `schedules`, `attendances`, `attendance_statuses`, `salary_settings`.
+
+#### 6-3. 강사용 화면 (`/staff/*`)
+
+- `/staff`
+  - 대상 사용자: `staff`
+  - 역할: **본인 스케줄/출석** 리스트(기본 뷰: FullCalendar `listWeek`),  
+    상태 변경 및 간단한 수업 메모 관리.
+  - 사용 데이터: `schedules`(본인 `staff_id`), `attendances`, `attendance_statuses`, `salary_settings`.
+  - 사용 API: (향후) `/api/schedules/*` 계열, `/api/n8n` (외부 연동).
+
+> 위 매핑을 기준으로, 새 기능을 추가할 때  
+> “어느 라우트에서 어느 도메인(테이블)을 건드리는지” 를 먼저 정하고 작업하면 구조가 헷갈리지 않습니다.
+
+---
+
+### 7. 마이그레이션 / 데이터 이전 전략
+
+> 아직 실제 Supabase 스키마는 이 문서와 100% 동일하지 않을 수 있으므로,  
+> **안전하게 단계별로** 구조를 맞춰 가는 전략을 정리합니다.
+
+#### 7-1. 현재 스키마 vs ERD 차이 파악
+
+- Supabase 대시보드 또는 SQL로 현재 테이블 구조를 덤프합니다.
+- 이 `ERD.md` 와 비교하여:
+  - 없는 테이블: `members`, `member_memberships`, `member_payments`, `attendance_statuses`, `salary_settings`, `attendances`, `system_logs`, `sales_logs` 등
+  - 컬럼 차이: `companies`, `gyms`, `staffs`, `schedules` 에서 누락/이름 다른 컬럼 확인.
+
+#### 7-2. 1단계 – 새 테이블/컬럼 추가 (기존 기능 건드리지 않기)
+
+- 기존 로그인/직원/지점 기능에 영향이 없도록 **ADD만 수행**합니다.
+  - 새 도메인 테이블 생성 (`members`, `member_memberships` …).
+  - `company_id` / `gym_id` 등 멀티 테넌시 키가 빠진 테이블이 있다면 컬럼 추가.
+- 이 단계에서는 RLS를 **최소한의 읽기 제한** 정도로만 두고, 실제 사용 전까지는 Service Role로만 접근하도록 설정해도 됩니다.
+
+#### 7-3. 2단계 – API/프론트에서 새 구조를 “겸용”으로 사용
+
+- 기존 기능을 그대로 두고, 점진적으로 새 구조를 읽도록 변경합니다.
+  - 예: `/admin/staff` 리스트에서 `gyms` 조인 컬럼을 활용해 지점명을 보여주기.
+  - 스케줄 화면이 준비되면 `schedules` + `attendances` 를 같이 조회하도록 구현.
+- 이 단계에서는 **구/신 데이터를 둘 다 사용**하더라도 상관없게 설계합니다.
+
+#### 7-4. 3단계 – 데이터 이전 스크립트 실행
+
+- 필요하다면 n8n 또는 Supabase SQL 스크립트를 사용해 데이터를 옮깁니다.
+  - 예: 기존 스케줄 상태 텍스트를 `attendance_statuses` 코드로 변환 후 `attendances` 테이블로 적재.
+  - 기존 매출/회원 정보를 `members` / `member_memberships` / `member_payments` 로 정규화.
+- 이 단계가 끝나면 **실제 운영 데이터가 새 ERD 기준 구조에 맞춰짐**.
+
+#### 7-5. 4단계 – 구 스키마 정리 + RLS 강화
+
+- 더 이상 사용하지 않는 컬럼/테이블을 점진적으로 제거합니다.
+- RLS 정책을 이 문서의 “4. RLS / 권한 정책 설계 초안” 에 맞춰 실제 SQL로 강화합니다.
+- 마지막으로, ERD 다이어그램과 이 문서를 **실제 스키마와 1:1로 맞춰서 업데이트** 하면 마이그레이션이 완료됩니다.
+
+
 

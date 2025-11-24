@@ -141,6 +141,73 @@ We:form 프로젝트에서 사용한 주요 프롬프트와 개발 히스토리�
 
 ---
 
+## 2025-11-24
+
+### 1. ERD 기반 전체 구조 리팩터링 플랜 정리
+
+- **요약**
+  - 기존 기능(로그인, 관리자/강사 화면, n8n 연동)을 유지하면서, ERD를 기준으로 전체 DB/권한/화면 구조를 재정리하는 문서를 작성.
+  - `companies`, `gyms`, `staffs`, `schedules` 에 더해 `members`, `member_memberships`, `member_payments`, `attendance_statuses`, `salary_settings`, `attendances`, `system_logs`, `sales_logs` 등을 포함한 ERD 다이어그램 확장.
+  - 회사/지점/직원/회원/출석/급여 도메인을 나누고, 모든 운영 데이터에 `company_id` / `gym_id` 기준 멀티 테넌시 원칙을 명시.
+- **관련 파일**
+  - `ERD.md`
+- **핵심 요구사항 (발췌)**
+  - 주요 도메인 테이블에는 항상 `gym_id`(또는 `company_id`)를 포함하고, 조회/수정 시 이 값을 필수 필터로 사용.
+  - 스케줄 상태, 급여 규칙, 권한 로직은 프론트에 하드코딩하지 않고, 코드/설정 테이블(`attendance_statuses`, `salary_settings` 등)에서 읽어 오도록 설계.
+  - n8n/FullCalendar/구글 시트 연동 시에도 ERD의 상태 코드·식별자 규칙(`지점명_이름` 등)을 그대로 사용하는 것을 기준으로 함.
+
+```text
+프롬프트 키워드:
+- ERD 기반 멀티테넌시(gym_id, company_id) 설계
+- 스케줄/출석/급여 도메인 분리
+- 상태 코드/급여 설정 테이블화
+- n8n/FullCalendar/시트 연동 규칙 문서화
+```
+
+### 2. RLS / 권한 정책 설계 초안 작성
+
+- **요약**
+  - Supabase RLS를 실제로 만들기 전에, `auth.uid()` → `staffs` → `companies`/`gyms` 로 이어지는 권한 체인을 문서 수준에서 먼저 설계.
+  - `staffs`, `companies`, `gyms`, `schedules`, `attendances`, `members`, `sales_logs`, `system_logs` 등 주요 테이블별로 SELECT/INSERT/UPDATE/DELETE 허용 범위를 역할(role) 기준으로 정리.
+  - 특히 “강사는 현재 달 자기 스케줄만 수정 가능, 과거 달은 관리자만” 같은 핵심 비즈니스 규칙을 RLS 차원에서 어디까지 강제할지 논의.
+- **관련 파일**
+  - `ERD.md` (섹션: `4. RLS / 권한 정책 설계 초안`)
+- **핵심 요구사항 (발췌)**
+  - 모든 RLS에서 공통적으로 `staffs.employment_status != '퇴사'`, `companies.status = 'active'`, `gyms.status = 'active'` 를 고려.
+  - `staff` / `admin` / `company_admin` / `system_admin` 이 접근 가능한 범위를 명확히 구분해, 프론트에서는 “내 역할만 알면 된다”는 목표로 설계.
+  - 삭제는 가급적 실제 DELETE 대신 상태 컬럼으로 관리(`employment_status = '퇴사'` 등).
+
+```text
+프롬프트 키워드:
+- auth.uid() → staffs → gyms/companies 권한 체인
+- 역할별(Roles) RLS 설계
+- 스케줄/출석 과거 데이터 수정 제한
+- 퇴사/미승인 센터 접근 차단 정책
+```
+
+### 3. API / 화면 ↔ ERD 매핑 및 마이그레이션 전략 문서화
+
+- **요약**
+  - 현재 Next.js API 라우트(`/api/auth/*`, `/api/admin/*`, `/api/n8n`)가 어떤 테이블과 연결되는지 1:1 로 매핑해서 정리.
+  - `/login`, `/signup`, `/join-company`, `/admin/*`, `/staff` 등 라우트별로 어떤 도메인 데이터를 보고/수정하는지, 어떤 역할이 사용하는 화면인지 문서화.
+  - 실제 Supabase 스키마와 ERD 차이를 비교해, “추가 → 구/신 겸용 → 데이터 이전 → 구 스키마 제거 → RLS 강화” 순서의 단계별 마이그레이션 플랜 정의.
+- **관련 파일**
+  - `ERD.md` (섹션: `5. API ↔ ERD 매핑 요약`, `6. 프론트엔드 화면 ↔ ERD 매핑 요약`, `7. 마이그레이션 / 데이터 이전 전략`)
+- **핵심 요구사항 (발췌)**
+  - 새 기능을 만들기 전 “이 라우트는 어느 도메인(테이블)을 건드리는지” 를 먼저 정하고 작업하는 기준 마련.
+  - 마이그레이션 시에는 1단계에서 **절대 기존 기능을 깨지 않도록** ADD-only 전략을 따르고, 2~3단계에서 점진적으로 새 구조로 옮겨가도록 설계.
+  - 마지막 단계에서만 구 컬럼/테이블 제거 + RLS 강화 작업을 수행.
+
+```text
+프롬프트 키워드:
+- API 라우트 ↔ ERD 도메인 매핑
+- /admin, /staff, /login 화면별 도메인 설계
+- 단계적 마이그레이션(추가→겸용→이전→삭제)
+- RLS 강화 시점 분리
+```
+
+---
+
 ## 앞으로 사용할 프롬프트 기록 템플릿
 
 > 새 작업을 요청할 때마다, 이 템플릿을 복사해서 날짜/섹션을 추가하면 됩니다.
