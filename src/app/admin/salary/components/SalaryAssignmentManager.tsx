@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -20,11 +21,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 
 type Staff = {
     id: string;
     user_id: string;
-    name: string; // staffs 테이블에 name 컬럼이 없으므로 user_metadata 또는 profiles 조인 필요. 여기서는 간단히 처리
+    name: string;
     role: string;
     gym_id: string;
     salary_setting?: {
@@ -52,6 +54,10 @@ export default function SalaryAssignmentManager() {
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
     const [personalParams, setPersonalParams] = useState<any>({});
 
+    // 계산기 상태
+    const [calcAmount, setCalcAmount] = useState("");
+    const [calcRate, setCalcRate] = useState("");
+
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -68,17 +74,12 @@ export default function SalaryAssignmentManager() {
             const { data: myStaff } = await supabase.from("staffs").select("gym_id").eq("user_id", user.id).single();
             if (!myStaff) return;
 
-            // 1. 템플릿 목록 로딩
             const { data: tmplData } = await supabase
                 .from("salary_templates")
                 .select(`*, items:salary_template_items(rule:salary_rules(*))`)
                 .eq("gym_id", myStaff.gym_id);
             setTemplates(tmplData || []);
 
-            // 2. 직원 목록 로딩 (이름 포함)
-            // users 테이블 접근이 어려우므로, staffs에 name 컬럼이 있다고 가정하거나 (스키마 확인 필요),
-            // 없다면 profiles 테이블과 조인해야 함. 여기서는 user_metadata를 가져오거나 staffs에 name이 추가되었다고 가정.
-            // (이전 작업에서 staffs에 name 추가 여부를 확인하지 못했으나, 보통 이름은 필수이므로 있다고 가정하고 진행)
             const { data: staffData } = await supabase
                 .from("staffs")
                 .select(`
@@ -89,23 +90,11 @@ export default function SalaryAssignmentManager() {
                     )
                 `)
                 .eq("gym_id", myStaff.gym_id)
-                .neq("role", "admin"); // 관리자 제외하고 표시
+                .neq("role", "admin");
                 
-            // 이름 매핑을 위해 auth.users를 클라이언트에서 조회 불가. 
-            // 임시로 '직원 ID' 또는 별도 테이블 사용. 
-            // *중요*: We:form 프로젝트 규칙에 'staffs 테이블에 job_title, phone 등 관리'라고 되어 있음.
-            // 이름 컬럼이 있는지 확인해보는 것이 좋겠음. 만약 없으면 phone 등으로 대체.
-            
-            // 일단 이름은 "직원" + ID 뒷자리로 표시하거나, user_id로 users 테이블 쿼리 불가하므로...
-            // 아까 마이그레이션 스크립트에 staffs 테이블 수정은 없었음.
-            // 기존 코드(admin/staff/page.tsx)를 보면 members 테이블이 아니라 staffs 테이블을 조회할 때 이름을 어떻게 가져오는지 확인 필요.
-            // *확인 결과*: 이전 대화나 코드에서 staffs 테이블의 name 컬럼 언급이 명확하지 않음.
-            // 하지만 일반적으로 존재한다고 가정. 에러 나면 수정.
-            
-            // 편의상 staffs 데이터 가공
             const formattedStaffs = (staffData || []).map((s: any) => ({
                 ...s,
-                name: "직원 " + s.id.substring(0, 4), // 임시 이름
+                name: "직원 " + s.id.substring(0, 4),
                 salary_setting: s.salary_setting?.[0] ? {
                     id: s.salary_setting[0].id,
                     template_id: s.salary_setting[0].template_id,
@@ -137,7 +126,6 @@ export default function SalaryAssignmentManager() {
 
     const handleTemplateChange = (templateId: string) => {
         setSelectedTemplateId(templateId);
-        // 템플릿 변경 시 파라미터 초기화? 아니면 유지? -> 일단 초기화가 안전
         setPersonalParams({});
     };
 
@@ -146,7 +134,7 @@ export default function SalaryAssignmentManager() {
             ...prev,
             [ruleId]: {
                 ...prev[ruleId],
-                [key]: parseFloat(value) || 0 // 숫자로 변환
+                [key]: parseFloat(value) || 0
             }
         }));
     };
@@ -155,14 +143,6 @@ export default function SalaryAssignmentManager() {
         if (!selectedStaff) return;
 
         try {
-            // upsert 사용 (staff_id 기준 유니크 제약조건이 있다면 좋겠지만, 여기서는 로직으로 처리)
-            // staff_salary_settings 테이블에 staff_id 유니크 제약이 있는지 마이그레이션 확인 -> 없음 (1:N 가능하게 해둠, history 관리용)
-            // 하지만 현재 유효한 설정은 하나여야 하므로, 기존 설정의 valid_to를 업데이트하거나,
-            // 단순하게 이번 구현에서는 "최신 설정 하나만 유지"하는 방식으로 delete -> insert 또는 update 사용.
-            
-            // 가장 간단하게: 해당 직원의 기존 설정을 모두 삭제하고 새로 생성 (이력 관리 포기, MVP 버전)
-            // 또는 update
-            
             const { data: existing } = await supabase
                 .from("staff_salary_settings")
                 .select("id")
@@ -193,8 +173,31 @@ export default function SalaryAssignmentManager() {
         }
     };
 
-    // 선택된 템플릿의 규칙들 찾기
+    // 그룹핑 함수
     const currentTemplate = templates.find(t => t.id === selectedTemplateId);
+    const groupedRules = {
+        basic: [] as any[],
+        class: [] as any[],
+        incentive: [] as any[],
+        others: [] as any[]
+    };
+
+    if (currentTemplate) {
+        currentTemplate.items.forEach(({ rule }) => {
+            const name = rule.name.toLowerCase();
+            if (name.includes("기본급") || name.includes("식대") || name.includes("지원금") || name.includes("근무")) {
+                groupedRules.basic.push(rule);
+            } else if (name.includes("pt") || name.includes("수업") || name.includes("ot") || name.includes("bc")) {
+                groupedRules.class.push(rule);
+            } else if (name.includes("인센") || name.includes("상금") || name.includes("보장") || name.includes("매출")) {
+                groupedRules.incentive.push(rule);
+            } else {
+                groupedRules.others.push(rule);
+            }
+        });
+    }
+
+    const calculatedIncentive = (parseFloat(calcAmount || "0") * (parseFloat(calcRate || "0") / 100)).toLocaleString();
 
     if (isLoading) return <div>로딩 중...</div>;
 
@@ -241,19 +244,21 @@ export default function SalaryAssignmentManager() {
             </div>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#1A1D21] text-white border-none">
                     <DialogHeader>
-                        <DialogTitle>{selectedStaff?.name} 급여 설정</DialogTitle>
+                        <DialogTitle className="text-xl font-bold">급여 및 인센티브 설정</DialogTitle>
+                        <p className="text-sm text-gray-400">{selectedStaff?.name} / {selectedStaff?.role}</p>
                     </DialogHeader>
                     
-                    <div className="space-y-6 py-4">
+                    <div className="space-y-8 py-4">
+                        {/* 1. 템플릿 선택 */}
                         <div className="space-y-2">
-                            <Label>급여 템플릿 선택</Label>
+                            <Label className="text-gray-300">1. 급여 템플릿 선택</Label>
                             <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
-                                <SelectTrigger>
+                                <SelectTrigger className="bg-[#2B2F36] border-gray-700 text-white">
                                     <SelectValue placeholder="템플릿을 선택하세요" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-[#2B2F36] border-gray-700 text-white">
                                     {templates.map(t => (
                                         <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                                     ))}
@@ -261,31 +266,112 @@ export default function SalaryAssignmentManager() {
                             </Select>
                         </div>
 
-                        {currentTemplate && (
-                            <div className="space-y-4 border-t pt-4">
-                                <Label className="text-base font-bold">개별 파라미터 설정</Label>
-                                <p className="text-xs text-gray-500 mb-2">이 직원을 위한 구체적인 금액/비율을 입력하세요.</p>
-                                
-                                {currentTemplate.items.map(({ rule }) => (
-                                    <div key={rule.id} className="grid grid-cols-3 gap-4 items-center bg-gray-50 p-3 rounded">
-                                        <div className="col-span-1">
-                                            <div className="font-medium text-sm">{rule.name}</div>
-                                            <div className="text-xs text-gray-500">
-                                                {getRuleTypeLabel(rule.calculation_type)}
+                        {currentTemplate ? (
+                            <>
+                                {/* 3. 기본 정보 설정 (가정) */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                        3. 기본 정보 및 지원금 설정
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {groupedRules.basic.map(rule => (
+                                            <div key={rule.id} className="space-y-1">
+                                                <Label className="text-xs text-gray-400">{rule.name}</Label>
+                                                {renderParamInputs(rule, personalParams[rule.id] || {}, (key, val) => handleParamChange(rule.id, key, val))}
                                             </div>
-                                        </div>
-                                        <div className="col-span-2">
-                                            {renderParamInputs(rule, personalParams[rule.id] || {}, (key, val) => handleParamChange(rule.id, key, val))}
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 4. 수업료 설정 */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                        4. 수업료 설정
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {groupedRules.class.map(rule => (
+                                            <div key={rule.id} className="space-y-1">
+                                                <Label className="text-xs text-gray-400">{rule.name}</Label>
+                                                {renderParamInputs(rule, personalParams[rule.id] || {}, (key, val) => handleParamChange(rule.id, key, val))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 5. 인센티브 및 특수 매출 */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
+                                        5. 인센티브 및 특수 매출
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {groupedRules.incentive.map(rule => (
+                                            <div key={rule.id} className="space-y-1">
+                                                <Label className="text-xs text-gray-400">{rule.name}</Label>
+                                                {renderParamInputs(rule, personalParams[rule.id] || {}, (key, val) => handleParamChange(rule.id, key, val))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 기타 항목 */}
+                                {groupedRules.others.length > 0 && (
+                                    <div className="space-y-4">
+                                        <h4 className="text-sm font-bold text-gray-300">기타 항목</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {groupedRules.others.map(rule => (
+                                                <div key={rule.id} className="space-y-1">
+                                                    <Label className="text-xs text-gray-400">{rule.name}</Label>
+                                                    {renderParamInputs(rule, personalParams[rule.id] || {}, (key, val) => handleParamChange(rule.id, key, val))}
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
+                                )}
+                            </>
+                        ) : (
+                            <div className="text-center py-10 text-gray-500 border border-dashed border-gray-700 rounded-lg">
+                                템플릿을 먼저 선택해주세요.
                             </div>
                         )}
+
+                        {/* 특이사항 */}
+                        <div className="space-y-2">
+                            <Label className="text-gray-300">특이사항</Label>
+                            <Textarea className="bg-[#2B2F36] border-gray-700 text-white min-h-[80px]" placeholder="메모를 입력하세요." />
+                        </div>
+
+                        {/* 간편 인센티브 계산기 */}
+                        <Card className="p-4 bg-gray-100 border-none text-black">
+                            <h4 className="font-bold mb-4">간편 인센티브 계산기</h4>
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-500">금액</Label>
+                                    <Input 
+                                        value={calcAmount} 
+                                        onChange={e => setCalcAmount(e.target.value)} 
+                                        placeholder="e.g. 10,000,000" 
+                                        className="bg-white"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-500">퍼센트 (%)</Label>
+                                    <Input 
+                                        value={calcRate} 
+                                        onChange={e => setCalcRate(e.target.value)} 
+                                        placeholder="e.g. 5" 
+                                        className="bg-white"
+                                    />
+                                </div>
+                            </div>
+                            <div className="text-center bg-gray-200 py-3 rounded font-bold text-lg text-[#F2994A]">
+                                계산된 인센티브: {calculatedIncentive} 원
+                            </div>
+                        </Card>
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsModalOpen(false)}>취소</Button>
-                        <Button onClick={handleSave} className="bg-[#2F80ED]" disabled={!selectedTemplateId}>
+                        <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white hover:bg-white/10">취소</Button>
+                        <Button onClick={handleSave} className="bg-[#2F80ED] hover:bg-[#1e5bb8] text-white font-bold px-8">
                             저장하기
                         </Button>
                     </DialogFooter>
@@ -295,60 +381,37 @@ export default function SalaryAssignmentManager() {
     );
 }
 
-function getRuleTypeLabel(type: string) {
-    switch(type) {
-        case 'fixed': return '고정급';
-        case 'hourly': return '시급제';
-        case 'percentage_total': return '매출 %';
-        case 'percentage_personal': return '개인매출 %';
-        default: return type;
-    }
-}
-
 function renderParamInputs(rule: any, values: any, onChange: (key: string, value: string) => void) {
+    const inputClass = "bg-[#2B2F36] border-gray-700 text-white h-10";
+    
     switch(rule.calculation_type) {
         case 'fixed':
-            return (
-                <div className="flex items-center gap-2">
-                    <Input 
-                        type="number" 
-                        value={values.amount ?? ""} 
-                        onChange={e => onChange('amount', e.target.value)}
-                        placeholder="금액 (원)"
-                        className="h-8"
-                    />
-                    <span className="text-sm text-gray-500 w-8">원</span>
-                </div>
-            );
         case 'hourly':
             return (
-                <div className="flex items-center gap-2">
+                <div className="relative">
                     <Input 
                         type="number" 
-                        value={values.rate ?? ""} 
-                        onChange={e => onChange('rate', e.target.value)}
-                        placeholder="시급 (원)"
-                        className="h-8"
+                        value={values.amount ?? values.rate ?? ""} 
+                        onChange={e => onChange(rule.calculation_type === 'hourly' ? 'rate' : 'amount', e.target.value)}
+                        className={`${inputClass} pr-8`}
                     />
-                    <span className="text-sm text-gray-500 w-8">원</span>
+                    <span className="absolute right-3 top-2.5 text-xs text-gray-500">원</span>
                 </div>
             );
         case 'percentage_total':
         case 'percentage_personal':
             return (
-                <div className="flex items-center gap-2">
+                <div className="relative">
                     <Input 
                         type="number" 
                         value={values.rate ?? ""} 
                         onChange={e => onChange('rate', e.target.value)}
-                        placeholder="비율 (%)"
-                        className="h-8"
+                        className={`${inputClass} pr-8`}
                     />
-                    <span className="text-sm text-gray-500 w-8">%</span>
+                    <span className="absolute right-3 top-2.5 text-xs text-gray-500">%</span>
                 </div>
             );
         default:
-            return <div className="text-xs text-gray-400">설정 불필요</div>;
+            return <div className="text-xs text-gray-500 py-2">설정 불필요</div>;
     }
 }
-
