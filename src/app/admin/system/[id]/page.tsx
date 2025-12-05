@@ -47,14 +47,14 @@ export default function CompanyDetailPage() {
   if (!company) return <div className="p-10">로딩 중...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-8 p-6">
+      <div className="flex items-center gap-4 mb-8">
         <Button variant="outline" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="w-4 h-4"/>
         </Button>
         <div>
-            <h2 className="text-2xl font-bold text-[#2F80ED]">{company.name} 직원 목록</h2>
-            <p className="text-gray-500 text-sm">대표자: {company.representative_name} | 연락처: {company.contact_phone}</p>
+            <h2 className="text-4xl font-heading font-bold text-[#2F80ED] mb-2">{company.name} 직원 목록</h2>
+            <p className="text-base text-gray-600 font-sans">대표자: {company.representative_name} | 연락처: {company.contact_phone}</p>
         </div>
       </div>
 

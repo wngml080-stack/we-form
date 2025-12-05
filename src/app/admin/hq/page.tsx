@@ -19,6 +19,11 @@ export default function HQPage() {
   const [gyms, setGyms] = useState<any[]>([]);
   const [pendingStaffs, setPendingStaffs] = useState<any[]>([]);
   const [allStaffs, setAllStaffs] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
+
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string>("");
+  const [myRole, setMyRole] = useState<string>("");
 
   const [selectedGym, setSelectedGym] = useState<string>("");
   const [selectedRole, setSelectedRole] = useState<string>("");
@@ -39,34 +44,84 @@ export default function HQPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const fetchData = async () => {
+  const formatDate = (value?: string | null) => {
+    if (!value) return "-";
+    try {
+      return new Date(value).toISOString().split("T")[0];
+    } catch {
+      return value;
+    }
+  };
+
+  useEffect(() => {
+    init();
+  }, []);
+
+  const init = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 내 정보 가져오기
+    const { data: me } = await supabase
+      .from("staffs")
+      .select("company_id, role, companies(name)")
+      .eq("user_id", user.id)
+      .single();
+
+    if (me) {
+      setCompanyId(me.company_id);
+      setMyRole(me.role);
+      // @ts-ignore
+      setCompanyName(me.companies?.name ?? "");
+
+      // company_id 기준으로 데이터 조회
+      fetchData(me.company_id, me.role);
+    }
+  };
+
+  const fetchData = async (targetCompanyId: string | null, role: string) => {
+    if (!targetCompanyId) return;
+
+    // 지점 목록 (자기 회사 것만)
     const { data: gymData } = await supabase
         .from("gyms")
         .select(`*, staffs(id, name, role, email)`)
+        .eq("company_id", targetCompanyId)
         .order("created_at", { ascending: false });
     if (gymData) setGyms(gymData);
 
+    // 대기 직원 (자기 회사 것만, gym_id가 null인 사람)
     const { data: pendingData } = await supabase
       .from("staffs")
       .select("*")
+      .eq("company_id", targetCompanyId)
       .is("gym_id", null)
       .order("created_at", { ascending: false });
     if (pendingData) setPendingStaffs(pendingData);
 
+    // 전체 직원 (자기 회사 것만)
     const { data: allData } = await supabase
         .from("staffs")
         .select("id, name, email, role, gym_id, gyms(name)")
+        .eq("company_id", targetCompanyId)
         .order("name", { ascending: true });
     if (allData) setAllStaffs(allData);
-  };
 
-  useEffect(() => { fetchData(); }, []);
+    // 회원 데이터 (자기 회사 것만, 최근 20명)
+    const { data: memberData } = await supabase
+      .from("members")
+      .select("id, name, phone, status, created_at, gyms(name)")
+      .eq("company_id", targetCompanyId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (memberData) setMembers(memberData);
+  };
 
   const handleAssign = async (staffId: string) => {
     if (!selectedGym || !selectedRole) return alert("지점과 권한을 선택해주세요.");
     if (!confirm("발령 보내시겠습니까?")) return;
     const { error } = await supabase.from("staffs").update({ gym_id: selectedGym, role: selectedRole, employment_status: "재직" }).eq("id", staffId);
-    if (!error) { alert("발령 완료!"); fetchData(); } else { alert(error.message); }
+    if (!error) { alert("발령 완료!"); fetchData(companyId, myRole); } else { alert(error.message); }
   };
 
   const toggleCategory = (cat: string) => {
@@ -95,7 +150,7 @@ export default function HQPage() {
         });
         if (!res.ok) throw new Error("실패");
         alert("생성 완료!");
-        setIsCreateOpen(false); setFormData(initialForm); fetchData();
+        setIsCreateOpen(false); setFormData(initialForm); fetchData(companyId, myRole);
     } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
   };
 
@@ -114,20 +169,20 @@ export default function HQPage() {
         });
         if (!res.ok) throw new Error("실패");
         alert("수정 완료!");
-        setIsEditOpen(false); setEditTargetId(null); setFormData(initialForm); fetchData();
+        setIsEditOpen(false); setEditTargetId(null); setFormData(initialForm); fetchData(companyId, myRole);
     } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
   };
 
   const openEditModal = (gym: any) => {
     setEditTargetId(gym.id);
     setFormData({
-        gymName: gym.name,
+        gymName: gym.name || "",
         managerId: "none",
         category: gym.category ? gym.category.split(", ") : [],
         size: gym.size || "",
         open_date: gym.open_date || "",
         memo: gym.memo || "",
-        status: gym.status
+        status: gym.status || "active"
     });
     setIsEditOpen(true);
   };
@@ -135,7 +190,7 @@ export default function HQPage() {
   const handleDeleteGym = async (gymId: string) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     await supabase.from("gyms").delete().eq("id", gymId);
-    fetchData();
+    fetchData(companyId, myRole);
   };
 
   const getCategoryColor = (cat: string) => {
@@ -146,8 +201,11 @@ export default function HQPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-[#2F80ED]">🏢 본사(HQ) 통합 관리</h2>
+    <div className="space-y-8 p-6">
+      <div className="mb-8">
+        <h2 className="text-4xl font-heading font-bold text-[#2F80ED] mb-2">🏢 본사(HQ) 통합 관리</h2>
+        <p className="text-base text-gray-600 mt-2 font-sans">{companyName}</p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 1. 대기자 */}
@@ -232,6 +290,55 @@ export default function HQPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 3. 최근 회원 리스트 */}
+      <Card className="border-t-4 border-t-emerald-500 shadow-lg">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>👥 최근 가입 회원 (상위 20명)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {members.length === 0 ? (
+            <p className="text-gray-400 text-sm text-center py-6">
+              아직 등록된 회원이 없습니다.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50">
+                    <th className="px-3 py-2 text-left">이름</th>
+                    <th className="px-3 py-2 text-left">소속 지점</th>
+                    <th className="px-3 py-2 text-left">연락처</th>
+                    <th className="px-3 py-2 text-left">상태</th>
+                    <th className="px-3 py-2 text-left">등록일</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((m: any) => (
+                    <tr key={m.id} className="border-b last:border-0">
+                      <td className="px-3 py-2 font-medium">{m.name}</td>
+                      <td className="px-3 py-2 text-gray-600">
+                        {m.gyms?.name || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-gray-600">
+                        {m.phone || "-"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className="border-0 bg-emerald-50 text-emerald-700">
+                          {m.status || "active"}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 text-gray-500">
+                        {formatDate(m.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 통합 모달 */}
       {[ 

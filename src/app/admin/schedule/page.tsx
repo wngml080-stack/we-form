@@ -138,9 +138,9 @@ export default function AdminSchedulePage() {
   if (isLoading) return <div className="p-10">일정을 불러오는 중...</div>;
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">{gymName} 통합 스케줄</h2>
+    <div className="space-y-6 h-full flex flex-col p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">{gymName} 통합 스케줄</h2>
         
         {/* 강사 필터 */}
         <div className="w-[200px]">

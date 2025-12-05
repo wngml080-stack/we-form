@@ -16,8 +16,9 @@ export default function AdminStaffPage() {
   const [activeStaffs, setActiveStaffs] = useState<any[]>([]); 
   const [pendingStaffs, setPendingStaffs] = useState<any[]>([]); 
   
-  const [myRole, setMyRole] = useState<string>(""); 
+  const [myRole, setMyRole] = useState<string>("");
   const [gymId, setGymId] = useState<string | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null); // 👈 company_id 추가
   const [gymName, setGymName] = useState("");
 
   // 지점 목록 (이동 발령용)
@@ -49,12 +50,13 @@ export default function AdminStaffPage() {
       // 1. 내 정보 가져오기
       const { data: me } = await supabase
         .from("staffs")
-        .select("gym_id, role, gyms(name)")
+        .select("gym_id, company_id, role, gyms(name)")
         .eq("user_id", user.id)
         .single();
 
       if (me) {
         setGymId(me.gym_id);
+        setCompanyId(me.company_id); // 👈 company_id 저장
         setMyRole(me.role);
         // @ts-ignore
         setGymName(me.gyms?.name ?? "We:form");
@@ -144,23 +146,24 @@ export default function AdminStaffPage() {
   // 신규 등록 실행
   const handleCreateStaff = async () => {
     if (!createForm.name || !createForm.email || !createForm.password) return alert("필수 정보를 입력해주세요.");
-    
-    // 슈퍼관리자면 현재 gymId 사용 (없으면 null)
-    const targetGymId = gymId; 
-    
+
+    // company_id와 gym_id 전달
+    const targetGymId = gymId;
+    const targetCompanyId = companyId; // 👈 company_id 전달
+
     setIsCreating(true);
     try {
         const res = await fetch("/api/admin/create-staff", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...createForm, gym_id: targetGymId })
+            body: JSON.stringify({ ...createForm, gym_id: targetGymId, company_id: targetCompanyId })
         });
         if (!res.ok) throw new Error("등록 실패");
         alert("등록 완료!");
         setIsCreateOpen(false);
         setCreateForm({ name: "", email: "", password: "", phone: "", job_title: "트레이너", joined_at: "" });
         fetchStaffs(gymId, myRole);
-    } catch (e: any) { alert(e.message); } 
+    } catch (e: any) { alert(e.message); }
     finally { setIsCreating(false); }
   };
 
@@ -171,9 +174,9 @@ export default function AdminStaffPage() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">직원 리스트</h2>
+    <div className="space-y-8 p-6">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">직원 리스트</h2>
         <Button onClick={() => setIsCreateOpen(true)} className="bg-[#0F4C5C] hover:bg-[#09313b]">
             <Plus className="mr-2 h-4 w-4"/> 직원 등록
         </Button>

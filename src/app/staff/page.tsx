@@ -43,14 +43,22 @@ export default function StaffPage() {
 
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
-  
+
   const [newMemberName, setNewMemberName] = useState("");
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [newClassType, setNewClassType] = useState("PT");
   const [startTime, setStartTime] = useState("10:00");
-  const [duration, setDuration] = useState("50"); 
+  const [duration, setDuration] = useState("50");
 
   const [myStaffId, setMyStaffId] = useState<string | null>(null);
   const [myGymId, setMyGymId] = useState<string | null>(null);
+  const [myCompanyId, setMyCompanyId] = useState<string | null>(null);
+
+  // 회원 관련
+  const [members, setMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,18 +74,77 @@ export default function StaffPage() {
       }
       const { data: staff } = await supabase
         .from("staffs")
-        .select("id, gym_id")
+        .select("id, gym_id, company_id")
         .eq("user_id", user.id)
         .single();
 
       if (staff) {
         setMyStaffId(staff.id);
         setMyGymId(staff.gym_id);
+        setMyCompanyId(staff.company_id);
         fetchSchedules(staff.id);
+        fetchMembers(staff.gym_id, staff.company_id);
       }
     };
     fetchMyInfo();
   }, []);
+
+  useEffect(() => {
+    if (!memberSearchQuery.trim()) {
+      setFilteredMembers(members);
+      setShowMemberDropdown(false);
+    } else {
+      const query = memberSearchQuery.toLowerCase();
+      const filtered = members.filter(m =>
+        m.name?.toLowerCase().includes(query) ||
+        m.phone?.includes(query)
+      );
+      setFilteredMembers(filtered);
+      setShowMemberDropdown(true);
+    }
+  }, [memberSearchQuery, members]);
+
+  const fetchMembers = async (gymId: string | null, companyId: string | null) => {
+    if (!gymId || !companyId) return;
+
+    const { data, error } = await supabase
+      .from("members")
+      .select(`
+        *,
+        member_memberships!inner (
+          id,
+          name,
+          total_sessions,
+          used_sessions,
+          status
+        )
+      `)
+      .eq("gym_id", gymId)
+      .eq("company_id", companyId)
+      .eq("status", "active")
+      .order("name");
+
+    if (error) {
+      console.error("회원 조회 에러:", error);
+      return;
+    }
+
+    const membersWithMemberships = (data || []).map((member: any) => {
+      const memberships = member.member_memberships || [];
+      const activeMembership = memberships.find((m: any) => m.status === 'active');
+      const remaining = activeMembership
+        ? (activeMembership.total_sessions - activeMembership.used_sessions)
+        : 0;
+
+      return {
+        ...member,
+        activeMembership,
+        remaining
+      };
+    });
+
+    setMembers(membersWithMemberships);
+  };
 
   const fetchSchedules = async (staffId: string) => {
     const { data, error } = await supabase
@@ -154,6 +221,13 @@ export default function StaffPage() {
     setIsAddModalOpen(true);
   };
 
+  const handleSelectMember = (member: any) => {
+    setNewMemberName(member.name);
+    setSelectedMemberId(member.id);
+    setMemberSearchQuery(member.name);
+    setShowMemberDropdown(false);
+  };
+
   const handleAddClass = async () => {
     if (!newMemberName || !myStaffId || !myGymId) return;
 
@@ -164,6 +238,7 @@ export default function StaffPage() {
     const { error } = await supabase.from("schedules").insert({
       gym_id: myGymId,
       staff_id: myStaffId,
+      member_id: selectedMemberId,
       member_name: newMemberName,
       type: newClassType,
       status: "reserved",
@@ -178,6 +253,8 @@ export default function StaffPage() {
     } else {
       setIsAddModalOpen(false);
       setNewMemberName("");
+      setSelectedMemberId(null);
+      setMemberSearchQuery("");
       fetchSchedules(myStaffId);
 
       // n8n 웹훅으로 알림 전송 (실패해도 사용자에게는 알리지 않음)
@@ -205,21 +282,84 @@ export default function StaffPage() {
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedEvent || !myStaffId) return;
 
-    const { error } = await supabase
-      .from("schedules")
-      .update({ status: newStatus })
-      .eq("id", selectedEvent.id)
-      .eq("staff_id", myStaffId);
+    try {
+      // 1. 스케줄 정보 조회 (member_id 확인)
+      const { data: schedule, error: scheduleError } = await supabase
+        .from("schedules")
+        .select("id, member_id, status")
+        .eq("id", selectedEvent.id)
+        .single();
 
-    if (error) {
+      if (scheduleError) throw scheduleError;
+
+      const oldStatus = schedule?.status || "reserved";
+
+      // 2. 스케줄 상태 업데이트
+      const { error: updateError } = await supabase
+        .from("schedules")
+        .update({ status: newStatus })
+        .eq("id", selectedEvent.id)
+        .eq("staff_id", myStaffId);
+
+      if (updateError) throw updateError;
+
+      // 3. 잔여횟수 차감 로직
+      // 차감 대상: completed, no_show_deducted
+      // 차감 안함: reserved, no_show, service
+      const shouldDeduct = (status: string) =>
+        status === "completed" || status === "no_show_deducted";
+
+      const wasDeducted = shouldDeduct(oldStatus);
+      const willDeduct = shouldDeduct(newStatus);
+
+      if (schedule?.member_id && wasDeducted !== willDeduct) {
+        // 활성 회원권 조회
+        const { data: membership, error: membershipError } = await supabase
+          .from("member_memberships")
+          .select("id, used_sessions, total_sessions")
+          .eq("member_id", schedule.member_id)
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (membershipError) {
+          console.warn("활성 회원권이 없습니다:", membershipError);
+        } else if (membership) {
+          let newUsedSessions = membership.used_sessions;
+
+          if (willDeduct && !wasDeducted) {
+            // 차감해야 함 (예: reserved → completed)
+            newUsedSessions += 1;
+          } else if (!willDeduct && wasDeducted) {
+            // 복구해야 함 (예: completed → service)
+            newUsedSessions = Math.max(0, newUsedSessions - 1);
+          }
+
+          // 회원권 업데이트
+          const { error: updateMembershipError } = await supabase
+            .from("member_memberships")
+            .update({ used_sessions: newUsedSessions })
+            .eq("id", membership.id);
+
+          if (updateMembershipError) {
+            console.error("회원권 업데이트 실패:", updateMembershipError);
+          }
+        }
+      }
+
+      setIsStatusModalOpen(false);
+      setSelectedEvent(null);
+      fetchSchedules(myStaffId);
+
+      // 회원 목록도 새로고침 (잔여횟수 업데이트 반영)
+      if (myGymId && myCompanyId) {
+        fetchMembers(myGymId, myCompanyId);
+      }
+    } catch (error: any) {
       console.error("상태 변경 실패:", error);
-      alert("상태 변경에 실패했습니다. 다시 시도해 주세요.");
-      return;
+      alert("상태 변경에 실패했습니다: " + error.message);
     }
-
-    setIsStatusModalOpen(false);
-    setSelectedEvent(null);
-    fetchSchedules(myStaffId);
   };
 
   return (
@@ -304,19 +444,47 @@ export default function StaffPage() {
           <div className="grid gap-5 py-4">
             <div className="space-y-2">
                 <Label>날짜 변경</Label>
-                <Input 
-                    type="date" 
-                    value={selectedDate} 
+                <Input
+                    type="date"
+                    value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                 />
             </div>
-            <div className="space-y-2">
-              <Label>회원명</Label>
+            <div className="space-y-2 relative">
+              <Label>회원 검색</Label>
               <Input
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                placeholder="예: 김철수"
+                value={memberSearchQuery}
+                onChange={(e) => setMemberSearchQuery(e.target.value)}
+                onFocus={() => setShowMemberDropdown(true)}
+                placeholder="이름 또는 연락처로 검색"
               />
+              {showMemberDropdown && filteredMembers.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {filteredMembers.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => handleSelectMember(member)}
+                      className="w-full px-3 py-2 text-left hover:bg-gray-100 border-b last:border-b-0"
+                    >
+                      <div className="font-medium">{member.name}</div>
+                      <div className="text-xs text-gray-500 flex justify-between">
+                        <span>{member.phone || "-"}</span>
+                        {member.activeMembership && (
+                          <span className={member.remaining === 0 ? "text-red-500 font-semibold" : "text-emerald-600"}>
+                            잔여 {member.remaining}회
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {memberSearchQuery && filteredMembers.length === 0 && (
+                <div className="text-xs text-gray-400 mt-1">
+                  검색 결과가 없습니다. 회원을 먼저 등록해주세요.
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

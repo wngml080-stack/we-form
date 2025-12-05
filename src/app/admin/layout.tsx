@@ -54,28 +54,28 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* 사이드바: 파란색(#2F80ED) 테마 */}
-      <aside className="w-64 bg-[#2F80ED] text-white flex flex-col shadow-xl">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
+      {/* 사이드바: 그라데이션 배경 */}
+      <aside className="w-64 bg-gradient-to-b from-[#2F80ED] via-[#667eea] to-[#764ba2] text-white flex flex-col shadow-soft-lg">
         <div className="p-6">
-          <h1 className="text-xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
             <CalendarDays className="text-[#F2994A]" />
-            We:form Admin
+            We:form
           </h1>
-          <p className="text-xs text-white/80 mt-2 ml-8">센터 운영 관리자</p>
+          <p className="text-xs text-white/90 mt-2 ml-8 font-sans">센터 운영 관리자</p>
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
             {/* 👑 1. 개발자(시스템 관리자) 전용 메뉴 */}
             {userRole === "system_admin" && (
                 <>
-                    <div className="text-xs font-semibold text-white/50 px-4 mt-4 mb-2">SYSTEM</div>
+                    <div className="text-xs font-heading font-semibold text-white/60 px-4 mt-4 mb-2 uppercase tracking-wider">System</div>
                     <Link
                     href="/admin/system"
-                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                    className={`flex items-center px-4 py-3 text-sm font-sans font-medium rounded-xl transition-all ${
                         pathname === "/admin/system"
-                        ? "bg-white text-[#2F80ED]"
-                        : "text-white/90 hover:bg-white/10"
+                        ? "bg-white text-[#2F80ED] shadow-soft"
+                        : "text-white/90 hover:bg-white/20 hover:scale-[1.02]"
                     }`}
                     >
                     <Settings className="mr-3 h-5 w-5" />
@@ -89,10 +89,10 @@ export default function AdminLayout({
             {(userRole === "company_admin" || userRole === "system_admin") && (
                  <Link
                  href="/admin/hq"
-                 className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                 className={`flex items-center px-4 py-3 text-sm font-sans font-medium rounded-xl transition-all ${
                      pathname === "/admin/hq"
-                     ? "bg-white text-[#2F80ED]"
-                     : "text-white/90 hover:bg-white/10"
+                     ? "bg-white text-[#2F80ED] shadow-soft"
+                     : "text-white/90 hover:bg-white/20 hover:scale-[1.02]"
                  }`}
                  >
                  <Building2 className="mr-3 h-5 w-5" />
@@ -101,15 +101,15 @@ export default function AdminLayout({
             )}
 
             {/* 3. 일반 메뉴 */}
-            <div className="text-xs font-semibold text-white/50 px-4 mt-4 mb-2">MENU</div>
+            <div className="text-xs font-heading font-semibold text-white/60 px-4 mt-4 mb-2 uppercase tracking-wider">Menu</div>
             {menuItems.map((item) => (
                 <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+                className={`flex items-center px-4 py-3 text-sm font-sans font-medium rounded-xl transition-all ${
                     pathname === item.href
-                    ? "bg-white text-[#2F80ED]"
-                    : "text-white/90 hover:bg-white/10"
+                    ? "bg-white text-[#2F80ED] shadow-soft"
+                    : "text-white/90 hover:bg-white/20 hover:scale-[1.02]"
                 }`}
                 >
                 <item.icon className="mr-3 h-5 w-5" />
@@ -121,7 +121,7 @@ export default function AdminLayout({
         <div className="p-4 border-t border-white/20">
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-4 py-2 text-sm font-medium text-white/80 hover:text-white transition-colors"
+            className="flex items-center w-full px-4 py-3 text-sm font-sans font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-xl transition-all"
           >
             <LogOut className="mr-3 h-5 w-5" />
             로그아웃
@@ -130,7 +130,7 @@ export default function AdminLayout({
       </aside>
 
       {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-auto p-8">
+      <main className="flex-1 overflow-auto">
         {children}
       </main>
     </div>

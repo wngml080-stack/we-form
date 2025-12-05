@@ -77,13 +77,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#2F80ED] p-4">
-      <Card className="w-full max-w-md border-none shadow-2xl">
-        <CardHeader className="space-y-2 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#2F80ED]">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-[#2F80ED] via-[#667eea] to-[#764ba2] p-4">
+      <Card className="w-full max-w-md border-none shadow-soft-lg bg-white/95 backdrop-blur-sm">
+        <CardHeader className="space-y-3 text-center pt-8">
+          <h1 className="text-4xl font-heading font-bold bg-gradient-to-r from-[#2F80ED] to-[#764ba2] bg-clip-text text-transparent">
             We:form
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-600 font-sans">
             센터 운영의 바른 자세, 위폼
           </p>
         </CardHeader>
@@ -121,14 +121,14 @@ export default function LoginPage() {
             
             <Button
               type="submit"
-              className="w-full bg-[#F2994A] text-black hover:bg-[#e27f34] font-bold text-base py-5"
+              className="w-full bg-gradient-to-r from-[#F2994A] to-[#e27f34] text-white hover:from-[#e27f34] hover:to-[#d16a1f] font-heading font-bold text-base py-6 rounded-xl shadow-soft transition-all hover:shadow-soft-lg hover:scale-[1.02]"
               disabled={isLoading}
             >
               {isLoading ? "로그인 중..." : "로그인"}
             </Button>
 
-            <div className="text-center text-sm text-gray-500 mt-2">
-                아직 계정이 없으신가요? <span className="text-blue-600 cursor-pointer hover:underline" onClick={() => router.push('/signup')}>가입신청</span>
+            <div className="text-center text-sm text-gray-500 mt-4 font-sans">
+                아직 계정이 없으신가요? <span className="text-[#2F80ED] cursor-pointer hover:underline font-medium" onClick={() => router.push('/signup')}>가입신청</span>
             </div>
           </form>
         </CardContent>

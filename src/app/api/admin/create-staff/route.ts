@@ -4,10 +4,10 @@ import { NextResponse } from "next/server";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    // 👇 phone, joined_at 추가됨!
-    const { email, password, name, job_title, gym_id, phone, joined_at } = body;
+    // 👇 phone, joined_at, company_id 추가됨!
+    const { email, password, name, job_title, gym_id, phone, joined_at, company_id } = body;
 
-    console.log("🚀 직원 생성 요청:", { email, name, gym_id, phone });
+    console.log("🚀 직원 생성 요청:", { email, name, gym_id, company_id, phone });
 
     // 1. 마스터키 확인
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       .from("staffs")
       .insert({
         user_id: authData.user.id,
+        company_id: company_id, // 👈 company_id 추가
         gym_id: gym_id,
         name: name,
         email: email,

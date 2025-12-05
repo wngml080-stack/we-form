@@ -71,13 +71,13 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#2F80ED] p-4">
-      <Card className="w-full max-w-md shadow-2xl bg-white border-0">
-        <CardHeader className="text-center pb-2">
-          <CardTitle className="text-2xl font-bold text-[#2F80ED]">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#2F80ED] via-[#667eea] to-[#764ba2] p-4">
+      <Card className="w-full max-w-md shadow-soft-lg bg-white/95 backdrop-blur-sm border-0">
+        <CardHeader className="text-center pb-2 pt-8">
+          <CardTitle className="text-3xl font-heading font-bold bg-gradient-to-r from-[#2F80ED] to-[#764ba2] bg-clip-text text-transparent">
             {step === 1 ? "소속 회사 찾기" : "직원 정보 입력"}
           </CardTitle>
-          <CardDescription className="text-gray-500">
+          <CardDescription className="text-gray-600 mt-2 font-sans">
             {step === 1 ? "근무하시는 센터(본사)의 사업자 번호를 입력해주세요." : `${foundCompany?.name} 소속으로 가입을 신청합니다.`}
           </CardDescription>
         </CardHeader>
@@ -95,7 +95,7 @@ export default function SignupPage() {
                             onChange={(e) => setBizNum(e.target.value)}
                             className="bg-white"
                         />
-                        <Button onClick={handleSearchCompany} className="bg-[#2F80ED] hover:bg-blue-600" disabled={isLoading}>
+                        <Button onClick={handleSearchCompany} className="bg-gradient-to-r from-[#2F80ED] to-[#667eea] hover:from-[#1e5bb8] hover:to-[#5568d3] text-white font-sans font-medium rounded-lg shadow-soft transition-all" disabled={isLoading}>
                             <Search className="w-4 h-4"/>
                         </Button>
                     </div>
@@ -103,13 +103,16 @@ export default function SignupPage() {
 
                 {/* 검색 결과 표시 */}
                 {foundCompany && (
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mt-4 animate-in fade-in slide-in-from-top-2">
-                        <div className="flex items-center gap-2 text-[#2F80ED] font-bold mb-1">
-                            <Building2 className="w-5 h-5"/> {foundCompany.name}
+                    <div className="card-modern p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-0 mt-4 animate-fade-in">
+                        <div className="flex items-center gap-3 text-[#2F80ED] font-heading font-bold mb-2">
+                            <div className="p-2 rounded-lg bg-white/50">
+                                <Building2 className="w-5 h-5"/> 
+                            </div>
+                            {foundCompany.name}
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">대표자: {foundCompany.representative_name}</p>
+                        <p className="text-sm text-gray-600 mb-4 font-sans">대표자: {foundCompany.representative_name}</p>
                         <Button 
-                            className="w-full bg-[#F2994A] hover:bg-[#d68238] text-black font-bold"
+                            className="w-full bg-gradient-to-r from-[#F2994A] to-[#e27f34] hover:from-[#e27f34] hover:to-[#d16a1f] text-white font-heading font-bold rounded-xl shadow-soft transition-all hover:shadow-soft-lg hover:scale-[1.02]"
                             onClick={() => setStep(2)}
                         >
                             이 회사로 가입 진행 <CheckCircle2 className="w-4 h-4 ml-2"/>
@@ -143,9 +146,9 @@ export default function SignupPage() {
                         <SelectContent className="bg-white">{JOB_TITLES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                     </Select>
                 </div>
-                <div className="flex gap-2 mt-6">
-                    <Button variant="ghost" onClick={() => setStep(1)} className="w-1/3 text-gray-500"><ArrowLeft className="w-4 h-4 mr-1"/> 이전</Button>
-                    <Button onClick={handleSignup} className="w-2/3 bg-[#F2994A] text-black font-bold hover:bg-[#d68238]" disabled={isLoading}>
+                <div className="flex gap-3 mt-6">
+                    <Button variant="ghost" onClick={() => setStep(1)} className="w-1/3 text-gray-500 font-sans hover:bg-gray-100 rounded-xl"><ArrowLeft className="w-4 h-4 mr-1"/> 이전</Button>
+                    <Button onClick={handleSignup} className="w-2/3 bg-gradient-to-r from-[#F2994A] to-[#e27f34] hover:from-[#e27f34] hover:to-[#d16a1f] text-white font-heading font-bold rounded-xl shadow-soft transition-all hover:shadow-soft-lg hover:scale-[1.02]" disabled={isLoading}>
                         {isLoading ? "처리 중..." : "가입 신청 완료"}
                     </Button>
                 </div>
