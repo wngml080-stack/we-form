@@ -39,7 +39,7 @@ export default function LoginPage() {
       // 2. 직원 정보 조회 (employment_status 추가!)
       const { data: staffData, error: staffError } = await supabase
         .from("staffs")
-        .select("role, employment_status, gyms ( status )")
+        .select("role, employment_status")
         .eq("user_id", data.user.id)
         .single();
 
@@ -51,14 +51,6 @@ export default function LoginPage() {
       if (staffData.employment_status === '퇴사') {
         await supabase.auth.signOut(); // 즉시 로그아웃
         throw new Error("퇴사 처리된 계정입니다. 이용이 제한됩니다.");
-      }
-
-      // 🚨 [보안 체크 2] 센터 승인 대기 차단
-      // @ts-ignore
-      const gymStatus = staffData.gyms?.status;
-      if (gymStatus === 'pending') {
-        await supabase.auth.signOut();
-        throw new Error("센터 가입 승인 대기 중입니다. 승인 후 이용 가능합니다.");
       }
 
       // 3. 통과 시 페이지 이동
