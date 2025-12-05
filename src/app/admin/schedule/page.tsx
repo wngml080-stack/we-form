@@ -17,6 +17,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 export default function AdminSchedulePage() {
   const router = useRouter();
@@ -26,6 +36,11 @@ export default function AdminSchedulePage() {
   const [gymName, setGymName] = useState("");
   const [myGymId, setMyGymId] = useState<string | null>(null); // 지점 ID 상태 관리 추가
   
+  // 모달 관련 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [statusToUpdate, setStatusToUpdate] = useState<string>("");
+
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(true);
 
@@ -92,7 +107,7 @@ export default function AdminSchedulePage() {
     let query = supabase
       .from("schedules")
       .select(`
-        id, start_time, end_time, type, status, member_name,
+        id, start_time, end_time, type, status, member_name, memo,
         staff_id,
         staffs ( name ) 
       `)
@@ -118,6 +133,13 @@ export default function AdminSchedulePage() {
         end: sch.end_time,
         backgroundColor: getStatusColor(sch.status),
         borderColor: getStatusColor(sch.status),
+        extendedProps: {
+          status: sch.status,
+          staff_name: sch.staffs?.name,
+          member_name: sch.member_name,
+          type: sch.type,
+          memo: sch.memo
+        }
       }));
       setSchedules(events);
     }
@@ -131,12 +153,77 @@ export default function AdminSchedulePage() {
     }
   };
 
+  // 이벤트 클릭 핸들러
+  const handleEventClick = (info: any) => {
+    const props = info.event.extendedProps;
+    setSelectedEvent({
+      id: info.event.id,
+      title: info.event.title,
+      start: info.event.start,
+      end: info.event.end,
+      status: props.status,
+      staff_name: props.staff_name,
+      member_name: props.member_name,
+      type: props.type,
+      memo: props.memo
+    });
+    setStatusToUpdate(props.status); // 초기값 설정
+    setIsModalOpen(true);
+  };
+
+  // 상태 변경 저장
+  const handleSaveChanges = async () => {
+    if (!selectedEvent || !statusToUpdate) return;
+
+    try {
+      // API 호출: 상태 업데이트 + 출석 기록 + 횟수 차감
+      const response = await fetch("/api/schedule/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduleId: selectedEvent.id,
+          newStatus: statusToUpdate
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "업데이트 실패");
+      }
+
+      alert("상태가 변경되었습니다. (출석부 반영 완료)");
+      setIsModalOpen(false);
+      
+      // 목록 새로고침
+      if (myGymId) fetchSchedules(myGymId, selectedStaffId);
+
+    } catch (error: any) {
+      console.error("상태 업데이트 실패:", error);
+      alert("오류가 발생했습니다: " + error.message);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed": return "#F2994A"; // Point Orange
-      case "no_show_deducted": return "#EF4444"; // Red
-      case "service": return "#3B82F6"; // Blue
-      default: return "#2F80ED"; // Primary Blue
+      case "completed": return "#F2994A"; // Point Orange (출석완료)
+      case "no_show_deducted": return "#EF4444"; // Red (노쇼-공제)
+      case "no_show": return "#9CA3AF"; // Gray (단순 노쇼)
+      case "service": return "#3B82F6"; // Blue (서비스)
+      case "cancelled": return "#000000"; // Black (취소)
+      default: return "#2F80ED"; // Primary Blue (예약됨)
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending": return "예약됨 (수업 전)";
+      case "completed": return "출석 완료 (횟수 차감)";
+      case "no_show_deducted": return "노쇼 (횟수 차감)";
+      case "no_show": return "노쇼 (차감 없음)";
+      case "service": return "서비스 수업";
+      case "cancelled": return "취소됨";
+      default: return status;
     }
   };
 
@@ -185,8 +272,81 @@ export default function AdminSchedulePage() {
           height="100%"
           slotMinTime="06:00:00"
           slotMaxTime="23:00:00"
+          eventClick={handleEventClick} // 클릭 이벤트 연결
         />
       </div>
+
+      {/* 스케줄 상세 & 상태 변경 모달 */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>수업 상세 정보</DialogTitle>
+            <DialogDescription>
+              수업 상태를 변경하면 출석부에 반영됩니다.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedEvent && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right font-bold text-gray-500">강사</Label>
+                <div className="col-span-3 font-medium">{selectedEvent.staff_name}</div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right font-bold text-gray-500">회원</Label>
+                <div className="col-span-3 font-medium">{selectedEvent.member_name}</div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right font-bold text-gray-500">수업유형</Label>
+                <div className="col-span-3">
+                  <Badge variant="outline">{selectedEvent.type}</Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right font-bold text-gray-500">시간</Label>
+                <div className="col-span-3 text-sm">
+                  {new Date(selectedEvent.start).toLocaleString('ko-KR', { 
+                    month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                  })}
+                </div>
+              </div>
+              {selectedEvent.memo && (
+                 <div className="grid grid-cols-4 items-center gap-4">
+                 <Label className="text-right font-bold text-gray-500">메모</Label>
+                 <div className="col-span-3 text-sm text-gray-600">{selectedEvent.memo}</div>
+               </div>
+              )}
+
+              <div className="border-t my-2"></div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="status" className="text-right font-bold text-blue-600">상태 변경</Label>
+                <div className="col-span-3">
+                  <Select value={statusToUpdate} onValueChange={setStatusToUpdate}>
+                    <SelectTrigger id="status" className="w-full">
+                      <SelectValue placeholder="상태 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">예약됨 (수업 전)</SelectItem>
+                      <SelectItem value="completed">출석 완료 (✅ 횟수 차감)</SelectItem>
+                      <SelectItem value="no_show_deducted">노쇼 (⛔️ 횟수 차감)</SelectItem>
+                      <SelectItem value="no_show">단순 노쇼 (차감 안함)</SelectItem>
+                      <SelectItem value="cancelled">수업 취소</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>닫기</Button>
+            <Button onClick={handleSaveChanges} className="bg-[#2F80ED] hover:bg-blue-600 text-white">
+              저장하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

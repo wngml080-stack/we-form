@@ -205,43 +205,60 @@ export default function AdminStaffPage() {
       </div>
 
       {/* 직원 리스트 */}
-      <div className="rounded-md border bg-white">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-4 py-3">이름</th>
-              <th className="px-4 py-3">소속 지점</th>
-              <th className="px-4 py-3">연락처</th>
-              <th className="px-4 py-3">직책</th>
-              <th className="px-4 py-3">상태</th>
-              <th className="px-4 py-3">입사일</th>
-              <th className="px-4 py-3 text-right">관리</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activeStaffs.map((staff: any) => (
-              <tr key={staff.id} className="border-b hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium">
-                    <div>{staff.name}</div>
-                    <div className="text-xs text-gray-400">{staff.email}</div>
-                </td>
-                <td className="px-4 py-3 text-gray-600 font-medium">
-                    {staff.gyms?.name || <span className="text-red-400">미지정</span>}
-                </td>
-                <td className="px-4 py-3 text-gray-600">{staff.phone || "-"}</td>
-                <td className="px-4 py-3 text-gray-600">{staff.job_title}</td>
-                <td className="px-4 py-3"><Badge className={`border-0 ${getStatusColor(staff.employment_status)}`}>{staff.employment_status}</Badge></td>
-                <td className="px-4 py-3 text-gray-500">{staff.joined_at || "-"}</td>
-                <td className="px-4 py-3 text-right">
-                  <Button variant="ghost" size="sm" onClick={() => openEditModal(staff)}><Pencil className="h-4 w-4 text-gray-500"/></Button>
-                </td>
+      <div className="rounded-lg border bg-white overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">이름</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">연락처</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">소속 지점</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">직책</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">상태</th>
+                <th className="px-6 py-4 text-left font-semibold text-gray-700">입사일</th>
+                <th className="px-6 py-4 text-center font-semibold text-gray-700">관리</th>
               </tr>
-            ))}
-             {activeStaffs.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-20 text-gray-400">등록된 직원이 없습니다.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {activeStaffs.map((staff: any) => (
+                <tr key={staff.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-gray-900">{staff.name}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{staff.email}</div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-700">{staff.phone || "-"}</td>
+                  <td className="px-6 py-4 text-gray-700 font-medium">
+                    {staff.gyms?.name || <span className="text-red-500 text-xs">미지정</span>}
+                  </td>
+                  <td className="px-6 py-4 text-gray-700">{staff.job_title}</td>
+                  <td className="px-6 py-4">
+                    <Badge className={`border-0 ${getStatusColor(staff.employment_status)}`}>
+                      {staff.employment_status}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{staff.joined_at || "-"}</td>
+                  <td className="px-6 py-4 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditModal(staff)}
+                      className="hover:bg-gray-100"
+                    >
+                      <Pencil className="h-4 w-4 text-gray-600"/>
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {activeStaffs.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center py-20 text-gray-400">
+                    등록된 직원이 없습니다.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* 수정 모달 (지점 변경 기능 추가됨) */}

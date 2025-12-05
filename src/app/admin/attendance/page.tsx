@@ -309,19 +309,19 @@ export default function AdminAttendancePage() {
   }
 
   return (
-    <div className="p-8 min-h-screen">
+    <div className="p-6 min-h-screen">
       {/* 3D 헤더 */}
       <div className="header-3d mb-8 animate-fade-in">
-        <div className="flex justify-between items-center relative z-10">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 relative z-10">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
+            <h1 className="text-4xl font-heading font-bold text-white mb-2 drop-shadow-lg">
               {gymName} - 출석 관리
             </h1>
-            <p className="text-white/90 text-lg">회원 출석 기록을 관리합니다</p>
+            <p className="text-white/90 text-lg font-sans">회원 출석 기록을 관리합니다</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="btn-3d bg-white text-[#2F80ED] hover:bg-white/90 font-semibold px-6 py-6 text-base">
+              <Button className="btn-3d bg-white text-[#2F80ED] hover:bg-white/90 font-semibold px-4 md:px-6 py-4 md:py-6 text-sm md:text-base w-full md:w-auto">
                 <span className="mr-2 text-xl">+</span>
                 출석 기록 등록
               </Button>

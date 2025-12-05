@@ -138,12 +138,12 @@ export default function SalesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6">
       {/* 헤더 */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-2xl font-bold">매출 현황</h2>
-          <p className="text-sm text-gray-500 mt-1">{gymName}</p>
+          <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">매출 현황</h2>
+          <p className="text-base text-gray-600 mt-2 font-sans">{gymName}</p>
         </div>
       </div>
 

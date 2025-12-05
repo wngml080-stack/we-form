@@ -460,12 +460,12 @@ export default function AdminMembersPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-8 p-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold">회원 관리</h2>
-          <p className="text-sm text-gray-500 mt-1">{gymName}</p>
+          <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">회원 관리</h2>
+          <p className="text-base text-gray-600 mt-2 font-sans">{gymName}</p>
         </div>
         <Button
           onClick={() => setIsCreateOpen(true)}

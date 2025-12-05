@@ -30,6 +30,7 @@ import {
 
 export default function StaffPage() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true); // 로딩 상태 추가
   const [schedules, setSchedules] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -67,23 +68,31 @@ export default function StaffPage() {
 
   useEffect(() => {
     const fetchMyInfo = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-      const { data: staff } = await supabase
-        .from("staffs")
-        .select("id, gym_id, company_id")
-        .eq("user_id", user.id)
-        .single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+        const { data: staff } = await supabase
+          .from("staffs")
+          .select("id, gym_id, company_id")
+          .eq("user_id", user.id)
+          .single();
 
-      if (staff) {
-        setMyStaffId(staff.id);
-        setMyGymId(staff.gym_id);
-        setMyCompanyId(staff.company_id);
-        fetchSchedules(staff.id);
-        fetchMembers(staff.gym_id, staff.company_id);
+        if (staff) {
+          setMyStaffId(staff.id);
+          setMyGymId(staff.gym_id);
+          setMyCompanyId(staff.company_id);
+          await Promise.all([
+            fetchSchedules(staff.id),
+            fetchMembers(staff.gym_id, staff.company_id)
+          ]);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchMyInfo();
@@ -362,20 +371,28 @@ export default function StaffPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-white">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2F80ED]"></div>
+        </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 relative">
-      <header className="bg-[#2F80ED] p-4 text-white shadow-md sticky top-0 z-10 flex justify-between items-center">
-        <h1 className="text-lg font-bold">We:form 스케줄러</h1>
+    <div className="min-h-screen bg-gray-50 relative font-sans">
+      <header className="bg-white/80 backdrop-blur-md p-4 sticky top-0 z-20 border-b flex justify-between items-center h-[60px]">
+        <h1 className="text-xl font-heading font-bold text-[#2F80ED]">We:form</h1>
         <Button 
             onClick={() => router.push('/login')} 
             variant="ghost" 
-            className="text-xs text-white/70 hover:text-white hover:bg-white/10"
+            className="text-xs text-gray-500 hover:text-[#2F80ED] h-8 px-2"
         >
             로그아웃
         </Button>
       </header>
 
-      <div className="p-2 bg-white pb-24">
+      <div className="p-0 bg-white min-h-[calc(100vh-60px)]">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
           initialView="listWeek" // 기본은 리스트 뷰
@@ -407,23 +424,16 @@ export default function StaffPage() {
           slotMaxTime="23:00:00" // 밤 11시까지 표시
           
           eventContent={(eventInfo) => (
-            <div className="flex justify-between items-center w-full px-1 overflow-hidden">
-              <div className="flex flex-col overflow-hidden">
-                <span className="font-bold text-sm truncate">{eventInfo.event.title}</span>
+            <div className="flex justify-between items-center w-full px-2 py-1 overflow-hidden border-l-4 rounded-r-md my-1 bg-gray-50" style={{ borderLeftColor: eventInfo.event.backgroundColor }}>
+              <div className="flex flex-col overflow-hidden py-1">
+                <span className="font-heading font-bold text-sm truncate text-gray-800">{eventInfo.event.title}</span>
                 {/* 리스트 뷰일 때만 시간 표시 */}
                 {eventInfo.view.type === 'listWeek' && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 mt-0.5 font-sans">
                     {eventInfo.timeText}
                     </span>
                 )}
               </div>
-              {/* 리스트 뷰일 때만 색상 원 표시 */}
-              {eventInfo.view.type === 'listWeek' && (
-                  <div 
-                    className="w-3 h-3 rounded-full flex-shrink-0 ml-1" 
-                    style={{backgroundColor: eventInfo.event.backgroundColor}}
-                  />
-              )}
             </div>
           )}
         />
@@ -431,9 +441,9 @@ export default function StaffPage() {
 
       <button
         onClick={handleFabClick}
-        className="fixed bottom-6 right-6 bg-[#F2994A] text-black p-4 rounded-full shadow-xl hover:bg-[#e27f34] transition-all active:scale-95 z-50 flex items-center justify-center"
+        className="fixed bottom-6 right-6 bg-[#2F80ED] text-white p-4 rounded-full shadow-lg hover:bg-[#1c6cd7] transition-all active:scale-95 z-50 flex items-center justify-center"
       >
-        <Plus className="w-8 h-8 stroke-[3px]" />
+        <Plus className="w-6 h-6 stroke-[3px]" />
       </button>
 
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
