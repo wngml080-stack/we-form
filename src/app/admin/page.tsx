@@ -170,13 +170,13 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-8 p-6 animate-fade-in">
+    <div className="space-y-6 p-4 md:p-6 animate-fade-in md:space-y-8">
       {/* 헤더 */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-heading font-bold bg-gradient-to-r from-[#2F80ED] to-[#764ba2] bg-clip-text text-transparent">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-4xl font-heading font-bold bg-gradient-to-r from-[#2F80ED] to-[#764ba2] bg-clip-text text-transparent">
           대시보드
         </h1>
-        <p className="text-base text-gray-600 mt-2 font-sans">{gymName}</p>
+        <p className="text-sm md:text-base text-gray-600 mt-2 font-sans">{gymName}</p>
       </div>
 
       {/* 통계 카드 */}

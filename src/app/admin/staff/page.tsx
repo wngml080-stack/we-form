@@ -174,10 +174,10 @@ export default function AdminStaffPage() {
   };
 
   return (
-    <div className="space-y-8 p-6">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">직원 리스트</h2>
-        <Button onClick={() => setIsCreateOpen(true)} className="bg-[#0F4C5C] hover:bg-[#09313b]">
+    <div className="space-y-6 p-4 md:p-6 md:space-y-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 md:mb-8">
+        <h2 className="text-2xl md:text-4xl font-heading font-bold text-[#2F80ED]">직원 리스트</h2>
+        <Button onClick={() => setIsCreateOpen(true)} className="w-full md:w-auto bg-[#0F4C5C] hover:bg-[#09313b]">
             <Plus className="mr-2 h-4 w-4"/> 직원 등록
         </Button>
       </div>

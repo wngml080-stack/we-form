@@ -12,6 +12,8 @@ import {
   Settings,
   LogOut,
   ClipboardCheck,
+  Menu,
+  X,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -22,6 +24,7 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [userRole, setUserRole] = useState(""); 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,6 +46,11 @@ export default function AdminLayout({
     getUserRole();
   }, []);
 
+  // 페이지 이동 시 모바일 메뉴 닫기
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
@@ -56,100 +64,158 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
-      {/* 사이드바: 3D 그라데이션 배경 */}
-      <aside className="w-64 bg-gradient-to-b from-[#2F80ED] via-[#667eea] to-[#764ba2] text-white flex flex-col relative overflow-hidden" style={{
-        boxShadow: '0 20px 60px -10px rgba(47, 128, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
+      {/* 상단 네비게이션 바 */}
+      <header className="bg-white border-b border-gray-200 relative z-50" style={{
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
       }}>
         {/* 3D 광택 효과 */}
-        <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none"></div>
+        <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/50 to-transparent pointer-events-none"></div>
 
-        <div className="p-6 relative z-10">
-          <h1 className="text-2xl font-heading font-bold flex items-center gap-2 drop-shadow-lg">
-            <CalendarDays className="text-[#F2994A] float-animation" />
-            We:form
-          </h1>
-          <p className="text-xs text-white/90 mt-2 ml-8 font-sans drop-shadow">센터 운영 관리자</p>
+        <div className="container mx-auto px-4 md:px-6 relative z-10">
+          <div className="flex items-center justify-between h-16">
+            {/* 로고 */}
+            <Link href="/admin" className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2F80ED] to-[#667eea] flex items-center justify-center shadow-lg">
+                <CalendarDays className="text-white h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-heading font-bold text-gray-800">We:form</h1>
+                <p className="text-xs text-gray-500">센터 운영 관리</p>
+              </div>
+            </Link>
+
+            {/* [Desktop] 메인 메뉴 & 로그아웃 */}
+            <div className="hidden md:flex items-center gap-4">
+              <nav className="flex items-center gap-2">
+                {/* System Admin 메뉴 */}
+                {userRole === "system_admin" && (
+                  <Link
+                    href="/admin/system"
+                    className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      pathname === "/admin/system"
+                        ? "bg-gradient-to-r from-[#2F80ED] to-[#667eea] text-white shadow-lg"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    고객사 관리
+                  </Link>
+                )}
+
+                {/* Company Admin 메뉴 */}
+                {(userRole === "company_admin" || userRole === "system_admin") && (
+                  <Link
+                    href="/admin/hq"
+                    className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      pathname === "/admin/hq"
+                        ? "bg-gradient-to-r from-[#2F80ED] to-[#667eea] text-white shadow-lg"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Building2 className="mr-2 h-4 w-4" />
+                    본사 관리
+                  </Link>
+                )}
+
+                {/* 일반 메뉴 */}
+                {menuItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                      pathname === item.href
+                        ? "bg-gradient-to-r from-[#2F80ED] to-[#667eea] text-white shadow-lg"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <item.icon className="mr-2 h-4 w-4" />
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
+
+              <div className="h-4 w-px bg-gray-300" />
+
+              {/* 로그아웃 버튼 */}
+              <button
+                onClick={handleLogout}
+                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                로그아웃
+              </button>
+            </div>
+
+            {/* [Mobile] 햄버거 버튼 */}
+            <button
+              className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="메뉴 열기"
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 relative z-10">
-            {/* 👑 1. 개발자(시스템 관리자) 전용 메뉴 */}
+        {/* [Mobile] 모바일 메뉴 드롭다운 */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-16 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg p-4 flex flex-col gap-2 animate-in slide-in-from-top-2">
             {userRole === "system_admin" && (
-                <>
-                    <div className="text-xs font-heading font-semibold text-white/60 px-4 mt-4 mb-2 uppercase tracking-wider drop-shadow">System</div>
-                    <Link
-                    href="/admin/system"
-                    className={`flex items-center px-4 py-3 text-sm font-sans font-medium rounded-xl transition-all ${
-                        pathname === "/admin/system"
-                        ? "bg-white text-[#2F80ED] shadow-lg transform scale-105"
-                        : "text-white/90 hover:bg-white/20 hover:scale-[1.02] hover:shadow-lg"
-                    }`}
-                    style={{
-                      boxShadow: pathname === "/admin/system"
-                        ? '0 8px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
-                        : 'none'
-                    }}
-                    >
-                    <Settings className="mr-3 h-5 w-5" />
-                    고객사(Company) 관리
-                    </Link>
-                    <div className="my-2 border-t border-white/20"></div>
-                </>
+              <Link
+                href="/admin/system"
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                  pathname === "/admin/system"
+                    ? "bg-blue-50 text-[#2F80ED]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <Settings className="mr-3 h-5 w-5" />
+                고객사 관리
+              </Link>
             )}
 
-            {/* 🏢 2. 회사 대표(Company Admin) 전용 메뉴 */}
             {(userRole === "company_admin" || userRole === "system_admin") && (
-                 <Link
-                 href="/admin/hq"
-                 className={`flex items-center px-4 py-3 text-sm font-sans font-medium rounded-xl transition-all ${
-                     pathname === "/admin/hq"
-                     ? "bg-white text-[#2F80ED] shadow-lg transform scale-105"
-                     : "text-white/90 hover:bg-white/20 hover:scale-[1.02] hover:shadow-lg"
-                 }`}
-                 style={{
-                   boxShadow: pathname === "/admin/hq"
-                     ? '0 8px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
-                     : 'none'
-                 }}
-                 >
-                 <Building2 className="mr-3 h-5 w-5" />
-                 본사(HQ) 관리
-                 </Link>
+              <Link
+                href="/admin/hq"
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                  pathname === "/admin/hq"
+                    ? "bg-blue-50 text-[#2F80ED]"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <Building2 className="mr-3 h-5 w-5" />
+                본사 관리
+              </Link>
             )}
 
-            {/* 3. 일반 메뉴 */}
-            <div className="text-xs font-heading font-semibold text-white/60 px-4 mt-4 mb-2 uppercase tracking-wider drop-shadow">Menu</div>
             {menuItems.map((item) => (
-                <Link
+              <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center px-4 py-3 text-sm font-sans font-medium rounded-xl transition-all ${
-                    pathname === item.href
-                    ? "bg-white text-[#2F80ED] shadow-lg transform scale-105"
-                    : "text-white/90 hover:bg-white/20 hover:scale-[1.02] hover:shadow-lg"
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                  pathname === item.href
+                    ? "bg-blue-50 text-[#2F80ED]"
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
-                style={{
-                  boxShadow: pathname === item.href
-                    ? '0 8px 16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.5)'
-                    : 'none'
-                }}
-                >
+              >
                 <item.icon className="mr-3 h-5 w-5" />
                 {item.name}
-                </Link>
+              </Link>
             ))}
-        </nav>
 
-        <div className="p-4 border-t border-white/20 relative z-10">
-          <button
-            onClick={handleLogout}
-            className="flex items-center w-full px-4 py-3 text-sm font-sans font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-xl transition-all hover:shadow-lg hover:scale-[1.02]"
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            로그아웃
-          </button>
-        </div>
-      </aside>
+            <div className="h-px bg-gray-200 my-1" />
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-all w-full text-left"
+            >
+              <LogOut className="mr-3 h-5 w-5" />
+              로그아웃
+            </button>
+          </div>
+        )}
+      </header>
 
       {/* 메인 콘텐츠 */}
       <main className="flex-1 overflow-auto">

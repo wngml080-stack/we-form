@@ -24,6 +24,7 @@ export default function AdminSchedulePage() {
   const [staffs, setStaffs] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
   const [gymName, setGymName] = useState("");
+  const [myGymId, setMyGymId] = useState<string | null>(null); // 지점 ID 상태 관리 추가
   
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(true);
@@ -41,20 +42,28 @@ export default function AdminSchedulePage() {
         if (!user) return router.push("/login");
 
         // 2. 내 정보(관리자) 가져오기
+        // .single()은 결과가 0개면 에러를 뱉으므로 .maybeSingle()로 변경하여 안전하게 처리
         const { data: me, error: meError } = await supabase
           .from("staffs")
           .select("id, gym_id, role, gyms(name)")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (meError || !me) {
-          console.error("❌ 관리자 정보 로딩 실패:", JSON.stringify(meError, null, 2));
-          alert("관리자 정보를 찾을 수 없습니다.");
+        if (meError) {
+          console.error("❌ 관리자 정보 조회 에러:", meError);
+          alert("관리자 정보를 불러오는 중 오류가 발생했습니다.");
           return;
+        }
+
+        if (!me) {
+          console.warn("⚠️ 관리자 데이터 없음 (staffs 테이블 확인 필요)");
+          alert("관리자 정보를 찾을 수 없습니다. 계정이 승인되었는지 확인해주세요.");
+          return router.push("/login");
         }
 
         // @ts-ignore
         setGymName(me.gyms?.name || "센터");
+        setMyGymId(me.gym_id); // 상태에 저장
 
         // 3. 우리 지점의 모든 직원 가져오기 (필터링용)
         const { data: staffList } = await supabase
@@ -114,16 +123,12 @@ export default function AdminSchedulePage() {
     }
   };
 
-  // 필터 변경 시 재조회
+  // 필터 변경 시 재조회 (새로고침 없이 처리)
   const handleFilterChange = (value: string) => {
     setSelectedStaffId(value);
-    // 현재 gym_id를 알기 위해 다시 조회하거나 state에 저장해둬야 함.
-    // 편의상 reload 하거나, gymId를 state로 관리하는 게 좋음.
-    // 여기서는 간단히 새로고침 없이 필터링만 적용하기 위해
-    // 기존 schedules에서 JS로 필터링하거나 다시 fetch 해야 함.
-    // (위 useEffect 로직상 gymId가 로컬 변수라, 여기선 window reload가 가장 확실)
-    window.location.reload(); 
-    // *실제로는 state에 gymId 저장해서 fetchSchedules(gymId, value) 호출하는 게 정석입니다.
+    if (myGymId) {
+      fetchSchedules(myGymId, value);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -138,12 +143,12 @@ export default function AdminSchedulePage() {
   if (isLoading) return <div className="p-10">일정을 불러오는 중...</div>;
 
   return (
-    <div className="space-y-6 h-full flex flex-col p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">{gymName} 통합 스케줄</h2>
+    <div className="space-y-6 h-full flex flex-col p-4 md:p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <h2 className="text-2xl md:text-4xl font-heading font-bold text-[#2F80ED]">{gymName} 통합 스케줄</h2>
         
         {/* 강사 필터 */}
-        <div className="w-[200px]">
+        <div className="w-full md:w-[200px]">
           <Select value={selectedStaffId} onValueChange={handleFilterChange}>
             <SelectTrigger>
               <SelectValue placeholder="강사 선택" />
@@ -159,7 +164,7 @@ export default function AdminSchedulePage() {
       </div>
 
       {/* 달력 영역 (번역 방지 클래스 추가) */}
-      <div className="flex-1 bg-white p-4 rounded-lg shadow notranslate overflow-hidden">
+      <div className="flex-1 bg-white p-2 md:p-4 rounded-lg shadow notranslate overflow-hidden">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
           initialView="dayGridMonth"

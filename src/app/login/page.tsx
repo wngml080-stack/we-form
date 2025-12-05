@@ -54,7 +54,9 @@ export default function LoginPage() {
       }
 
       // 3. 통과 시 페이지 이동
-      if (staffData.role === "admin") {
+      // system_admin, company_admin, admin -> /admin
+      // staff -> /staff
+      if (["system_admin", "company_admin", "admin"].includes(staffData.role)) {
         router.push("/admin");
       } else {
         router.push("/staff");

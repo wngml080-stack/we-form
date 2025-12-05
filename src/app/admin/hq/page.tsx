@@ -201,10 +201,10 @@ export default function HQPage() {
   };
 
   return (
-    <div className="space-y-8 p-6">
-      <div className="mb-8">
-        <h2 className="text-4xl font-heading font-bold text-[#2F80ED] mb-2">🏢 본사(HQ) 통합 관리</h2>
-        <p className="text-base text-gray-600 mt-2 font-sans">{companyName}</p>
+    <div className="space-y-6 p-4 md:p-6 md:space-y-8">
+      <div className="mb-6 md:mb-8">
+        <h2 className="text-2xl md:text-4xl font-heading font-bold text-[#2F80ED] mb-2">🏢 본사(HQ) 통합 관리</h2>
+        <p className="text-sm md:text-base text-gray-600 mt-2 font-sans">{companyName}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

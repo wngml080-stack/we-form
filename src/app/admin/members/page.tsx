@@ -30,6 +30,7 @@ export default function AdminMembersPage() {
   // 직원 목록 (등록자/담당트레이너 선택용)
   const [staffList, setStaffList] = useState<any[]>([]);
   const [myStaffId, setMyStaffId] = useState<string | null>(null);
+  const [myRole, setMyRole] = useState<string>("");
 
   // 폼 상태 (확장)
   const [createForm, setCreateForm] = useState({
@@ -459,34 +460,34 @@ export default function AdminMembersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* 헤더 */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">회원 관리</h2>
           <p className="text-sm text-gray-500 mt-1">{gymName}</p>
         </div>
         <Button
           onClick={() => setIsCreateOpen(true)}
-          className="bg-[#0F4C5C] hover:bg-[#09313b]"
+          className="w-full md:w-auto bg-[#0F4C5C] hover:bg-[#09313b]"
         >
           <UserPlus className="mr-2 h-4 w-4"/> 회원 등록
         </Button>
       </div>
 
       {/* 검색 및 필터 */}
-      <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="이름 또는 연락처로 검색..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 w-full"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[180px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-white">
@@ -499,7 +500,7 @@ export default function AdminMembersPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <div className="text-sm text-gray-500">전체 회원</div>
           <div className="text-2xl font-bold text-[#0F4C5C] mt-1">{members.length}명</div>
@@ -519,18 +520,18 @@ export default function AdminMembersPage() {
       </div>
 
       {/* 회원 목록 */}
-      <div className="rounded-md border bg-white">
-        <table className="w-full text-sm text-left">
+      <div className="rounded-md border bg-white overflow-x-auto">
+        <table className="w-full text-sm text-left min-w-[800px]">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-4 py-3">이름</th>
-              <th className="px-4 py-3">연락처</th>
-              <th className="px-4 py-3">생년월일</th>
-              <th className="px-4 py-3">성별</th>
-              <th className="px-4 py-3">활성 회원권</th>
-              <th className="px-4 py-3">잔여횟수</th>
-              <th className="px-4 py-3">상태</th>
-              <th className="px-4 py-3 text-right">관리</th>
+              <th className="px-4 py-3 whitespace-nowrap">이름</th>
+              <th className="px-4 py-3 whitespace-nowrap">연락처</th>
+              <th className="px-4 py-3 whitespace-nowrap">생년월일</th>
+              <th className="px-4 py-3 whitespace-nowrap">성별</th>
+              <th className="px-4 py-3 whitespace-nowrap">활성 회원권</th>
+              <th className="px-4 py-3 whitespace-nowrap">잔여횟수</th>
+              <th className="px-4 py-3 whitespace-nowrap">상태</th>
+              <th className="px-4 py-3 text-right whitespace-nowrap">관리</th>
             </tr>
           </thead>
           <tbody>
