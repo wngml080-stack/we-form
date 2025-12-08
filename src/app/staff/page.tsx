@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { classifyScheduleType } from "@/lib/schedule-utils";
 
 export default function StaffPage() {
   const router = useRouter();
@@ -54,6 +55,8 @@ export default function StaffPage() {
   const [myStaffId, setMyStaffId] = useState<string | null>(null);
   const [myGymId, setMyGymId] = useState<string | null>(null);
   const [myCompanyId, setMyCompanyId] = useState<string | null>(null);
+  const [myWorkStartTime, setMyWorkStartTime] = useState<string | null>(null);
+  const [myWorkEndTime, setMyWorkEndTime] = useState<string | null>(null);
 
   // 회원 관련
   const [members, setMembers] = useState<any[]>([]);
@@ -76,7 +79,7 @@ export default function StaffPage() {
         }
         const { data: staff } = await supabase
           .from("staffs")
-          .select("id, gym_id, company_id")
+          .select("id, gym_id, company_id, work_start_time, work_end_time")
           .eq("user_id", user.id)
           .single();
 
@@ -84,6 +87,8 @@ export default function StaffPage() {
           setMyStaffId(staff.id);
           setMyGymId(staff.gym_id);
           setMyCompanyId(staff.company_id);
+          setMyWorkStartTime(staff.work_start_time);
+          setMyWorkEndTime(staff.work_end_time);
           await Promise.all([
             fetchSchedules(staff.id),
             fetchMembers(staff.gym_id, staff.company_id)
@@ -244,6 +249,13 @@ export default function StaffPage() {
     const durationMin = parseInt(duration);
     const endDateTime = new Date(startDateTime.getTime() + durationMin * 60 * 1000);
 
+    // 스케줄 타입 자동 분류 (근무내/근무외/주말/공휴일)
+    const scheduleType = classifyScheduleType(
+      startDateTime,
+      myWorkStartTime,
+      myWorkEndTime
+    );
+
     const { error } = await supabase.from("schedules").insert({
       gym_id: myGymId,
       staff_id: myStaffId,
@@ -254,6 +266,8 @@ export default function StaffPage() {
       start_time: startDateTime.toISOString(),
       end_time: endDateTime.toISOString(),
       title: `${newMemberName} (${newClassType})`,
+      schedule_type: scheduleType,
+      counted_for_salary: true, // 기본값: 급여 계산 포함
     });
 
     if (error) {

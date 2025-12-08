@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import * as XLSX from "xlsx";
 
 export default function AdminSchedulePage() {
   const router = useRouter();
@@ -227,26 +228,68 @@ export default function AdminSchedulePage() {
     }
   };
 
+  // 엑셀 다운로드 함수
+  const handleExcelDownload = () => {
+    if (schedules.length === 0) {
+      alert("다운로드할 스케줄이 없습니다.");
+      return;
+    }
+
+    // 엑셀용 데이터 변환
+    const excelData = schedules.map((event) => ({
+      "날짜": new Date(event.start).toLocaleDateString('ko-KR'),
+      "시작시간": new Date(event.start).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      "종료시간": new Date(event.end).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      "강사명": event.extendedProps.staff_name || '-',
+      "회원명": event.extendedProps.member_name || '-',
+      "수업유형": event.extendedProps.type || '-',
+      "상태": getStatusLabel(event.extendedProps.status),
+      "메모": event.extendedProps.memo || ''
+    }));
+
+    // 워크북 생성
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "스케줄");
+
+    // 파일명 생성 (센터명_스케줄_날짜)
+    const today = new Date().toISOString().split('T')[0];
+    const fileName = `${gymName}_스케줄_${today}.xlsx`;
+
+    // 다운로드
+    XLSX.writeFile(workbook, fileName);
+  };
+
   if (isLoading) return <div className="p-10">일정을 불러오는 중...</div>;
 
   return (
     <div className="space-y-6 h-full flex flex-col p-4 md:p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h2 className="text-2xl md:text-4xl font-heading font-bold text-[#2F80ED]">{gymName} 통합 스케줄</h2>
-        
-        {/* 강사 필터 */}
-        <div className="w-full md:w-[200px]">
-          <Select value={selectedStaffId} onValueChange={handleFilterChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="강사 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 강사 보기</SelectItem>
-              {staffs.map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          {/* 강사 필터 */}
+          <div className="w-full md:w-[200px]">
+            <Select value={selectedStaffId} onValueChange={handleFilterChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="강사 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 강사 보기</SelectItem>
+                {staffs.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 엑셀 다운로드 버튼 */}
+          <Button
+            onClick={handleExcelDownload}
+            className="bg-green-600 hover:bg-green-700 text-white w-full md:w-auto"
+          >
+            📊 엑셀 다운로드
+          </Button>
         </div>
       </div>
 

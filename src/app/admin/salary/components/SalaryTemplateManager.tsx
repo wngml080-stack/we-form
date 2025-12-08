@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Edit, Settings } from "lucide-react";
+import { Plus, Trash2, Edit, Settings, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -108,9 +108,17 @@ export default function SalaryTemplateManager() {
                 .eq("gym_id", staff.gym_id)
                 .order("created_at", { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                // 에러 상세 로깅 (개발용)
+                console.error("Supabase Select Error:", error);
+                // 테이블이 존재하지 않는 경우 (42P01) 등에 대한 처리 가능
+                if (error.code === '42P01') {
+                    alert("급여 관련 테이블이 아직 생성되지 않은 것 같습니다. 관리자에게 문의하거나 SQL 마이그레이션을 실행해주세요.");
+                }
+                throw error;
+            }
             setTemplates(data || []);
-        } catch (error) {
+        } catch (error: any) {
             console.error("템플릿 로딩 실패:", error);
         } finally {
             setIsLoading(false);
@@ -224,28 +232,34 @@ export default function SalaryTemplateManager() {
                     if (comp) {
                         compId = comp.id;
                     } else {
-                        const { data: newComp } = await supabase.from("salary_components").insert({
+                        const { data: newComp, error: compError } = await supabase.from("salary_components").insert({
                             gym_id: staff.gym_id,
                             name: rule.name || "기타", 
                             type: rule.calculation_type === 'fixed' ? 'fixed' : 'computed'
                         }).select().single();
+                        
+                        if (compError) throw compError;
                         compId = newComp.id;
                     }
 
-                    const { data: newRuleData } = await supabase.from("salary_rules").insert({
+                    const { data: newRuleData, error: ruleError } = await supabase.from("salary_rules").insert({
                         gym_id: staff.gym_id,
                         component_id: compId,
                         name: rule.name || "새 항목",
                         calculation_type: rule.calculation_type,
                         default_parameters: rule.default_parameters
                     }).select().single();
+                    
+                    if (ruleError) throw ruleError;
                     ruleId = newRuleData.id;
                 }
 
-                await supabase.from("salary_template_items").insert({
+                const { error: itemError } = await supabase.from("salary_template_items").insert({
                     template_id: templateId,
                     rule_id: ruleId
                 });
+                
+                if (itemError) throw itemError;
             }
 
             setIsModalOpen(false);
@@ -269,6 +283,7 @@ export default function SalaryTemplateManager() {
                 </Button>
             </div>
 
+            {/* 템플릿 그리드 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {templates.map(template => (
                     <Card key={template.id} className="hover:shadow-lg transition-shadow border-2 hover:border-[#2F80ED]/30 cursor-pointer group relative overflow-hidden">
@@ -300,6 +315,22 @@ export default function SalaryTemplateManager() {
                     </Card>
                 ))}
             </div>
+
+            {/* 빈 상태 안내 (Empty State) */}
+            {templates.length === 0 && !isLoading && (
+                <div className="text-center py-12 bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg">
+                    <div className="bg-white p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                        <FileText className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">등록된 급여 템플릿이 없습니다</h3>
+                    <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+                        직원들에게 적용할 급여 체계(기본급, 수업료, 인센티브 등)를 미리 템플릿으로 만들어두세요.
+                    </p>
+                    <Button onClick={() => handleOpenModal()} className="bg-[#2F80ED] hover:bg-[#1e5bb8]">
+                        <Plus className="w-4 h-4 mr-2" /> 첫 번째 템플릿 만들기
+                    </Button>
+                </div>
+            )}
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
@@ -381,6 +412,7 @@ export default function SalaryTemplateManager() {
                                                         <SelectItem value="hourly">시급제 (시간 x 단가)</SelectItem>
                                                         <SelectItem value="percentage_total">총매출 인센티브 (%)</SelectItem>
                                                         <SelectItem value="percentage_personal">개인매출 인센티브 (%)</SelectItem>
+                                                        <SelectItem value="tiered">구간별 (매출 연동)</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>

@@ -22,6 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import { Plus, Trash2, Info, Calculator } from "lucide-react";
 
 type Staff = {
     id: string;
@@ -129,12 +130,30 @@ export default function SalaryAssignmentManager() {
         setPersonalParams({});
     };
 
-    const handleParamChange = (ruleId: string, key: string, value: string) => {
+    const handleParamChange = (ruleId: string, key: string, value: any) => {
+        // value가 배열(tiers)인 경우 그대로 저장
+        if (key === 'tiers') {
+            setPersonalParams((prev: any) => ({
+                ...prev,
+                [ruleId]: {
+                    ...prev[ruleId],
+                    [key]: value
+                }
+            }));
+            return;
+        }
+
+        // 숫자형 입력 처리
+        let finalValue = value;
+        if (typeof value === 'string' && !isNaN(Number(value)) && value !== "") {
+             finalValue = Number(value);
+        }
+        
         setPersonalParams((prev: any) => ({
             ...prev,
             [ruleId]: {
                 ...prev[ruleId],
-                [key]: parseFloat(value) || 0
+                [key]: finalValue
             }
         }));
     };
@@ -187,7 +206,7 @@ export default function SalaryAssignmentManager() {
             const name = rule.name.toLowerCase();
             if (name.includes("기본급") || name.includes("식대") || name.includes("지원금") || name.includes("근무")) {
                 groupedRules.basic.push(rule);
-            } else if (name.includes("pt") || name.includes("수업") || name.includes("ot") || name.includes("bc")) {
+            } else if (name.includes("pt") || name.includes("수업") || name.includes("ot") || name.includes("bc") || name.includes("레슨") || name.includes("프로")) {
                 groupedRules.class.push(rule);
             } else if (name.includes("인센") || name.includes("상금") || name.includes("보장") || name.includes("매출")) {
                 groupedRules.incentive.push(rule);
@@ -244,7 +263,7 @@ export default function SalaryAssignmentManager() {
             </div>
 
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#1A1D21] text-white border-none">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#1A1D21] text-white border-none">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold">급여 및 인센티브 설정</DialogTitle>
                         <p className="text-sm text-gray-400">{selectedStaff?.name} / {selectedStaff?.role}</p>
@@ -258,7 +277,7 @@ export default function SalaryAssignmentManager() {
                                 <SelectTrigger className="bg-[#2B2F36] border-gray-700 text-white">
                                     <SelectValue placeholder="템플릿을 선택하세요" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-[#2B2F36] border-gray-700 text-white">
+                                <SelectContent className="bg-white text-black">
                                     {templates.map(t => (
                                         <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                                     ))}
@@ -273,7 +292,7 @@ export default function SalaryAssignmentManager() {
                                     <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
                                         3. 기본 정보 및 지원금 설정
                                     </h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         {groupedRules.basic.map(rule => (
                                             <div key={rule.id} className="space-y-1">
                                                 <Label className="text-xs text-gray-400">{rule.name}</Label>
@@ -288,7 +307,7 @@ export default function SalaryAssignmentManager() {
                                     <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
                                         4. 수업료 설정
                                     </h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         {groupedRules.class.map(rule => (
                                             <div key={rule.id} className="space-y-1">
                                                 <Label className="text-xs text-gray-400">{rule.name}</Label>
@@ -303,7 +322,7 @@ export default function SalaryAssignmentManager() {
                                     <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2">
                                         5. 인센티브 및 특수 매출
                                     </h4>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         {groupedRules.incentive.map(rule => (
                                             <div key={rule.id} className="space-y-1">
                                                 <Label className="text-xs text-gray-400">{rule.name}</Label>
@@ -317,7 +336,7 @@ export default function SalaryAssignmentManager() {
                                 {groupedRules.others.length > 0 && (
                                     <div className="space-y-4">
                                         <h4 className="text-sm font-bold text-gray-300">기타 항목</h4>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4">
                                             {groupedRules.others.map(rule => (
                                                 <div key={rule.id} className="space-y-1">
                                                     <Label className="text-xs text-gray-400">{rule.name}</Label>
@@ -342,7 +361,9 @@ export default function SalaryAssignmentManager() {
 
                         {/* 간편 인센티브 계산기 */}
                         <Card className="p-4 bg-gray-100 border-none text-black">
-                            <h4 className="font-bold mb-4">간편 인센티브 계산기</h4>
+                            <h4 className="font-bold mb-4 flex items-center gap-2">
+                                <Calculator className="w-4 h-4" /> 간편 퍼센트 계산기
+                            </h4>
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 <div className="space-y-1">
                                     <Label className="text-xs text-gray-500">금액</Label>
@@ -364,7 +385,7 @@ export default function SalaryAssignmentManager() {
                                 </div>
                             </div>
                             <div className="text-center bg-gray-200 py-3 rounded font-bold text-lg text-[#F2994A]">
-                                계산된 인센티브: {calculatedIncentive} 원
+                                계산 결과: {calculatedIncentive} 원
                             </div>
                         </Card>
                     </div>
@@ -381,7 +402,7 @@ export default function SalaryAssignmentManager() {
     );
 }
 
-function renderParamInputs(rule: any, values: any, onChange: (key: string, value: string) => void) {
+function renderParamInputs(rule: any, values: any, onChange: (key: string, value: any) => void) {
     const inputClass = "bg-[#2B2F36] border-gray-700 text-white h-10";
     
     switch(rule.calculation_type) {
@@ -411,7 +432,125 @@ function renderParamInputs(rule: any, values: any, onChange: (key: string, value
                     <span className="absolute right-3 top-2.5 text-xs text-gray-500">%</span>
                 </div>
             );
+        case 'tiered':
+            return (
+                <TieredConfig 
+                    tiers={values.tiers || []} 
+                    onChange={(newTiers) => onChange('tiers', newTiers)} 
+                />
+            );
         default:
-            return <div className="text-xs text-gray-500 py-2">설정 불필요</div>;
+            return <div className="text-xs text-gray-500 py-2">설정 불필요 (자동 계산 혹은 기본값 사용)</div>;
     }
+}
+
+// 구간별 설정 컴포넌트
+function TieredConfig({ tiers, onChange }: { tiers: any[], onChange: (tiers: any[]) => void }) {
+    const [testSales, setTestSales] = useState<string>("");
+
+    const handleAddTier = () => {
+        onChange([...tiers, { min: 0, max: null, value: 0 }]);
+    };
+
+    const handleRemoveTier = (index: number) => {
+        const newTiers = tiers.filter((_, i) => i !== index);
+        onChange(newTiers);
+    };
+
+    const handleUpdateTier = (index: number, field: string, value: any) => {
+        const newTiers = [...tiers];
+        newTiers[index] = { ...newTiers[index], [field]: value === "" ? null : Number(value) };
+        onChange(newTiers);
+    };
+
+    // 테스트 계산 로직
+    const sales = parseFloat(testSales || "0");
+    // min 오름차순 정렬 후, 조건에 맞는 마지막(가장 큰 min) 구간 찾기 OR 순차적으로 확인
+    // 여기서는 min이 작은 순서대로 정렬되어 있다고 가정하고 로직 수행
+    const sortedTiers = [...(tiers || [])].sort((a, b) => (a.min || 0) - (b.min || 0));
+    
+    let matchedValue = 0;
+    // 매출이 min보다 크거나 같고, max보다 작거나(max가 있으면) 같은 구간 찾기
+    // 보통 구간은 순차적이므로, sales >= min 을 만족하는 가장 큰 min을 찾으면 됨
+    const activeTier = sortedTiers.slice().reverse().find(t => sales >= (t.min || 0) && (t.max === null || t.max === 0 || sales < t.max));
+    
+    if (activeTier) matchedValue = activeTier.value;
+
+    return (
+        <div className="space-y-3 bg-[#22252b] p-3 rounded border border-gray-700">
+            <div className="flex justify-between items-center">
+                <Badge variant="secondary" className="bg-[#2F80ED]/20 text-[#2F80ED] border-none">
+                    자동 계산 적용됨
+                </Badge>
+                <Button size="sm" variant="ghost" onClick={handleAddTier} className="h-6 text-xs text-[#2F80ED] hover:text-white">
+                    <Plus className="w-3 h-3 mr-1" /> 구간 추가
+                </Button>
+            </div>
+
+            <div className="space-y-2">
+                {tiers.map((tier, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                        <div className="grid grid-cols-3 gap-2 flex-1">
+                            <div className="relative">
+                                <Input 
+                                    placeholder="최소 매출 (이상)" 
+                                    className="h-8 bg-[#2B2F36] border-gray-600 text-white text-xs"
+                                    value={tier.min || ""}
+                                    type="number"
+                                    onChange={e => handleUpdateTier(idx, 'min', e.target.value)}
+                                />
+                                <span className="absolute right-2 top-2 text-[10px] text-gray-500">이상</span>
+                            </div>
+                            <div className="relative">
+                                <Input 
+                                    placeholder="최대 매출 (미만)" 
+                                    className="h-8 bg-[#2B2F36] border-gray-600 text-white text-xs"
+                                    value={tier.max || ""}
+                                    type="number"
+                                    onChange={e => handleUpdateTier(idx, 'max', e.target.value)}
+                                />
+                                <span className="absolute right-2 top-2 text-[10px] text-gray-500">미만</span>
+                            </div>
+                            <div className="relative">
+                                <Input 
+                                    placeholder="적용 금액/단가" 
+                                    className="h-8 bg-[#2B2F36] border-gray-600 text-white text-xs font-bold text-[#F2994A]"
+                                    value={tier.value || ""}
+                                    type="number"
+                                    onChange={e => handleUpdateTier(idx, 'value', e.target.value)}
+                                />
+                                <span className="absolute right-2 top-2 text-[10px] text-gray-500">원</span>
+                            </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-400" onClick={() => handleRemoveTier(idx)}>
+                            <Trash2 className="w-3 h-3" />
+                        </Button>
+                    </div>
+                ))}
+                {tiers.length === 0 && (
+                    <div className="text-xs text-center text-gray-500 py-2">구간을 추가해주세요 (예: 0 ~ 1000만원 : 50만원)</div>
+                )}
+            </div>
+
+            {/* 테스트 섹션 */}
+            <div className="mt-2 pt-2 border-t border-gray-700 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2 flex-1">
+                    <Info className="w-3 h-3 text-gray-500" />
+                    <span className="text-xs text-gray-400">매출 기준: 개인 매출 (또는 설정)</span>
+                </div>
+                <div className="flex items-center gap-2 bg-[#1A1D21] px-3 py-1 rounded border border-gray-700">
+                    <span className="text-xs text-gray-400">Sim:</span>
+                    <Input 
+                        className="h-6 w-24 bg-transparent border-none text-xs text-white p-0 focus-visible:ring-0 text-right"
+                        placeholder="예상 매출 입력"
+                        value={testSales}
+                        onChange={e => setTestSales(e.target.value)}
+                        type="number"
+                    />
+                    <span className="text-xs text-gray-500">→</span>
+                    <span className="text-xs font-bold text-[#F2994A]">{matchedValue.toLocaleString()} 원</span>
+                </div>
+            </div>
+        </div>
+    );
 }
