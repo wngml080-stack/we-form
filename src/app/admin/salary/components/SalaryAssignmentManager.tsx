@@ -167,9 +167,9 @@ export default function SalaryAssignmentManager() {
             setIsModalOpen(false);
             fetchData();
             alert("저장되었습니다.");
-        } catch (error) {
-            console.error(error);
-            alert("저장 실패");
+        } catch (error: any) {
+            console.error("상세 에러:", error);
+            alert(`저장 실패: ${error.message || JSON.stringify(error)}`);
         }
     };
 

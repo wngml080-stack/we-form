@@ -38,6 +38,25 @@ type SalaryTemplate = {
     items?: { rule: SalaryRule }[];
 };
 
+// 프리셋 정의
+const PRESET_RULES = [
+    { label: "기본급", value: "기본급", defaultType: "fixed" },
+    { label: "식대", value: "식대", defaultType: "fixed" },
+    { label: "영업지원금", value: "영업지원금", defaultType: "fixed" },
+    { label: "직책수당 (팀장)", value: "직책수당 (팀장)", defaultType: "fixed" },
+    { label: "매니저 수당", value: "매니저 수당", defaultType: "fixed" },
+    { label: "PT IN (근무내)", value: "PT IN (근무내)", defaultType: "hourly" },
+    { label: "PT OUT (근무외)", value: "PT OUT (근무외)", defaultType: "hourly" },
+    { label: "PT (주말)", value: "PT (주말)", defaultType: "hourly" },
+    { label: "BC (바디챌린지)", value: "BC (바디챌린지)", defaultType: "hourly" },
+    { label: "본사 A클래스 상금", value: "본사 A클래스 상금", defaultType: "fixed" },
+    { label: "상,하반기&지사상금", value: "상,하반기&지사상금", defaultType: "fixed" },
+    { label: "맞다이 승리 인센", value: "맞다이 승리 인센", defaultType: "fixed" },
+    { label: "팀장 승리 인센", value: "팀장 승리 인센", defaultType: "fixed" },
+    { label: "바디챌린지 상금", value: "바디챌린지 상금", defaultType: "fixed" },
+    { label: "기타", value: "기타", defaultType: "fixed" },
+];
+
 export default function SalaryTemplateManager() {
     const [templates, setTemplates] = useState<SalaryTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -116,28 +135,6 @@ export default function SalaryTemplateManager() {
         setIsModalOpen(true);
     };
 
-// 프리셋 정의
-const PRESET_RULES = [
-    { label: "기본급", value: "기본급", defaultType: "fixed" },
-    { label: "식대", value: "식대", defaultType: "fixed" },
-    { label: "영업지원금", value: "영업지원금", defaultType: "fixed" },
-    { label: "직책수당 (팀장)", value: "직책수당 (팀장)", defaultType: "fixed" },
-    { label: "매니저 수당", value: "매니저 수당", defaultType: "fixed" },
-    { label: "PT IN (근무내)", value: "PT IN (근무내)", defaultType: "hourly" },
-    { label: "PT OUT (근무외)", value: "PT OUT (근무외)", defaultType: "hourly" },
-    { label: "PT (주말)", value: "PT (주말)", defaultType: "hourly" },
-    { label: "BC (바디챌린지)", value: "BC (바디챌린지)", defaultType: "hourly" },
-    { label: "본사 A클래스 상금", value: "본사 A클래스 상금", defaultType: "fixed" },
-    { label: "상,하반기&지사상금", value: "상,하반기&지사상금", defaultType: "fixed" },
-    { label: "맞다이 승리 인센", value: "맞다이 승리 인센", defaultType: "fixed" },
-    { label: "팀장 승리 인센", value: "팀장 승리 인센", defaultType: "fixed" },
-    { label: "바디챌린지 상금", value: "바디챌린지 상금", defaultType: "fixed" },
-    { label: "기타", value: "기타", defaultType: "fixed" },
-];
-
-export default function SalaryTemplateManager() {
-    // ... (기존 state 유지)
-
     const handleAddRule = () => {
         const newRule: SalaryRule = {
             name: "", // 이름 비워둠 (선택 유도)
@@ -169,8 +166,177 @@ export default function SalaryTemplateManager() {
         }
     };
 
-    // ... (중간 생략)
+    const handleUpdateRule = (index: number, field: keyof SalaryRule, value: any) => {
+        const newRules = [...editingTemplate.rules];
+        newRules[index] = { ...newRules[index], [field]: value };
+        setEditingTemplate(prev => ({ ...prev, rules: newRules }));
+    };
 
+    const handleRemoveRule = (index: number) => {
+        const newRules = editingTemplate.rules.filter((_, i) => i !== index);
+        setEditingTemplate(prev => ({ ...prev, rules: newRules }));
+    };
+
+    const handleSave = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            const { data: staff } = await supabase.from("staffs").select("gym_id").eq("user_id", user.id).single();
+            if (!staff) return;
+
+            // 1. 템플릿 저장/수정
+            let templateId = editingTemplate.id;
+
+            if (!templateId) {
+                const { data, error } = await supabase
+                    .from("salary_templates")
+                    .insert({
+                        gym_id: staff.gym_id,
+                        name: editingTemplate.name,
+                        description: editingTemplate.description
+                    })
+                    .select()
+                    .single();
+                if (error) throw error;
+                templateId = data.id;
+            } else {
+                await supabase
+                    .from("salary_templates")
+                    .update({
+                        name: editingTemplate.name,
+                        description: editingTemplate.description
+                    })
+                    .eq("id", templateId);
+            }
+
+            // 2. 규칙 저장
+            if (editingTemplate.id) {
+                await supabase.from("salary_template_items").delete().eq("template_id", templateId);
+            }
+
+            for (const rule of editingTemplate.rules) {
+                let ruleId = rule.id;
+                
+                if (!ruleId) {
+                    let compId;
+                    const { data: comp } = await supabase.from("salary_components").select("id").eq("gym_id", staff.gym_id).eq("name", rule.name).single();
+                    
+                    if (comp) {
+                        compId = comp.id;
+                    } else {
+                        const { data: newComp } = await supabase.from("salary_components").insert({
+                            gym_id: staff.gym_id,
+                            name: rule.name || "기타", 
+                            type: rule.calculation_type === 'fixed' ? 'fixed' : 'computed'
+                        }).select().single();
+                        compId = newComp.id;
+                    }
+
+                    const { data: newRuleData } = await supabase.from("salary_rules").insert({
+                        gym_id: staff.gym_id,
+                        component_id: compId,
+                        name: rule.name || "새 항목",
+                        calculation_type: rule.calculation_type,
+                        default_parameters: rule.default_parameters
+                    }).select().single();
+                    ruleId = newRuleData.id;
+                }
+
+                await supabase.from("salary_template_items").insert({
+                    template_id: templateId,
+                    rule_id: ruleId
+                });
+            }
+
+            setIsModalOpen(false);
+            fetchTemplates();
+            alert("저장되었습니다.");
+
+        } catch (error: any) {
+            console.error("상세 에러:", error);
+            alert(`저장 실패: ${error.message || JSON.stringify(error)}`);
+        }
+    };
+
+    if (isLoading) return <div>로딩 중...</div>;
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-gray-700">급여 템플릿 목록</h3>
+                <Button onClick={() => handleOpenModal()} className="bg-[#2F80ED] hover:bg-[#1e5bb8]">
+                    <Plus className="w-4 h-4 mr-2" /> 새 템플릿 만들기
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {templates.map(template => (
+                    <Card key={template.id} className="hover:shadow-lg transition-shadow border-2 hover:border-[#2F80ED]/30 cursor-pointer group relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-[#2F80ED]"></div>
+                        <CardHeader>
+                            <CardTitle className="flex justify-between items-center">
+                                <span>{template.name}</span>
+                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleOpenModal(template); }}>
+                                    <Edit className="w-4 h-4 text-gray-400 hover:text-[#2F80ED]" />
+                                </Button>
+                            </CardTitle>
+                            <CardDescription>{template.description || "설명 없음"}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-2">
+                                {template.items?.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded border">
+                                        <span className="font-medium">{item.rule.name}</span>
+                                        <Badge variant="secondary" className="text-xs">
+                                            {getCalculationLabel(item.rule.calculation_type)}
+                                        </Badge>
+                                    </div>
+                                ))}
+                                {(!template.items || template.items.length === 0) && (
+                                    <div className="text-xs text-gray-400 text-center py-2">설정된 규칙이 없습니다.</div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
+                    <DialogHeader>
+                        <DialogTitle>{editingTemplate.id ? "템플릿 수정" : "새 템플릿 생성"}</DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="space-y-6 py-4">
+                        <div className="space-y-2">
+                            <Label>템플릿 이름</Label>
+                            <Input 
+                                value={editingTemplate.name} 
+                                onChange={e => setEditingTemplate({...editingTemplate, name: e.target.value})}
+                                placeholder="예: 정규직 트레이너 A형"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>설명</Label>
+                            <Input 
+                                value={editingTemplate.description} 
+                                onChange={e => setEditingTemplate({...editingTemplate, description: e.target.value})}
+                                placeholder="템플릿에 대한 간단한 설명"
+                            />
+                        </div>
+
+                        <div className="border-t pt-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <Label className="text-base font-bold">급여 구성요소 (Rules)</Label>
+                                <Button size="sm" variant="outline" onClick={handleAddRule}>
+                                    <Plus className="w-4 h-4 mr-1" /> 항목 추가
+                                </Button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                {editingTemplate.rules.map((rule, index) => (
+                                    <div key={index} className="flex gap-4 items-start bg-gray-50 p-4 rounded-lg border relative group">
+                                        <div className="grid grid-cols-2 gap-4 flex-1">
                                             <div className="space-y-1">
                                                 <Label className="text-xs text-gray-500">항목 선택</Label>
                                                 <div className="flex gap-2">
@@ -178,10 +344,10 @@ export default function SalaryTemplateManager() {
                                                         value={PRESET_RULES.some(p => p.value === rule.name) ? rule.name : "custom"} 
                                                         onValueChange={(val) => handlePresetChange(index, val)}
                                                     >
-                                                        <SelectTrigger className="h-9 w-[140px]">
+                                                        <SelectTrigger className="h-9 w-[140px] bg-white">
                                                             <SelectValue placeholder="항목 선택" />
                                                         </SelectTrigger>
-                                                        <SelectContent>
+                                                        <SelectContent className="bg-white">
                                                             {PRESET_RULES.map(preset => (
                                                                 <SelectItem key={preset.value} value={preset.value}>
                                                                     {preset.label}
@@ -196,7 +362,7 @@ export default function SalaryTemplateManager() {
                                                             value={rule.name}
                                                             onChange={e => handleUpdateRule(index, 'name', e.target.value)}
                                                             placeholder="항목명 입력"
-                                                            className="h-9 flex-1"
+                                                            className="h-9 flex-1 bg-white"
                                                         />
                                                     )}
                                                 </div>
@@ -207,10 +373,10 @@ export default function SalaryTemplateManager() {
                                                     value={rule.calculation_type}
                                                     onValueChange={val => handleUpdateRule(index, 'calculation_type', val)}
                                                 >
-                                                    <SelectTrigger className="h-9">
+                                                    <SelectTrigger className="h-9 bg-white">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent>
+                                                    <SelectContent className="bg-white">
                                                         <SelectItem value="fixed">고정급 (매월 고정)</SelectItem>
                                                         <SelectItem value="hourly">시급제 (시간 x 단가)</SelectItem>
                                                         <SelectItem value="percentage_total">총매출 인센티브 (%)</SelectItem>
@@ -258,4 +424,3 @@ function getCalculationLabel(type: string) {
         default: return type;
     }
 }
-
