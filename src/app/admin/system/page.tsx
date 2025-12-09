@@ -175,10 +175,12 @@ export default function SystemAdminPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6 md:space-y-8">
-      <div className="mb-6 md:mb-8">
-        <h2 className="text-2xl md:text-4xl font-heading font-bold text-[#2F80ED] mb-2">🛠️ 시스템 관리자 (We:form 본사)</h2>
-        <p className="text-sm md:text-base text-gray-600 font-sans">서비스를 이용 중인 고객사(Company)를 관리합니다. 회사 → 지점 → 직원 순으로 펼쳐보세요.</p>
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">시스템 관리</h1>
+          <p className="text-gray-500 mt-2 font-medium">서비스를 이용 중인 고객사를 관리합니다</p>
+        </div>
       </div>
 
       <div className="space-y-3">

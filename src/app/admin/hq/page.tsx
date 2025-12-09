@@ -201,16 +201,18 @@ export default function HQPage() {
   };
 
   return (
-    <div className="space-y-6 p-4 md:p-6 md:space-y-8">
-      <div className="mb-6 md:mb-8">
-        <h2 className="text-2xl md:text-4xl font-heading font-bold text-[#2F80ED] mb-2">🏢 본사(HQ) 통합 관리</h2>
-        <p className="text-sm md:text-base text-gray-600 mt-2 font-sans">{companyName}</p>
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">본사 관리</h1>
+          <p className="text-gray-500 mt-2 font-medium">{companyName}의 지점과 직원을 관리합니다</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 1. 대기자 */}
         <Card className="border-t-4 border-t-amber-500 shadow-lg h-fit">
-          <CardHeader><CardTitle>📝 가입 승인 및 발령 대기 ({pendingStaffs.length})</CardTitle></CardHeader>
+          <CardHeader><CardTitle>가입 승인 및 발령 대기 ({pendingStaffs.length})</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {pendingStaffs.length === 0 ? <p className="text-gray-400 text-center py-4">대기 인원 없음</p> : 
                 pendingStaffs.map((staff) => (

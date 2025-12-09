@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "lucide-react";
 
 interface AttendanceStatus {
   code: string;
@@ -103,7 +104,7 @@ export default function AdminAttendancePage() {
           .single();
 
         if (meError || !me) {
-          console.error("❌ 직원 정보 로딩 실패:", meError);
+          console.error("직원 정보 로딩 실패:", meError);
           alert("직원 정보를 찾을 수 없습니다.");
           return;
         }
@@ -143,7 +144,7 @@ export default function AdminAttendancePage() {
         setStatuses(result.data);
       }
     } catch (error) {
-      console.error("❌ 출석 상태 조회 실패:", error);
+      console.error("출석 상태 조회 실패:", error);
     }
   };
 
@@ -160,7 +161,7 @@ export default function AdminAttendancePage() {
       if (error) throw error;
       if (data) setSchedules(data);
     } catch (error) {
-      console.error("❌ 스케줄 조회 실패:", error);
+      console.error("스케줄 조회 실패:", error);
     }
   };
 
@@ -176,7 +177,7 @@ export default function AdminAttendancePage() {
       if (error) throw error;
       if (data) setMembers(data);
     } catch (error) {
-      console.error("❌ 회원 조회 실패:", error);
+      console.error("회원 조회 실패:", error);
     }
   };
 
@@ -195,7 +196,7 @@ export default function AdminAttendancePage() {
         setRecords(result.data);
       }
     } catch (error) {
-      console.error("❌ 출석 기록 조회 실패:", error);
+      console.error("출석 기록 조회 실패:", error);
     }
   };
 
@@ -250,7 +251,7 @@ export default function AdminAttendancePage() {
         throw new Error(result.error);
       }
     } catch (error: any) {
-      console.error("❌ 출석 기록 생성 실패:", error);
+      console.error("출석 기록 생성 실패:", error);
       alert(`출석 기록 등록 실패: ${error.message}`);
     }
   };
@@ -273,7 +274,7 @@ export default function AdminAttendancePage() {
         throw new Error(result.error);
       }
     } catch (error: any) {
-      console.error("❌ 출석 상태 변경 실패:", error);
+      console.error("출석 상태 변경 실패:", error);
       alert(`출석 상태 변경 실패: ${error.message}`);
     }
   };
@@ -295,229 +296,200 @@ export default function AdminAttendancePage() {
         throw new Error(result.error);
       }
     } catch (error: any) {
-      console.error("❌ 출석 기록 삭제 실패:", error);
+      console.error("출석 기록 삭제 실패:", error);
       alert(`출석 기록 삭제 실패: ${error.message}`);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>로딩 중...</p>
+      <div className="flex items-center justify-center h-96">
+        <div className="w-8 h-8 border-4 border-blue-200 border-t-[#2F80ED] rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 min-h-screen">
-      {/* 3D 헤더 */}
-      <div className="header-3d mb-8 animate-fade-in">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 relative z-10">
-          <div>
-            <h1 className="text-4xl font-heading font-bold text-white mb-2 drop-shadow-lg">
-              {gymName} - 출석 관리
-            </h1>
-            <p className="text-white/90 text-lg font-sans">회원 출석 기록을 관리합니다</p>
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="btn-3d bg-white text-[#2F80ED] hover:bg-white/90 font-semibold px-4 md:px-6 py-4 md:py-6 text-sm md:text-base w-full md:w-auto">
-                <span className="mr-2 text-xl">+</span>
-                출석 기록 등록
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="card-3d max-w-2xl">
-              <DialogHeader className="border-b pb-4 mb-4">
-                <DialogTitle className="text-2xl font-bold text-gray-800 flex items-center">
-                  <span className="mr-2 text-3xl">✨</span>
-                  출석 기록 등록
-                </DialogTitle>
-                <p className="text-sm text-gray-500 mt-2">새로운 출석 기록을 등록하세요</p>
-              </DialogHeader>
-              <form onSubmit={handleCreateRecord} className="space-y-6">
-                <div>
-                  <Label htmlFor="schedule_id" className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <span className="mr-1">📅</span>
-                    스케줄
-                  </Label>
-                  <Select
-                    value={newRecord.schedule_id}
-                    onValueChange={(value) =>
-                      setNewRecord({ ...newRecord, schedule_id: value })
-                    }
-                  >
-                    <SelectTrigger className="input-3d mt-1">
-                      <SelectValue placeholder="스케줄 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {schedules.map((schedule) => (
-                        <SelectItem key={schedule.id} value={schedule.id}>
-                          {schedule.title || schedule.type} -{" "}
-                          {new Date(schedule.start_time).toLocaleString("ko-KR")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="member_id" className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <span className="mr-1">👤</span>
-                    회원
-                  </Label>
-                  <Select
-                    value={newRecord.member_id}
-                    onValueChange={(value) =>
-                      setNewRecord({ ...newRecord, member_id: value })
-                    }
-                  >
-                    <SelectTrigger className="input-3d mt-1">
-                      <SelectValue placeholder="회원 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {members.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                          {member.name} ({member.phone})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="status_code" className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <span className="mr-1">✅</span>
-                    출석 상태
-                  </Label>
-                  <Select
-                    value={newRecord.status_code}
-                    onValueChange={(value) =>
-                      setNewRecord({ ...newRecord, status_code: value })
-                    }
-                  >
-                    <SelectTrigger className="input-3d mt-1">
-                      <SelectValue placeholder="상태 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statuses.map((status) => (
-                        <SelectItem key={status.code} value={status.code}>
-                          {status.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="memo" className="text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                    <span className="mr-1">📝</span>
-                    메모 (선택)
-                  </Label>
-                  <Textarea
-                    id="memo"
-                    value={newRecord.memo}
-                    onChange={(e) =>
-                      setNewRecord({ ...newRecord, memo: e.target.value })
-                    }
-                    placeholder="특이사항이나 메모를 입력하세요"
-                    className="input-3d mt-1 min-h-[100px]"
-                  />
-                </div>
-
-                <div className="flex gap-4 pt-4 border-t">
-                  <Button type="submit" className="btn-3d flex-1 bg-[#2F80ED] hover:bg-[#1e5bb8] text-white py-6 text-base">
-                    <span className="mr-2">✨</span>
-                    등록하기
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    className="btn-3d flex-1 bg-gray-50 hover:bg-gray-100 py-6 text-base"
-                  >
-                    <span className="mr-2">❌</span>
-                    취소
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+      {/* 헤더 */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">출석 관리</h1>
+          <p className="text-gray-500 mt-2 font-medium">{gymName}의 회원 출석 기록을 관리합니다</p>
         </div>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold px-6 py-2 shadow-sm">
+              출석 기록 등록
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-white max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-gray-900">출석 기록 등록</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateRecord} className="space-y-4">
+              <div>
+                <Label htmlFor="schedule_id" className="text-sm font-semibold text-gray-700">스케줄</Label>
+                <Select
+                  value={newRecord.schedule_id}
+                  onValueChange={(value) =>
+                    setNewRecord({ ...newRecord, schedule_id: value })
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="스케줄 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schedules.map((schedule) => (
+                      <SelectItem key={schedule.id} value={schedule.id}>
+                        {schedule.title || schedule.type} - {new Date(schedule.start_time).toLocaleString("ko-KR")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="member_id" className="text-sm font-semibold text-gray-700">회원</Label>
+                <Select
+                  value={newRecord.member_id}
+                  onValueChange={(value) =>
+                    setNewRecord({ ...newRecord, member_id: value })
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="회원 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name} ({member.phone})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="status_code" className="text-sm font-semibold text-gray-700">출석 상태</Label>
+                <Select
+                  value={newRecord.status_code}
+                  onValueChange={(value) =>
+                    setNewRecord({ ...newRecord, status_code: value })
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="상태 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((status) => (
+                      <SelectItem key={status.code} value={status.code}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="memo" className="text-sm font-semibold text-gray-700">메모 (선택)</Label>
+                <Textarea
+                  id="memo"
+                  value={newRecord.memo}
+                  onChange={(e) =>
+                    setNewRecord({ ...newRecord, memo: e.target.value })
+                  }
+                  placeholder="특이사항이나 메모를 입력하세요"
+                  className="mt-1"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button type="submit" className="flex-1 bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold">
+                  등록하기
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  className="flex-1"
+                >
+                  취소
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* 3D 필터 카드 */}
-      <div className="card-3d p-6 mb-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-          <span className="mr-2 text-[#2F80ED]">🔍</span>
-          필터 옵션
-        </h3>
-        <div className="grid grid-cols-3 gap-6">
+      {/* 필터 카드 */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">필터 옵션</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <Label className="text-sm font-semibold text-gray-700 mb-2 block">스케줄 필터</Label>
-          <Select value={selectedSchedule} onValueChange={setSelectedSchedule}>
-            <SelectTrigger className="input-3d border-gray-200">
-              <SelectValue placeholder="전체 스케줄" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 스케줄</SelectItem>
-              {schedules.map((schedule) => (
-                <SelectItem key={schedule.id} value={schedule.id}>
-                  {schedule.title || schedule.type} -{" "}
-                  {new Date(schedule.start_time).toLocaleDateString("ko-KR")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <Select value={selectedSchedule} onValueChange={setSelectedSchedule}>
+              <SelectTrigger>
+                <SelectValue placeholder="전체 스케줄" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 스케줄</SelectItem>
+                {schedules.map((schedule) => (
+                  <SelectItem key={schedule.id} value={schedule.id}>
+                    {schedule.title || schedule.type} - {new Date(schedule.start_time).toLocaleDateString("ko-KR")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div>
-          <Label className="text-sm font-semibold text-gray-700 mb-2 block">시작 날짜</Label>
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="input-3d border-gray-200"
-          />
-        </div>
+          <div>
+            <Label className="text-sm font-semibold text-gray-700 mb-2 block">시작 날짜</Label>
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
 
-        <div>
-          <Label className="text-sm font-semibold text-gray-700 mb-2 block">종료 날짜</Label>
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="input-3d border-gray-200"
-          />
-        </div>
+          <div>
+            <Label className="text-sm font-semibold text-gray-700 mb-2 block">종료 날짜</Label>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      {/* 3D 출석 기록 테이블 */}
-      <div className="table-3d animate-fade-in" style={{ animationDelay: '0.2s' }}>
+      {/* 출석 기록 테이블 */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-gray-50 to-blue-50/30 border-b-2 border-[#2F80ED]/10">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  📅 출석 일시
+                  출석 일시
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  👤 회원명
+                  회원명
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  📋 스케줄
+                  스케줄
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  🎯 담당 직원
+                  담당 직원
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  ✅ 상태
+                  상태
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  📝 메모
+                  메모
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  ⚙️ 작업
+                  작업
                 </th>
               </tr>
             </thead>
@@ -526,32 +498,21 @@ export default function AdminAttendancePage() {
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center text-gray-400">
-                      <span className="text-6xl mb-4">📭</span>
+                      <Calendar className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">출석 기록이 없습니다.</p>
                       <p className="text-sm mt-1">새로운 출석 기록을 등록해주세요.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                records.map((record, index) => (
-                  <tr
-                    key={record.id}
-                    className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/30 transition-all duration-300 group"
-                    style={{
-                      animation: 'fadeIn 0.5s ease-out',
-                      animationDelay: `${index * 0.05}s`,
-                      animationFillMode: 'backwards'
-                    }}
-                  >
+                records.map((record) => (
+                  <tr key={record.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <div className="flex items-center">
-                        <span className="mr-2">🕐</span>
-                        {new Date(record.attended_at).toLocaleString("ko-KR")}
-                      </div>
+                      {new Date(record.attended_at).toLocaleString("ko-KR")}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2F80ED] to-[#667eea] flex items-center justify-center text-white font-bold mr-3 shadow-lg">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-[#2F80ED] font-bold mr-3">
                           {record.member?.name?.charAt(0) || "?"}
                         </div>
                         <div>
@@ -568,8 +529,7 @@ export default function AdminAttendancePage() {
                       <div className="text-sm font-medium text-gray-900">
                         {record.schedule?.title || "-"}
                       </div>
-                      <div className="text-xs text-gray-500 flex items-center mt-1">
-                        <span className="mr-1">📅</span>
+                      <div className="text-xs text-gray-500 mt-1">
                         {new Date(record.schedule?.start_time).toLocaleString("ko-KR", {
                           month: "short",
                           day: "numeric",
@@ -580,7 +540,7 @@ export default function AdminAttendancePage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F2994A] to-[#F2C94C] flex items-center justify-center text-white text-xs font-bold mr-2 shadow">
+                        <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 text-xs font-bold mr-2">
                           {record.staff?.name?.charAt(0) || "?"}
                         </div>
                         <span className="text-sm text-gray-700">
@@ -597,7 +557,7 @@ export default function AdminAttendancePage() {
                       >
                         <SelectTrigger className="w-36 border-0">
                           <SelectValue>
-                            <Badge className={"badge-3d " + (record.status?.color || "bg-gray-500") + " text-white px-3 py-1"}>
+                            <Badge className={(record.status?.color || "bg-gray-500") + " text-white"}>
                               {record.status?.label || record.status_code}
                             </Badge>
                           </SelectValue>
@@ -615,7 +575,7 @@ export default function AdminAttendancePage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
                       {record.memo ? (
-                        <span className="italic">{record.memo}</span>
+                        <span>{record.memo}</span>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
@@ -625,7 +585,7 @@ export default function AdminAttendancePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteRecord(record.id)}
-                        className="btn-3d bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         삭제
                       </Button>

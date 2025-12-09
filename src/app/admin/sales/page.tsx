@@ -138,12 +138,12 @@ export default function SalesPage() {
   };
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
         <div>
-          <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">매출 현황</h2>
-          <p className="text-base text-gray-600 mt-2 font-sans">{gymName}</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">매출 현황</h1>
+          <p className="text-gray-500 mt-2 font-medium">{gymName}의 매출을 관리합니다</p>
         </div>
       </div>
 
@@ -215,13 +215,13 @@ export default function SalesPage() {
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-[#0F4C5C] to-[#0a3640] text-white rounded-lg p-5 shadow-md">
+        <div className="bg-[#2F80ED] text-white rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm opacity-90">총 매출</span>
-            <DollarSign className="w-5 h-5 opacity-75" />
+            <span className="text-sm font-medium">총 매출</span>
+            <DollarSign className="w-5 h-5" />
           </div>
           <div className="text-2xl font-bold">{formatCurrency(stats.total)}</div>
-          <div className="text-xs opacity-75 mt-1">{stats.count}건</div>
+          <div className="text-xs mt-1">{stats.count}건</div>
         </div>
 
         <div className="bg-white border rounded-lg p-5">
@@ -308,7 +308,7 @@ export default function SalesPage() {
                       {methodBadge.label}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-[#0F4C5C]">
+                  <td className="px-4 py-3 font-semibold text-gray-900">
                     {formatCurrency(parseFloat(payment.amount))}
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-xs">

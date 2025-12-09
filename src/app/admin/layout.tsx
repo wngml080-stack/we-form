@@ -52,13 +52,28 @@ export default function AdminLayout({
     router.push("/login");
   };
 
-  const menuItems = [
-    { name: "대시보드", href: "/admin", icon: LayoutDashboard },
-    { name: "통합 스케줄", href: "/admin/schedule", icon: CalendarDays },
-    { name: "출석 관리", href: "/admin/attendance", icon: ClipboardCheck },
-    { name: "급여 관리", href: "/admin/salary", icon: DollarSign },
-    { name: "직원 리스트", href: "/admin/staff", icon: Users },
-  ];
+  // 역할별 메뉴 정의
+  const getMenuItems = () => {
+    if (userRole === "staff") {
+      // 직원 메뉴
+      return [
+        { name: "내 스케줄", href: "/admin/schedule", icon: CalendarDays },
+        { name: "급여 확인", href: "/admin/salary", icon: DollarSign },
+      ];
+    } else {
+      // 관리자 메뉴 (admin, company_admin, system_admin)
+      return [
+        { name: "대시보드", href: "/admin", icon: LayoutDashboard },
+        { name: "통합 스케줄", href: "/admin/schedule", icon: CalendarDays },
+        { name: "출석 관리", href: "/admin/attendance", icon: ClipboardCheck },
+        { name: "스케줄 승인", href: "/admin/reports", icon: ClipboardCheck },
+        { name: "급여 관리", href: "/admin/salary", icon: DollarSign },
+        { name: "직원 리스트", href: "/admin/staff", icon: Users },
+      ];
+    }
+  };
+
+  const menuItems = getMenuItems();
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">

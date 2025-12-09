@@ -460,16 +460,16 @@ export default function AdminMembersPage() {
   };
 
   return (
-    <div className="space-y-8 p-6">
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
         <div>
-          <h2 className="text-4xl font-heading font-bold text-[#2F80ED]">회원 관리</h2>
-          <p className="text-base text-gray-600 mt-2 font-sans">{gymName}</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">회원 관리</h1>
+          <p className="text-gray-500 mt-2 font-medium">{gymName}의 회원을 관리합니다</p>
         </div>
         <Button
           onClick={() => setIsCreateOpen(true)}
-          className="w-full md:w-auto bg-[#0F4C5C] hover:bg-[#09313b]"
+          className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold px-6 py-2 shadow-sm"
         >
           <UserPlus className="mr-2 h-4 w-4"/> 회원 등록
         </Button>
@@ -503,7 +503,7 @@ export default function AdminMembersPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <div className="text-sm text-gray-500">전체 회원</div>
-          <div className="text-2xl font-bold text-[#0F4C5C] mt-1">{members.length}명</div>
+          <div className="text-2xl font-bold text-gray-900 mt-1">{members.length}명</div>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <div className="text-sm text-gray-500">활성 회원</div>
@@ -794,7 +794,7 @@ export default function AdminMembersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleCreateMember} className="bg-[#0F4C5C] hover:bg-[#09313b]" disabled={isLoading}>
+            <Button onClick={handleCreateMember} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
               {isLoading ? "등록 중..." : "등록하기"}
             </Button>
           </DialogFooter>
@@ -865,7 +865,7 @@ export default function AdminMembersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleUpdateMember} className="bg-[#0F4C5C]" disabled={isLoading}>
+            <Button onClick={handleUpdateMember} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
               {isLoading ? "저장 중..." : "저장"}
             </Button>
           </DialogFooter>
@@ -938,7 +938,7 @@ export default function AdminMembersPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleCreateMembership} className="bg-[#0F4C5C]" disabled={isLoading}>
+            <Button onClick={handleCreateMembership} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
               {isLoading ? "등록 중..." : "등록하기"}
             </Button>
           </DialogFooter>
