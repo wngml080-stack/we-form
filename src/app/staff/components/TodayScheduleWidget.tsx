@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
 
 interface TodayScheduleWidgetProps {
   schedules: any[];
@@ -34,24 +33,32 @@ export function TodayScheduleWidget({ schedules, onViewAll }: TodayScheduleWidge
           </div>
         ) : (
           todaySchedules.slice(0, 3).map((schedule) => (
-            <div key={schedule.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className={`px-2 py-1 rounded text-xs font-bold ${
+            <div key={schedule.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 gap-3">
+              <div className="flex items-center gap-3 flex-1 w-full sm:w-auto">
+                <div className={`px-2 py-1 rounded text-xs font-bold whitespace-nowrap ${
                   schedule.type === 'PT' ? 'bg-blue-100 text-blue-600' :
                   schedule.type === 'OT' ? 'bg-purple-100 text-purple-600' :
                   'bg-gray-100 text-gray-600'
                 }`}>
                   {schedule.type}
                 </div>
-                <div>
-                  <div className="font-bold text-gray-900">{schedule.member_name} 회원님</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-gray-900 truncate">{schedule.member_name} 회원님</div>
                   <div className="text-xs text-gray-500 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                    {new Date(schedule.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })} 시작
+                    <span className="whitespace-nowrap">
+                      {new Date(schedule.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })} 시작
+                    </span>
+                    {schedule.trainer_name && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <span className="truncate">{schedule.trainer_name}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" className="text-xs bg-white border shadow-sm h-8">
+              <Button variant="ghost" size="sm" className="text-xs bg-white border shadow-sm h-8 w-full sm:w-auto shrink-0">
                 상세
               </Button>
             </div>

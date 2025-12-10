@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Plus, UserPlus, Calendar as CalendarIcon, LogOut, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus, Calendar as CalendarIcon, LogOut, CheckCircle2, AlertCircle, DollarSign } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -91,10 +91,7 @@ export default function StaffPage() {
   const [editClassType, setEditClassType] = useState("PT");
   const [editMemberName, setEditMemberName] = useState("");
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   // 초기 로딩
   useEffect(() => {
@@ -482,6 +479,7 @@ export default function StaffPage() {
   const currentDate = new Date(selectedDate);
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const handlePrevDate = () => {
     const date = new Date(selectedDate);
@@ -626,6 +624,14 @@ export default function StaffPage() {
                     >
                         <Plus className="w-6 h-6" />
                         <span className="text-xs font-bold">수업 추가</span>
+                    </Button>
+                    <Button 
+                        onClick={() => router.push("/staff/salary")}
+                        className="h-auto flex flex-col items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-0 rounded-xl py-4 col-span-2"
+                        variant="outline"
+                    >
+                        <DollarSign className="w-6 h-6" />
+                        <span className="text-xs font-bold">급여 명세서 조회</span>
                     </Button>
                 </div>
             </div>

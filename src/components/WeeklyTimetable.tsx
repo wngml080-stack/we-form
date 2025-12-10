@@ -92,18 +92,18 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
   // 이전 weekDates를 displayDates로 변경
   const weekDates = displayDates;
 
-  // 스케줄을 요일별, 시간별로 그룹화
+  // 스케줄을 날짜별, 시간별로 그룹화 (날짜까지 정확히 매칭)
   const scheduleGrid = useMemo(() => {
     const grid: Map<string, Schedule[]> = new Map();
 
     schedules.forEach((schedule) => {
       const startDate = new Date(schedule.start_time);
-      const dayIndex = startDate.getDay();
+      const dateStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
       const hours = startDate.getHours();
       const minutes = startDate.getMinutes();
       const timeSlot = `${String(hours).padStart(2, '0')}:${minutes < 30 ? '00' : '30'}`;
 
-      const key = `${dayIndex}-${timeSlot}`;
+      const key = `${dateStr}-${timeSlot}`;
       if (!grid.has(key)) {
         grid.set(key, []);
       }
@@ -131,14 +131,14 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
     return 'bg-gray-100 border-gray-400 text-gray-900';
   };
 
-  const handleTimeSlotClick = (dayIndex: number, timeSlot: string) => {
+  const handleTimeSlotClick = (date: Date, timeSlot: string) => {
     if (!onTimeSlotClick) return;
 
-    const date = new Date(weekDates[dayIndex]);
+    const clickedDate = new Date(date);
     const [hours, minutes] = timeSlot.split(':').map(Number);
-    date.setHours(hours, minutes, 0, 0);
+    clickedDate.setHours(hours, minutes, 0, 0);
 
-    onTimeSlotClick(date, timeSlot);
+    onTimeSlotClick(clickedDate, timeSlot);
   };
 
   return (
@@ -181,8 +181,8 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
 
                 {/* 요일별 셀 */}
                 {weekDates.map((date, dayIdx) => {
-                  const dayIndex = date.getDay();
-                  const key = `${dayIndex}-${timeSlot}`;
+                  const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+                  const key = `${dateStr}-${timeSlot}`;
                   const schedulesInSlot = scheduleGrid.get(key) || [];
 
                   return (
@@ -191,7 +191,7 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
                       className="border border-gray-200 p-0 align-top hover:bg-blue-50 cursor-pointer transition-colors relative"
                       onClick={() => {
                         if (schedulesInSlot.length === 0) {
-                          handleTimeSlotClick(dayIndex, timeSlot);
+                          handleTimeSlotClick(date, timeSlot);
                         }
                       }}
                     >

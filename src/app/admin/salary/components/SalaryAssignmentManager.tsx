@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,10 +59,7 @@ export default function SalaryAssignmentManager() {
     const [calcAmount, setCalcAmount] = useState("");
     const [calcRate, setCalcRate] = useState("");
 
-    const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = createSupabaseClient();
 
     useEffect(() => {
         fetchData();
@@ -186,9 +183,10 @@ export default function SalaryAssignmentManager() {
             setIsModalOpen(false);
             fetchData();
             alert("저장되었습니다.");
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("상세 에러:", error);
-            alert(`저장 실패: ${error.message || JSON.stringify(error)}`);
+            const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
+            alert(`저장 실패: ${errorMessage}`);
         }
     };
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -12,7 +12,9 @@ import {
   Settings,
   LogOut,
   ClipboardCheck,
+  FileCheck,
   DollarSign,
+  ShoppingCart,
   Menu,
   X,
 } from "lucide-react";
@@ -27,10 +29,7 @@ export default function AdminLayout({
   const [userRole, setUserRole] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     const getUserRole = async () => {
@@ -56,27 +55,37 @@ export default function AdminLayout({
   const getMenuItems = () => {
     if (userRole === "staff") {
       // 직원 메뉴
-      return [
-        { name: "내 스케줄", href: "/admin/schedule", icon: CalendarDays },
-        { name: "급여 확인", href: "/admin/salary", icon: DollarSign },
-      ];
+      return {
+        main: [],
+        branch: [
+          { name: "내 스케줄", href: "/admin/schedule", icon: CalendarDays },
+          { name: "급여 확인", href: "/admin/salary", icon: DollarSign },
+        ],
+        admin: []
+      };
     } else {
       // 관리자 메뉴 (admin, company_admin, system_admin)
-      return [
-        { name: "대시보드", href: "/admin", icon: LayoutDashboard },
-        { name: "통합 스케줄", href: "/admin/schedule", icon: CalendarDays },
-        { name: "출석 관리", href: "/admin/attendance", icon: ClipboardCheck },
-        { name: "스케줄 승인", href: "/admin/reports", icon: ClipboardCheck },
-        { name: "급여 관리", href: "/admin/salary", icon: DollarSign },
-        { name: "직원 리스트", href: "/admin/staff", icon: Users },
-      ];
+      return {
+        main: [
+          { name: "지점 관리", href: "/admin", icon: LayoutDashboard },
+        ],
+        branch: [
+          { name: "스케줄 관리", href: "/admin/schedule", icon: CalendarDays },
+          { name: "스케줄 승인", href: "/admin/reports", icon: FileCheck },
+          { name: "급여 관리", href: "/admin/salary", icon: DollarSign },
+          { name: "매출 관리", href: "/admin/sales", icon: ShoppingCart },
+          { name: "회원 관리", href: "/admin/members", icon: Users },
+          { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck },
+        ],
+        admin: []
+      };
     }
   };
 
   const menuItems = getMenuItems();
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
+    <div className="flex h-screen bg-gray-50">
       {/* 모바일 햄버거 버튼 */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -88,7 +97,7 @@ export default function AdminLayout({
       {/* 모바일 오버레이 */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -96,16 +105,14 @@ export default function AdminLayout({
       {/* 왼쪽 사이드바 */}
       <aside className={`
         w-64 bg-white border-r border-gray-200 flex flex-col
-        fixed lg:static inset-y-0 left-0 z-40
+        fixed lg:static inset-y-0 left-0 z-50
         transform transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `} style={{
-        boxShadow: '4px 0 20px rgba(0, 0, 0, 0.08)'
-      }}>
+      `}>
         {/* 로고 */}
         <div className="p-6 border-b border-gray-200">
           <Link href="/admin" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4A90E2] to-[#5BA3F5] flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-full bg-[#2F80ED] flex items-center justify-center shadow-sm">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="3" y="4" width="18" height="18" rx="2" stroke="white" strokeWidth="2"/>
                 <line x1="3" y1="9" x2="21" y2="9" stroke="white" strokeWidth="2"/>
@@ -114,8 +121,8 @@ export default function AdminLayout({
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-heading font-bold text-gray-900">We:form</h1>
-              <p className="text-[10px] text-gray-500">피트니스의 운영관리</p>
+              <h1 className="text-xl font-bold text-gray-900">We:form</h1>
+              <p className="text-[10px] text-gray-500">피트니스 운영관리</p>
             </div>
           </Link>
         </div>
@@ -123,47 +130,15 @@ export default function AdminLayout({
         {/* 메뉴 */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-1">
-            {/* System Admin 메뉴 */}
-            {userRole === "system_admin" && (
-              <Link
-                href="/admin/system"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
-                  pathname === "/admin/system"
-                    ? "bg-gradient-to-r from-[#2F80ED] to-[#667eea] text-white shadow-lg"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <Settings className="mr-3 h-5 w-5" />
-                고객사 관리
-              </Link>
-            )}
-
-            {/* Company Admin 메뉴 */}
-            {(userRole === "company_admin" || userRole === "system_admin") && (
-              <Link
-                href="/admin/hq"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
-                  pathname === "/admin/hq"
-                    ? "bg-gradient-to-r from-[#2F80ED] to-[#667eea] text-white shadow-lg"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <Building2 className="mr-3 h-5 w-5" />
-                본사 관리
-              </Link>
-            )}
-
-            {/* 일반 메뉴 */}
-            {menuItems.map((item) => (
+            {/* 메인 메뉴 (지점 관리) */}
+            {menuItems.main.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
                   pathname === item.href
-                    ? "bg-gradient-to-r from-[#2F80ED] to-[#667eea] text-white shadow-lg"
+                    ? "bg-[#2F80ED] text-white shadow-sm"
                     : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
@@ -171,6 +146,96 @@ export default function AdminLayout({
                 {item.name}
               </Link>
             ))}
+
+            {/* 지점 관리자 설정 섹션 */}
+            {menuItems.branch.length > 0 && userRole !== "staff" && (
+              <>
+                <div className="pt-4 pb-2">
+                  <div className="border-t border-gray-200"></div>
+                </div>
+                <div className="px-4 py-2">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    지점 관리자 설정
+                  </p>
+                </div>
+                {menuItems.branch.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                      pathname === item.href
+                        ? "bg-[#2F80ED] text-white shadow-sm"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.name}
+                  </Link>
+                ))}
+              </>
+            )}
+
+            {/* 직원용 메뉴 */}
+            {userRole === "staff" && menuItems.branch.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                  pathname === item.href
+                    ? "bg-[#2F80ED] text-white shadow-sm"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </Link>
+            ))}
+
+            {/* 관리자 설정 섹션 */}
+            {(userRole === "company_admin" || userRole === "system_admin") && (
+              <>
+                <div className="pt-4 pb-2">
+                  <div className="border-t border-gray-200"></div>
+                </div>
+                <div className="px-4 py-2">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    관리자 설정
+                  </p>
+                </div>
+
+                {/* 본사 관리 */}
+                <Link
+                  href="/admin/hq"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                    pathname === "/admin/hq"
+                      ? "bg-[#2F80ED] text-white shadow-sm"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Building2 className="mr-3 h-5 w-5" />
+                  본사 관리
+                </Link>
+
+                {/* 고객사 관리 (System Admin만) */}
+                {userRole === "system_admin" && (
+                  <Link
+                    href="/admin/system"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
+                      pathname === "/admin/system"
+                        ? "bg-[#2F80ED] text-white shadow-sm"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Settings className="mr-3 h-5 w-5" />
+                    고객사 관리
+                  </Link>
+                )}
+              </>
+            )}
           </div>
         </nav>
 
@@ -187,7 +252,7 @@ export default function AdminLayout({
       </aside>
 
       {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-auto lg:ml-0">
+      <main className="flex-1 overflow-auto">
         <div className="lg:hidden h-16"></div>
         {children}
       </main>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation"; // params 사용
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
@@ -15,10 +15,7 @@ export default function CompanyDetailPage() {
   const [company, setCompany] = useState<any>(null);
   const [staffs, setStaffs] = useState<any[]>([]);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     const fetchData = async () => {

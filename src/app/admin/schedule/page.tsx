@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -36,10 +36,7 @@ export default function AdminSchedulePage() {
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     const init = async () => {
@@ -128,6 +125,8 @@ export default function AdminSchedulePage() {
       return d.getFullYear() === targetYear && d.getMonth() === targetMonth;
     });
 
+    const unregistered = monthlySchedules.filter(s => !s.status);
+
     const stats = {
       PT: 0,
       OT: 0,
@@ -136,6 +135,8 @@ export default function AdminSchedulePage() {
       no_show_deducted: 0,
       no_show: 0,
       service: 0,
+      unregistered: unregistered.length,
+      unregisteredList: unregistered,
       total: monthlySchedules.length
     };
 
@@ -182,7 +183,7 @@ export default function AdminSchedulePage() {
   };
 
   const handleToday = () => {
-    setSelectedDate(todayStr);
+    setSelectedDate(new Date().toISOString().split('T')[0]);
   };
 
   // 필터 변경 시 재조회
@@ -222,6 +223,16 @@ export default function AdminSchedulePage() {
   const currentDate = new Date(selectedDate);
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
+
+  // 해당 날짜가 그 달의 몇 주차인지 계산
+  const getWeekOfMonth = (date: Date) => {
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const firstDayOfWeek = firstDayOfMonth.getDay();
+    const offsetDate = date.getDate() + firstDayOfWeek - 1;
+    return Math.ceil(offsetDate / 7);
+  };
+
+  const weekOfMonth = getWeekOfMonth(currentDate);
 
   if (isLoading) {
     return (
@@ -290,7 +301,9 @@ export default function AdminSchedulePage() {
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
               />
               <div className="px-4 py-2 text-sm font-bold text-gray-700 cursor-pointer hover:text-[#2F80ED] transition-colors">
-                {year}년 {month}월 {currentDate.getDate()}일
+                {viewType === 'day' && `${year}년 ${month}월 ${currentDate.getDate()}일`}
+                {viewType === 'week' && `${year}년 ${month}월 ${weekOfMonth}주차`}
+                {viewType === 'month' && `${year}년 ${month}월`}
               </div>
             </div>
             <Button
@@ -325,7 +338,7 @@ export default function AdminSchedulePage() {
                     : 'text-gray-600 hover:bg-white/50'
                 }`}
               >
-                {type === 'day' ? '일' : type === 'week' ? '주' : '월'}
+                {type === 'day' ? '일' : type === 'week' ? '주' : '월집계'}
               </Button>
             ))}
           </div>
@@ -339,9 +352,9 @@ export default function AdminSchedulePage() {
             <div>
               <h2 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-[#2F80ED] rounded-full"></div>
-                {year}년 {month}월 통계
+                {year}년 {month}월 출석 현황
               </h2>
-              <p className="text-xs text-gray-500 mt-1 ml-3.5">월별 스케줄 요약</p>
+              <p className="text-xs text-gray-500 mt-1 ml-3.5">이번 달 스케줄 요약 및 출석 통계</p>
             </div>
           </div>
 
@@ -413,6 +426,52 @@ export default function AdminSchedulePage() {
               </div>
             </div>
           </div>
+
+          {/* 출석 미등록자 리스트 */}
+          {monthlyStats && monthlyStats.unregistered > 0 && (
+            <div className="border-t border-gray-100 pt-6 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                  출석 미등록자 리스트
+                </h3>
+                <div className="text-sm font-bold text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full">
+                  {monthlyStats.unregistered}건
+                </div>
+              </div>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {monthlyStats.unregisteredList?.map((schedule: any) => (
+                  <div key={schedule.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-xl border border-yellow-100 hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={`px-2 py-1 rounded text-xs font-bold ${
+                        schedule.type === 'PT' ? 'bg-blue-100 text-blue-600' :
+                        schedule.type === 'OT' ? 'bg-purple-100 text-purple-600' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {schedule.type}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900">{schedule.member_name || '회원명 없음'}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(schedule.start_time).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                          {' '}
+                          {new Date(schedule.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                          {schedule.trainer_name && ` · ${schedule.trainer_name}`}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs bg-white hover:bg-yellow-100 border border-yellow-200"
+                    >
+                      출석 처리
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

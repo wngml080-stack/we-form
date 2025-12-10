@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SalaryTemplateManager from "@/app/admin/salary/components/SalaryTemplateManager";
 import SalaryAssignmentManager from "@/app/admin/salary/components/SalaryAssignmentManager";
 import MonthlyStatsViewer from "@/app/admin/salary/components/MonthlyStatsViewer";
+import SalaryCalculator from "@/app/admin/salary/components/SalaryCalculator";
 
 export default function AdminSalaryPage() {
   return (
@@ -20,7 +21,7 @@ export default function AdminSalaryPage() {
 
       {/* 탭 UI */}
       <Tabs defaultValue="stats" className="w-full space-y-6">
-        <TabsList className="grid w-full max-w-3xl grid-cols-3 bg-white border border-gray-100 shadow-sm h-12 p-1 rounded-xl">
+        <TabsList className="grid w-full max-w-4xl grid-cols-4 bg-white border border-gray-100 shadow-sm h-12 p-1 rounded-xl">
           <TabsTrigger
             value="stats"
             className="rounded-lg text-sm font-bold data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white transition-all"
@@ -39,6 +40,12 @@ export default function AdminSalaryPage() {
           >
             직원 급여 설정
           </TabsTrigger>
+          <TabsTrigger
+            value="calculation"
+            className="rounded-lg text-sm font-bold data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white transition-all"
+          >
+            급여 정산
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="stats" className="animate-fade-in">
@@ -51,6 +58,10 @@ export default function AdminSalaryPage() {
 
         <TabsContent value="assignments" className="animate-fade-in">
             <SalaryAssignmentManager />
+        </TabsContent>
+
+        <TabsContent value="calculation" className="animate-fade-in">
+            <SalaryCalculator />
         </TabsContent>
       </Tabs>
     </div>

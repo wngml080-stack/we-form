@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
+import { showError } from "@/lib/utils/error-handler";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,10 +42,7 @@ export default function AdminReportsPage() {
   const [adminMemo, setAdminMemo] = useState("");
   const [myStaffId, setMyStaffId] = useState<string>("");
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     const init = async () => {
@@ -58,7 +56,7 @@ export default function AdminReportsPage() {
         .single();
 
       if (!me || !["admin", "company_admin", "system_admin"].includes(me.role)) {
-        alert("접근 권한이 없습니다.");
+        showError("접근 권한이 없습니다.", "권한 확인");
         return router.push("/admin");
       }
 

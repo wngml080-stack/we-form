@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,10 +37,7 @@ export default function AdminStaffPage() {
   const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", phone: "", job_title: "트레이너", joined_at: "" });
   const [isCreating, setIsCreating] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     const init = async () => {
@@ -211,7 +208,7 @@ export default function AdminStaffPage() {
       {/* 직원 리스트 */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[800px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-4 text-left font-bold text-gray-700 uppercase tracking-wider text-xs">이름</th>
@@ -287,7 +284,7 @@ export default function AdminStaffPage() {
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">이름</Label>
                 <Input value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})}/>
@@ -333,7 +330,7 @@ export default function AdminStaffPage() {
             <DialogTitle className="text-xl font-bold text-gray-900">신규 직원 등록</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">이름 <span className="text-red-500">*</span></Label>
                 <Input value={createForm.name} onChange={(e) => setCreateForm({...createForm, name: e.target.value})}/>

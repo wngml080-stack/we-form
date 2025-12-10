@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
 import { 
   Users, DollarSign, Calendar, TrendingUp, UserPlus, 
   CreditCard, Settings, Plus, Bell, Search, CheckCircle2 
@@ -23,10 +23,7 @@ export default function AdminDashboardPage() {
   const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     init();
@@ -190,9 +187,9 @@ export default function AdminDashboardPage() {
 
       {/* 2. Quick Actions (아이콘 메뉴) */}
       <div className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide">
-        <QuickAction icon={UserPlus} label="회원 등록" href="/admin/members" color="bg-blue-100 text-blue-600" />
+        <QuickAction icon={UserPlus} label="신규회원 매출등록" href="/admin/members?type=new" color="bg-blue-100 text-blue-600" />
+        <QuickAction icon={Users} label="기존회원 매출등록" href="/admin/members?type=existing" color="bg-indigo-100 text-indigo-600" />
         <QuickAction icon={Calendar} label="스케줄 관리" href="/admin/schedule" color="bg-purple-100 text-purple-600" />
-        <QuickAction icon={DollarSign} label="매출 등록" href="/admin/sales" color="bg-emerald-100 text-emerald-600" />
         <QuickAction icon={CheckCircle2} label="출석 체크" href="/admin/attendance" color="bg-orange-100 text-orange-600" />
         <QuickAction icon={Plus} label="추가 메뉴" href="#" color="bg-gray-100 text-gray-500" />
       </div>

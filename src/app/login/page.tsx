@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
+import { getErrorMessage } from "@/types/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,10 +16,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,10 +34,10 @@ export default function LoginPage() {
         throw new Error("이메일 또는 비밀번호를 확인해주세요.");
       }
 
-      // 2. 직원 정보 조회 (employment_status 추가!)
+      // 2. 직원 정보 조회 (employment_status, gym_id 포함)
       const { data: staffData, error: staffError } = await supabase
         .from("staffs")
-        .select("role, employment_status")
+        .select("role, employment_status, gym_id")
         .eq("user_id", data.user.id)
         .single();
 
@@ -53,6 +51,20 @@ export default function LoginPage() {
         throw new Error("퇴사 처리된 계정입니다. 이용이 제한됩니다.");
       }
 
+      // 🚨 [보안 체크 2] 승인 대기 센터 소속 직원 차단
+      if (staffData.gym_id) {
+        const { data: gymData, error: gymError } = await supabase
+          .from("gyms")
+          .select("status")
+          .eq("id", staffData.gym_id)
+          .single();
+
+        if (!gymError && gymData && gymData.status === 'pending') {
+          await supabase.auth.signOut(); // 즉시 로그아웃
+          throw new Error("가입 승인 대기 중인 센터입니다. 승인 후 이용 가능합니다.");
+        }
+      }
+
       // 3. 통과 시 페이지 이동
       // system_admin, company_admin, admin -> /admin
       // staff -> /staff
@@ -61,8 +73,8 @@ export default function LoginPage() {
       } else {
         router.push("/staff");
       }
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err));
       // 에러 발생 시 세션 정리
       await supabase.auth.signOut();
     } finally {

@@ -1,6 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+/**
+ * 서버 컴포넌트용 Supabase 클라이언트 생성
+ * 
+ * 사용법:
+ * ```tsx
+ * const supabase = await createClient();
+ * ```
+ * 
+ * @returns Supabase 클라이언트 인스턴스
+ */
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -27,6 +37,7 @@ export async function createClient() {
     }
   );
 }
+
 
 
 

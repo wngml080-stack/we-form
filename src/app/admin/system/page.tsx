@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
+import { createSupabaseClient } from "@/lib/supabase/client";
+import { showError } from "@/lib/utils/error-handler";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -27,10 +28,7 @@ export default function SystemAdminPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({ id: "", name: "", representative_name: "", contact_phone: "", status: "" });
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = createSupabaseClient();
 
   useEffect(() => {
     const init = async () => {
@@ -41,7 +39,7 @@ export default function SystemAdminPage() {
       
       // 시스템 관리자가 아니면 쫓아내기
       if (me?.role !== "system_admin") {
-        alert("접근 권한이 없습니다.");
+        showError("접근 권한이 없습니다.", "권한 확인");
         return router.push("/admin");
       }
 
