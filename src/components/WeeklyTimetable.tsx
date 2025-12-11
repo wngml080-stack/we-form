@@ -29,8 +29,10 @@ const SLOT_MINUTES = 30;
 export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlotClick, viewType = 'week', selectedDate }: WeeklyTimetableProps) {
   // 현재 주의 시작일 (월요일 기준, 혹은 선택된 날짜가 속한 주의 월요일)
   const weekStart = useMemo(() => {
-    const current = new Date(selectedDate);
-    const day = current.getDay();
+    // 로컬 시간 기준으로 날짜 파싱 (타임존 문제 방지)
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const current = new Date(year, month - 1, day);
+    const dayOfWeek = current.getDay();
     // 일요일(0)이면 -6일 전으로 이동 (월요일부터 시작하도록)
     // 월요일(1)이면 그날이 시작일
     // 화요일(2)이면 -1일 전...
@@ -46,7 +48,7 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
     
     // 일반적인 달력(일요일 시작)으로 변경하는 것이 더 직관적일 수 있으나
     // 기존 로직(월요일 시작)을 유지하면서 selectedDate 기준으로 변경
-    const diff = current.getDate() - day + (day === 0 ? -6 : 1);
+    const diff = current.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
     const monday = new Date(current);
     monday.setDate(diff);
     return monday;
@@ -67,8 +69,9 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
     const dates: Date[] = [];
 
     if (viewType === 'day') {
-      // 선택된 날짜만 표시
-      dates.push(new Date(selectedDate));
+      // 선택된 날짜만 표시 (로컬 시간 기준)
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      dates.push(new Date(year, month - 1, day));
     } else if (viewType === 'week') {
       // 일주일 (일~토) -> 월요일 시작 로직이면 월~일
       // 위 weekStart 로직이 월요일 시작이므로 월~일로 렌더링됨
@@ -92,43 +95,94 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
   // 이전 weekDates를 displayDates로 변경
   const weekDates = displayDates;
 
-  // 스케줄을 날짜별, 시간별로 그룹화 (날짜까지 정확히 매칭)
-  const scheduleGrid = useMemo(() => {
-    const grid: Map<string, Schedule[]> = new Map();
+  // 스케줄을 날짜별, 시간별로 그룹화 및 duration 계산
+  const { scheduleGrid, occupiedSlots } = useMemo(() => {
+    const grid: Map<string, Array<Schedule & { rowSpan: number }>> = new Map();
+    const occupied: Set<string> = new Set();
 
     schedules.forEach((schedule) => {
       const startDate = new Date(schedule.start_time);
-      const dateStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const endDate = new Date(schedule.end_time);
+
+      // 로컬 시간 기준으로 날짜 문자열 생성 (타임존 문제 방지)
+      const year = startDate.getFullYear();
+      const month = String(startDate.getMonth() + 1).padStart(2, '0');
+      const day = String(startDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
       const hours = startDate.getHours();
       const minutes = startDate.getMinutes();
       const timeSlot = `${String(hours).padStart(2, '0')}:${minutes < 30 ? '00' : '30'}`;
 
+      // duration 계산 (30분 단위로 몇 칸을 차지하는지)
+      const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+      const rowSpan = Math.max(1, Math.ceil(durationMinutes / 30));
+
       const key = `${dateStr}-${timeSlot}`;
+
+      // 디버깅: rowSpan 계산 로그
+      console.log(`[Schedule] ${schedule.member_name}: ${dateStr} ${timeSlot}, duration=${durationMinutes}분, rowSpan=${rowSpan}`);
+
       if (!grid.has(key)) {
         grid.set(key, []);
       }
-      grid.get(key)!.push(schedule);
+      grid.get(key)!.push({ ...schedule, rowSpan });
+
+      // 이 스케줄이 차지하는 모든 슬롯을 occupied에 추가
+      for (let i = 1; i < rowSpan; i++) {
+        const occupiedTime = new Date(startDate);
+        occupiedTime.setMinutes(occupiedTime.getMinutes() + (i * 30));
+        const occupiedHours = occupiedTime.getHours();
+        const occupiedMinutes = occupiedTime.getMinutes();
+        const occupiedSlot = `${String(occupiedHours).padStart(2, '0')}:${occupiedMinutes < 30 ? '00' : '30'}`;
+
+        // occupied 슬롯의 날짜도 로컬 시간 기준으로 계산
+        const occYear = occupiedTime.getFullYear();
+        const occMonth = String(occupiedTime.getMonth() + 1).padStart(2, '0');
+        const occDay = String(occupiedTime.getDate()).padStart(2, '0');
+        const occDateStr = `${occYear}-${occMonth}-${occDay}`;
+
+        const occupiedKey = `${occDateStr}-${occupiedSlot}`;
+        console.log(`  → Occupied slot [${i}]: ${occupiedKey}`);
+        occupied.add(occupiedKey);
+      }
     });
 
-    return grid;
+    console.log(`Total occupied slots: ${occupied.size}`, Array.from(occupied));
+    return { scheduleGrid: grid, occupiedSlots: occupied };
   }, [schedules]);
 
   const getScheduleColor = (schedule: Schedule) => {
-    // 상태별 색상
-    if (schedule.status === 'completed') return 'bg-orange-100 border-orange-400 text-orange-900';
-    if (schedule.status === 'cancelled') return 'bg-gray-100 border-gray-400 text-gray-600';
+    // 1. 출석 상태별 색상 (최우선)
+    if (schedule.status === 'completed') return 'bg-green-600 border-green-700 text-white'; // 출석완료: 진한 초록색
+    if (schedule.status === 'no_show') return 'bg-red-500 border-red-600 text-white'; // 노쇼: 빨간색
+    if (schedule.status === 'no_show_deducted') return 'bg-red-300 border-red-400 text-red-900'; // 노쇼(차감): 연한 빨간색
+    if (schedule.status === 'service') return 'bg-orange-400 border-orange-500 text-white'; // 서비스수업: 주황색
+    if (schedule.status === 'cancelled') return 'bg-gray-400 border-gray-500 text-white'; // 취소: 회색
 
-    // 타입별 색상
-    if (schedule.type === 'OT') return 'bg-blue-100 border-blue-400 text-blue-900';
+    // 2. 타입별 색상
+    // 개인 일정
+    if (schedule.type === '개인') return 'bg-purple-400 border-purple-500 text-white'; // 개인일정: 보라색
+
+    // OT
+    if (schedule.type === 'OT') return 'bg-green-400 border-green-500 text-white'; // OT: 초록색
+
+    // PT
     if (schedule.type === 'PT') {
-      // schedule_type별 색상
-      if (schedule.schedule_type === 'weekend') return 'bg-purple-100 border-purple-400 text-purple-900';
-      if (schedule.schedule_type === 'holiday') return 'bg-red-100 border-red-400 text-red-900';
-      if (schedule.schedule_type === 'outside') return 'bg-yellow-100 border-yellow-400 text-yellow-900';
-      return 'bg-green-100 border-green-400 text-green-900'; // inside
+      // 주말 및 공휴일
+      if (schedule.schedule_type === 'weekend' || schedule.schedule_type === 'holiday') {
+        return 'bg-yellow-400 border-yellow-500 text-gray-900'; // 주말/공휴일: 노란색
+      }
+      // 근무외
+      if (schedule.schedule_type === 'outside') {
+        return 'bg-pink-400 border-pink-500 text-white'; // PT(근무외): 핑크색
+      }
+      // 근무내 (기본)
+      return 'bg-green-400 border-green-500 text-white'; // PT(근무내): 초록색
     }
 
-    return 'bg-gray-100 border-gray-400 text-gray-900';
+    // 기타
+    return 'bg-gray-300 border-gray-400 text-gray-900';
   };
 
   const handleTimeSlotClick = (date: Date, timeSlot: string) => {
@@ -181,13 +235,33 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
 
                 {/* 요일별 셀 */}
                 {weekDates.map((date, dayIdx) => {
-                  const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+                  // 로컬 시간 기준으로 날짜 문자열 생성
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  const dateStr = `${year}-${month}-${day}`;
                   const key = `${dateStr}-${timeSlot}`;
+
+                  // 이 슬롯이 다른 스케줄에 의해 차지되어 있으면 td를 렌더링하지 않음
+                  if (occupiedSlots.has(key)) {
+                    console.log(`[Render] Skipping cell: ${key} (occupied)`);
+                    return null;
+                  }
+
                   const schedulesInSlot = scheduleGrid.get(key) || [];
+                  // 같은 셀에 여러 스케줄이 있을 때, 최대 rowSpan을 사용
+                  const cellRowSpan = schedulesInSlot.length > 0
+                    ? Math.max(...schedulesInSlot.map(s => s.rowSpan))
+                    : 1;
+
+                  if (cellRowSpan > 1) {
+                    console.log(`[Render] Cell ${key}: rowSpan=${cellRowSpan}, schedules:`, schedulesInSlot.map(s => `${s.member_name}(${s.rowSpan}칸)`));
+                  }
 
                   return (
                     <td
                       key={dayIdx}
+                      rowSpan={cellRowSpan}
                       className="border border-gray-200 p-0 align-top hover:bg-blue-50 cursor-pointer transition-colors relative"
                       onClick={() => {
                         if (schedulesInSlot.length === 0) {
@@ -195,7 +269,7 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
                         }
                       }}
                     >
-                      <div className="min-h-[40px] md:min-h-[50px] flex flex-col w-full h-full">
+                      <div className="flex flex-col w-full h-full">
                         {schedulesInSlot.map((schedule, sIdx) => (
                           <div
                             key={schedule.id}
@@ -204,12 +278,13 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
                               onScheduleClick?.(schedule);
                             }}
                             className={cn(
-                              "px-1.5 py-1 border-l-[3px] text-[10px] md:text-xs font-medium cursor-pointer hover:brightness-95 transition-all w-full overflow-hidden flex-1",
+                              "px-1.5 py-1 border-l-[3px] text-[10px] md:text-xs font-medium cursor-pointer hover:brightness-95 transition-all w-full overflow-hidden min-h-[40px] md:min-h-[50px] flex flex-col justify-center",
                               sIdx < schedulesInSlot.length - 1 && "border-b border-black/5",
                               getScheduleColor(schedule)
                             )}
+                            style={{ flexGrow: schedule.rowSpan }}
                           >
-                            <div className="font-bold truncate leading-tight">{schedule.type}</div>
+                            <div className="font-bold truncate leading-tight">{schedule.type} {schedule.rowSpan > 1 && `[${schedule.rowSpan}칸]`}</div>
                             <div className="truncate leading-tight">{schedule.member_name}</div>
                             {/* 모바일에서는 시간 숨기거나 간소화 */}
                             <div className="hidden md:block text-[9px] opacity-80 mt-0.5">
@@ -218,6 +293,11 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
                                 minute: '2-digit',
                                 hour12: false
                               })}
+                              {schedule.rowSpan > 1 && ` - ${new Date(schedule.end_time).toLocaleTimeString('ko-KR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                              })}`}
                             </div>
                           </div>
                         ))}
@@ -234,32 +314,48 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
       {/* 범례 */}
       <div className="p-3 border-t bg-gray-50 flex flex-wrap gap-x-4 gap-y-2 text-xs shrink-0 sticky bottom-0 z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-100 border-l-4 border-green-400 rounded"></div>
+          <div className="w-4 h-4 bg-green-400 border-l-4 border-green-500 rounded"></div>
           <span>PT (근무내)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-yellow-100 border-l-4 border-yellow-400 rounded"></div>
+          <div className="w-4 h-4 bg-pink-400 border-l-4 border-pink-500 rounded"></div>
           <span>PT (근무외)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-purple-100 border-l-4 border-purple-400 rounded"></div>
+          <div className="w-4 h-4 bg-yellow-400 border-l-4 border-yellow-500 rounded"></div>
           <span>PT (주말)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-red-100 border-l-4 border-red-400 rounded"></div>
+          <div className="w-4 h-4 bg-yellow-400 border-l-4 border-yellow-500 rounded"></div>
           <span>PT (공휴일)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-blue-100 border-l-4 border-blue-400 rounded"></div>
+          <div className="w-4 h-4 bg-green-400 border-l-4 border-green-500 rounded"></div>
           <span>OT</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-100 border-l-4 border-orange-400 rounded"></div>
+          <div className="w-4 h-4 bg-green-600 border-l-4 border-green-700 rounded"></div>
           <span>출석완료</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-100 border-l-4 border-gray-400 rounded"></div>
+          <div className="w-4 h-4 bg-red-500 border-l-4 border-red-600 rounded"></div>
+          <span>노쇼</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-red-300 border-l-4 border-red-400 rounded"></div>
+          <span>노쇼 (차감)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-orange-400 border-l-4 border-orange-500 rounded"></div>
+          <span>서비스</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-gray-400 border-l-4 border-gray-500 rounded"></div>
           <span>취소</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-purple-400 border-l-4 border-purple-500 rounded"></div>
+          <span>개인일정</span>
         </div>
       </div>
     </div>

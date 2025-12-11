@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Search, UserPlus, CreditCard } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { showSuccess, showError, showConfirm } from "@/lib/utils/error-handler";
 
 export default function AdminMembersPage() {
   const searchParams = useSearchParams();
@@ -328,7 +329,7 @@ export default function AdminMembersPage() {
         occurred_at: createForm.registered_at
       });
 
-      alert("회원이 등록되었습니다!");
+      showSuccess("회원이 등록되었습니다!");
       setIsCreateOpen(false);
 
       // 폼 초기화
@@ -352,8 +353,7 @@ export default function AdminMembersPage() {
 
       fetchMembers(gymId, companyId, myRole, myStaffId!);
     } catch (error: any) {
-      console.error(error);
-      alert("등록 실패: " + error.message);
+      showError(error, "회원 등록");
     } finally {
       setIsLoading(false);
     }
@@ -388,12 +388,11 @@ export default function AdminMembersPage() {
 
       if (error) throw error;
 
-      alert("회원 정보가 수정되었습니다!");
+      showSuccess("회원 정보가 수정되었습니다!");
       setIsEditOpen(false);
       fetchMembers(gymId, companyId, myRole, myStaffId!);
     } catch (error: any) {
-      console.error(error);
-      alert("수정 실패: " + error.message);
+      showError(error, "회원 정보 수정");
     } finally {
       setIsLoading(false);
     }
@@ -467,12 +466,11 @@ export default function AdminMembersPage() {
         });
       }
 
-      alert("회원권이 등록되었습니다!");
+      showSuccess("회원권이 등록되었습니다!");
       setIsMembershipOpen(false);
       fetchMembers(gymId, companyId, myRole, myStaffId!);
     } catch (error: any) {
-      console.error(error);
-      alert("등록 실패: " + error.message);
+      showError(error, "회원권 등록");
     } finally {
       setIsLoading(false);
     }
@@ -584,7 +582,7 @@ export default function AdminMembersPage() {
 
       if (paymentError) throw paymentError;
 
-      alert("매출이 등록되었습니다!");
+      showSuccess("매출이 등록되었습니다!");
       setIsExistingSalesOpen(false);
 
       // 폼 초기화
@@ -608,8 +606,7 @@ export default function AdminMembersPage() {
 
       fetchMembers(gymId, companyId, myRole, myStaffId!);
     } catch (error: any) {
-      console.error(error);
-      alert("등록 실패: " + error.message);
+      showError(error, "매출 등록");
     } finally {
       setIsLoading(false);
     }

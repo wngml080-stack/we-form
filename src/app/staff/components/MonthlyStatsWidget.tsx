@@ -1,8 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Users, DollarSign } from "lucide-react";
 
+interface CenterStats {
+  totalMembers: number;
+  activeMembers?: number;
+  newMembers?: number;
+  monthlyRevenue?: number;
+  revenueGoalPercent?: number;
+}
+
 interface MonthlyStatsWidgetProps {
-  stats: any;
+  stats: CenterStats | null;
 }
 
 export function MonthlyStatsWidget({ stats }: MonthlyStatsWidgetProps) {

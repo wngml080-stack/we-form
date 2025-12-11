@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,8 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import WeeklyTimetable from "@/components/WeeklyTimetable";
 import * as XLSX from "xlsx";
+import { showSuccess, showError } from "@/lib/utils/error-handler";
+import { classifyScheduleType } from "@/lib/schedule-utils";
 
 export default function AdminSchedulePage() {
   const router = useRouter();
@@ -24,6 +28,8 @@ export default function AdminSchedulePage() {
   const [myGymId, setMyGymId] = useState<string | null>(null);
   const [myStaffId, setMyStaffId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("");
+  const [workStartTime, setWorkStartTime] = useState<string | null>(null);
+  const [workEndTime, setWorkEndTime] = useState<string | null>(null);
 
   // 뷰 타입 및 날짜
   const [viewType, setViewType] = useState<'day' | 'week' | 'month'>('week');
@@ -36,6 +42,34 @@ export default function AdminSchedulePage() {
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(true);
 
+  // 스케줄 생성 모달
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
+    date: string;
+    time: string;
+    staffId?: string;
+  } | null>(null);
+  const [createForm, setCreateForm] = useState({
+    member_id: "",
+    type: "PT",
+    duration: "60",
+    isPersonal: false,
+    personalTitle: "",
+  });
+  const [members, setMembers] = useState<any[]>([]);
+
+  // 스케줄 수정 모달
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
+  const [editForm, setEditForm] = useState({
+    member_id: "",
+    status: "",
+    type: "",
+    date: "",
+    time: "",
+    duration: "60",
+  });
+
   const supabase = createSupabaseClient();
 
   useEffect(() => {
@@ -46,7 +80,7 @@ export default function AdminSchedulePage() {
 
         const { data: me, error: meError } = await supabase
           .from("staffs")
-          .select("id, gym_id, role, gyms(name)")
+          .select("id, gym_id, role, work_start_time, work_end_time, gyms(name)")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -67,6 +101,8 @@ export default function AdminSchedulePage() {
         setMyGymId(me.gym_id);
         setMyStaffId(me.id);
         setUserRole(me.role);
+        setWorkStartTime(me.work_start_time);
+        setWorkEndTime(me.work_end_time);
 
         // 역할에 따라 다르게 처리
         if (me.role === "staff") {
@@ -82,6 +118,15 @@ export default function AdminSchedulePage() {
           if (staffList) setStaffs(staffList);
           fetchSchedules(me.gym_id, "all");
         }
+
+        // 회원 목록 가져오기
+        const { data: memberList } = await supabase
+          .from("members")
+          .select("id, name")
+          .eq("gym_id", me.gym_id)
+          .order("name", { ascending: true });
+
+        if (memberList) setMembers(memberList);
 
       } catch (error) {
         console.error("초기화 에러:", error);
@@ -184,6 +229,192 @@ export default function AdminSchedulePage() {
 
   const handleToday = () => {
     setSelectedDate(new Date().toISOString().split('T')[0]);
+  };
+
+  // 타임 슬롯 클릭 -> 스케줄 생성 모달 열기
+  const handleTimeSlotClick = (date: Date, time: string) => {
+    // 로컬 시간 기준으로 날짜 문자열 생성 (타임존 문제 방지)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    setSelectedTimeSlot({
+      date: dateStr,
+      time,
+      staffId: selectedStaffId !== "all" ? selectedStaffId : undefined,
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  // 스케줄 클릭 -> 스케줄 수정 모달 열기
+  const handleScheduleClick = (schedule: any) => {
+    const startDate = new Date(schedule.start_time);
+    const endDate = new Date(schedule.end_time);
+    const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+
+    setSelectedSchedule(schedule);
+    setEditForm({
+      member_id: schedule.member_id || "",
+      status: schedule.status || "reserved",
+      type: schedule.type || "PT",
+      date: startDate.toISOString().split('T')[0],
+      time: `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`,
+      duration: String(durationMinutes),
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // 스케줄 수정
+  const handleUpdateSchedule = async () => {
+    if (!selectedSchedule) return;
+
+    // 회원 선택 확인 (개인 일정이 아닌 경우)
+    if (!editForm.member_id && selectedSchedule.member_id) {
+      showError("회원을 선택해주세요.", "스케줄 수정");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // 날짜와 시간을 조합하여 start_time, end_time 생성
+      const [year, month, day] = editForm.date.split('-').map(Number);
+      const [hours, minutes] = editForm.time.split(':').map(Number);
+      const startDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+      const duration = parseInt(editForm.duration);
+      const endDate = new Date(startDate);
+      endDate.setMinutes(endDate.getMinutes() + duration);
+
+      // schedule_type 자동 분류
+      const scheduleType = classifyScheduleType(
+        startDate,
+        workStartTime,
+        workEndTime
+      );
+
+      // 회원 정보 업데이트
+      const selectedMember = members.find(m => m.id === editForm.member_id);
+      const updateData: any = {
+        status: editForm.status,
+        type: editForm.type,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        schedule_type: scheduleType,
+      };
+
+      // 회원 일정인 경우 회원 정보 업데이트
+      if (editForm.member_id && selectedMember) {
+        updateData.member_id = editForm.member_id;
+        updateData.member_name = selectedMember.name;
+        updateData.title = `${selectedMember.name} (${editForm.type})`;
+      }
+
+      const { error } = await supabase
+        .from("schedules")
+        .update(updateData)
+        .eq("id", selectedSchedule.id);
+
+      if (error) throw error;
+
+      showSuccess("스케줄이 수정되었습니다!");
+      setIsEditModalOpen(false);
+
+      // 스케줄 목록 새로고침
+      if (myGymId) {
+        fetchSchedules(myGymId, selectedStaffId);
+      }
+    } catch (error) {
+      showError(error, "스케줄 수정");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 스케줄 생성
+  const handleCreateSchedule = async () => {
+    if (!selectedTimeSlot || !myGymId) return;
+
+    // 개인 일정인 경우 제목 확인, 회원 일정인 경우 회원 선택 확인
+    if (createForm.isPersonal) {
+      if (!createForm.personalTitle.trim()) {
+        showError("일정 제목을 입력해주세요.", "스케줄 생성");
+        return;
+      }
+    } else {
+      if (!createForm.member_id) {
+        showError("회원을 선택해주세요.", "스케줄 생성");
+        return;
+      }
+    }
+
+    try {
+      setIsLoading(true);
+
+      // 날짜를 안전하게 파싱 (타임존 문제 방지)
+      const [year, month, day] = selectedTimeSlot.date.split('-').map(Number);
+      const [hours, minutes] = selectedTimeSlot.time.split(':').map(Number);
+      const startDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+
+      const duration = parseInt(createForm.duration);
+      const endDate = new Date(startDate);
+      endDate.setMinutes(endDate.getMinutes() + duration);
+
+      const targetStaffId = selectedTimeSlot.staffId || myStaffId;
+
+      // schedule_type 자동 분류
+      const scheduleType = classifyScheduleType(
+        startDate,
+        workStartTime,
+        workEndTime
+      );
+
+      let scheduleData: any = {
+        gym_id: myGymId,
+        staff_id: targetStaffId,
+        type: createForm.type,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        schedule_type: scheduleType,
+      };
+
+      if (createForm.isPersonal) {
+        // 개인 일정
+        scheduleData.member_name = createForm.personalTitle;
+        scheduleData.title = createForm.personalTitle;
+        scheduleData.type = "개인"; // 개인 일정 타입
+        scheduleData.status = "completed"; // 개인 일정은 자동 완료 처리
+        scheduleData.counted_for_salary = false; // 급여 계산 제외
+      } else {
+        // 회원 일정
+        const selectedMember = members.find(m => m.id === createForm.member_id);
+        if (!selectedMember) {
+          showError("회원 정보를 찾을 수 없습니다.", "스케줄 생성");
+          return;
+        }
+        scheduleData.member_id = createForm.member_id;
+        scheduleData.member_name = selectedMember.name;
+        scheduleData.title = `${selectedMember.name} (${createForm.type})`;
+        scheduleData.status = "reserved";
+        scheduleData.counted_for_salary = true; // 급여 계산 포함
+      }
+
+      const { error } = await supabase.from("schedules").insert(scheduleData);
+
+      if (error) throw error;
+
+      showSuccess(createForm.isPersonal ? "개인 일정이 생성되었습니다!" : "스케줄이 생성되었습니다!");
+      setIsCreateModalOpen(false);
+      setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "" });
+
+      // 스케줄 목록 새로고침
+      fetchSchedules(myGymId, selectedStaffId);
+    } catch (error) {
+      showError(error, "스케줄 생성");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 필터 변경 시 재조회
@@ -477,13 +708,290 @@ export default function AdminSchedulePage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           <WeeklyTimetable
             schedules={schedules}
-            onScheduleClick={() => {}}
-            onTimeSlotClick={() => {}}
+            onScheduleClick={handleScheduleClick}
+            onTimeSlotClick={handleTimeSlotClick}
             viewType={viewType}
             selectedDate={selectedDate}
           />
         </div>
       )}
+
+      {/* 스케줄 생성 모달 */}
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-[#2F80ED]" />
+              스케줄 생성
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* 선택된 시간 표시 */}
+            {selectedTimeSlot && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="text-sm text-gray-600">선택된 시간</div>
+                <div className="font-bold text-gray-900">
+                  {selectedTimeSlot.date} {selectedTimeSlot.time}
+                </div>
+              </div>
+            )}
+
+            {/* 일정 유형 선택 */}
+            <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <input
+                type="checkbox"
+                id="isPersonal"
+                checked={createForm.isPersonal}
+                onChange={(e) => setCreateForm({
+                  ...createForm,
+                  isPersonal: e.target.checked,
+                  member_id: "",
+                  personalTitle: ""
+                })}
+                className="w-4 h-4 rounded border-gray-300 text-[#2F80ED] focus:ring-[#2F80ED]"
+              />
+              <Label htmlFor="isPersonal" className="cursor-pointer font-medium">
+                개인 일정 <span className="text-xs text-gray-500">(급여 계산 제외)</span>
+              </Label>
+            </div>
+
+            {/* 조건부 렌더링: 개인 일정이면 제목 입력, 회원 일정이면 회원 선택 */}
+            {createForm.isPersonal ? (
+              <div className="space-y-2">
+                <Label htmlFor="personalTitle">일정 제목 *</Label>
+                <input
+                  type="text"
+                  id="personalTitle"
+                  value={createForm.personalTitle}
+                  onChange={(e) => setCreateForm({ ...createForm, personalTitle: e.target.value })}
+                  placeholder="예: 회의, 휴식, 개인 업무 등"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2F80ED]"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="member_id">회원 선택 *</Label>
+                <Select
+                  value={createForm.member_id}
+                  onValueChange={(value) => setCreateForm({ ...createForm, member_id: value })}
+                >
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue placeholder="회원을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.length === 0 ? (
+                      <SelectItem value="none" disabled>등록된 회원이 없습니다</SelectItem>
+                    ) : (
+                      members.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* 수업 타입 (개인 일정이 아닐 때만 표시) */}
+            {!createForm.isPersonal && (
+              <div className="space-y-2">
+                <Label htmlFor="type">수업 타입 *</Label>
+                <Select
+                  value={createForm.type}
+                  onValueChange={(value) => setCreateForm({ ...createForm, type: value })}
+                >
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PT">PT</SelectItem>
+                    <SelectItem value="OT">OT</SelectItem>
+                    <SelectItem value="Consulting">Consulting</SelectItem>
+                    <SelectItem value="GX">GX</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* 수업 시간 */}
+            <div className="space-y-2">
+              <Label htmlFor="duration">수업 시간 *</Label>
+              <Select
+                value={createForm.duration}
+                onValueChange={(value) => setCreateForm({ ...createForm, duration: value })}
+              >
+                <SelectTrigger className="border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30분</SelectItem>
+                  <SelectItem value="60">60분</SelectItem>
+                  <SelectItem value="90">90분</SelectItem>
+                  <SelectItem value="120">120분</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateModalOpen(false)}
+              className="border-gray-300"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleCreateSchedule}
+              disabled={isLoading}
+              className="bg-[#2F80ED] hover:bg-[#2F80ED]/90"
+            >
+              {isLoading ? "생성 중..." : "생성"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 스케줄 수정 모달 */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-[#2F80ED]">
+              스케줄 수정
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* 회원 선택 */}
+            {selectedSchedule?.member_id && (
+              <div className="space-y-2">
+                <Label htmlFor="edit_member_id">회원 선택 *</Label>
+                <Select
+                  value={editForm.member_id}
+                  onValueChange={(value) => setEditForm({ ...editForm, member_id: value })}
+                >
+                  <SelectTrigger className="border-gray-300">
+                    <SelectValue placeholder="회원을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.length === 0 ? (
+                      <SelectItem value="none" disabled>등록된 회원이 없습니다</SelectItem>
+                    ) : (
+                      members.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* 날짜 선택 */}
+            <div className="space-y-2">
+              <Label htmlFor="edit_date">날짜 *</Label>
+              <input
+                type="date"
+                id="edit_date"
+                value={editForm.date}
+                onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2F80ED]"
+              />
+            </div>
+
+            {/* 시간 선택 */}
+            <div className="space-y-2">
+              <Label htmlFor="edit_time">시작 시간 *</Label>
+              <input
+                type="time"
+                id="edit_time"
+                value={editForm.time}
+                onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2F80ED]"
+              />
+            </div>
+
+            {/* 수업 시간 */}
+            <div className="space-y-2">
+              <Label htmlFor="edit_duration">수업 시간 *</Label>
+              <Select
+                value={editForm.duration}
+                onValueChange={(value) => setEditForm({ ...editForm, duration: value })}
+              >
+                <SelectTrigger className="border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30분</SelectItem>
+                  <SelectItem value="60">60분</SelectItem>
+                  <SelectItem value="90">90분</SelectItem>
+                  <SelectItem value="120">120분</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 수업 타입 */}
+            <div className="space-y-2">
+              <Label htmlFor="edit_type">수업 타입 *</Label>
+              <Select
+                value={editForm.type}
+                onValueChange={(value) => setEditForm({ ...editForm, type: value })}
+              >
+                <SelectTrigger className="border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PT">PT</SelectItem>
+                  <SelectItem value="OT">OT</SelectItem>
+                  <SelectItem value="Consulting">Consulting</SelectItem>
+                  <SelectItem value="GX">GX</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 출석 상태 */}
+            <div className="space-y-2">
+              <Label htmlFor="edit_status">출석 상태 *</Label>
+              <Select
+                value={editForm.status}
+                onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+              >
+                <SelectTrigger className="border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reserved">예약됨</SelectItem>
+                  <SelectItem value="completed">출석완료</SelectItem>
+                  <SelectItem value="no_show">노쇼</SelectItem>
+                  <SelectItem value="no_show_deducted">노쇼 (차감)</SelectItem>
+                  <SelectItem value="service">서비스</SelectItem>
+                  <SelectItem value="cancelled">취소됨</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              className="border-gray-300"
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleUpdateSchedule}
+              disabled={isLoading}
+              className="bg-[#2F80ED] hover:bg-[#2F80ED]/90"
+            >
+              {isLoading ? "수정 중..." : "수정"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
