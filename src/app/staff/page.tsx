@@ -6,7 +6,7 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Plus, UserPlus, Calendar as CalendarIcon, LogOut, CheckCircle2, AlertCircle, DollarSign } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus, Calendar as CalendarIcon, LogOut, CheckCircle2, AlertCircle, DollarSign, ShieldCheck, ShieldOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +58,9 @@ export default function StaffPage() {
 
   // 통계 및 승인 상태
   const [monthlyStats, setMonthlyStats] = useState<any>(null);
+  const [dailyStats, setDailyStats] = useState<any>(null);
+  const [submissionStatus, setSubmissionStatus] = useState<"none" | "submitted" | "approved" | "rejected">("none");
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [isMonthApproved, setIsMonthApproved] = useState(false);
 
   // 입력 폼 상태
@@ -82,6 +85,7 @@ export default function StaffPage() {
     duration: string;
     memberId: string | null;
     status: string;
+    is_locked?: boolean;
   } | null>(null);
 
   // 수정용 상태
@@ -210,6 +214,7 @@ export default function StaffPage() {
     } else {
       setSchedules(data || []);
       calculateMonthlyStats(data || []);
+      calculateDailyStats(data || []);
     }
   };
 
@@ -246,8 +251,47 @@ export default function StaffPage() {
     });
 
     setMonthlyStats(stats);
-    // TODO: DB에서 실제 승인 여부 조회
-    setIsMonthApproved(false);
+    calculateDailyStats(scheduleList);
+    // 제출/승인 상태는 monthly_schedule_reports에서 별도 조회
+  };
+
+  const calculateDailyStats = (scheduleList: any[]) => {
+    const targetDay = selectedDate;
+    const daySchedules = scheduleList.filter((s) => s.start_time?.startsWith(targetDay));
+
+    const stats = {
+      PT: 0,
+      OT: 0,
+      Consulting: 0,
+      total: daySchedules.length,
+      completed: 0,
+      no_show_deducted: 0,
+      no_show: 0,
+      service: 0,
+      inside: 0,
+      outside: 0,
+      weekend: 0,
+      holiday: 0,
+    };
+
+    daySchedules.forEach((s) => {
+      if (s.type === "PT") stats.PT++;
+      else if (s.type === "OT") stats.OT++;
+      else if (s.type === "Consulting") stats.Consulting++;
+
+      if (s.status === "completed") stats.completed++;
+      else if (s.status === "no_show_deducted") stats.no_show_deducted++;
+      else if (s.status === "no_show") stats.no_show++;
+      else if (s.status === "service") stats.service++;
+
+      if (s.schedule_type && Object.prototype.hasOwnProperty.call(stats, s.schedule_type)) {
+        // inside/outside/weekend/holiday
+        // @ts-ignore
+        stats[s.schedule_type] = stats[s.schedule_type] + 1;
+      }
+    });
+
+    setDailyStats(stats);
   };
 
   // 핸들러 함수들
@@ -285,6 +329,10 @@ export default function StaffPage() {
   };
 
   const handleAddClass = async () => {
+    if (isMonthLocked) {
+      alert("제출(승인 대기/승인)된 달은 수정이 불가합니다.");
+      return;
+    }
     if (!newMemberName || !myStaffId || !myGymId) return;
 
     const startDateTime = new Date(`${selectedDate}T${startTime}:00`);
@@ -402,46 +450,21 @@ export default function StaffPage() {
 
   const handleDeleteSchedule = async () => {
     if (!selectedEvent || !myStaffId) return;
+    if (selectedEvent.is_locked || isMonthLocked) {
+      alert("제출/승인된 스케줄은 삭제할 수 없습니다.");
+      return;
+    }
     if (!confirm("정말 이 스케줄을 삭제하시겠습니까?")) return;
 
     try {
-      const { data: schedule } = await supabase
-        .from("schedules")
-        .select("status, member_id")
-        .eq("id", selectedEvent.id)
-        .single();
-      
-      // 차감된 건이면 복구
-      if (schedule && (schedule.status === "completed" || schedule.status === "no_show_deducted")) {
-         const { data: membership } = await supabase
-          .from("member_memberships")
-          .select("id, used_sessions")
-          .eq("member_id", schedule.member_id)
-          .eq("status", "active")
-          .limit(1)
-          .single();
-        
-        if (membership) {
-          await supabase
-            .from("member_memberships")
-            .update({ used_sessions: Math.max(0, membership.used_sessions - 1) })
-            .eq("id", membership.id);
-        }
-      }
-
-      const { error } = await supabase
-        .from("schedules")
-        .delete()
-        .eq("id", selectedEvent.id)
-        .eq("staff_id", myStaffId);
-
-      if (error) throw error;
+      const res = await fetch(`/api/schedule/${selectedEvent.id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "삭제에 실패했습니다.");
 
       setIsStatusModalOpen(false);
       setSelectedEvent(null);
       fetchSchedules(myStaffId);
       if (myGymId && myCompanyId) fetchMembers(myGymId, myCompanyId);
-
     } catch (error: any) {
       alert("삭제 실패: " + error.message);
     }
@@ -449,6 +472,10 @@ export default function StaffPage() {
 
   const handleEditClass = async () => {
     if (!selectedEvent || !myStaffId || !myGymId) return;
+    if (selectedEvent.is_locked || isMonthLocked) {
+      alert("제출/승인된 스케줄은 수정할 수 없습니다.");
+      return;
+    }
 
     const startDateTime = new Date(`${editDate}T${editStartTime}:00`);
     const durationMin = parseInt(editDuration);
@@ -495,9 +522,11 @@ export default function StaffPage() {
     setSelectedDate(date.toISOString().split('T')[0]);
   };
 
+  const isMonthLocked = submissionStatus === "submitted" || submissionStatus === "approved";
+
   const handleTimeSlotClick = (date: Date, time: string) => {
-    if (isMonthApproved) {
-        alert("이미 마감 승인된 달입니다.");
+    if (isMonthLocked) {
+        alert("제출(승인 대기/승인)된 달은 수정이 불가합니다.");
         return;
     }
     const dateStr = date.toISOString().split('T')[0];
@@ -521,7 +550,8 @@ export default function StaffPage() {
       type: schedule.type,
       duration: String(durationMin),
       memberId: schedule.member_id,
-      status: schedule.status
+      status: schedule.status,
+      is_locked: schedule.is_locked
     });
     setIsStatusModalOpen(true);
   };
@@ -543,6 +573,69 @@ export default function StaffPage() {
     setMemberSearchQuery(member.name);
     setShowMemberDropdown(false);
   };
+
+  const getYearMonth = () => {
+    const d = new Date(selectedDate);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${yyyy}-${mm}`;
+  };
+
+  const fetchReportStatus = async (staffId: string, gymId: string | null) => {
+    const yearMonth = getYearMonth();
+    const { data, error } = await supabase
+      .from("monthly_schedule_reports")
+      .select("id, status, submitted_at, reviewed_at")
+      .eq("staff_id", staffId)
+      .eq("year_month", yearMonth)
+      .maybeSingle();
+
+    if (error) {
+      console.error("보고서 조회 실패:", error);
+      return;
+    }
+
+    if (data) {
+      setSubmissionStatus(data.status as any);
+      setCurrentReportId(data.id);
+      setIsMonthApproved(data.status === "approved");
+    } else {
+      setSubmissionStatus("none");
+      setCurrentReportId(null);
+      setIsMonthApproved(false);
+    }
+  };
+
+  const handleSubmitMonth = async () => {
+    if (!myGymId || !myStaffId) return;
+    const yearMonth = getYearMonth();
+    if (!confirm(`${yearMonth} 스케줄을 관리자에게 제출하시겠습니까?\n제출 후 승인 전까지 잠금됩니다.`)) return;
+
+    try {
+      const res = await fetch("/api/schedule/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ yearMonth }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "제출에 실패했습니다.");
+
+      alert(json.message || "제출되었습니다.");
+      setSubmissionStatus("submitted");
+      setCurrentReportId(json.report?.id ?? null);
+      setIsMonthApproved(false);
+      fetchSchedules(myStaffId);
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  // 월/날짜 변경 시 리포트 상태도 갱신
+  useEffect(() => {
+    if (myStaffId && myGymId) {
+      fetchReportStatus(myStaffId, myGymId);
+    }
+  }, [selectedDate, myStaffId, myGymId]);
 
   if (isLoading) {
     return (
@@ -637,7 +730,82 @@ export default function StaffPage() {
             </div>
         </div>
 
-        {/* 3. Scheduler Section */}
+      {/* 3. 제출 상태 배너 + 당일 통계 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-4 md:p-5 flex flex-col gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            {submissionStatus === "approved" ? (
+              <span className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-50 text-emerald-600">
+                <ShieldCheck className="w-5 h-5" />
+              </span>
+            ) : submissionStatus === "rejected" ? (
+              <span className="flex items-center justify-center w-10 h-10 rounded-full bg-red-50 text-red-500">
+                <ShieldOff className="w-5 h-5" />
+              </span>
+            ) : submissionStatus === "submitted" ? (
+              <span className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-50 text-amber-500">
+                <AlertCircle className="w-5 h-5" />
+              </span>
+            ) : (
+              <span className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-[#2F80ED]">
+                <CalendarIcon className="w-5 h-5" />
+              </span>
+            )}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                {getYearMonth()} 스케줄 상태
+                {submissionStatus === "approved" && (
+                  <span className="text-emerald-600 text-xs bg-emerald-50 px-2 py-1 rounded-full">승인됨</span>
+                )}
+                {submissionStatus === "submitted" && (
+                  <span className="text-amber-600 text-xs bg-amber-50 px-2 py-1 rounded-full">승인 대기</span>
+                )}
+                {submissionStatus === "rejected" && (
+                  <span className="text-red-600 text-xs bg-red-50 px-2 py-1 rounded-full">거절됨</span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">
+                제출 기한: 다음 달 5일까지 / 제출 후 승인 대기 시 수정·삭제 불가
+              </p>
+            </div>
+            <Button
+              disabled={submissionStatus === "submitted" || submissionStatus === "approved"}
+              onClick={handleSubmitMonth}
+              className="bg-[#2F80ED] hover:bg-[#1c6cd7] disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-bold px-4 h-10 rounded-xl"
+            >
+              {submissionStatus === "approved"
+                ? "승인 완료"
+                : submissionStatus === "submitted"
+                ? "승인 대기 중"
+                : "이번 달 제출"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-2xl p-4 md:p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-bold text-gray-900">오늘 통계</h3>
+            <span className="text-xs text-gray-400">{selectedDate}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "총 건수", value: dailyStats?.total ?? 0, color: "text-gray-900" },
+              { label: "출석 완료", value: dailyStats?.completed ?? 0, color: "text-emerald-600" },
+              { label: "PT", value: dailyStats?.PT ?? 0, color: "text-blue-600" },
+              { label: "OT", value: dailyStats?.OT ?? 0, color: "text-purple-600" },
+              { label: "근무내", value: dailyStats?.inside ?? 0, color: "text-amber-600" },
+              { label: "근무외/주말", value: (dailyStats?.outside ?? 0) + (dailyStats?.weekend ?? 0), color: "text-red-500" },
+            ].map((item, idx) => (
+              <div key={idx} className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex flex-col gap-1">
+                <span className="text-[11px] font-bold text-gray-500">{item.label}</span>
+                <span className={`text-xl font-black ${item.color}`}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Scheduler Section */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[600px]">
             {/* Scheduler Header Control */}
             <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-white sticky top-0 z-10">

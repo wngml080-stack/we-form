@@ -19,6 +19,10 @@ interface WeeklyTimetableProps {
   onTimeSlotClick?: (date: Date, time: string) => void;
   viewType?: 'day' | 'week' | 'month';
   selectedDate: string; // "YYYY-MM-DD"
+  workStartTime?: string | null;
+  workEndTime?: string | null;
+  selectedStaffId?: string;
+  staffs?: any[];
 }
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -26,7 +30,17 @@ const START_HOUR = 6; // 06:00
 const END_HOUR = 24; // 24:00
 const SLOT_MINUTES = 30;
 
-export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlotClick, viewType = 'week', selectedDate }: WeeklyTimetableProps) {
+export default function WeeklyTimetable({
+  schedules,
+  onScheduleClick,
+  onTimeSlotClick,
+  viewType = 'week',
+  selectedDate,
+  workStartTime,
+  workEndTime,
+  selectedStaffId,
+  staffs
+}: WeeklyTimetableProps) {
   // 현재 주의 시작일 (월요일 기준, 혹은 선택된 날짜가 속한 주의 월요일)
   const weekStart = useMemo(() => {
     // 로컬 시간 기준으로 날짜 파싱 (타임존 문제 방지)
@@ -153,36 +167,36 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
   }, [schedules]);
 
   const getScheduleColor = (schedule: Schedule) => {
-    // 1. 출석 상태별 색상 (최우선)
-    if (schedule.status === 'completed') return 'bg-green-600 border-green-700 text-white'; // 출석완료: 진한 초록색
-    if (schedule.status === 'no_show') return 'bg-red-500 border-red-600 text-white'; // 노쇼: 빨간색
-    if (schedule.status === 'no_show_deducted') return 'bg-red-300 border-red-400 text-red-900'; // 노쇼(차감): 연한 빨간색
-    if (schedule.status === 'service') return 'bg-orange-400 border-orange-500 text-white'; // 서비스수업: 주황색
-    if (schedule.status === 'cancelled') return 'bg-gray-400 border-gray-500 text-white'; // 취소: 회색
+    // 0. 개인 일정은 항상 바이올렛 (상태와 관계없이 최우선)
+    if (schedule.type === '개인') return 'bg-purple-200 border-purple-300 text-purple-900'; // 개인일정: 파스텔 바이올렛
+
+    // 1. 출석 상태별 색상
+    if (schedule.status === 'completed') return 'bg-emerald-200 border-emerald-300 text-emerald-900'; // 출석완료: 파스텔 에메랄드
+    if (schedule.status === 'no_show') return 'bg-rose-300 border-rose-400 text-rose-900'; // 노쇼: 파스텔 로즈
+    if (schedule.status === 'no_show_deducted') return 'bg-rose-100 border-rose-200 text-rose-800'; // 노쇼(차감): 연한 로즈
+    if (schedule.status === 'service') return 'bg-amber-200 border-amber-300 text-amber-900'; // 서비스수업: 파스텔 앰버
+    if (schedule.status === 'cancelled') return 'bg-gray-200 border-gray-300 text-gray-800'; // 취소: 파스텔 그레이
 
     // 2. 타입별 색상
-    // 개인 일정
-    if (schedule.type === '개인') return 'bg-purple-400 border-purple-500 text-white'; // 개인일정: 보라색
-
     // OT
-    if (schedule.type === 'OT') return 'bg-green-400 border-green-500 text-white'; // OT: 초록색
+    if (schedule.type === 'OT') return 'bg-teal-200 border-teal-300 text-teal-900'; // OT: 파스텔 틸
 
     // PT
     if (schedule.type === 'PT') {
       // 주말 및 공휴일
       if (schedule.schedule_type === 'weekend' || schedule.schedule_type === 'holiday') {
-        return 'bg-yellow-400 border-yellow-500 text-gray-900'; // 주말/공휴일: 노란색
+        return 'bg-orange-200 border-orange-300 text-orange-900'; // 주말/공휴일: 파스텔 오렌지
       }
       // 근무외
       if (schedule.schedule_type === 'outside') {
-        return 'bg-pink-400 border-pink-500 text-white'; // PT(근무외): 핑크색
+        return 'bg-pink-200 border-pink-300 text-pink-900'; // PT(근무외): 파스텔 핑크
       }
       // 근무내 (기본)
-      return 'bg-green-400 border-green-500 text-white'; // PT(근무내): 초록색
+      return 'bg-sky-200 border-sky-300 text-sky-900'; // PT(근무내): 파스텔 블루
     }
 
     // 기타
-    return 'bg-gray-300 border-gray-400 text-gray-900';
+    return 'bg-gray-200 border-gray-300 text-gray-800';
   };
 
   const handleTimeSlotClick = (date: Date, timeSlot: string) => {
@@ -197,6 +211,19 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
 
   return (
     <div className="w-full h-full overflow-hidden bg-white rounded-lg shadow border md:mx-0 relative flex flex-col">
+      {/* 근무시간 정보 표시 */}
+      {selectedStaffId && selectedStaffId !== "all" && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 px-4 py-2.5">
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <span className="font-semibold text-gray-700">
+              {staffs?.find(s => s.id === selectedStaffId)?.name || '선택된 강사'}의 근무시간:
+            </span>
+            <span className="font-bold text-[#2F80ED]">
+              {workStartTime ? workStartTime.substring(0, 5) : '--:--'} ~ {workEndTime ? workEndTime.substring(0, 5) : '--:--'}
+            </span>
+          </div>
+        </div>
+      )}
       <div className="flex-1 overflow-auto relative">
         <table className={cn("w-full border-collapse", viewType === 'day' ? 'min-w-full' : 'min-w-[700px] md:min-w-full')}>
           {/* 헤더 */}
@@ -262,7 +289,7 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
                     <td
                       key={dayIdx}
                       rowSpan={cellRowSpan}
-                      className="border border-gray-200 p-0 align-top hover:bg-blue-50 cursor-pointer transition-colors relative"
+                      className="border border-gray-200 p-0 align-top hover:bg-blue-50 cursor-pointer transition-colors relative h-[50px]"
                       onClick={() => {
                         if (schedulesInSlot.length === 0) {
                           handleTimeSlotClick(date, timeSlot);
@@ -278,13 +305,16 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
                               onScheduleClick?.(schedule);
                             }}
                             className={cn(
-                              "px-1.5 py-1 border-l-[3px] text-[10px] md:text-xs font-medium cursor-pointer hover:brightness-95 transition-all w-full overflow-hidden min-h-[40px] md:min-h-[50px] flex flex-col justify-center",
+                              "px-1.5 py-1 border-l-[3px] text-[10px] md:text-xs font-medium cursor-pointer hover:brightness-95 transition-all w-full overflow-hidden flex flex-col justify-center",
                               sIdx < schedulesInSlot.length - 1 && "border-b border-black/5",
                               getScheduleColor(schedule)
                             )}
-                            style={{ flexGrow: schedule.rowSpan }}
+                            style={{
+                              height: `${schedule.rowSpan * 50}px`,
+                              minHeight: `${schedule.rowSpan * 50}px`
+                            }}
                           >
-                            <div className="font-bold truncate leading-tight">{schedule.type} {schedule.rowSpan > 1 && `[${schedule.rowSpan}칸]`}</div>
+                            <div className="font-bold truncate leading-tight">{schedule.type}</div>
                             <div className="truncate leading-tight">{schedule.member_name}</div>
                             {/* 모바일에서는 시간 숨기거나 간소화 */}
                             <div className="hidden md:block text-[9px] opacity-80 mt-0.5">
@@ -314,47 +344,47 @@ export default function WeeklyTimetable({ schedules, onScheduleClick, onTimeSlot
       {/* 범례 */}
       <div className="p-3 border-t bg-gray-50 flex flex-wrap gap-x-4 gap-y-2 text-xs shrink-0 sticky bottom-0 z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-400 border-l-4 border-green-500 rounded"></div>
+          <div className="w-4 h-4 bg-sky-200 border-l-4 border-sky-300 rounded"></div>
           <span>PT (근무내)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-pink-400 border-l-4 border-pink-500 rounded"></div>
+          <div className="w-4 h-4 bg-pink-200 border-l-4 border-pink-300 rounded"></div>
           <span>PT (근무외)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-yellow-400 border-l-4 border-yellow-500 rounded"></div>
+          <div className="w-4 h-4 bg-orange-200 border-l-4 border-orange-300 rounded"></div>
           <span>PT (주말)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-yellow-400 border-l-4 border-yellow-500 rounded"></div>
+          <div className="w-4 h-4 bg-orange-200 border-l-4 border-orange-300 rounded"></div>
           <span>PT (공휴일)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-400 border-l-4 border-green-500 rounded"></div>
+          <div className="w-4 h-4 bg-teal-200 border-l-4 border-teal-300 rounded"></div>
           <span>OT</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-600 border-l-4 border-green-700 rounded"></div>
+          <div className="w-4 h-4 bg-emerald-200 border-l-4 border-emerald-300 rounded"></div>
           <span>출석완료</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-red-500 border-l-4 border-red-600 rounded"></div>
+          <div className="w-4 h-4 bg-rose-300 border-l-4 border-rose-400 rounded"></div>
           <span>노쇼</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-red-300 border-l-4 border-red-400 rounded"></div>
+          <div className="w-4 h-4 bg-rose-100 border-l-4 border-rose-200 rounded"></div>
           <span>노쇼 (차감)</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-400 border-l-4 border-orange-500 rounded"></div>
+          <div className="w-4 h-4 bg-amber-200 border-l-4 border-amber-300 rounded"></div>
           <span>서비스</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-400 border-l-4 border-gray-500 rounded"></div>
+          <div className="w-4 h-4 bg-gray-200 border-l-4 border-gray-300 rounded"></div>
           <span>취소</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-purple-400 border-l-4 border-purple-500 rounded"></div>
+          <div className="w-4 h-4 bg-purple-200 border-l-4 border-purple-300 rounded"></div>
           <span>개인일정</span>
         </div>
       </div>

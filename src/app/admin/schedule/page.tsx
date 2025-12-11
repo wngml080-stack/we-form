@@ -111,10 +111,11 @@ export default function AdminSchedulePage() {
         } else {
           const { data: staffList } = await supabase
             .from("staffs")
-            .select("id, name")
+            .select("id, name, work_start_time, work_end_time")
             .eq("gym_id", me.gym_id)
             .order("name", { ascending: true });
 
+          console.log("📋 강사 목록:", staffList);
           if (staffList) setStaffs(staffList);
           fetchSchedules(me.gym_id, "all");
         }
@@ -287,6 +288,37 @@ export default function AdminSchedulePage() {
       const endDate = new Date(startDate);
       endDate.setMinutes(endDate.getMinutes() + duration);
 
+      // 중복 스케줄 체크 (자기 자신은 제외)
+      const { data: existingSchedules } = await supabase
+        .from("schedules")
+        .select("id, start_time, end_time, member_name")
+        .eq("staff_id", selectedSchedule.staff_id)
+        .eq("gym_id", myGymId!)
+        .neq("id", selectedSchedule.id); // 수정 중인 스케줄은 제외
+
+      if (existingSchedules && existingSchedules.length > 0) {
+        // 시간 겹침 체크
+        const hasOverlap = existingSchedules.some((schedule) => {
+          const existingStart = new Date(schedule.start_time);
+          const existingEnd = new Date(schedule.end_time);
+          return startDate < existingEnd && existingStart < endDate;
+        });
+
+        if (hasOverlap) {
+          const overlappingSchedule = existingSchedules.find((schedule) => {
+            const existingStart = new Date(schedule.start_time);
+            const existingEnd = new Date(schedule.end_time);
+            return startDate < existingEnd && existingStart < endDate;
+          });
+
+          showError(
+            `중복 일정이 있습니다.\n기존 일정: ${overlappingSchedule?.member_name || '일정'} (${new Date(overlappingSchedule!.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })} - ${new Date(overlappingSchedule!.end_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })})`,
+            "스케줄 수정"
+          );
+          return;
+        }
+      }
+
       // schedule_type 자동 분류
       const scheduleType = classifyScheduleType(
         startDate,
@@ -362,6 +394,37 @@ export default function AdminSchedulePage() {
       endDate.setMinutes(endDate.getMinutes() + duration);
 
       const targetStaffId = selectedTimeSlot.staffId || myStaffId;
+
+      // 중복 스케줄 체크
+      const { data: existingSchedules } = await supabase
+        .from("schedules")
+        .select("id, start_time, end_time, member_name")
+        .eq("staff_id", targetStaffId)
+        .eq("gym_id", myGymId);
+
+      if (existingSchedules && existingSchedules.length > 0) {
+        // 시간 겹침 체크
+        const hasOverlap = existingSchedules.some((schedule) => {
+          const existingStart = new Date(schedule.start_time);
+          const existingEnd = new Date(schedule.end_time);
+          // 시간이 겹치는지 확인: 새 스케줄의 시작이 기존 종료보다 빠르고, 기존 시작이 새 종료보다 빠르면 겹침
+          return startDate < existingEnd && existingStart < endDate;
+        });
+
+        if (hasOverlap) {
+          const overlappingSchedule = existingSchedules.find((schedule) => {
+            const existingStart = new Date(schedule.start_time);
+            const existingEnd = new Date(schedule.end_time);
+            return startDate < existingEnd && existingStart < endDate;
+          });
+
+          showError(
+            `중복 일정이 있습니다.\n기존 일정: ${overlappingSchedule?.member_name || '일정'} (${new Date(overlappingSchedule!.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })} - ${new Date(overlappingSchedule!.end_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })})`,
+            "스케줄 생성"
+          );
+          return;
+        }
+      }
 
       // schedule_type 자동 분류
       const scheduleType = classifyScheduleType(
@@ -487,17 +550,33 @@ export default function AdminSchedulePage() {
         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
           {/* 강사 필터 (관리자만) */}
           {userRole !== "staff" && (
-            <Select value={selectedStaffId} onValueChange={handleFilterChange}>
-              <SelectTrigger className="h-10 bg-white border-gray-200 rounded-lg hover:border-[#2F80ED] transition-colors">
-                <SelectValue placeholder="강사 선택" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="all">전체 강사 보기</SelectItem>
-                {staffs.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <Select value={selectedStaffId} onValueChange={handleFilterChange}>
+                <SelectTrigger className="h-10 bg-white border-gray-200 rounded-lg hover:border-[#2F80ED] transition-colors">
+                  <SelectValue placeholder="강사 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="all">전체 강사 보기</SelectItem>
+                  {staffs.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {/* 선택된 강사의 근무시간 표시 */}
+              {selectedStaffId !== "all" && (() => {
+                const selectedStaff = staffs.find(s => s.id === selectedStaffId);
+                console.log("🔍 선택된 강사:", selectedStaff);
+                if (selectedStaff) {
+                  const formatTime = (time: string | null) => time ? time.substring(0, 5) : '--:--';
+                  return (
+                    <div className="text-xs text-gray-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                      <span className="font-semibold text-[#2F80ED]">근무시간:</span> {formatTime(selectedStaff.work_start_time)} ~ {formatTime(selectedStaff.work_end_time)}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
           )}
 
           {/* 엑셀 다운로드 */}
@@ -712,6 +791,10 @@ export default function AdminSchedulePage() {
             onTimeSlotClick={handleTimeSlotClick}
             viewType={viewType}
             selectedDate={selectedDate}
+            workStartTime={workStartTime}
+            workEndTime={workEndTime}
+            selectedStaffId={selectedStaffId}
+            staffs={staffs}
           />
         </div>
       )}
@@ -815,9 +898,9 @@ export default function AdminSchedulePage() {
               </div>
             )}
 
-            {/* 수업 시간 */}
+            {/* 진행 시간 */}
             <div className="space-y-2">
-              <Label htmlFor="duration">수업 시간 *</Label>
+              <Label htmlFor="duration">진행 시간 *</Label>
               <Select
                 value={createForm.duration}
                 onValueChange={(value) => setCreateForm({ ...createForm, duration: value })}
@@ -914,9 +997,9 @@ export default function AdminSchedulePage() {
               />
             </div>
 
-            {/* 수업 시간 */}
+            {/* 진행 시간 */}
             <div className="space-y-2">
-              <Label htmlFor="edit_duration">수업 시간 *</Label>
+              <Label htmlFor="edit_duration">진행 시간 *</Label>
               <Select
                 value={editForm.duration}
                 onValueChange={(value) => setEditForm({ ...editForm, duration: value })}

@@ -28,9 +28,9 @@ export default function AdminStaffPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<any>(null);
 
-  // 수정 폼 (gym_id 추가됨)
+  // 수정 폼 (gym_id, work_start_time, work_end_time 추가됨)
   const [editForm, setEditForm] = useState({
-    name: "", email: "", phone: "", job_title: "", employment_status: "", joined_at: "", gym_id: ""
+    name: "", email: "", phone: "", job_title: "", employment_status: "", joined_at: "", gym_id: "", work_start_time: "", work_end_time: ""
   });
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -75,6 +75,7 @@ export default function AdminStaffPage() {
       .from("staffs")
       .select(`
         id, name, email, phone, job_title, employment_status, joined_at, gym_id,
+        work_start_time, work_end_time,
         gyms ( name )
       `)
       .order("name", { ascending: true });
@@ -115,6 +116,8 @@ export default function AdminStaffPage() {
       employment_status: staff.employment_status || "재직",
       joined_at: staff.joined_at || "",
       gym_id: staff.gym_id || "none",
+      work_start_time: staff.work_start_time || "",
+      work_end_time: staff.work_end_time || "",
     });
     setIsEditOpen(true);
   };
@@ -315,6 +318,32 @@ export default function AdminStaffPage() {
                   <SelectItem value="휴직">휴직</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* 근무시간 설정 */}
+            <div className="border-t pt-4 mt-4">
+              <Label className="text-sm font-bold text-gray-800 mb-3 block">근무시간 설정 (스케줄 근무내/외 분류용)</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">근무 시작 시간</Label>
+                  <Input
+                    type="time"
+                    value={editForm.work_start_time}
+                    onChange={(e) => setEditForm({...editForm, work_start_time: e.target.value})}
+                    placeholder="예: 09:00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">근무 종료 시간</Label>
+                  <Input
+                    type="time"
+                    value={editForm.work_end_time}
+                    onChange={(e) => setEditForm({...editForm, work_end_time: e.target.value})}
+                    placeholder="예: 18:00"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">※ 이 시간을 기준으로 스케줄이 근무내/근무외로 자동 분류됩니다</p>
             </div>
           </div>
           <DialogFooter>
