@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../lib/supabase/server";
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const scheduleId = params.id;
+    // Next.js 16: params는 Promise
+    const { id: scheduleId } = await params;
     if (!scheduleId) {
       return NextResponse.json({ error: "스케줄 ID가 필요합니다." }, { status: 400 });
     }

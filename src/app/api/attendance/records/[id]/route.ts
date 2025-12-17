@@ -4,12 +4,15 @@ import { NextResponse } from "next/server";
 // 출석 기록 수정
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
     const body = await request.json();
     const { status_code, memo } = body;
+
+    // Next.js 16: params는 Promise
+    const { id } = await params;
 
     const { data, error } = await supabase
       .from("attendances")
@@ -17,7 +20,7 @@ export async function PATCH(
         status_code,
         memo,
       })
-      .eq("id", params.id)
+      .eq("id", id)
       .select(`
         *,
         member:members(id, name, phone),
@@ -39,15 +42,18 @@ export async function PATCH(
 // 출석 기록 삭제
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
 
+    // Next.js 16: params는 Promise
+    const { id } = await params;
+
     const { error } = await supabase
       .from("attendances")
       .delete()
-      .eq("id", params.id);
+      .eq("id", id);
 
     if (error) throw error;
 

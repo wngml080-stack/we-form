@@ -118,14 +118,14 @@ export function useSortedData<T extends Record<string, any>>(
     const sorted = [...data];
 
     sorted.sort((a, b) => {
-      const aValue = a[sortBy];
-      const bValue = b[sortBy];
+      const aValue = a[sortBy] as any;
+      const bValue = b[sortBy] as any;
 
       // null/undefined 처리
       if (aValue == null) return 1;
       if (bValue == null) return -1;
 
-      // 날짜 비교
+      // 날짜 비교 (Date 객체)
       if (aValue instanceof Date && bValue instanceof Date) {
         return sortOrder === 'asc'
           ? aValue.getTime() - bValue.getTime()

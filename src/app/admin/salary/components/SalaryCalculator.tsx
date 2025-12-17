@@ -280,7 +280,8 @@ export default function SalaryCalculator() {
 
                 if (setting && setting.template) {
                     // 규칙 적용
-                    const rules = setting.template.items.map((i: any) => i.rule);
+                    // @ts-ignore - template.items 타입 정의 필요
+                    const rules = setting.template.items?.map((i: any) => i.rule) || [];
                     const params = setting.personal_parameters || {};
 
                     for (const rule of rules) {
