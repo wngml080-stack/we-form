@@ -124,33 +124,46 @@ export default function AdminSchedulePage() {
         setWorkStartTime(me.work_start_time);
         setWorkEndTime(me.work_end_time);
 
-        // 역할에 따라 다르게 처리
+        // ✅ 병렬 쿼리 실행: 강사 목록, 회원 목록을 동시에 불러오기
+        const staffIdFilter = me.role === "staff" ? me.id : "all";
+        setSelectedStaffId(staffIdFilter);
+
         if (me.role === "staff") {
-          setSelectedStaffId(me.id);
-          fetchSchedules(me.gym_id, me.id);
-        } else {
-          const { data: staffList } = await supabase
-            .from("staffs")
-            .select("id, name, work_start_time, work_end_time")
+          // 일반 직원: 회원 목록만 불러오기
+          const { data: memberList } = await supabase
+            .from("members")
+            .select("id, name")
             .eq("gym_id", me.gym_id)
             .order("name", { ascending: true });
 
-          console.log("📋 강사 목록:", staffList);
-          if (staffList) setStaffs(staffList);
-          fetchSchedules(me.gym_id, "all");
+          if (memberList) setMembers(memberList);
+        } else {
+          // 관리자: 강사 목록과 회원 목록을 병렬로 불러오기
+          const [memberResult, staffResult] = await Promise.all([
+            supabase
+              .from("members")
+              .select("id, name")
+              .eq("gym_id", me.gym_id)
+              .order("name", { ascending: true }),
+            supabase
+              .from("staffs")
+              .select("id, name, work_start_time, work_end_time")
+              .eq("gym_id", me.gym_id)
+              .order("name", { ascending: true })
+          ]);
+
+          if (memberResult.data) setMembers(memberResult.data);
+          if (staffResult.data) {
+            console.log("📋 강사 목록:", staffResult.data);
+            setStaffs(staffResult.data);
+          }
         }
+
+        // 스케줄 조회
+        fetchSchedules(me.gym_id, staffIdFilter);
 
         // 보고서 목록
         refetchReports();
-
-        // 회원 목록 가져오기
-        const { data: memberList } = await supabase
-          .from("members")
-          .select("id, name")
-          .eq("gym_id", me.gym_id)
-          .order("name", { ascending: true });
-
-        if (memberList) setMembers(memberList);
 
       } catch (error) {
         console.error("초기화 에러:", error);
@@ -164,10 +177,17 @@ export default function AdminSchedulePage() {
 
   // 스케줄 조회 함수
   const fetchSchedules = async (gymId: string, staffIdFilter: string) => {
+    // ✅ 날짜 필터링: 현재 선택된 날짜의 전후 2개월 데이터만 조회
+    const current = new Date(selectedDate);
+    const startDate = new Date(current.getFullYear(), current.getMonth() - 2, 1);
+    const endDate = new Date(current.getFullYear(), current.getMonth() + 3, 0); // 다음달 마지막일
+
     let query = supabase
       .from("schedules")
       .select("*")
-      .eq("gym_id", gymId);
+      .eq("gym_id", gymId)
+      .gte("start_time", startDate.toISOString())
+      .lte("start_time", endDate.toISOString());
 
     if (staffIdFilter !== "all") {
       query = query.eq("staff_id", staffIdFilter);
@@ -223,10 +243,25 @@ export default function AdminSchedulePage() {
     setMonthlyStats(stats);
   };
 
-  // 날짜 변경 시 통계 재계산
+  // 날짜 변경 시 통계 재계산 및 월 변경 시 데이터 재조회
   useEffect(() => {
     if (schedules.length > 0) {
       calculateMonthlyStats(schedules);
+    }
+
+    // ✅ 월이 변경되면 스케줄 다시 불러오기
+    if (myGymId && selectedStaffId) {
+      const current = new Date(selectedDate);
+      const scheduleMonths = schedules.map(s => {
+        const d = new Date(s.start_time);
+        return `${d.getFullYear()}-${d.getMonth()}`;
+      });
+      const currentMonth = `${current.getFullYear()}-${current.getMonth()}`;
+
+      // 현재 월의 데이터가 없으면 다시 불러오기
+      if (!scheduleMonths.includes(currentMonth) && schedules.length > 0) {
+        fetchSchedules(myGymId, selectedStaffId);
+      }
     }
   }, [selectedDate, schedules]);
 

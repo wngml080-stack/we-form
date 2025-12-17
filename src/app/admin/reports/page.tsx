@@ -69,30 +69,44 @@ export default function AdminReportsPage() {
   const fetchReports = async (gymId: string, role: string) => {
     setIsLoading(true);
 
-    let query = supabase
-      .from("monthly_schedule_reports")
-      .select(`
-        *,
-        staffs(name, email),
-        gyms(name)
-      `)
-      .order("submitted_at", { ascending: false });
+    try {
+      let query = supabase
+        .from("monthly_schedule_reports")
+        .select(`
+          *,
+          staffs(name, email),
+          gyms(name)
+        `)
+        .order("submitted_at", { ascending: false });
 
-    // Gym admin can only see their gym's reports
-    if (role === "admin") {
-      query = query.eq("gym_id", gymId);
+      // Gym admin can only see their gym's reports
+      if (role === "admin") {
+        query = query.eq("gym_id", gymId);
+      }
+      // company_admin and system_admin can see all reports (handled by RLS)
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Error fetching reports:", error);
+        console.error("Error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        // RLS 정책이 없어서 발생할 수 있는 오류 무시
+        if (error.code !== 'PGRST116') {
+          showError(`보고서 조회 실패: ${error.message}`, "데이터 조회");
+        }
+      } else if (data) {
+        setReports(data as MonthlyReport[]);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    } finally {
+      setIsLoading(false);
     }
-    // company_admin and system_admin can see all reports (handled by RLS)
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("Error fetching reports:", error);
-    } else if (data) {
-      setReports(data as MonthlyReport[]);
-    }
-
-    setIsLoading(false);
   };
 
   const openReview = (report: MonthlyReport) => {

@@ -65,19 +65,16 @@ export default function SalesPage() {
     init();
   }, []);
 
+  // 날짜 필터 변경 시 데이터 다시 불러오기
   useEffect(() => {
-    // 필터링 로직을 직접 실행
-    let filtered = [...payments];
+    if (gymId && companyId) {
+      fetchPayments(gymId, companyId);
+    }
+  }, [startDate, endDate]);
 
-    // 날짜 필터
-    if (startDate) {
-      filtered = filtered.filter(p => p.paid_at >= startDate);
-    }
-    if (endDate) {
-      const endDateTime = new Date(endDate);
-      endDateTime.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(p => new Date(p.paid_at) <= endDateTime);
-    }
+  useEffect(() => {
+    // ✅ 클라이언트 사이드 필터링: 결제 방법, 회원권 유형, 등록 타입만 필터링
+    let filtered = [...payments];
 
     // 결제 방법 필터
     if (methodFilter !== "all") {
@@ -96,20 +93,21 @@ export default function SalesPage() {
 
     setFilteredPayments(filtered);
 
-    // 통계 계산
-    const total = filtered.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-    const card = filtered.filter(p => p.method === 'card').reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-    const cash = filtered.filter(p => p.method === 'cash').reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-    const transfer = filtered.filter(p => p.method === 'transfer').reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    // ✅ 통계 계산 최적화: 단일 패스로 모든 통계 계산
+    const stats = filtered.reduce((acc, p) => {
+      const amount = parseFloat(p.amount || 0);
+      acc.total += amount;
+      acc.count += 1;
 
-    setStats({
-      total,
-      card,
-      cash,
-      transfer,
-      count: filtered.length
-    });
-  }, [payments, startDate, endDate, methodFilter, membershipTypeFilter, registrationTypeFilter]);
+      if (p.method === 'card') acc.card += amount;
+      else if (p.method === 'cash') acc.cash += amount;
+      else if (p.method === 'transfer') acc.transfer += amount;
+
+      return acc;
+    }, { total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
+
+    setStats(stats);
+  }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
 
   const init = async () => {
     console.log('🔄 init 시작');
@@ -166,7 +164,8 @@ export default function SalesPage() {
     console.log('💰 fetchPayments 시작:', { targetGymId, targetCompanyId });
     if (!targetGymId || !targetCompanyId) return;
 
-    const { data, error } = await supabase
+    // ✅ 서버 사이드 필터링: 날짜 범위로 쿼리
+    let query = supabase
       .from("member_payments")
       .select(`
         *,
@@ -174,8 +173,20 @@ export default function SalesPage() {
         member_memberships (name)
       `)
       .eq("gym_id", targetGymId)
-      .eq("company_id", targetCompanyId)
-      .order("paid_at", { ascending: false });
+      .eq("company_id", targetCompanyId);
+
+    // 날짜 필터 적용
+    if (startDate) {
+      query = query.gte("paid_at", startDate);
+    }
+    if (endDate) {
+      // 종료일은 23:59:59까지 포함
+      const endDateTime = new Date(endDate);
+      endDateTime.setHours(23, 59, 59, 999);
+      query = query.lte("paid_at", endDateTime.toISOString());
+    }
+
+    const { data, error } = await query.order("paid_at", { ascending: false });
 
     console.log('💰 fetchPayments 결과:', { count: data?.length, error });
 
