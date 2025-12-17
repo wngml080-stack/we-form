@@ -69,30 +69,48 @@ export default function SalaryAssignmentManager() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-            const { data: myStaff } = await supabase.from("staffs").select("gym_id").eq("user_id", user.id).single();
+
+            const { data: myStaff } = await supabase
+                .from("staffs")
+                .select("gym_id, company_id, role")
+                .eq("user_id", user.id)
+                .single();
+
             if (!myStaff) return;
 
+            // 템플릿 조회: gym_id 기준 (템플릿은 지점별로 관리)
             const { data: tmplData } = await supabase
                 .from("salary_templates")
                 .select(`*, items:salary_template_items(rule:salary_rules(*))`)
                 .eq("gym_id", myStaff.gym_id);
             setTemplates(tmplData || []);
 
-            const { data: staffData } = await supabase
+            // 직원 목록 조회: role에 따라 다른 필터링
+            let staffQuery = supabase
                 .from("staffs")
                 .select(`
-                    id, user_id, role, gym_id,
+                    id, user_id, name, job_title, role, gym_id,
                     salary_setting:staff_salary_settings(
                         id, template_id, personal_parameters,
                         template:salary_templates(name)
                     )
-                `)
-                .eq("gym_id", myStaff.gym_id)
-                .neq("role", "admin");
-                
+                `);
+
+            // 역할별 필터링
+            if (myStaff.role === 'system_admin') {
+                // system_admin: 모든 직원 조회 (필터 없음)
+            } else if (myStaff.role === 'company_admin') {
+                // company_admin: 회사 전체 직원 조회
+                staffQuery = staffQuery.eq("company_id", myStaff.company_id);
+            } else {
+                // admin, staff: 지점 직원만 조회
+                staffQuery = staffQuery.eq("gym_id", myStaff.gym_id);
+            }
+
+            const { data: staffData } = await staffQuery;
+
             const formattedStaffs = (staffData || []).map((s: any) => ({
                 ...s,
-                name: "직원 " + s.id.substring(0, 4),
                 salary_setting: s.salary_setting?.[0] ? {
                     id: s.salary_setting[0].id,
                     template_id: s.salary_setting[0].template_id,
@@ -100,7 +118,7 @@ export default function SalaryAssignmentManager() {
                     personal_parameters: s.salary_setting[0].personal_parameters
                 } : undefined
             }));
-            
+
             setStaffs(formattedStaffs);
 
         } catch (error) {
@@ -236,7 +254,7 @@ export default function SalaryAssignmentManager() {
                         {staffs.map(staff => (
                             <tr key={staff.id} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 font-medium">{staff.name}</td>
-                                <td className="px-6 py-4 text-gray-500">{staff.role}</td>
+                                <td className="px-6 py-4 text-gray-500">{(staff as any).job_title || staff.role}</td>
                                 <td className="px-6 py-4">
                                     {staff.salary_setting ? (
                                         <Badge className="bg-[#2F80ED] hover:bg-[#2F80ED]">
@@ -264,7 +282,7 @@ export default function SalaryAssignmentManager() {
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#1A1D21] text-white border-none">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold">급여 및 인센티브 설정</DialogTitle>
-                        <p className="text-sm text-gray-400">{selectedStaff?.name} / {selectedStaff?.role}</p>
+                        <p className="text-sm text-gray-400">{selectedStaff?.name} / {(selectedStaff as any)?.job_title || selectedStaff?.role}</p>
                     </DialogHeader>
                     
                     <div className="space-y-8 py-4">

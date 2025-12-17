@@ -77,12 +77,24 @@ export default function AdminMembersPage() {
   });
 
   const [membershipForm, setMembershipForm] = useState({
+    // 회원권 정보
     name: "",
     total_sessions: "",
     start_date: "",
     end_date: "",
     amount: "",
-    method: "card"
+    method: "card",
+    // 회원 정보
+    member_name: "",
+    member_phone: "",
+    birth_date: "",
+    gender: "",
+    exercise_goal: "",
+    weight: "",
+    body_fat_mass: "",
+    skeletal_muscle_mass: "",
+    trainer_id: "",
+    memo: ""
   });
 
   // 기존회원 매출등록 폼
@@ -101,7 +113,17 @@ export default function AdminMembersPage() {
     installment_current: "1",
     method: "card",
     visit_route: "",
-    memo: ""
+    memo: "",
+    // 회원 정보
+    member_name: "",
+    member_phone: "",
+    birth_date: "",
+    gender: "",
+    exercise_goal: "",
+    weight: "",
+    body_fat_mass: "",
+    skeletal_muscle_mass: "",
+    trainer_id: ""
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -401,12 +423,24 @@ export default function AdminMembersPage() {
   const openMembershipModal = (member: any) => {
     setSelectedMember(member);
     setMembershipForm({
+      // 회원권 정보
       name: "PT 30회",
       total_sessions: "30",
       start_date: new Date().toISOString().split('T')[0],
       end_date: "",
       amount: "",
-      method: "card"
+      method: "card",
+      // 회원 정보 (선택된 회원의 정보로 채움)
+      member_name: member.name || "",
+      member_phone: member.phone || "",
+      birth_date: member.birth_date || "",
+      gender: member.gender || "",
+      exercise_goal: member.exercise_goal || "",
+      weight: member.weight?.toString() || "",
+      body_fat_mass: member.body_fat_mass?.toString() || "",
+      skeletal_muscle_mass: member.skeletal_muscle_mass?.toString() || "",
+      trainer_id: member.trainer_id || "",
+      memo: member.memo || ""
     });
     setIsMembershipOpen(true);
   };
@@ -464,6 +498,28 @@ export default function AdminMembersPage() {
           memo: `${selectedMember.name} - ${membershipForm.name}`,
           occurred_at: new Date().toISOString()
         });
+      }
+
+      // 4. 회원 정보 업데이트
+      const memberUpdateData: any = {};
+      if (membershipForm.member_name) memberUpdateData.name = membershipForm.member_name;
+      if (membershipForm.member_phone) memberUpdateData.phone = membershipForm.member_phone;
+      if (membershipForm.birth_date) memberUpdateData.birth_date = membershipForm.birth_date;
+      if (membershipForm.gender) memberUpdateData.gender = membershipForm.gender;
+      if (membershipForm.exercise_goal) memberUpdateData.exercise_goal = membershipForm.exercise_goal;
+      if (membershipForm.weight) memberUpdateData.weight = parseFloat(membershipForm.weight);
+      if (membershipForm.body_fat_mass) memberUpdateData.body_fat_mass = parseFloat(membershipForm.body_fat_mass);
+      if (membershipForm.skeletal_muscle_mass) memberUpdateData.skeletal_muscle_mass = parseFloat(membershipForm.skeletal_muscle_mass);
+      if (membershipForm.trainer_id) memberUpdateData.trainer_id = membershipForm.trainer_id;
+      if (membershipForm.memo) memberUpdateData.memo = membershipForm.memo;
+
+      if (Object.keys(memberUpdateData).length > 0) {
+        const { error: memberUpdateError } = await supabase
+          .from("members")
+          .update(memberUpdateData)
+          .eq("id", selectedMember.id);
+
+        if (memberUpdateError) throw memberUpdateError;
       }
 
       showSuccess("회원권이 등록되었습니다!");
@@ -582,6 +638,27 @@ export default function AdminMembersPage() {
 
       if (paymentError) throw paymentError;
 
+      // 회원 정보 업데이트
+      const memberUpdateData: any = {};
+      if (existingSalesForm.member_name) memberUpdateData.name = existingSalesForm.member_name;
+      if (existingSalesForm.member_phone) memberUpdateData.phone = existingSalesForm.member_phone;
+      if (existingSalesForm.birth_date) memberUpdateData.birth_date = existingSalesForm.birth_date;
+      if (existingSalesForm.gender) memberUpdateData.gender = existingSalesForm.gender;
+      if (existingSalesForm.exercise_goal) memberUpdateData.exercise_goal = existingSalesForm.exercise_goal;
+      if (existingSalesForm.weight) memberUpdateData.weight = parseFloat(existingSalesForm.weight);
+      if (existingSalesForm.body_fat_mass) memberUpdateData.body_fat_mass = parseFloat(existingSalesForm.body_fat_mass);
+      if (existingSalesForm.skeletal_muscle_mass) memberUpdateData.skeletal_muscle_mass = parseFloat(existingSalesForm.skeletal_muscle_mass);
+      if (existingSalesForm.trainer_id) memberUpdateData.trainer_id = existingSalesForm.trainer_id;
+
+      if (Object.keys(memberUpdateData).length > 0) {
+        const { error: memberUpdateError } = await supabase
+          .from("members")
+          .update(memberUpdateData)
+          .eq("id", member.id);
+
+        if (memberUpdateError) throw memberUpdateError;
+      }
+
       showSuccess("매출이 등록되었습니다!");
       setIsExistingSalesOpen(false);
 
@@ -601,7 +678,17 @@ export default function AdminMembersPage() {
         installment_current: "1",
         method: "card",
         visit_route: "",
-        memo: ""
+        memo: "",
+        // 회원 정보
+        member_name: "",
+        member_phone: "",
+        birth_date: "",
+        gender: "",
+        exercise_goal: "",
+        weight: "",
+        body_fat_mass: "",
+        skeletal_muscle_mass: "",
+        trainer_id: ""
       });
 
       fetchMembers(gymId, companyId, myRole, myStaffId!);
@@ -1111,6 +1198,111 @@ export default function AdminMembersPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 회원 정보 섹션 */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">회원 정보</h3>
+              <div className="grid gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>이름</Label>
+                    <Input
+                      value={membershipForm.member_name}
+                      onChange={(e) => setMembershipForm({...membershipForm, member_name: e.target.value})}
+                      placeholder="이름"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>전화번호</Label>
+                    <Input
+                      value={membershipForm.member_phone}
+                      onChange={(e) => setMembershipForm({...membershipForm, member_phone: e.target.value})}
+                      placeholder="010-0000-0000"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>생년월일</Label>
+                    <Input
+                      type="date"
+                      value={membershipForm.birth_date}
+                      onChange={(e) => setMembershipForm({...membershipForm, birth_date: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>성별</Label>
+                    <Select value={membershipForm.gender} onValueChange={(v) => setMembershipForm({...membershipForm, gender: v})}>
+                      <SelectTrigger><SelectValue placeholder="성별 선택" /></SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="male">남성</SelectItem>
+                        <SelectItem value="female">여성</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>운동 목표</Label>
+                  <Input
+                    value={membershipForm.exercise_goal}
+                    onChange={(e) => setMembershipForm({...membershipForm, exercise_goal: e.target.value})}
+                    placeholder="예: 다이어트, 근력 향상"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>체중 (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={membershipForm.weight}
+                      onChange={(e) => setMembershipForm({...membershipForm, weight: e.target.value})}
+                      placeholder="70.0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>체지방량 (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={membershipForm.body_fat_mass}
+                      onChange={(e) => setMembershipForm({...membershipForm, body_fat_mass: e.target.value})}
+                      placeholder="15.0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>골격근량 (kg)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={membershipForm.skeletal_muscle_mass}
+                      onChange={(e) => setMembershipForm({...membershipForm, skeletal_muscle_mass: e.target.value})}
+                      placeholder="30.0"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>담당 트레이너</Label>
+                  <Select value={membershipForm.trainer_id} onValueChange={(v) => setMembershipForm({...membershipForm, trainer_id: v})}>
+                    <SelectTrigger><SelectValue placeholder="트레이너 선택 (선택사항)" /></SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {staffList.map((t: any) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>메모</Label>
+                  <Textarea
+                    value={membershipForm.memo}
+                    onChange={(e) => setMembershipForm({...membershipForm, memo: e.target.value})}
+                    placeholder="메모를 입력하세요"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={handleCreateMembership} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
@@ -1137,12 +1329,26 @@ export default function AdminMembersPage() {
                   value={existingSalesForm.member_id}
                   onValueChange={(v) => {
                     const selectedMember = members.find(m => m.id === v);
-                    setExistingSalesForm({
-                      ...existingSalesForm,
-                      member_id: v
-                    });
                     if (selectedMember) {
                       setSelectedMember(selectedMember);
+                      setExistingSalesForm({
+                        ...existingSalesForm,
+                        member_id: v,
+                        member_name: selectedMember.name || "",
+                        member_phone: selectedMember.phone || "",
+                        birth_date: selectedMember.birth_date || "",
+                        gender: selectedMember.gender || "",
+                        exercise_goal: selectedMember.exercise_goal || "",
+                        weight: selectedMember.weight?.toString() || "",
+                        body_fat_mass: selectedMember.body_fat_mass?.toString() || "",
+                        skeletal_muscle_mass: selectedMember.skeletal_muscle_mass?.toString() || "",
+                        trainer_id: selectedMember.trainer_id || ""
+                      });
+                    } else {
+                      setExistingSalesForm({
+                        ...existingSalesForm,
+                        member_id: v
+                      });
                     }
                   }}
                 >

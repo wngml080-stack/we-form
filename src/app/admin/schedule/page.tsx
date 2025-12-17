@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Filter, ShieldCheck, ShieldOff } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,6 +18,10 @@ import WeeklyTimetable from "@/components/WeeklyTimetable";
 import * as XLSX from "xlsx";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
 import { classifyScheduleType } from "@/lib/schedule-utils";
+import { useScheduleReports } from "./hooks/useScheduleReports";
+import { ApproveModal } from "./components/ApproveModal";
+import { ReportStatusBadge } from "./components/ReportStatusBadge";
+import { DailyStatsWidget } from "@/components/DailyStatsWidget";
 
 export default function AdminSchedulePage() {
   const router = useRouter();
@@ -57,6 +61,9 @@ export default function AdminSchedulePage() {
     personalTitle: "",
   });
   const [members, setMembers] = useState<any[]>([]);
+  const [reportFilter, setReportFilter] = useState<"all" | "submitted" | "approved" | "rejected">("submitted");
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
 
   // 스케줄 수정 모달
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -71,6 +78,19 @@ export default function AdminSchedulePage() {
   });
 
   const supabase = createSupabaseClient();
+  const yearMonth = useMemo(() => {
+    const d = new Date(selectedDate);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${yyyy}-${mm}`;
+  }, [selectedDate]);
+
+  const { reports, isLoading: isReportLoading, refetch: refetchReports } = useScheduleReports({
+    gymId: myGymId,
+    companyId: null,
+    status: reportFilter === "all" ? "all" : reportFilter,
+    yearMonth,
+  });
 
   useEffect(() => {
     const init = async () => {
@@ -120,6 +140,9 @@ export default function AdminSchedulePage() {
           fetchSchedules(me.gym_id, "all");
         }
 
+        // 보고서 목록
+        refetchReports();
+
         // 회원 목록 가져오기
         const { data: memberList } = await supabase
           .from("members")
@@ -137,7 +160,7 @@ export default function AdminSchedulePage() {
     };
 
     init();
-  }, []);
+  }, [refetchReports]);
 
   // 스케줄 조회 함수
   const fetchSchedules = async (gymId: string, staffIdFilter: string) => {
@@ -216,6 +239,32 @@ export default function AdminSchedulePage() {
       date.setDate(date.getDate() - 1);
     }
     setSelectedDate(date.toISOString().split('T')[0]);
+  };
+
+  const handleApproveSubmit = async (params: { approved: boolean; adminMemo?: string; unlockOnReject?: boolean }) => {
+    if (!selectedReport) return;
+    try {
+      const res = await fetch("/api/schedule/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: selectedReport.id,
+          approved: params.approved,
+          adminMemo: params.adminMemo,
+          unlockOnReject: params.unlockOnReject,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "승인 처리 실패");
+      showSuccess(json.message || "처리되었습니다.");
+      setIsApproveModalOpen(false);
+      setSelectedReport(null);
+      refetchReports();
+      // 승인/거절 후 스케줄 잠금 상태가 변할 수 있으므로 새로고침
+      if (myGymId) fetchSchedules(myGymId, selectedStaffId);
+    } catch (e: any) {
+      showError(e.message);
+    }
   };
 
   const handleNextDate = () => {
@@ -589,6 +638,56 @@ export default function AdminSchedulePage() {
         </div>
       </div>
 
+      {/* 승인/보고서 패널 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
+            <Filter className="w-4 h-4 text-[#2F80ED]" />
+            <span>{yearMonth} 제출/승인 현황</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <span>상태</span>
+            <Select value={reportFilter} onValueChange={(v) => setReportFilter(v as any)}>
+              <SelectTrigger className="h-9 w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="submitted">승인 대기</SelectItem>
+                <SelectItem value="approved">승인됨</SelectItem>
+                <SelectItem value="rejected">거절됨</SelectItem>
+                <SelectItem value="all">전체</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {isReportLoading && (
+            <div className="p-4 text-sm text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              로딩 중...
+            </div>
+          )}
+          {!isReportLoading && reports.length === 0 && (
+            <div className="p-4 text-sm text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              제출된 보고서가 없습니다.
+            </div>
+          )}
+          {reports.map((report) => (
+            <button
+              key={report.id}
+              onClick={() => { setSelectedReport(report); setIsApproveModalOpen(true); }}
+              className="p-4 text-left bg-gray-50 hover:bg-white border border-gray-100 rounded-xl shadow-sm transition-colors flex flex-col gap-1"
+            >
+              <div className="flex items-center justify-between">
+                <div className="font-bold text-gray-900">{report.staffs?.name ?? "이름없음"}</div>
+                <ReportStatusBadge status={report.status} />
+              </div>
+              <div className="text-xs text-gray-500">{report.staffs?.job_title ?? ""}</div>
+              <div className="text-xs text-gray-500">제출일: {report.submitted_at ? new Date(report.submitted_at).toLocaleDateString("ko-KR") : "-"}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* 컨트롤 바 (날짜 + 뷰 전환) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -784,19 +883,32 @@ export default function AdminSchedulePage() {
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <WeeklyTimetable
-            schedules={schedules}
-            onScheduleClick={handleScheduleClick}
-            onTimeSlotClick={handleTimeSlotClick}
-            viewType={viewType}
+        <>
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            <WeeklyTimetable
+              schedules={schedules}
+              onScheduleClick={handleScheduleClick}
+              onTimeSlotClick={handleTimeSlotClick}
+              viewType={viewType}
+              selectedDate={selectedDate}
+              workStartTime={workStartTime}
+              workEndTime={workEndTime}
+              selectedStaffId={selectedStaffId}
+              staffs={staffs}
+            />
+          </div>
+
+          {/* 당일 통계 위젯 */}
+          <DailyStatsWidget
             selectedDate={selectedDate}
-            workStartTime={workStartTime}
-            workEndTime={workEndTime}
-            selectedStaffId={selectedStaffId}
-            staffs={staffs}
+            schedules={schedules}
+            staffName={
+              selectedStaffId !== "all"
+                ? staffs.find(s => s.id === selectedStaffId)?.name
+                : undefined
+            }
           />
-        </div>
+        </>
       )}
 
       {/* 스케줄 생성 모달 */}
@@ -1075,6 +1187,14 @@ export default function AdminSchedulePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 승인 모달 */}
+      <ApproveModal
+        open={isApproveModalOpen}
+        onOpenChange={setIsApproveModalOpen}
+        report={selectedReport}
+        onSubmit={handleApproveSubmit}
+      />
     </div>
   );
 }
