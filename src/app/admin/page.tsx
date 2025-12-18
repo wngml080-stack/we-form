@@ -213,6 +213,33 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      {/* 업데이트 공지 배너 */}
+      {announcements.filter(a => a.priority === 'urgent').length > 0 && (
+        <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl p-4 md:p-5 text-white shadow-lg flex items-center gap-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-2xl"></div>
+          <div className="relative z-10 flex items-center gap-3 flex-1">
+            <div className="bg-white/20 backdrop-blur p-2 rounded-lg">
+              <Bell className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-sm mb-1">🔔 중요 공지</div>
+              <p className="text-sm opacity-90">{announcements.filter(a => a.priority === 'urgent')[0]?.title}</p>
+            </div>
+            <button
+              onClick={() => {
+                const urgentAnn = announcements.filter(a => a.priority === 'urgent')[0];
+                if (urgentAnn) {
+                  alert(`${urgentAnn.title}\n\n${urgentAnn.content}`);
+                }
+              }}
+              className="px-4 py-2 bg-white text-purple-600 rounded-lg text-sm font-semibold hover:bg-purple-50 transition-colors whitespace-nowrap"
+            >
+              자세히 보기
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 2. Quick Actions (아이콘 메뉴) */}
       <div className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide">
         <QuickAction icon={UserPlus} label="신규회원 매출등록" href="/admin/members?type=new" color="bg-blue-100 text-blue-600" />
