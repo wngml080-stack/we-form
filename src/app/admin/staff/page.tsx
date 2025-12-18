@@ -146,7 +146,6 @@ export default function AdminStaffPage() {
   const handleCreateStaff = async () => {
     if (!createForm.name || !createForm.email || !createForm.password) return alert("필수 정보를 입력해주세요.");
 
-    const targetGymId = gymId;
     const targetCompanyId = companyId;
 
     setIsCreating(true);
@@ -154,10 +153,11 @@ export default function AdminStaffPage() {
         const res = await fetch("/api/admin/create-staff", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...createForm, gym_id: targetGymId, company_id: targetCompanyId })
+            // gym_id를 null로 설정하여 발령 대기 상태로 생성
+            body: JSON.stringify({ ...createForm, gym_id: null, company_id: targetCompanyId })
         });
         if (!res.ok) throw new Error("등록 실패");
-        alert("등록 완료!");
+        alert("직원이 등록되었습니다. 본사관리에서 발령을 진행해주세요.");
         setIsCreateOpen(false);
         setCreateForm({ name: "", email: "", password: "", phone: "", job_title: "트레이너", joined_at: "" });
         fetchStaffs(gymId, myRole);

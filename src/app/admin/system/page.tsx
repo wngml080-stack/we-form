@@ -40,6 +40,14 @@ export default function SystemAdminPage() {
   const [isEditStaffOpen, setIsEditStaffOpen] = useState(false);
   const [editStaffForm, setEditStaffForm] = useState({ id: "", name: "", phone: "", job_title: "", role: "staff", employment_status: "재직", gym_id: "", company_id: "" });
 
+  // 고객사 생성 모달 상태
+  const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
+  const [createCompanyForm, setCreateCompanyForm] = useState({ name: "", representative_name: "", contact_phone: "", status: "pending" });
+
+  // 전체 통계
+  const [totalGymsCount, setTotalGymsCount] = useState(0);
+  const [totalStaffsCount, setTotalStaffsCount] = useState(0);
+
   const supabase = createSupabaseClient();
 
   useEffect(() => {
@@ -64,6 +72,19 @@ export default function SystemAdminPage() {
     setIsLoading(true);
     const { data } = await supabase.from("companies").select("*").order("created_at", { ascending: false });
     if (data) setCompanies(data);
+
+    // 전체 지점 수 계산
+    const { count: gymsCount } = await supabase
+      .from("gyms")
+      .select("*", { count: "exact", head: true });
+    if (gymsCount !== null) setTotalGymsCount(gymsCount);
+
+    // 전체 직원 수 계산
+    const { count: staffsCount } = await supabase
+      .from("staffs")
+      .select("*", { count: "exact", head: true });
+    if (staffsCount !== null) setTotalStaffsCount(staffsCount);
+
     setIsLoading(false);
   };
 
@@ -119,17 +140,18 @@ export default function SystemAdminPage() {
     }
   };
 
-  // 승인 처리 함수
-  const handleApprove = async (companyId: string, companyName: string) => {
-    if (!confirm(`'${companyName}' 업체의 가입을 승인하시겠습니까?`)) return;
+  // 상태 변경 함수
+  const handleStatusChange = async (companyId: string, newStatus: string, companyName: string) => {
+    const statusText = newStatus === 'active' ? '운영중' : newStatus === 'pending' ? '승인대기' : '이용정지';
+    if (!confirm(`'${companyName}' 업체의 상태를 '${statusText}'로 변경하시겠습니까?`)) return;
 
     const { error } = await supabase
       .from("companies")
-      .update({ status: "active" })
+      .update({ status: newStatus })
       .eq("id", companyId);
 
     if (!error) {
-      alert("승인 완료! 이제 해당 업체 대표가 로그인할 수 있습니다.");
+      alert(`상태가 '${statusText}'로 변경되었습니다.`);
       fetchCompanies();
     } else {
       alert("에러: " + error.message);
@@ -434,6 +456,40 @@ export default function SystemAdminPage() {
     }
   };
 
+  // 고객사 생성 모달 열기
+  const openCreateCompany = () => {
+    setCreateCompanyForm({ name: "", representative_name: "", contact_phone: "", status: "pending" });
+    setIsCreateCompanyOpen(true);
+  };
+
+  // 고객사 생성
+  const handleCreateCompany = async () => {
+    if (!createCompanyForm.name || !createCompanyForm.representative_name) {
+      alert("회사명과 대표자명을 입력해주세요.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/system/create-company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createCompanyForm),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        alert("고객사가 생성되었습니다!");
+        setIsCreateCompanyOpen(false);
+        fetchCompanies();
+      } else {
+        alert("생성 실패: " + result.error);
+      }
+    } catch (error: any) {
+      alert("오류 발생: " + error.message);
+    }
+  };
+
   if (isLoading) return <div className="p-10 text-center">데이터 로딩 중...</div>;
 
   const getRoleBadge = (role: string) => {
@@ -448,9 +504,7 @@ export default function SystemAdminPage() {
 
   // 통계 계산
   const totalCompanies = companies.length;
-  const activeCompanies = companies.filter(c => c.status === 'active').length;
-  const totalGyms = Object.values(companyGyms).reduce((sum, gyms) => sum + gyms.length, 0);
-  const totalStaffs = Object.values(gymStaffs).reduce((sum, staffs) => sum + staffs.length, 0);
+  const pendingCompanies = companies.filter(c => c.status === 'pending');
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
@@ -459,6 +513,13 @@ export default function SystemAdminPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">시스템 관리</h1>
           <p className="text-gray-500 mt-2 font-medium">서비스를 이용 중인 고객사를 관리합니다</p>
         </div>
+        <Button
+          onClick={openCreateCompany}
+          className="bg-[#2F80ED] hover:bg-[#1c6cd7] text-white"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          고객사 추가
+        </Button>
       </div>
 
       {/* 통계 대시보드 */}
@@ -485,7 +546,7 @@ export default function SystemAdminPage() {
               지점
             </span>
           </div>
-          <div className="text-3xl font-bold text-gray-900 mb-1">{totalGyms}</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{totalGymsCount}</div>
           <p className="text-sm text-gray-500">개 지점 운영 중</p>
         </div>
 
@@ -498,21 +559,21 @@ export default function SystemAdminPage() {
               직원
             </span>
           </div>
-          <div className="text-3xl font-bold text-gray-900 mb-1">{totalStaffs}</div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{totalStaffsCount}</div>
           <p className="text-sm text-gray-500">명 등록</p>
         </div>
 
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-orange-600" />
+            <div className="p-2 bg-amber-100 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-amber-600" />
             </div>
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-              활성 고객사
+              승인 대기
             </span>
           </div>
-          <div className="text-3xl font-bold text-gray-900 mb-1">{activeCompanies}</div>
-          <p className="text-sm text-gray-500">개 업체 운영 중</p>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{pendingCompanies.length}</div>
+          <p className="text-sm text-gray-500">개 업체 대기 중</p>
         </div>
       </div>
 
@@ -525,7 +586,13 @@ export default function SystemAdminPage() {
             <div key={comp.id} className="border rounded-lg bg-white shadow-sm">
               {/* 회사 헤더 */}
               <div
-                className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors border-l-4 ${comp.status === 'active' ? 'border-l-[#2F80ED]' : 'border-l-[#F2994A]'}`}
+                className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors border-l-4 ${
+                  comp.status === 'active'
+                    ? 'border-l-[#2F80ED]'
+                    : comp.status === 'pending'
+                    ? 'border-l-[#F2994A]'
+                    : 'border-l-red-400'
+                }`}
                 onClick={() => toggleCompany(comp.id)}
               >
                 <div className="flex items-center justify-between">
@@ -535,16 +602,24 @@ export default function SystemAdminPage() {
                     ) : (
                       <ChevronRight className="w-5 h-5 text-gray-400" />
                     )}
-                    <div className="p-1.5 bg-blue-100 rounded-lg">
-                      <Building className="w-4 h-4 text-blue-600" />
+                    <div className={`p-1.5 rounded-lg ${
+                      comp.status === 'active'
+                        ? 'bg-blue-100'
+                        : comp.status === 'pending'
+                        ? 'bg-orange-100'
+                        : 'bg-red-100'
+                    }`}>
+                      <Building className={`w-4 h-4 ${
+                        comp.status === 'active'
+                          ? 'text-blue-600'
+                          : comp.status === 'pending'
+                          ? 'text-orange-600'
+                          : 'text-red-600'
+                      }`} />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-lg">{comp.name}</span>
-                        {comp.status === 'active'
-                          ? <Badge className="bg-[#2F80ED] hover:bg-[#2F80ED]">운영중</Badge>
-                          : <Badge className="bg-[#F2994A] text-black hover:bg-[#F2994A]">대기</Badge>
-                        }
                       </div>
                       <div className="text-sm text-gray-500 mt-1 flex items-center gap-4">
                         <span className="flex items-center gap-1">
@@ -558,15 +633,28 @@ export default function SystemAdminPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {comp.status === 'pending' && (
-                      <Button
-                        onClick={(e) => { e.stopPropagation(); handleApprove(comp.id, comp.name); }}
-                        size="sm"
-                        className="bg-[#F2994A] hover:bg-[#d68238] text-black font-bold"
+                    <Select
+                      value={comp.status}
+                      onValueChange={(newStatus) => handleStatusChange(comp.id, newStatus, comp.name)}
+                    >
+                      <SelectTrigger
+                        className={`w-[130px] h-9 ${
+                          comp.status === 'active'
+                            ? 'bg-[#2F80ED] text-white border-[#2F80ED] hover:bg-[#1c6cd7]'
+                            : comp.status === 'pending'
+                            ? 'bg-[#F2994A] text-black border-[#F2994A] hover:bg-[#d68238]'
+                            : 'bg-red-400 text-white border-red-400 hover:bg-red-500'
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <CheckCircle className="w-4 h-4 mr-1"/> 승인
-                      </Button>
-                    )}
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white" onClick={(e) => e.stopPropagation()}>
+                        <SelectItem value="pending">승인대기</SelectItem>
+                        <SelectItem value="active">운영중</SelectItem>
+                        <SelectItem value="suspended">이용정지</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1020,6 +1108,56 @@ export default function SystemAdminPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsEditStaffOpen(false)}>취소</Button>
             <Button onClick={handleUpdateStaff} className="bg-[#2F80ED]">저장</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 고객사 생성 모달 */}
+      <Dialog open={isCreateCompanyOpen} onOpenChange={setIsCreateCompanyOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle>고객사 추가</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>회사명 *</Label>
+              <Input
+                value={createCompanyForm.name}
+                onChange={(e) => setCreateCompanyForm({...createCompanyForm, name: e.target.value})}
+                placeholder="회사명을 입력하세요"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>대표자명 *</Label>
+              <Input
+                value={createCompanyForm.representative_name}
+                onChange={(e) => setCreateCompanyForm({...createCompanyForm, representative_name: e.target.value})}
+                placeholder="대표자명을 입력하세요"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>연락처</Label>
+              <Input
+                value={createCompanyForm.contact_phone}
+                onChange={(e) => setCreateCompanyForm({...createCompanyForm, contact_phone: e.target.value})}
+                placeholder="010-0000-0000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>상태</Label>
+              <Select value={createCompanyForm.status} onValueChange={(v) => setCreateCompanyForm({...createCompanyForm, status: v})}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="pending">승인대기</SelectItem>
+                  <SelectItem value="active">운영중</SelectItem>
+                  <SelectItem value="suspended">이용정지</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsCreateCompanyOpen(false)}>취소</Button>
+            <Button onClick={handleCreateCompany} className="bg-[#2F80ED]">추가</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

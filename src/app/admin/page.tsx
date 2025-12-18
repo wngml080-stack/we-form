@@ -2,15 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
-import { 
-  Users, DollarSign, Calendar, TrendingUp, UserPlus, 
-  CreditCard, Settings, Plus, Bell, Search, CheckCircle2 
+import {
+  Users, DollarSign, Calendar, TrendingUp, UserPlus,
+  CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight
 } from "lucide-react";
 import Link from "next/link";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from "date-fns";
+import { ko } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export default function AdminDashboardPage() {
   const [gymName, setGymName] = useState("");
   const [userName, setUserName] = useState("관리자");
+  const [myStaffId, setMyStaffId] = useState<string>("");
   const [stats, setStats] = useState({
     totalMembers: 0,
     activeMembers: 0,
@@ -20,8 +26,14 @@ export default function AdminDashboardPage() {
     newMembersThisMonth: 0
   });
   const [todaySchedules, setTodaySchedules] = useState<any[]>([]);
-  const [recentPayments, setRecentPayments] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [companyEvents, setCompanyEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // 달력 관련 상태
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
 
   const supabase = createSupabaseClient();
 
@@ -35,20 +47,21 @@ export default function AdminDashboardPage() {
 
     const { data: me } = await supabase
       .from("staffs")
-      .select("name, gym_id, company_id, gyms(name)")
+      .select("id, name, gym_id, company_id, gyms(name)")
       .eq("user_id", user.id)
       .single();
 
     if (me) {
+      setMyStaffId(me.id);
       setUserName(me.name);
       // @ts-ignore
       setGymName(me.gyms?.name ?? "We:form");
-      await fetchDashboardData(me.gym_id, me.company_id);
+      await fetchDashboardData(me.gym_id, me.company_id, me.id);
     }
     setIsLoading(false);
   };
 
-  const fetchDashboardData = async (gymId: string, companyId: string) => {
+  const fetchDashboardData = async (gymId: string, companyId: string, staffId: string) => {
     if (!gymId || !companyId) return;
 
     // 1. 회원 통계
@@ -69,7 +82,7 @@ export default function AdminDashboardPage() {
       new Date(m.created_at) >= thisMonthStart
     ).length || 0;
 
-    // 2. 오늘 스케줄
+    // 2. 오늘 나의 스케줄 (본인 담당 수업만)
     const today = new Date().toISOString().split('T')[0];
     const { data: schedules } = await supabase
       .from("schedules")
@@ -83,6 +96,7 @@ export default function AdminDashboardPage() {
         staffs (name)
       `)
       .eq("gym_id", gymId)
+      .eq("staff_id", staffId)
       .gte("start_time", `${today}T00:00:00`)
       .lte("start_time", `${today}T23:59:59`)
       .order("start_time", { ascending: true });
@@ -110,22 +124,36 @@ export default function AdminDashboardPage() {
 
     const monthSales = monthPayments?.reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
 
-    // 5. 최근 결제 내역
-    const { data: payments } = await supabase
-      .from("member_payments")
-      .select(`
-        id,
-        amount,
-        method,
-        paid_at,
-        members (name)
-      `)
-      .eq("gym_id", gymId)
+    // 5. 공지사항 조회 (활성, 최근 5개)
+    const { data: announcementsData } = await supabase
+      .from("announcements")
+      .select("*")
       .eq("company_id", companyId)
-      .order("paid_at", { ascending: false })
+      .eq("is_active", true)
+      .or(`gym_id.is.null,gym_id.eq.${gymId}`)
+      .lte("start_date", today)
+      .order("priority", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(5);
 
-    setRecentPayments(payments || []);
+    setAnnouncements(announcementsData || []);
+
+    // 6. 이번 달 회사 행사 조회
+    const monthEnd = new Date(thisMonthStart);
+    monthEnd.setMonth(monthEnd.getMonth() + 1);
+    const monthEndStr = monthEnd.toISOString().split('T')[0];
+
+    const { data: eventsData } = await supabase
+      .from("company_events")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .or(`gym_id.is.null,gym_id.eq.${gymId}`)
+      .gte("event_date", today)
+      .lte("event_date", monthEndStr)
+      .order("event_date", { ascending: true });
+
+    setCompanyEvents(eventsData || []);
 
     setStats({
       totalMembers,
@@ -194,7 +222,7 @@ export default function AdminDashboardPage() {
         <QuickAction icon={Plus} label="추가 메뉴" href="#" color="bg-gray-100 text-gray-500" />
       </div>
 
-      {/* 3. Banner Widget */}
+      {/* 3. Banner Widget - Google Calendar 연동 */}
       <div className="bg-gradient-to-r from-[#2F80ED] to-[#56CCF2] rounded-2xl p-6 md:p-8 text-white shadow-lg shadow-blue-100 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
@@ -206,10 +234,16 @@ export default function AdminDashboardPage() {
           </h3>
           <p className="opacity-90 text-sm md:text-base">이제 외부 캘린더와 스케줄을 동기화하여 더 편리하게 관리하세요.</p>
         </div>
-        <button className="relative z-10 px-6 py-3 bg-white text-[#2F80ED] rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap">
+        <button
+          onClick={() => {
+            // TODO: Google Calendar 연동 페이지로 이동 또는 모달 열기
+            alert("Google Calendar 연동 기능은 곧 출시됩니다!");
+          }}
+          className="relative z-10 px-6 py-3 bg-white text-[#2F80ED] rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap"
+        >
           지금 연동하기
         </button>
-        
+
         {/* Deco Circles */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/5 rounded-full translate-y-1/3 -translate-x-1/4 blur-2xl"></div>
@@ -259,28 +293,59 @@ export default function AdminDashboardPage() {
 
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800 text-lg">채팅 방</h3>
-                <span className="text-xs text-gray-400">2개 안읽음</span>
+                <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-[#2F80ED]" />
+                  공지사항
+                </h3>
+                <span className="text-xs text-gray-400">{announcements.length}개</span>
              </div>
-             <div className="space-y-4">
-                <div className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer">
-                  <div className="w-10 h-10 rounded-full bg-[#2F80ED] flex items-center justify-center text-white font-bold">W</div>
-                  <div>
-                    <div className="font-bold text-gray-800 text-sm">We:form 공지방</div>
-                    <div className="text-xs text-gray-500 truncate">이번 주 시스템 점검 안내입니다.</div>
+             <div className="space-y-3">
+                {announcements.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+                    <Bell className="w-8 h-8 mb-2 opacity-20" />
+                    <p className="text-sm">등록된 공지사항이 없습니다.</p>
                   </div>
-                  <div className="ml-auto text-xs text-gray-400">오후 2:40</div>
-                </div>
+                ) : (
+                  announcements.map((announcement) => {
+                    const priorityColors: Record<string, string> = {
+                      urgent: "bg-red-100 text-red-600",
+                      normal: "bg-blue-100 text-blue-600",
+                      low: "bg-gray-100 text-gray-600"
+                    };
+                    const priorityLabels: Record<string, string> = {
+                      urgent: "긴급",
+                      normal: "일반",
+                      low: "참고"
+                    };
+
+                    return (
+                      <div key={announcement.id} className="p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer border border-gray-100">
+                        <div className="flex items-start gap-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${priorityColors[announcement.priority]}`}>
+                            {priorityLabels[announcement.priority]}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-gray-800 text-sm truncate">{announcement.title}</div>
+                            <div className="text-xs text-gray-500 mt-1 line-clamp-2">{announcement.content}</div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {new Date(announcement.created_at).toLocaleDateString('ko-KR')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
              </div>
           </div>
         </div>
 
-        {/* Center Column: 예정된 업무 (오늘 스케줄) */}
+        {/* Center Column: 예정된 업무 (오늘 나의 스케줄) */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow h-full flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
               <span className="text-[#2F80ED] text-2xl">●</span>
-              오늘 예정된 수업 <span className="text-[#2F80ED]">{todaySchedules.length}</span>
+              나의 오늘 수업 <span className="text-[#2F80ED]">{todaySchedules.length}</span>
             </h3>
             <Link href="/admin/schedule">
                <span className="text-xs font-bold text-gray-400 hover:text-[#2F80ED] cursor-pointer border px-2 py-1 rounded-md">전체보기</span>
@@ -291,7 +356,7 @@ export default function AdminDashboardPage() {
             {todaySchedules.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 text-gray-400">
                 <Calendar className="w-10 h-10 mb-2 opacity-20" />
-                <p>오늘 예정된 수업이 없습니다.</p>
+                <p>오늘 담당하신 수업이 없습니다.</p>
               </div>
             ) : (
               todaySchedules.map((schedule) => (
@@ -322,57 +387,224 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Right Column: 일정 (미니 캘린더) */}
+        {/* Right Column: 회사 행사 일정 - 미니 달력 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow h-full flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-             <h3 className="font-bold text-gray-800 text-lg">일정</h3>
-             <button className="text-gray-400 hover:text-gray-600"><Settings className="w-4 h-4" /></button>
-          </div>
-          
-          {/* Simple Mini Calendar UI (Mockup) */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4 px-2">
-              <span className="font-bold text-gray-800">2025년 12월</span>
-              <div className="flex gap-2">
-                 <span className="text-gray-400 cursor-pointer hover:text-gray-600">&lt;</span>
-                 <span className="text-gray-400 cursor-pointer hover:text-gray-600">&gt;</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium mb-2 text-gray-400">
-              <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-sm font-medium">
-              {/* Days (Mock) */}
-              {[...Array(5)].map((_, i) => <div key={`prev-${i}`} className="text-gray-200 py-2"></div>)}
-              {[...Array(31)].map((_, i) => {
-                 const day = i + 1;
-                 const isToday = day === 5; // Mock today
-                 return (
-                   <div key={day} className={`py-2 rounded-lg cursor-pointer hover:bg-gray-50 ${isToday ? 'bg-[#2F80ED] text-white shadow-md shadow-blue-200' : 'text-gray-600'}`}>
-                     {day}
-                     {/* Dot indicator */}
-                     {[5, 8, 12, 20].includes(day) && !isToday && (
-                       <div className="w-1 h-1 bg-[#2F80ED] rounded-full mx-auto mt-1"></div>
-                     )}
-                   </div>
-                 );
-              })}
-            </div>
+          <div className="flex justify-between items-center mb-4">
+             <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+               <Calendar className="w-5 h-5 text-[#2F80ED]" />
+               회사 행사
+             </h3>
+             <span className="text-xs text-gray-400">{companyEvents.length}개</span>
           </div>
 
-          <div className="mt-auto bg-blue-50 rounded-xl p-4">
-             <div className="flex items-center gap-2 mb-2">
-               <Calendar className="w-4 h-4 text-[#2F80ED]" />
-               <span className="text-sm font-bold text-[#2F80ED]">오늘의 주요 일정</span>
-             </div>
-             <div className="text-xs text-gray-600 space-y-1">
-               <p>• 오후 2:00 전체 강사 회의</p>
-               <p>• 오후 5:00 시설 점검</p>
-             </div>
+          {/* 달력 네비게이션 */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => {
+                const prev = new Date(currentMonth);
+                prev.setMonth(prev.getMonth() - 1);
+                setCurrentMonth(prev);
+              }}
+              className="p-1 hover:bg-gray-100 rounded"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
+            <span className="text-sm font-semibold text-gray-700">
+              {format(currentMonth, "yyyy년 M월", { locale: ko })}
+            </span>
+            <button
+              onClick={() => {
+                const next = new Date(currentMonth);
+                next.setMonth(next.getMonth() + 1);
+                setCurrentMonth(next);
+              }}
+              className="p-1 hover:bg-gray-100 rounded"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
+          </div>
+
+          {/* 미니 달력 */}
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            {(() => {
+              const monthStart = startOfMonth(currentMonth);
+              const monthEnd = endOfMonth(currentMonth);
+              const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+              const startDayOfWeek = monthStart.getDay();
+
+              // 날짜별 행사 맵 생성
+              const eventsByDate: Record<string, any[]> = {};
+              companyEvents.forEach((event) => {
+                const dateKey = event.event_date;
+                if (!eventsByDate[dateKey]) {
+                  eventsByDate[dateKey] = [];
+                }
+                eventsByDate[dateKey].push(event);
+              });
+
+              const eventTypeColors: Record<string, string> = {
+                general: "bg-blue-500",
+                training: "bg-purple-500",
+                meeting: "bg-orange-500",
+                holiday: "bg-red-500",
+                celebration: "bg-pink-500"
+              };
+
+              return (
+                <div>
+                  {/* 요일 헤더 */}
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {["일", "월", "화", "수", "목", "금", "토"].map((day, idx) => (
+                      <div
+                        key={day}
+                        className={cn(
+                          "text-center text-xs font-semibold py-1",
+                          idx === 0 ? "text-red-600" : idx === 6 ? "text-blue-600" : "text-gray-600"
+                        )}
+                      >
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 날짜 그리드 */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {/* 빈 칸 */}
+                    {Array.from({ length: startDayOfWeek }).map((_, i) => (
+                      <div key={`empty-${i}`} className="aspect-square"></div>
+                    ))}
+
+                    {/* 날짜 */}
+                    {daysInMonth.map((date) => {
+                      const dateKey = format(date, "yyyy-MM-dd");
+                      const dayEvents = eventsByDate[dateKey] || [];
+                      const isToday = isSameDay(date, new Date());
+                      const isCurrentMonth = isSameMonth(date, currentMonth);
+
+                      return (
+                        <div
+                          key={dateKey}
+                          className={cn(
+                            "aspect-square p-1 rounded-lg cursor-pointer transition-all relative",
+                            isToday && "bg-blue-100 ring-2 ring-blue-500",
+                            !isToday && dayEvents.length > 0 && "hover:bg-gray-100",
+                            !isToday && dayEvents.length === 0 && "hover:bg-gray-50"
+                          )}
+                          onClick={() => {
+                            setSelectedDate(date);
+                            if (dayEvents.length > 0) {
+                              setIsEventModalOpen(true);
+                            }
+                          }}
+                        >
+                          <div className={cn(
+                            "text-xs font-medium text-center",
+                            isToday ? "text-blue-700 font-bold" : "text-gray-700",
+                            !isCurrentMonth && "text-gray-300"
+                          )}>
+                            {format(date, "d")}
+                          </div>
+                          {dayEvents.length > 0 && (
+                            <div className="flex gap-0.5 mt-1 flex-wrap justify-center">
+                              {dayEvents.slice(0, 3).map((event, idx) => (
+                                <div
+                                  key={idx}
+                                  className={cn(
+                                    "w-1 h-1 rounded-full",
+                                    eventTypeColors[event.event_type] || "bg-gray-400"
+                                  )}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
       </div>
+
+      {/* 선택한 날짜의 행사 모달 */}
+      <Dialog open={isEventModalOpen} onOpenChange={setIsEventModalOpen}>
+        <DialogContent className="max-w-2xl bg-white">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDate && format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })} 행사
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {selectedDate && (() => {
+              const dateKey = format(selectedDate, "yyyy-MM-dd");
+              const dayEvents = companyEvents.filter(event => event.event_date === dateKey);
+
+              const eventTypeColors: Record<string, string> = {
+                general: "bg-blue-100 text-blue-600",
+                training: "bg-purple-100 text-purple-600",
+                meeting: "bg-orange-100 text-orange-600",
+                holiday: "bg-red-100 text-red-600",
+                celebration: "bg-pink-100 text-pink-600"
+              };
+
+              const eventTypeLabels: Record<string, string> = {
+                general: "일반",
+                training: "교육",
+                meeting: "회의",
+                holiday: "휴무",
+                celebration: "행사"
+              };
+
+              if (dayEvents.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <Calendar className="w-12 h-12 mb-3 opacity-20" />
+                    <p className="text-sm">이 날짜에 등록된 행사가 없습니다.</p>
+                  </div>
+                );
+              }
+
+              return dayEvents.map((event) => (
+                <div key={event.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${eventTypeColors[event.event_type]}`}>
+                      {eventTypeLabels[event.event_type]}
+                    </span>
+                    {event.gym_id ? (
+                      <span className="text-xs text-gray-500">특정 지점</span>
+                    ) : (
+                      <span className="text-xs text-green-600 font-semibold">전사</span>
+                    )}
+                  </div>
+                  <div className="font-bold text-gray-800 mb-2">{event.title}</div>
+                  {event.description && (
+                    <div className="text-sm text-gray-600 mb-3 whitespace-pre-wrap">{event.description}</div>
+                  )}
+                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                    {event.start_time && (
+                      <span>🕐 {event.start_time.substring(0, 5)}</span>
+                    )}
+                    {event.location && (
+                      <span>📍 {event.location}</span>
+                    )}
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEventModalOpen(false)}
+            >
+              닫기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

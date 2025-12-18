@@ -9,7 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, MapPin, Calendar, User, Building2, Users, UserCheck, TrendingUp, Clock, Activity, BarChart3 } from "lucide-react";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Pencil, Trash2, MapPin, Calendar, User, Building2, Users, UserCheck, TrendingUp, Clock, Activity, BarChart3, Bell } from "lucide-react";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 // 카테고리 목록 정의
 const CATEGORY_OPTIONS = ["헬스", "PT", "필라테스", "골프", "GX", "요가"];
@@ -44,12 +49,61 @@ export default function HQPage() {
   // 지점 필터
   const [selectedGymFilter, setSelectedGymFilter] = useState<string>("all");
 
+  // 지점 상세보기 모달
+  const [selectedGymDetail, setSelectedGymDetail] = useState<any | null>(null);
+  const [isGymDetailOpen, setIsGymDetailOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>("current"); // current, previous, recent3
+  const [isEditingBep, setIsEditingBep] = useState(false);
+  const [bepForm, setBepForm] = useState({ fc_bep: 75000000, pt_bep: 100000000 });
+
+  // 직원 정보 수정 모달
+  const [editingStaff, setEditingStaff] = useState<any | null>(null);
+  const [isStaffEditOpen, setIsStaffEditOpen] = useState(false);
+  const [staffEditForm, setStaffEditForm] = useState({ job_title: "", role: "", employment_status: "" });
+
+  // 공지사항 관리
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<any | null>(null);
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: "",
+    content: "",
+    priority: "normal",
+    gym_id: "all",
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: "",
+    is_active: true
+  });
+
+  // 달력 관련 상태
+  const [currentCalendarMonth, setCurrentCalendarMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isDateAnnouncementsModalOpen, setIsDateAnnouncementsModalOpen] = useState(false);
+
+  // 회사 행사 관리
+  const [companyEvents, setCompanyEvents] = useState<any[]>([]);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    description: "",
+    event_type: "general",
+    gym_id: "all",
+    event_date: new Date().toISOString().split('T')[0],
+    start_time: "",
+    end_time: "",
+    location: "",
+    target_audience: "all",
+    color: "blue",
+    is_active: true
+  });
+
   // 폼 상태
   const initialForm = {
     gymName: "", managerId: "", category: [] as string[], size: "", open_date: "", memo: "", status: "active"
   };
   const [formData, setFormData] = useState(initialForm);
-  
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
@@ -101,11 +155,12 @@ export default function HQPage() {
       // @ts-ignore
       setCompanyName(me.companies?.name ?? "");
 
-      // system_admin인 경우 모든 회사 목록 가져오기
+      // system_admin인 경우 운영 중인 회사 목록만 가져오기
       if (me.role === 'system_admin') {
         const { data: companiesData } = await supabase
           .from("companies")
           .select("id, name")
+          .eq("status", "active")
           .order("name", { ascending: true });
 
         if (companiesData) {
@@ -123,11 +178,15 @@ export default function HQPage() {
     if (!targetCompanyId) return;
 
     // 지점 목록 (자기 회사 것만)
-    const { data: gymData } = await supabase
+    const { data: gymData, error: gymError } = await supabase
         .from("gyms")
         .select(`*, staffs(id, name, role, email)`)
         .eq("company_id", targetCompanyId)
         .order("created_at", { ascending: false });
+
+    if (gymError) {
+      console.error('❌ 지점 조회 오류:', gymError);
+    }
     if (gymData) setGyms(gymData);
 
     // 대기 직원 (자기 회사 것만, gym_id가 null인 사람)
@@ -142,7 +201,7 @@ export default function HQPage() {
     // 전체 직원 (자기 회사 것만)
     const { data: allData } = await supabase
         .from("staffs")
-        .select("id, name, email, role, gym_id, created_at, gyms(name)")
+        .select("id, name, email, role, job_title, gym_id, created_at, updated_at, user_id, gyms(name)")
         .eq("company_id", targetCompanyId)
         .order("name", { ascending: true });
     if (allData) setAllStaffs(allData);
@@ -155,15 +214,59 @@ export default function HQPage() {
       .order("created_at", { ascending: false });
     if (memberData) setMembers(memberData);
 
-    // 최근 활동 데이터 생성 (최근 30일 이내)
+    // 결제 데이터 가져오기 (매출 계산용)
+    const { data: paymentData, error: paymentError } = await supabase
+      .from("member_payments")
+      .select("id, member_id, amount, membership_type, registration_type, created_at, gym_id, visit_route")
+      .eq("company_id", targetCompanyId)
+      .order("created_at", { ascending: false });
+
+    console.log('💳 결제 데이터 조회:', {
+      결제건수: paymentData?.length || 0,
+      에러: paymentError,
+      샘플데이터: paymentData?.slice(0, 3)
+    });
+
+    // 회원에 결제 정보 연결
+    if (memberData && paymentData) {
+      const membersWithPayments = memberData.map(member => {
+        const payments = paymentData.filter(p => p.member_id === member.id);
+        return {
+          ...member,
+          payments: payments
+        };
+      });
+      setMembers(membersWithPayments);
+      console.log('👥 회원+결제 연결 완료:', {
+        전체회원수: membersWithPayments.length,
+        결제있는회원수: membersWithPayments.filter(m => m.payments.length > 0).length
+      });
+    }
+
+    // 직접 count 쿼리로 정확한 통계 가져오기
+    const { count: totalGymsCount } = await supabase
+      .from("gyms")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", targetCompanyId);
+
+    const { count: totalStaffsCount } = await supabase
+      .from("staffs")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", targetCompanyId);
+
+    const { count: totalMembersCount } = await supabase
+      .from("members")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", targetCompanyId);
+
+    // 최근 활동 데이터 생성 (최근 30일 이내 직원 활동만)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const activities: any[] = [];
 
-    // 최근 배치된 직원 (gym_id가 있고 최근 30일 이내 업데이트된 직원)
+    // 최근 직원 활동 (최근 30일 이내)
     const recentStaffs = allData?.filter(s =>
-      s.gym_id &&
       s.created_at &&
       new Date(s.created_at) >= thirtyDaysAgo
     ) || [];
@@ -171,59 +274,48 @@ export default function HQPage() {
     recentStaffs.forEach(staff => {
       // @ts-ignore
       const gymName = staff.gyms?.name || '미배정';
+
+      // user_id가 있으면 자체 가입, 없으면 수동 추가
+      const isManualAdd = !staff.user_id;
+      const activityType = isManualAdd ? '수동 추가' : '자체 가입';
+      const badgeColor = isManualAdd ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700';
+
+      // 직책 정보
+      const jobTitle = staff.job_title || '-';
+      const roleText = staff.role === 'admin' ? '관리자' : staff.role === 'company_admin' ? '본사 관리자' : '직원';
+
       activities.push({
         id: `staff-${staff.id}`,
         name: staff.name,
         type: 'staff',
-        activityType: '직원 가입',
+        activityType,
         gymName,
+        jobTitle,
+        roleText,
         created_at: staff.created_at,
-        badgeColor: 'bg-emerald-100 text-emerald-700'
-      });
-    });
-
-    // 최근 가입한 회원
-    const recentMembers = memberData?.filter(m =>
-      m.created_at &&
-      new Date(m.created_at) >= thirtyDaysAgo
-    ).slice(0, 10) || [];
-
-    recentMembers.forEach(member => {
-      // @ts-ignore
-      const gymName = member.gyms?.name || '미배정';
-      activities.push({
-        id: `member-${member.id}`,
-        name: member.name,
-        type: 'member',
-        activityType: '회원 가입',
-        gymName,
-        created_at: member.created_at,
-        badgeColor: 'bg-purple-100 text-purple-700'
+        badgeColor
       });
     });
 
     // 날짜순 정렬 (최신순)
     activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    setRecentActivities(activities.slice(0, 10));
+    setRecentActivities(activities.slice(0, 15));
 
-    // 통계 계산
-    const totalGyms = gymData?.length || 0;
-    const totalStaffs = allData?.length || 0;
-    const totalMembers = memberData?.length || 0;
-
-    // 이번 달 신규 회원 수
+    // 이번 달 신규 회원 수 (count 쿼리 사용)
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const newMembersThisMonth = memberData?.filter(m => {
-      const createdAt = new Date(m.created_at);
-      return createdAt >= firstDayOfMonth;
-    }).length || 0;
+    const { count: newMembersThisMonthCount } = await supabase
+      .from("members")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", targetCompanyId)
+      .gte("created_at", firstDayOfMonth.toISOString());
 
+    // 통계 설정 (count 쿼리 결과 사용)
     setStats({
-      totalGyms,
-      totalStaffs,
-      totalMembers,
-      newMembersThisMonth
+      totalGyms: totalGymsCount || 0,
+      totalStaffs: totalStaffsCount || 0,
+      totalMembers: totalMembersCount || 0,
+      newMembersThisMonth: newMembersThisMonthCount || 0
     });
 
     // 지점별 통계
@@ -247,6 +339,26 @@ export default function HQPage() {
     }) || [];
 
     setGymStats(gymStatsData);
+
+    // 공지사항 조회 (자기 회사 것만)
+    const { data: announcementsData } = await supabase
+      .from("announcements")
+      .select("*, gyms(name), staffs(name)")
+      .eq("company_id", targetCompanyId)
+      .order("priority", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (announcementsData) setAnnouncements(announcementsData);
+
+    // 회사 행사 조회 (자기 회사 것만)
+    const { data: eventsData } = await supabase
+      .from("company_events")
+      .select("*, gyms(name)")
+      .eq("company_id", targetCompanyId)
+      .order("event_date", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (eventsData) setCompanyEvents(eventsData);
   };
 
   const handleAssign = async (staffId: string) => {
@@ -254,6 +366,263 @@ export default function HQPage() {
     if (!confirm("발령 보내시겠습니까?")) return;
     const { error } = await supabase.from("staffs").update({ gym_id: selectedGym, role: selectedRole, employment_status: "재직" }).eq("id", staffId);
     if (!error) { alert("발령 완료!"); fetchData(companyId, myRole); } else { alert(error.message); }
+  };
+
+  // 공지사항 관리 함수들
+  const openAnnouncementModal = (announcement: any = null) => {
+    if (announcement) {
+      // 수정 모드
+      setEditingAnnouncement(announcement);
+      setAnnouncementForm({
+        title: announcement.title,
+        content: announcement.content,
+        priority: announcement.priority,
+        gym_id: announcement.gym_id || "all",
+        start_date: announcement.start_date,
+        end_date: announcement.end_date || "",
+        is_active: announcement.is_active
+      });
+    } else {
+      // 신규 등록 모드
+      setEditingAnnouncement(null);
+      setAnnouncementForm({
+        title: "",
+        content: "",
+        priority: "normal",
+        gym_id: "all",
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: "",
+        is_active: true
+      });
+    }
+    setIsAnnouncementModalOpen(true);
+  };
+
+  const handleSaveAnnouncement = async () => {
+    if (!announcementForm.title.trim() || !announcementForm.content.trim()) {
+      return alert("제목과 내용을 입력해주세요.");
+    }
+
+    setIsLoading(true);
+    try {
+      const targetCompanyId = companyId || selectedCompanyId;
+      if (!targetCompanyId) {
+        throw new Error("회사 정보를 찾을 수 없습니다.");
+      }
+
+      // 내 staff 정보 가져오기
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("로그인 정보를 찾을 수 없습니다.");
+
+      const { data: me } = await supabase
+        .from("staffs")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!me) throw new Error("사용자 정보를 찾을 수 없습니다.");
+
+      const announcementData = {
+        company_id: targetCompanyId,
+        gym_id: announcementForm.gym_id === "all" ? null : announcementForm.gym_id,
+        title: announcementForm.title,
+        content: announcementForm.content,
+        priority: announcementForm.priority,
+        start_date: announcementForm.start_date,
+        end_date: announcementForm.end_date || null,
+        is_active: announcementForm.is_active,
+        author_id: me.id
+      };
+
+      if (editingAnnouncement) {
+        // 수정
+        const { error } = await supabase
+          .from("announcements")
+          .update(announcementData)
+          .eq("id", editingAnnouncement.id);
+
+        if (error) throw error;
+        alert("공지사항이 수정되었습니다.");
+      } else {
+        // 신규 등록
+        const { error } = await supabase
+          .from("announcements")
+          .insert(announcementData);
+
+        if (error) throw error;
+        alert("공지사항이 등록되었습니다.");
+      }
+
+      setIsAnnouncementModalOpen(false);
+      fetchData(targetCompanyId, myRole);
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("announcements")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      alert("공지사항이 삭제되었습니다.");
+      const targetCompanyId = companyId || selectedCompanyId;
+      fetchData(targetCompanyId, myRole);
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    }
+  };
+
+  const handleToggleAnnouncementActive = async (announcement: any) => {
+    try {
+      const { error } = await supabase
+        .from("announcements")
+        .update({ is_active: !announcement.is_active })
+        .eq("id", announcement.id);
+
+      if (error) throw error;
+
+      const targetCompanyId = companyId || selectedCompanyId;
+      fetchData(targetCompanyId, myRole);
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    }
+  };
+
+  // 회사 행사 관리 함수들
+  const openEventModal = (event: any = null) => {
+    if (event) {
+      // 수정 모드
+      setEditingEvent(event);
+      setEventForm({
+        title: event.title,
+        description: event.description || "",
+        event_type: event.event_type,
+        gym_id: event.gym_id || "all",
+        event_date: event.event_date,
+        start_time: event.start_time || "",
+        end_time: event.end_time || "",
+        location: event.location || "",
+        target_audience: event.target_audience,
+        color: event.color,
+        is_active: event.is_active
+      });
+    } else {
+      // 신규 등록 모드
+      setEditingEvent(null);
+      setEventForm({
+        title: "",
+        description: "",
+        event_type: "general",
+        gym_id: "all",
+        event_date: new Date().toISOString().split('T')[0],
+        start_time: "",
+        end_time: "",
+        location: "",
+        target_audience: "all",
+        color: "blue",
+        is_active: true
+      });
+    }
+    setIsEventModalOpen(true);
+  };
+
+  const handleSaveEvent = async () => {
+    if (!eventForm.title.trim()) {
+      return alert("행사 제목을 입력해주세요.");
+    }
+
+    setIsLoading(true);
+    try {
+      const targetCompanyId = companyId || selectedCompanyId;
+      if (!targetCompanyId) {
+        throw new Error("회사 정보를 찾을 수 없습니다.");
+      }
+
+      const eventData = {
+        company_id: targetCompanyId,
+        gym_id: eventForm.gym_id === "all" ? null : eventForm.gym_id,
+        title: eventForm.title,
+        description: eventForm.description || null,
+        event_type: eventForm.event_type,
+        event_date: eventForm.event_date,
+        start_time: eventForm.start_time || null,
+        end_time: eventForm.end_time || null,
+        location: eventForm.location || null,
+        target_audience: eventForm.target_audience,
+        color: eventForm.color,
+        is_active: eventForm.is_active
+      };
+
+      if (editingEvent) {
+        // 수정
+        const { error } = await supabase
+          .from("company_events")
+          .update(eventData)
+          .eq("id", editingEvent.id);
+
+        if (error) throw error;
+        alert("회사 행사가 수정되었습니다.");
+      } else {
+        // 신규 등록
+        const { error } = await supabase
+          .from("company_events")
+          .insert(eventData);
+
+        if (error) throw error;
+        alert("회사 행사가 등록되었습니다.");
+      }
+
+      setIsEventModalOpen(false);
+      fetchData(targetCompanyId, myRole);
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("company_events")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      alert("회사 행사가 삭제되었습니다.");
+      const targetCompanyId = companyId || selectedCompanyId;
+      fetchData(targetCompanyId, myRole);
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    }
+  };
+
+  const handleToggleEventActive = async (event: any) => {
+    try {
+      const { error } = await supabase
+        .from("company_events")
+        .update({ is_active: !event.is_active })
+        .eq("id", event.id);
+
+      if (error) throw error;
+
+      const targetCompanyId = companyId || selectedCompanyId;
+      fetchData(targetCompanyId, myRole);
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    }
   };
 
   const toggleCategory = (cat: string) => {
@@ -323,6 +692,83 @@ export default function HQPage() {
     if (!confirm("정말 삭제하시겠습니까?")) return;
     await supabase.from("gyms").delete().eq("id", gymId);
     fetchData(companyId, myRole);
+  };
+
+  const openStaffEditModal = (staff: any) => {
+    setEditingStaff(staff);
+    setStaffEditForm({
+      job_title: staff.job_title || "",
+      role: staff.role || "staff",
+      employment_status: staff.employment_status || "재직"
+    });
+    setIsStaffEditOpen(true);
+  };
+
+  const handleStaffUpdate = async () => {
+    if (!editingStaff) return;
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from("staffs")
+        .update({
+          job_title: staffEditForm.job_title,
+          role: staffEditForm.role,
+          employment_status: staffEditForm.employment_status
+        })
+        .eq("id", editingStaff.id);
+
+      if (error) throw error;
+      alert("직원 정보가 수정되었습니다.");
+      setIsStaffEditOpen(false);
+      fetchData(companyId || selectedCompanyId, myRole);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openGymDetailModal = (gym: any) => {
+    const gymStat = gymStats.find(g => g.id === gym.id);
+    setSelectedGymDetail({ ...gym, stats: gymStat });
+    setBepForm({
+      fc_bep: gym.fc_bep || 75000000,
+      pt_bep: gym.pt_bep || 100000000
+    });
+    setSelectedMonth("current");
+    setIsEditingBep(false);
+    setIsGymDetailOpen(true);
+  };
+
+  const handleUpdateBep = async () => {
+    if (!selectedGymDetail) return;
+
+    try {
+      const res = await fetch("/api/admin/update-gym-bep", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gym_id: selectedGymDetail.id,
+          fc_bep: bepForm.fc_bep,
+          pt_bep: bepForm.pt_bep
+        })
+      });
+
+      if (!res.ok) throw new Error("BEP 업데이트 실패");
+
+      alert("BEP가 업데이트되었습니다!");
+      setIsEditingBep(false);
+      fetchData(companyId || selectedCompanyId, myRole);
+
+      // 모달 데이터도 업데이트
+      setSelectedGymDetail({
+        ...selectedGymDetail,
+        fc_bep: bepForm.fc_bep,
+        pt_bep: bepForm.pt_bep
+      });
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    }
   };
 
   const getCategoryColor = (cat: string) => {
@@ -550,7 +996,7 @@ export default function HQPage() {
               return (
                 <div key={gym.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
                   <div className="flex justify-between items-start">
-                    <div className="flex-1">
+                    <div className="flex-1 cursor-pointer" onClick={() => openGymDetailModal(gym)}>
                       <div className="flex items-center gap-2 flex-wrap mb-2">
                         <span className="font-semibold text-gray-900">{gym.name}</span>
                         {categories.map((cat: string) => (
@@ -571,10 +1017,10 @@ export default function HQPage() {
                       </div>
                     </div>
                     <div className="flex gap-1 ml-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100" onClick={() => openEditModal(gym)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); openEditModal(gym); }}>
                         <Pencil className="h-4 w-4 text-gray-500"/>
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100" onClick={() => handleDeleteGym(gym.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); handleDeleteGym(gym.id); }}>
                         <Trash2 className="h-4 w-4 text-gray-500"/>
                       </Button>
                     </div>
@@ -591,65 +1037,372 @@ export default function HQPage() {
         </div>
       </div>
 
-      {/* 3. 지점별 상세 현황 & 최근 활동 */}
+      {/* 3. 공지사항 관리 - 달력 형태 */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+        <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Bell className="w-4 h-4 text-purple-600" />
+            </div>
+            <div className="flex items-center gap-3">
+              <h3 className="text-base font-semibold text-gray-900">공지사항 관리</h3>
+              <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                {announcements.length}개
+              </span>
+            </div>
+          </div>
+          <Button
+            onClick={() => openAnnouncementModal()}
+            size="sm"
+            className="bg-purple-600 text-white hover:bg-purple-700"
+          >
+            <Plus className="mr-1 h-4 w-4" /> 공지 등록
+          </Button>
+        </div>
+
+        {/* 달력 네비게이션 */}
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const prevMonth = new Date(currentCalendarMonth);
+              prevMonth.setMonth(prevMonth.getMonth() - 1);
+              setCurrentCalendarMonth(prevMonth);
+            }}
+          >
+            이전 달
+          </Button>
+          <h4 className="text-lg font-semibold text-gray-900">
+            {format(currentCalendarMonth, "yyyy년 M월", { locale: ko })}
+          </h4>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const nextMonth = new Date(currentCalendarMonth);
+              nextMonth.setMonth(nextMonth.getMonth() + 1);
+              setCurrentCalendarMonth(nextMonth);
+            }}
+          >
+            다음 달
+          </Button>
+        </div>
+
+        {/* 달력 UI */}
+        <div className="p-6">
+          {(() => {
+            // 달력 생성 로직
+            const year = currentCalendarMonth.getFullYear();
+            const month = currentCalendarMonth.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startDayOfWeek = firstDay.getDay();
+
+            // 날짜별 공지사항 맵 생성
+            const announcementsByDate: Record<string, any[]> = {};
+            announcements.forEach((announcement) => {
+              const startDate = new Date(announcement.start_date);
+              const endDate = announcement.end_date ? new Date(announcement.end_date) : new Date(announcement.start_date);
+
+              // 시작일부터 종료일까지의 모든 날짜에 공지사항 추가
+              let currentDate = new Date(startDate);
+              while (currentDate <= endDate) {
+                const dateKey = format(currentDate, "yyyy-MM-dd");
+                if (!announcementsByDate[dateKey]) {
+                  announcementsByDate[dateKey] = [];
+                }
+                announcementsByDate[dateKey].push(announcement);
+                currentDate.setDate(currentDate.getDate() + 1);
+              }
+            });
+
+            // 달력 그리드 생성
+            const calendarDays = [];
+
+            // 빈 칸 추가 (월의 시작 전)
+            for (let i = 0; i < startDayOfWeek; i++) {
+              calendarDays.push(<div key={`empty-${i}`} className="h-24 border border-gray-100"></div>);
+            }
+
+            // 날짜 추가
+            for (let day = 1; day <= daysInMonth; day++) {
+              const date = new Date(year, month, day);
+              const dateKey = format(date, "yyyy-MM-dd");
+              const dayAnnouncements = announcementsByDate[dateKey] || [];
+              const isToday = format(new Date(), "yyyy-MM-dd") === dateKey;
+
+              calendarDays.push(
+                <div
+                  key={day}
+                  className={cn(
+                    "h-24 border border-gray-100 p-2 cursor-pointer hover:bg-purple-50 transition-colors",
+                    isToday && "bg-blue-50 border-blue-300"
+                  )}
+                  onClick={() => {
+                    setSelectedDate(date);
+                    if (dayAnnouncements.length > 0) {
+                      setIsDateAnnouncementsModalOpen(true);
+                    }
+                  }}
+                >
+                  <div className={cn(
+                    "text-sm font-medium mb-1",
+                    isToday ? "text-blue-600" : "text-gray-700"
+                  )}>
+                    {day}
+                  </div>
+                  {dayAnnouncements.length > 0 && (
+                    <div className="space-y-1">
+                      {dayAnnouncements.slice(0, 2).map((ann, idx) => (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "text-xs px-1.5 py-0.5 rounded truncate",
+                            ann.priority === "urgent" ? "bg-red-100 text-red-700" :
+                            ann.priority === "normal" ? "bg-purple-100 text-purple-700" :
+                            "bg-gray-100 text-gray-700"
+                          )}
+                        >
+                          {ann.title}
+                        </div>
+                      ))}
+                      {dayAnnouncements.length > 2 && (
+                        <div className="text-xs text-gray-500 pl-1">
+                          +{dayAnnouncements.length - 2}개 더
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div>
+                {/* 요일 헤더 */}
+                <div className="grid grid-cols-7 gap-0 mb-2">
+                  {["일", "월", "화", "수", "목", "금", "토"].map((day, idx) => (
+                    <div
+                      key={day}
+                      className={cn(
+                        "text-center py-2 font-semibold text-sm",
+                        idx === 0 ? "text-red-600" : idx === 6 ? "text-blue-600" : "text-gray-700"
+                      )}
+                    >
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                {/* 날짜 그리드 */}
+                <div className="grid grid-cols-7 gap-0 border-t border-l border-gray-200">
+                  {calendarDays}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* 4. 회사 행사 관리 */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+        <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Calendar className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex items-center gap-3">
+              <h3 className="text-base font-semibold text-gray-900">회사 행사 관리</h3>
+              <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                {companyEvents.length}개
+              </span>
+            </div>
+          </div>
+          <Button
+            onClick={() => openEventModal()}
+            size="sm"
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Plus className="mr-1 h-4 w-4" /> 행사 등록
+          </Button>
+        </div>
+        <div className="p-6 space-y-3 max-h-[500px] overflow-y-auto">
+          {companyEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+              <Calendar className="w-10 h-10 mb-2 opacity-20" />
+              <p className="text-sm">등록된 회사 행사가 없습니다.</p>
+            </div>
+          ) : (
+            companyEvents.map((event) => {
+              const eventTypeColors: Record<string, string> = {
+                general: "bg-blue-100 text-blue-700 border-blue-200",
+                training: "bg-purple-100 text-purple-700 border-purple-200",
+                meeting: "bg-orange-100 text-orange-700 border-orange-200",
+                holiday: "bg-red-100 text-red-700 border-red-200",
+                celebration: "bg-pink-100 text-pink-700 border-pink-200"
+              };
+              const eventTypeLabels: Record<string, string> = {
+                general: "일반",
+                training: "교육",
+                meeting: "회의",
+                holiday: "휴무",
+                celebration: "행사"
+              };
+
+              const eventDate = new Date(event.event_date);
+              const isToday = event.event_date === new Date().toISOString().split('T')[0];
+
+              return (
+                <div key={event.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <Badge variant="outline" className={eventTypeColors[event.event_type]}>
+                          {eventTypeLabels[event.event_type]}
+                        </Badge>
+                        {event.gym_id ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {event.gyms?.name}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            전사 행사
+                          </Badge>
+                        )}
+                        {isToday && (
+                          <Badge className="bg-blue-500 text-white">오늘</Badge>
+                        )}
+                        {!event.is_active && (
+                          <Badge className="bg-gray-400">비활성</Badge>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-gray-900 mb-1">{event.title}</h4>
+                      {event.description && (
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">{event.description}</p>
+                      )}
+                      <div className="text-xs text-gray-500 flex gap-3 items-center flex-wrap">
+                        <span>날짜: {event.event_date}</span>
+                        {event.start_time && <span>시간: {event.start_time.substring(0, 5)}</span>}
+                        {event.end_time && <span>~ {event.end_time.substring(0, 5)}</span>}
+                        {event.location && <span>장소: {event.location}</span>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-blue-50"
+                        onClick={() => handleToggleEventActive(event)}
+                        title={event.is_active ? "비활성화" : "활성화"}
+                      >
+                        <Activity className={`h-4 w-4 ${event.is_active ? 'text-green-600' : 'text-gray-400'}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-blue-50"
+                        onClick={() => openEventModal(event)}
+                      >
+                        <Pencil className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-red-50"
+                        onClick={() => handleDeleteEvent(event.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* 5. 직원 재직 현황 관리 & 최근 활동 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 지점별 상세 현황 */}
+        {/* 직원 재직 현황 관리 */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
           <div className="bg-white px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-100 rounded-lg">
-                <BarChart3 className="w-4 h-4 text-emerald-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Users className="w-4 h-4 text-emerald-600" />
+                </div>
+                <h3 className="text-base font-semibold text-gray-900">직원 재직 현황</h3>
               </div>
-              <h3 className="text-base font-semibold text-gray-900">지점별 상세 현황</h3>
+              <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                {selectedGymFilter === "all"
+                  ? allStaffs.length
+                  : allStaffs.filter(s => s.gym_id === selectedGymFilter).length}명
+              </span>
             </div>
           </div>
           <div className="p-6">
-            {filteredGymStats.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <p className="text-sm">등록된 지점이 없습니다.</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                {filteredGymStats.map((gym: any) => (
-                  <div key={gym.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-gray-900">{gym.name}</span>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            gym.status === 'active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : gym.status === 'closed'
-                              ? 'bg-red-50 text-red-700 border-red-200'
-                              : 'bg-orange-50 text-orange-700 border-orange-200'
-                          }`}
+            {(() => {
+              const filteredStaffs = selectedGymFilter === "all"
+                ? allStaffs
+                : allStaffs.filter(s => s.gym_id === selectedGymFilter);
+
+              return filteredStaffs.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-sm">등록된 직원이 없습니다.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                  {filteredStaffs.map((staff: any) => {
+                  // @ts-ignore
+                  const gymName = staff.gyms?.name || '미배정';
+                  const roleText = staff.role === 'admin' ? '관리자' : staff.role === 'company_admin' ? '본사 관리자' : '직원';
+                  const statusColor = staff.employment_status === '재직' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                     staff.employment_status === '퇴사' ? 'bg-red-50 text-red-700 border-red-200' :
+                                     'bg-gray-50 text-gray-700 border-gray-200';
+
+                  return (
+                    <div key={staff.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-semibold text-gray-900">{staff.name}</span>
+                            <Badge variant="outline" className={`text-xs ${statusColor}`}>
+                              {staff.employment_status || '재직'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-500">{staff.email}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-gray-100"
+                          onClick={() => openStaffEditModal(staff)}
                         >
-                          {gym.status === 'active' ? '운영중' : gym.status === 'closed' ? '폐업' : '대기'}
-                        </Badge>
+                          <Pencil className="h-4 w-4 text-gray-500"/>
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-gray-50 rounded p-2 border border-gray-200">
+                          <div className="text-gray-600 mb-0.5">소속</div>
+                          <div className="font-medium text-gray-900">{gymName}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2 border border-gray-200">
+                          <div className="text-gray-600 mb-0.5">직책</div>
+                          <div className="font-medium text-gray-900">{staff.job_title || '-'}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded p-2 border border-gray-200">
+                          <div className="text-gray-600 mb-0.5">권한</div>
+                          <div className="font-medium text-gray-900">{roleText}</div>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
-                        <div className="text-xs text-gray-600 mb-1">직원</div>
-                        <div className="text-lg font-bold text-gray-900">{gym.staffCount}</div>
-                        <div className="text-xs text-gray-500">명</div>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
-                        <div className="text-xs text-gray-600 mb-1">회원</div>
-                        <div className="text-lg font-bold text-gray-900">{gym.memberCount}</div>
-                        <div className="text-xs text-gray-500">명</div>
-                      </div>
-                      <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
-                        <div className="text-xs text-gray-600 mb-1">신규</div>
-                        <div className="text-lg font-bold text-gray-900">+{gym.newMembersCount}</div>
-                        <div className="text-xs text-gray-500">명</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            )}
+            );
+            })()}
           </div>
         </div>
 
@@ -691,14 +1444,23 @@ export default function HQPage() {
                         {activity.activityType}
                       </Badge>
                     </div>
-                    <div className="text-xs text-gray-600 flex items-center gap-3">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3"/> {activity.gymName}
-                      </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3"/> {formatDate(activity.created_at)}
-                      </span>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3"/> {activity.gymName}
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3"/> {formatDate(activity.created_at)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3"/> 직책: {activity.jobTitle}
+                        </span>
+                        <span>•</span>
+                        <span>권한: {activity.roleText}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -787,6 +1549,957 @@ export default function HQPage() {
             </DialogContent>
         </Dialog>
       ))}
+
+      {/* 직원 정보 수정 모달 */}
+      <Dialog open={isStaffEditOpen} onOpenChange={setIsStaffEditOpen}>
+        <DialogContent className="bg-white sm:max-w-[500px]">
+          <DialogHeader><DialogTitle>직원 정보 수정</DialogTitle></DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>직책</Label>
+              <Input
+                value={staffEditForm.job_title}
+                onChange={(e) => setStaffEditForm({...staffEditForm, job_title: e.target.value})}
+                placeholder="예: 대표, 부점장, 트레이너 등"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>권한</Label>
+              <Select value={staffEditForm.role} onValueChange={(v) => setStaffEditForm({...staffEditForm, role: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="company_admin">본사 관리자</SelectItem>
+                  <SelectItem value="admin">관리자</SelectItem>
+                  <SelectItem value="staff">직원</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>재직 상태</Label>
+              <Select value={staffEditForm.employment_status} onValueChange={(v) => setStaffEditForm({...staffEditForm, employment_status: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="재직">재직</SelectItem>
+                  <SelectItem value="휴직">휴직</SelectItem>
+                  <SelectItem value="퇴사">퇴사</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleStaffUpdate}
+              className="bg-[#2F80ED] hover:bg-[#1c6cd7]"
+              disabled={isLoading}
+            >
+              저장하기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 지점 상세보기 모달 */}
+      <Dialog open={isGymDetailOpen} onOpenChange={setIsGymDetailOpen}>
+        <DialogContent className="bg-white sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">{selectedGymDetail?.name} 상세 현황</DialogTitle>
+              {!isEditingBep ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditingBep(true)}
+                  className="text-xs"
+                >
+                  <Pencil className="w-3 h-3 mr-1" /> BEP 수정
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsEditingBep(false);
+                      setBepForm({
+                        fc_bep: selectedGymDetail.fc_bep || 75000000,
+                        pt_bep: selectedGymDetail.pt_bep || 100000000
+                      });
+                    }}
+                    className="text-xs"
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleUpdateBep}
+                    className="text-xs bg-[#2F80ED] hover:bg-[#1c6cd7]"
+                  >
+                    저장
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogHeader>
+          {selectedGymDetail && (() => {
+            // 회원 데이터 필터링
+            const gymMembers = members.filter(m => m.gym_id === selectedGymDetail.id);
+
+            // 해당 지점의 모든 결제 데이터 가져오기
+            const allPayments = gymMembers.flatMap((m: any) => m.payments || []);
+
+            // PT 여부 확인 함수 (membership_type에 PT가 포함되어 있으면 PT)
+            const isPT = (payment: any) => {
+              const membershipType = payment.membership_type || '';
+              return membershipType.toUpperCase().includes('PT');
+            };
+
+            // 날짜 계산
+            const now = new Date();
+            const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+            const recent3MonthsStart = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+
+            // 월별로 결제 데이터 필터링
+            let filteredPayments = allPayments;
+            if (selectedMonth === "current") {
+              filteredPayments = allPayments.filter(p => new Date(p.created_at) >= currentMonthStart);
+            } else if (selectedMonth === "previous") {
+              filteredPayments = allPayments.filter(p => {
+                const date = new Date(p.created_at);
+                return date >= previousMonthStart && date <= previousMonthEnd;
+              });
+            } else if (selectedMonth === "recent3") {
+              filteredPayments = allPayments.filter(p => new Date(p.created_at) >= recent3MonthsStart);
+            }
+
+            // PT와 FC로 결제 데이터 분류
+            const ptPayments = filteredPayments.filter(p => isPT(p));
+            const fcPayments = filteredPayments.filter(p => !isPT(p));
+
+            // FC 통계
+            const fcTotalSales = fcPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const fcNewPayments = fcPayments.filter(p => p.registration_type === '신규');
+            const fcRenewPayments = fcPayments.filter(p => p.registration_type === '리뉴');
+            const fcNewSales = fcNewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+            // FC 회원 수 계산 (중복 제거)
+            const fcMemberIds = [...new Set(fcPayments.map(p => p.member_id))];
+            // visit_route로 워크인/비대면 구분 (인터넷 검색, 네이버 등이 포함되면 비대면, 그 외는 워크인)
+            const fcOnlineCount = fcPayments.filter(p => {
+              const route = (p.visit_route || '').toLowerCase();
+              return route.includes('인터넷') || route.includes('네이버') || route.includes('온라인');
+            }).length;
+            const fcWalkinCount = fcPayments.length - fcOnlineCount;
+            const fcAvgPrice = fcPayments.length > 0 ? fcTotalSales / fcPayments.length : 0;
+            const fcNewRate = fcPayments.length > 0 ? (fcNewPayments.length / fcPayments.length * 100) : 0;
+
+            // PT 통계
+            const ptTotalSales = ptPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const ptNewPayments = ptPayments.filter(p => p.registration_type === '신규');
+            const ptRenewPayments = ptPayments.filter(p => p.registration_type === '리뉴');
+            const ptNewSales = ptNewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+            const ptRenewSales = ptRenewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+            // PT 회원 수 계산 (중복 제거)
+            const ptMemberIds = [...new Set(ptPayments.map(p => p.member_id))];
+            const ptAvgPrice = ptPayments.length > 0 ? ptTotalSales / ptPayments.length : 0;
+            const ptRenewRate = ptPayments.length > 0 ? (ptRenewPayments.length / ptPayments.length * 100) : 0;
+
+            // BEP (지점에 설정된 값 사용)
+            const fcBEP = isEditingBep ? bepForm.fc_bep : (selectedGymDetail.fc_bep || 75000000);
+            const ptBEP = isEditingBep ? bepForm.pt_bep : (selectedGymDetail.pt_bep || 100000000);
+            const fcBepRate = fcBEP > 0 ? (fcTotalSales / fcBEP * 100) : 0;
+            const ptBepRate = ptBEP > 0 ? (ptTotalSales / ptBEP * 100) : 0;
+
+            // 기간 표시 텍스트
+            const periodText = selectedMonth === "current" ? "이번 달" :
+                              selectedMonth === "previous" ? "지난 달" :
+                              "최근 3개월";
+
+            // 디버깅 로그
+            console.log('🔍 지점 통계 디버깅:', {
+              지점명: selectedGymDetail.name,
+              전체회원수: gymMembers.length,
+              전체결제건수: allPayments.length,
+              FC결제건수: fcPayments.length,
+              FC총매출: fcTotalSales,
+              PT결제건수: ptPayments.length,
+              PT총매출: ptTotalSales,
+              샘플결제데이터: allPayments.slice(0, 3)
+            });
+
+            return (
+              <div className="py-4 space-y-6">
+                {/* 기간 선택 탭 */}
+                <div className="flex items-center gap-2 border-b pb-3">
+                  <span className="text-sm font-semibold text-gray-700 mr-2">기간:</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={selectedMonth === "current" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedMonth("current")}
+                      className={selectedMonth === "current" ? "bg-[#2F80ED]" : ""}
+                    >
+                      이번 달
+                    </Button>
+                    <Button
+                      variant={selectedMonth === "previous" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedMonth("previous")}
+                      className={selectedMonth === "previous" ? "bg-[#2F80ED]" : ""}
+                    >
+                      지난 달
+                    </Button>
+                    <Button
+                      variant={selectedMonth === "recent3" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedMonth("recent3")}
+                      className={selectedMonth === "recent3" ? "bg-[#2F80ED]" : ""}
+                    >
+                      최근 3개월
+                    </Button>
+                  </div>
+                  <div className="ml-auto text-sm text-gray-500">
+                    ({periodText} 데이터)
+                  </div>
+                </div>
+
+                {/* BEP 설정 */}
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border-2 border-blue-200">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3">BEP (손익분기점) 설정</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-gray-600 mb-1">FC BEP</Label>
+                      {isEditingBep ? (
+                        <Input
+                          type="number"
+                          value={bepForm.fc_bep}
+                          onChange={(e) => setBepForm({...bepForm, fc_bep: Number(e.target.value)})}
+                          className="h-9"
+                        />
+                      ) : (
+                        <div className="text-xl font-bold text-gray-900">
+                          ₩{fcBEP.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-600 mb-1">PT BEP</Label>
+                      {isEditingBep ? (
+                        <Input
+                          type="number"
+                          value={bepForm.pt_bep}
+                          onChange={(e) => setBepForm({...bepForm, pt_bep: Number(e.target.value)})}
+                          className="h-9"
+                        />
+                      ) : (
+                        <div className="text-xl font-bold text-gray-900">
+                          ₩{ptBEP.toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 기본 정보 */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">기본 정보</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="text-xs text-gray-600 mb-1">평수</div>
+                      <div className="font-medium text-gray-900">{selectedGymDetail.size || '-'}평</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="text-xs text-gray-600 mb-1">오픈일</div>
+                      <div className="font-medium text-gray-900">{selectedGymDetail.open_date || '-'}</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="text-xs text-gray-600 mb-1">운영 종목</div>
+                      <div className="font-medium text-gray-900 text-xs">
+                        {selectedGymDetail.category ? selectedGymDetail.category.split(", ").join(", ") : '-'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* FC 상세 DATA */}
+                <div className="bg-amber-50 rounded-lg p-4 border-2 border-amber-200">
+                  <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="bg-amber-500 text-white px-2 py-0.5 rounded text-sm">FC</span>
+                    회원권 / 부가상품 상세 DATA
+                  </h3>
+
+                  <div className="grid grid-cols-4 gap-3 mb-3">
+                    <div className="bg-white rounded-lg p-3 border border-amber-300">
+                      <div className="text-xs text-gray-600 mb-1">FC BEP</div>
+                      <div className="text-lg font-bold text-gray-900">₩{fcBEP.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-amber-300">
+                      <div className="text-xs text-gray-600 mb-1">FC 총 매출</div>
+                      <div className="text-lg font-bold text-blue-600">₩{fcTotalSales.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-amber-300">
+                      <div className="text-xs text-gray-600 mb-1">BEP 달성률</div>
+                      <div className={`text-lg font-bold ${fcBepRate >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
+                        {fcBepRate.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-amber-300">
+                      <div className="text-xs text-gray-600 mb-1">FC 객단가</div>
+                      <div className="text-lg font-bold text-gray-900">₩{Math.round(fcAvgPrice).toLocaleString()}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-3">
+                    <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">총 등록</div>
+                      <div className="text-xl font-bold text-gray-900">{fcPayments.length}</div>
+                      <div className="text-xs text-gray-500">건</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">워크인</div>
+                      <div className="text-xl font-bold text-blue-600">{fcWalkinCount}</div>
+                      <div className="text-xs text-gray-500">건</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">비대면</div>
+                      <div className="text-xl font-bold text-purple-600">{fcOnlineCount}</div>
+                      <div className="text-xs text-gray-500">건</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">FC 리뉴얼</div>
+                      <div className="text-xl font-bold text-emerald-600">{fcRenewPayments.length}</div>
+                      <div className="text-xs text-gray-500">건</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">신규율</div>
+                      <div className="text-xl font-bold text-orange-600">{fcNewRate.toFixed(1)}%</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 bg-white rounded-lg p-3 border border-amber-300">
+                    <div className="text-xs text-gray-600 mb-1">FC 신규매출 ({periodText})</div>
+                    <div className="text-2xl font-bold text-green-600">₩{fcNewSales.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {/* PT 상세 DATA */}
+                <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
+                  <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-sm">PT</span>
+                    PT / PPT 상세 DATA
+                  </h3>
+
+                  <div className="grid grid-cols-4 gap-3 mb-3">
+                    <div className="bg-white rounded-lg p-3 border border-blue-300">
+                      <div className="text-xs text-gray-600 mb-1">PT BEP</div>
+                      <div className="text-lg font-bold text-gray-900">₩{ptBEP.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-300">
+                      <div className="text-xs text-gray-600 mb-1">PT 총 매출</div>
+                      <div className="text-lg font-bold text-blue-600">₩{ptTotalSales.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-300">
+                      <div className="text-xs text-gray-600 mb-1">BEP 달성률</div>
+                      <div className={`text-lg font-bold ${ptBepRate >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
+                        {ptBepRate.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-300">
+                      <div className="text-xs text-gray-600 mb-1">PT 객단가</div>
+                      <div className="text-lg font-bold text-gray-900">₩{Math.round(ptAvgPrice).toLocaleString()}</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-3 mb-3">
+                    <div className="bg-white rounded-lg p-3 border border-blue-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">PT 총 등록</div>
+                      <div className="text-xl font-bold text-gray-900">{ptPayments.length}</div>
+                      <div className="text-xs text-gray-500">건</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">PT 신규</div>
+                      <div className="text-xl font-bold text-blue-600">{ptNewPayments.length}</div>
+                      <div className="text-xs text-gray-500">건</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">PT 재등록</div>
+                      <div className="text-xl font-bold text-emerald-600">{ptRenewPayments.length}</div>
+                      <div className="text-xs text-gray-500">건</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-300 text-center">
+                      <div className="text-xs text-gray-600 mb-1">재등록률</div>
+                      <div className="text-xl font-bold text-purple-600">
+                        {ptRenewRate.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white rounded-lg p-3 border border-blue-300">
+                      <div className="text-xs text-gray-600 mb-1">신규 등록 매출</div>
+                      <div className="text-xl font-bold text-green-600">₩{ptNewSales.toLocaleString()}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-blue-300">
+                      <div className="text-xs text-gray-600 mb-1">재등록 매출</div>
+                      <div className="text-xl font-bold text-emerald-600">₩{ptRenewSales.toLocaleString()}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 메모 */}
+                {selectedGymDetail.memo && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">메모</h3>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
+                      {selectedGymDetail.memo}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* 공지사항 등록/수정 모달 */}
+      <Dialog open={isAnnouncementModalOpen} onOpenChange={setIsAnnouncementModalOpen}>
+        <DialogContent className="max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900">
+              {editingAnnouncement ? '공지사항 수정' : '새 공지사항 등록'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* 제목 */}
+            <div>
+              <Label htmlFor="announcement-title" className="text-sm font-semibold text-gray-700">
+                제목 <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="announcement-title"
+                value={announcementForm.title}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+                placeholder="공지사항 제목을 입력하세요"
+                className="mt-1"
+              />
+            </div>
+
+            {/* 내용 */}
+            <div>
+              <Label htmlFor="announcement-content" className="text-sm font-semibold text-gray-700">
+                내용 <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="announcement-content"
+                value={announcementForm.content}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, content: e.target.value })}
+                placeholder="공지사항 내용을 입력하세요"
+                className="mt-1 min-h-[120px]"
+              />
+            </div>
+
+            {/* 우선순위 */}
+            <div>
+              <Label htmlFor="announcement-priority" className="text-sm font-semibold text-gray-700">
+                우선순위 <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={announcementForm.priority}
+                onValueChange={(value) => setAnnouncementForm({ ...announcementForm, priority: value })}
+              >
+                <SelectTrigger className="mt-1 bg-white">
+                  <SelectValue placeholder="우선순위 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="urgent">긴급</SelectItem>
+                  <SelectItem value="normal">일반</SelectItem>
+                  <SelectItem value="low">참고</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 대상 지점 */}
+            <div>
+              <Label htmlFor="announcement-gym" className="text-sm font-semibold text-gray-700">
+                대상 지점
+              </Label>
+              <Select
+                value={announcementForm.gym_id}
+                onValueChange={(value) => setAnnouncementForm({ ...announcementForm, gym_id: value })}
+              >
+                <SelectTrigger className="mt-1 bg-white">
+                  <SelectValue placeholder="전사 공지 (모든 지점)" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="all">전사 공지 (모든 지점)</SelectItem>
+                  {gyms.map((gym) => (
+                    <SelectItem key={gym.id} value={gym.id}>
+                      {gym.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">
+                전사 공지를 선택하면 모든 지점에서 볼 수 있습니다.
+              </p>
+            </div>
+
+            {/* 날짜 범위 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">
+                  시작일 <span className="text-red-500">*</span>
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full mt-1 justify-start text-left font-normal",
+                        !announcementForm.start_date && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {announcementForm.start_date ? (
+                        format(new Date(announcementForm.start_date), "PPP", { locale: ko })
+                      ) : (
+                        <span>날짜를 선택하세요</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-white" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={announcementForm.start_date ? new Date(announcementForm.start_date) : undefined}
+                      onSelect={(date) => {
+                        if (date) {
+                          setAnnouncementForm({
+                            ...announcementForm,
+                            start_date: format(date, "yyyy-MM-dd")
+                          });
+                        }
+                      }}
+                      locale={ko}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">
+                  종료일
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full mt-1 justify-start text-left font-normal",
+                        !announcementForm.end_date && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {announcementForm.end_date ? (
+                        format(new Date(announcementForm.end_date), "PPP", { locale: ko })
+                      ) : (
+                        <span>무기한</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-white" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={announcementForm.end_date ? new Date(announcementForm.end_date) : undefined}
+                      onSelect={(date) => {
+                        setAnnouncementForm({
+                          ...announcementForm,
+                          end_date: date ? format(date, "yyyy-MM-dd") : ""
+                        });
+                      }}
+                      locale={ko}
+                      initialFocus
+                    />
+                    <div className="p-3 border-t">
+                      <Button
+                        variant="ghost"
+                        className="w-full text-sm"
+                        onClick={() => setAnnouncementForm({ ...announcementForm, end_date: "" })}
+                      >
+                        무기한으로 설정
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-gray-500 mt-1">
+                  비워두면 무기한으로 표시됩니다.
+                </p>
+              </div>
+            </div>
+
+            {/* 활성 상태 */}
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="announcement-active"
+                type="checkbox"
+                checked={announcementForm.is_active}
+                onChange={(e) => setAnnouncementForm({ ...announcementForm, is_active: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <Label htmlFor="announcement-active" className="text-sm text-gray-700 cursor-pointer">
+                즉시 활성화 (체크 해제 시 비활성 상태로 저장)
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsAnnouncementModalOpen(false)}
+              disabled={isLoading}
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleSaveAnnouncement}
+              disabled={isLoading}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              {isLoading ? '저장 중...' : (editingAnnouncement ? '수정' : '등록')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 선택한 날짜의 공지사항 보기 모달 */}
+      <Dialog open={isDateAnnouncementsModalOpen} onOpenChange={setIsDateAnnouncementsModalOpen}>
+        <DialogContent className="max-w-3xl bg-white max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDate && format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })} 공지사항
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {selectedDate && (() => {
+              const dateKey = format(selectedDate, "yyyy-MM-dd");
+              const dateAnnouncements = announcements.filter(announcement => {
+                const startDate = new Date(announcement.start_date);
+                const endDate = announcement.end_date ? new Date(announcement.end_date) : new Date(announcement.start_date);
+                const selected = new Date(dateKey);
+                return selected >= startDate && selected <= endDate;
+              });
+
+              const priorityColors: Record<string, string> = {
+                urgent: "bg-red-100 text-red-700 border-red-200",
+                normal: "bg-blue-100 text-blue-700 border-blue-200",
+                low: "bg-gray-100 text-gray-700 border-gray-200"
+              };
+              const priorityLabels: Record<string, string> = {
+                urgent: "긴급",
+                normal: "일반",
+                low: "참고"
+              };
+
+              if (dateAnnouncements.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <Bell className="w-12 h-12 mb-3 opacity-20" />
+                    <p className="text-sm">이 날짜에 등록된 공지사항이 없습니다.</p>
+                  </div>
+                );
+              }
+
+              return dateAnnouncements.map((announcement) => (
+                <div key={announcement.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <Badge variant="outline" className={priorityColors[announcement.priority]}>
+                          {priorityLabels[announcement.priority]}
+                        </Badge>
+                        {announcement.gym_id ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {announcement.gyms?.name}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            전사 공지
+                          </Badge>
+                        )}
+                        {!announcement.is_active && (
+                          <Badge className="bg-gray-400">비활성</Badge>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-gray-900 mb-2">{announcement.title}</h4>
+                      <p className="text-sm text-gray-600 mb-3 whitespace-pre-wrap">{announcement.content}</p>
+                      <div className="text-xs text-gray-500 flex gap-3 items-center flex-wrap">
+                        <span>작성자: {announcement.staffs?.name || '알 수 없음'}</span>
+                        <span>시작: {announcement.start_date}</span>
+                        {announcement.end_date && <span>종료: {announcement.end_date}</span>}
+                        <span>조회: {announcement.view_count || 0}회</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-purple-50"
+                        onClick={() => handleToggleAnnouncementActive(announcement)}
+                        title={announcement.is_active ? "비활성화" : "활성화"}
+                      >
+                        <Activity className={`h-4 w-4 ${announcement.is_active ? 'text-green-600' : 'text-gray-400'}`} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-purple-50"
+                        onClick={() => {
+                          setIsDateAnnouncementsModalOpen(false);
+                          openAnnouncementModal(announcement);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4 text-purple-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-red-50"
+                        onClick={() => handleDeleteAnnouncement(announcement.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDateAnnouncementsModalOpen(false)}
+            >
+              닫기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 회사 행사 등록/수정 모달 */}
+      <Dialog open={isEventModalOpen} onOpenChange={setIsEventModalOpen}>
+        <DialogContent className="max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900">
+              {editingEvent ? '회사 행사 수정' : '새 회사 행사 등록'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* 행사명 */}
+            <div>
+              <Label htmlFor="event-title" className="text-sm font-semibold text-gray-700">
+                행사명 <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="event-title"
+                value={eventForm.title}
+                onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                placeholder="행사 이름을 입력하세요"
+                className="mt-1"
+              />
+            </div>
+
+            {/* 설명 */}
+            <div>
+              <Label htmlFor="event-description" className="text-sm font-semibold text-gray-700">
+                설명
+              </Label>
+              <Textarea
+                id="event-description"
+                value={eventForm.description}
+                onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                placeholder="행사 설명을 입력하세요 (선택사항)"
+                className="mt-1 min-h-[100px]"
+              />
+            </div>
+
+            {/* 행사 유형과 대상 지점 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="event-type" className="text-sm font-semibold text-gray-700">
+                  행사 유형 <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={eventForm.event_type}
+                  onValueChange={(value) => setEventForm({ ...eventForm, event_type: value })}
+                >
+                  <SelectTrigger className="mt-1 bg-white">
+                    <SelectValue placeholder="행사 유형 선택" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="general">일반</SelectItem>
+                    <SelectItem value="training">교육</SelectItem>
+                    <SelectItem value="meeting">회의</SelectItem>
+                    <SelectItem value="holiday">휴무</SelectItem>
+                    <SelectItem value="celebration">행사</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="event-gym" className="text-sm font-semibold text-gray-700">
+                  대상 지점
+                </Label>
+                <Select
+                  value={eventForm.gym_id}
+                  onValueChange={(value) => setEventForm({ ...eventForm, gym_id: value })}
+                >
+                  <SelectTrigger className="mt-1 bg-white">
+                    <SelectValue placeholder="전사 행사 (모든 지점)" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="all">전사 행사 (모든 지점)</SelectItem>
+                    {gyms.map((gym) => (
+                      <SelectItem key={gym.id} value={gym.id}>
+                        {gym.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 행사 날짜 */}
+            <div>
+              <Label htmlFor="event-date" className="text-sm font-semibold text-gray-700">
+                행사 날짜 <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="event-date"
+                type="date"
+                value={eventForm.event_date}
+                onChange={(e) => setEventForm({ ...eventForm, event_date: e.target.value })}
+                className="mt-1"
+              />
+            </div>
+
+            {/* 시간 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="event-start-time" className="text-sm font-semibold text-gray-700">
+                  시작 시간
+                </Label>
+                <Input
+                  id="event-start-time"
+                  type="time"
+                  value={eventForm.start_time}
+                  onChange={(e) => setEventForm({ ...eventForm, start_time: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="event-end-time" className="text-sm font-semibold text-gray-700">
+                  종료 시간
+                </Label>
+                <Input
+                  id="event-end-time"
+                  type="time"
+                  value={eventForm.end_time}
+                  onChange={(e) => setEventForm({ ...eventForm, end_time: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            {/* 장소 */}
+            <div>
+              <Label htmlFor="event-location" className="text-sm font-semibold text-gray-700">
+                장소
+              </Label>
+              <Input
+                id="event-location"
+                value={eventForm.location}
+                onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
+                placeholder="행사 장소를 입력하세요 (선택사항)"
+                className="mt-1"
+              />
+            </div>
+
+            {/* 참석 대상 */}
+            <div>
+              <Label htmlFor="event-target" className="text-sm font-semibold text-gray-700">
+                참석 대상
+              </Label>
+              <Select
+                value={eventForm.target_audience}
+                onValueChange={(value) => setEventForm({ ...eventForm, target_audience: value })}
+              >
+                <SelectTrigger className="mt-1 bg-white">
+                  <SelectValue placeholder="참석 대상 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="management">관리자</SelectItem>
+                  <SelectItem value="trainers">트레이너</SelectItem>
+                  <SelectItem value="specific">특정 인원</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 색상 */}
+            <div>
+              <Label htmlFor="event-color" className="text-sm font-semibold text-gray-700">
+                캘린더 색상
+              </Label>
+              <Select
+                value={eventForm.color}
+                onValueChange={(value) => setEventForm({ ...eventForm, color: value })}
+              >
+                <SelectTrigger className="mt-1 bg-white">
+                  <SelectValue placeholder="색상 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="blue">파란색</SelectItem>
+                  <SelectItem value="red">빨간색</SelectItem>
+                  <SelectItem value="green">초록색</SelectItem>
+                  <SelectItem value="yellow">노란색</SelectItem>
+                  <SelectItem value="purple">보라색</SelectItem>
+                  <SelectItem value="orange">주황색</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 활성 상태 */}
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="event-active"
+                type="checkbox"
+                checked={eventForm.is_active}
+                onChange={(e) => setEventForm({ ...eventForm, is_active: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <Label htmlFor="event-active" className="text-sm text-gray-700 cursor-pointer">
+                즉시 활성화 (체크 해제 시 비활성 상태로 저장)
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEventModalOpen(false)}
+              disabled={isLoading}
+            >
+              취소
+            </Button>
+            <Button
+              onClick={handleSaveEvent}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isLoading ? '저장 중...' : (editingEvent ? '수정' : '등록')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

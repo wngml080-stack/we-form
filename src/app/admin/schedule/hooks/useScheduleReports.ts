@@ -39,7 +39,7 @@ export function useScheduleReports({ gymId, companyId, status = "all", yearMonth
 
     let query = supabase
       .from("monthly_schedule_reports")
-      .select("*, staffs(name, job_title)")
+      .select("*, staffs!staff_id(name, job_title)")
       .eq("gym_id", gymId)
       .order("submitted_at", { ascending: false });
 

@@ -70,6 +70,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // 상태별 카운트 조회 (통계 카드용)
+    let statsQuery = supabase
+      .from("members")
+      .select("status", { count: 'exact', head: false });
+
+    if (gymId) {
+      statsQuery = statsQuery.eq("gym_id", gymId);
+    } else if (companyId) {
+      statsQuery = statsQuery.eq("company_id", companyId);
+    }
+
+    if (trainerId) {
+      statsQuery = statsQuery.eq("trainer_id", trainerId);
+    }
+
+    const { data: statsData, error: statsError } = await statsQuery;
+
+    // 상태별 집계
+    const stats = {
+      total: statsData?.length || 0,
+      active: statsData?.filter(m => m.status === 'active').length || 0,
+      paused: statsData?.filter(m => m.status === 'paused').length || 0,
+      expired: statsData?.filter(m => m.status === 'expired').length || 0,
+    };
+
     // 활성 회원권만 필터링 (클라이언트 사이드 처리)
     const membersWithActiveMemberships = data?.map(member => ({
       ...member,
@@ -84,6 +109,7 @@ export async function GET(request: Request) {
       totalPages: Math.ceil((count || 0) / PAGE_SIZE),
       currentPage: page,
       pageSize: PAGE_SIZE,
+      stats,
       filter: { gymId, companyId, trainerId, status, search }
     });
   } catch (error: any) {

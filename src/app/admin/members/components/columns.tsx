@@ -2,7 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CreditCard, Pencil, ArrowUpDown } from "lucide-react";
+import { Eye, ArrowUpDown } from "lucide-react";
 
 // 회원 데이터 타입
 export interface Member {
@@ -43,8 +43,8 @@ function getStatusBadge(status: string) {
 
 // 액션 Props 타입
 export interface MemberActionsProps {
-  onEdit: (member: Member) => void;
-  onAddMembership: (member: Member) => void;
+  onViewDetail: (member: Member) => void;
+  onStatusChange: (member: Member, newStatus: string) => void;
 }
 
 /**
@@ -157,6 +157,56 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
       enableSorting: false,
     },
 
+    // 5-1. 회원권 시작일 (정렬 가능)
+    {
+      id: "membership_start_date",
+      accessorFn: (row) => row.activeMembership?.start_date,
+      header: ({ column }) => {
+        return (
+          <button
+            className="flex items-center gap-2 font-medium hover:text-gray-900"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            시작일
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        );
+      },
+      cell: ({ row }) => {
+        const member = row.original;
+        if (!member.activeMembership?.start_date) {
+          return <span className="text-gray-400">-</span>;
+        }
+        return <span className="text-gray-600">{member.activeMembership.start_date}</span>;
+      },
+      enableSorting: true,
+    },
+
+    // 5-2. 회원권 종료일 (정렬 가능)
+    {
+      id: "membership_end_date",
+      accessorFn: (row) => row.activeMembership?.end_date,
+      header: ({ column }) => {
+        return (
+          <button
+            className="flex items-center gap-2 font-medium hover:text-gray-900"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            종료일
+            <ArrowUpDown className="h-3 w-3" />
+          </button>
+        );
+      },
+      cell: ({ row }) => {
+        const member = row.original;
+        if (!member.activeMembership?.end_date) {
+          return <span className="text-gray-400">-</span>;
+        }
+        return <span className="text-gray-600">{member.activeMembership.end_date}</span>;
+      },
+      enableSorting: true,
+    },
+
     // 6. 잔여횟수 (기존 로직 그대로)
     {
       id: "remaining",
@@ -179,7 +229,7 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
       enableSorting: false,
     },
 
-    // 7. 상태 (정렬 가능)
+    // 7. 상태 (정렬 가능, 클릭 가능)
     {
       accessorKey: "status",
       header: ({ column }) => {
@@ -194,13 +244,25 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
         );
       },
       cell: ({ row }) => {
+        const member = row.original;
         const status = row.getValue("status") as string;
         const statusBadge = getStatusBadge(status);
 
         return (
-          <Badge className={`border-0 ${statusBadge.color}`}>
-            {statusBadge.label}
-          </Badge>
+          <button
+            onClick={() => {
+              // 상태 순환: active -> paused -> expired -> active
+              const nextStatus =
+                status === "active" ? "paused" :
+                status === "paused" ? "expired" : "active";
+              actions.onStatusChange(member, nextStatus);
+            }}
+            className="focus:outline-none"
+          >
+            <Badge className={`border-0 ${statusBadge.color} cursor-pointer hover:opacity-80`}>
+              {statusBadge.label}
+            </Badge>
+          </button>
         );
       },
       enableSorting: true,
@@ -214,22 +276,14 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
         const member = row.original;
 
         return (
-          <div className="text-right space-x-2">
+          <div className="text-right">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => actions.onAddMembership(member)}
-              title="회원권 등록"
+              onClick={() => actions.onViewDetail(member)}
+              title="회원 상세정보 및 결제 이력"
             >
-              <CreditCard className="h-4 w-4 text-emerald-600"/>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => actions.onEdit(member)}
-              title="회원 정보 수정"
-            >
-              <Pencil className="h-4 w-4 text-gray-500"/>
+              <Eye className="h-4 w-4 text-blue-600"/>
             </Button>
           </div>
         );

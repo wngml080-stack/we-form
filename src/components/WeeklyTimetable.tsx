@@ -134,8 +134,7 @@ export default function WeeklyTimetable({
 
       const key = `${dateStr}-${timeSlot}`;
 
-      // 디버깅: rowSpan 계산 로그
-      console.log(`[Schedule] ${schedule.member_name}: ${dateStr} ${timeSlot}, duration=${durationMinutes}분, rowSpan=${rowSpan}`);
+      // 디버깅 로그 제거 (성능 개선)
 
       if (!grid.has(key)) {
         grid.set(key, []);
@@ -157,12 +156,10 @@ export default function WeeklyTimetable({
         const occDateStr = `${occYear}-${occMonth}-${occDay}`;
 
         const occupiedKey = `${occDateStr}-${occupiedSlot}`;
-        console.log(`  → Occupied slot [${i}]: ${occupiedKey}`);
         occupied.add(occupiedKey);
       }
     });
 
-    console.log(`Total occupied slots: ${occupied.size}`, Array.from(occupied));
     return { scheduleGrid: grid, occupiedSlots: occupied };
   }, [schedules]);
 
@@ -271,7 +268,6 @@ export default function WeeklyTimetable({
 
                   // 이 슬롯이 다른 스케줄에 의해 차지되어 있으면 td를 렌더링하지 않음
                   if (occupiedSlots.has(key)) {
-                    console.log(`[Render] Skipping cell: ${key} (occupied)`);
                     return null;
                   }
 
@@ -280,10 +276,6 @@ export default function WeeklyTimetable({
                   const cellRowSpan = schedulesInSlot.length > 0
                     ? Math.max(...schedulesInSlot.map(s => s.rowSpan))
                     : 1;
-
-                  if (cellRowSpan > 1) {
-                    console.log(`[Render] Cell ${key}: rowSpan=${cellRowSpan}, schedules:`, schedulesInSlot.map(s => `${s.member_name}(${s.rowSpan}칸)`));
-                  }
 
                   return (
                     <td

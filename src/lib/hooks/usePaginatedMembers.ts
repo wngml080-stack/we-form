@@ -41,6 +41,12 @@ interface PaginatedMembersResponse {
   totalPages: number;
   currentPage: number;
   pageSize: number;
+  stats: {
+    total: number;
+    active: number;
+    paused: number;
+    expired: number;
+  };
   filter: {
     gymId: string | null;
     companyId: string | null;
@@ -129,6 +135,7 @@ export function usePaginatedMembers({
     currentPage: data?.currentPage || 1,
     pageSize: data?.pageSize || 50,
     totalCount: data?.count || 0,
+    stats: data?.stats || { total: 0, active: 0, paused: 0, expired: 0 },
     mutate, // 데이터 갱신 함수
   };
 }

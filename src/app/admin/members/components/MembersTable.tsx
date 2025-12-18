@@ -18,6 +18,7 @@ interface MembersTableProps extends MemberActionsProps {
   statusFilter?: string;
   onBulkStatusChange?: (memberIds: string[], newStatus: string) => Promise<void>;
   onBulkTrainerAssign?: (memberIds: string[], trainerId: string) => Promise<void>;
+  onBulkDelete?: (memberIds: string[]) => Promise<void>;
   trainers?: Array<{ id: string; name: string }>;
 }
 
@@ -26,20 +27,21 @@ interface MembersTableProps extends MemberActionsProps {
  *
  * @param data - 표시할 회원 데이터
  * @param isLoading - 로딩 상태
- * @param onEdit - 회원 수정 핸들러
- * @param onAddMembership - 회원권 등록 핸들러
+ * @param onViewDetail - 회원 상세정보 및 결제이력 핸들러
+ * @param onStatusChange - 상태 변경 핸들러
  * @param searchQuery - 검색어 (빈 상태 메시지용)
  * @param statusFilter - 상태 필터 (빈 상태 메시지용)
  */
 export function MembersTable({
   data,
   isLoading = false,
-  onEdit,
-  onAddMembership,
+  onViewDetail,
+  onStatusChange,
   searchQuery = "",
   statusFilter = "all",
   onBulkStatusChange,
   onBulkTrainerAssign,
+  onBulkDelete,
   trainers = [],
 }: MembersTableProps) {
   // 정렬 상태
@@ -49,8 +51,8 @@ export function MembersTable({
 
   // 컬럼 정의 메모이제이션
   const columns = useMemo(
-    () => getMemberColumns({ onEdit, onAddMembership }),
-    [onEdit, onAddMembership]
+    () => getMemberColumns({ onViewDetail, onStatusChange }),
+    [onViewDetail, onStatusChange]
   );
 
   // TanStack Table 인스턴스
@@ -220,6 +222,47 @@ export function MembersTable({
             >
               Excel 내보내기
             </button>
+
+            {/* 대량 삭제 */}
+            {onBulkDelete && (
+              <button
+                onClick={async () => {
+                  const memberIds = selectedRows.map(row => row.id);
+
+                  // 3명 이상일 때 확인 텍스트 입력 필요
+                  if (selectedRowCount >= 3) {
+                    const confirmText = prompt(
+                      `⚠️ 정말로 선택된 ${selectedRowCount}명의 회원을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.\n계속하려면 아래 텍스트를 정확히 입력하세요:\n\n"모든내용삭제동의"`
+                    );
+
+                    if (confirmText !== "모든내용삭제동의") {
+                      if (confirmText !== null) {
+                        alert("입력한 텍스트가 일치하지 않습니다. 삭제가 취소되었습니다.");
+                      }
+                      return;
+                    }
+                  } else {
+                    // 3명 미만일 때는 일반 확인
+                    const confirmed = confirm(
+                      `선택된 ${selectedRowCount}명의 회원을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
+                    );
+                    if (!confirmed) return;
+                  }
+
+                  try {
+                    await onBulkDelete(memberIds);
+                    setRowSelection({});
+                    alert("선택된 회원이 삭제되었습니다.");
+                  } catch (error) {
+                    console.error("회원 삭제 실패:", error);
+                    alert("회원 삭제 중 오류가 발생했습니다.");
+                  }
+                }}
+                className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                선택 삭제
+              </button>
+            )}
 
             {/* 선택 해제 */}
             <button

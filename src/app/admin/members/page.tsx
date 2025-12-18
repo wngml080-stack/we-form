@@ -38,6 +38,7 @@ function AdminMembersPageContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  // 정렬 상태 관리
   const [sortBy, setSortBy] = useState<string>("created_at"); // 정렬 기준
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc"); // 정렬 순서
 
@@ -285,7 +286,7 @@ function AdminMembersPageContent() {
       .from("members")
       .select(`
         *,
-        member_memberships!inner (
+        member_memberships!left (
           id,
           name,
           total_sessions,
@@ -310,13 +311,46 @@ function AdminMembersPageContent() {
       return;
     }
 
-    // 회원권 정보를 집계
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // 회원권 정보를 집계 및 자동 만료 처리
     const membersWithMemberships = (data || []).map((member: any) => {
       const memberships = member.member_memberships || [];
       const activeMembership = memberships.find((m: any) => m.status === 'active');
 
+      // 자동 만료 처리
+      let newStatus = member.status;
+      let shouldUpdate = false;
+
+      // 1. 회원권이 없는 경우 → 만료
+      if (!activeMembership) {
+        if (member.status !== 'expired') {
+          newStatus = 'expired';
+          shouldUpdate = true;
+        }
+      }
+      // 2. 회원권 종료일이 지난 경우 → 만료
+      else if (activeMembership.end_date && activeMembership.end_date < today) {
+        if (member.status !== 'expired') {
+          newStatus = 'expired';
+          shouldUpdate = true;
+        }
+      }
+
+      // DB 업데이트 (백그라운드)
+      if (shouldUpdate) {
+        supabase
+          .from('members')
+          .update({ status: 'expired' })
+          .eq('id', member.id)
+          .then(({ error }) => {
+            if (error) console.error('자동 만료 처리 실패:', member.name, error);
+          });
+      }
+
       return {
         ...member,
+        status: newStatus,
         activeMembership,
         totalMemberships: memberships.length
       };
@@ -478,6 +512,37 @@ function AdminMembersPageContent() {
     return '';
   };
 
+  // 상품명에서 membership_type 자동 감지
+  const detectMembershipType = (productName: string): string => {
+    const name = productName.toLowerCase();
+
+    // 횟수권 (PT/PPT/GPT) - 우선순위 높음
+    if (name.includes('ppt')) return 'PPT';
+    if (name.includes('gpt')) return 'GPT';
+    if (name.includes('pt')) return 'PT';
+
+    // 수강권 (요가/필라테스/GX)
+    if (name.includes('요가')) return 'GX';
+    if (name.includes('필라테스')) return '필라테스';
+    if (name.includes('gx')) return 'GX';
+
+    // 회원권 (헬스/골프/하이록스/크로스핏)
+    if (name.includes('골프')) return '골프';
+    if (name.includes('하이록스')) return '헬스'; // 하이록스는 헬스로 분류
+    if (name.includes('크로스핏')) return '헬스'; // 크로스핏은 헬스로 분류
+    if (name.includes('헬스')) return '헬스';
+
+    // 부가상품 (락커/운동복)
+    if (name.includes('락커')) return '헬스';
+    if (name.includes('운동복')) return '헬스';
+
+    // 기타
+    if (name.includes('러닝')) return '헬스'; // 러닝은 헬스로 분류
+
+    // 기본값
+    return '헬스';
+  };
+
   // Excel 파일 처리
   const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -493,29 +558,92 @@ function AdminMembersPageContent() {
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
       console.log('📊 Excel 원본 데이터 샘플:', jsonData[0]); // 디버깅용
+      console.log('📊 Excel 컬럼명 목록:', Object.keys(jsonData[0] || {})); // 컬럼명 확인
+
+      // Helper 함수: 키워드가 포함된 컬럼 찾기 (부분 문자열 매칭)
+      const findColumn = (row: any, keywords: string[]): any => {
+        const columns = Object.keys(row);
+        for (const keyword of keywords) {
+          const matchedColumn = columns.find(col => col.includes(keyword));
+          if (matchedColumn) {
+            console.log(`✅ 컬럼 매칭 성공: "${matchedColumn}" (키워드: "${keyword}")`);
+            return row[matchedColumn];
+          }
+        }
+        return null;
+      };
+
+      // Helper 함수: 키워드가 포함된 모든 컬럼 찾기 (중복 등록용)
+      const findAllColumns = (row: any, keywords: string[]): string[] => {
+        const columns = Object.keys(row);
+        const matchedValues: string[] = [];
+
+        for (const keyword of keywords) {
+          const matchedColumns = columns.filter(col => col.includes(keyword));
+          for (const col of matchedColumns) {
+            const value = row[col];
+            if (value && String(value).trim()) {
+              matchedValues.push(String(value).trim());
+              console.log(`✅ 중복 컬럼 매칭: "${col}" = "${value}" (키워드: "${keyword}")`);
+            }
+          }
+        }
+
+        return matchedValues;
+      };
 
       // 데이터 매핑
       const mapped = jsonData.map((row: any) => {
-        const birthDate = excelDateToString(row['생년월일']);
-        const startDate = excelDateToString(row['시작일']);
-        const endDate = excelDateToString(row['종료일']);
+        // 부분 문자열 매칭으로 컬럼 찾기
+        const birthDate = excelDateToString(
+          findColumn(row, ['생년월일', '생일'])
+        );
+
+        // 시작일: "등록" 또는 "시작" 포함된 컬럼
+        const startDate = excelDateToString(
+          findColumn(row, ['등록', '시작'])
+        );
+
+        // 종료일: "만료" 또는 "종료" 포함된 컬럼
+        const endDate = excelDateToString(
+          findColumn(row, ['만료', '종료'])
+        );
+
+        // 회원권명: "회원권", "대여권", "이용권" 포함된 모든 컬럼 (배열)
+        const membershipNames = findAllColumns(row, ['회원권', '대여권', '이용권']);
+
+        // 수강권: "수강권", "횟수권" 포함된 모든 컬럼 (배열)
+        const courseNames = findAllColumns(row, ['수강권', '횟수권']);
+
+        // 부가상품: "부가상품" 포함된 모든 컬럼 (배열)
+        const additionalProducts = findAllColumns(row, ['부가상품']);
 
         // 디버깅: 날짜 변환 확인
-        console.log('날짜 변환:', {
-          원본_생년월일: row['생년월일'],
+        console.log('📋 행 데이터 변환:', {
+          회원명: findColumn(row, ['회원명', '이름']),
           변환_생년월일: birthDate,
-          원본_시작일: row['시작일'],
           변환_시작일: startDate,
-          원본_종료일: row['종료일'],
-          변환_종료일: endDate
+          변환_종료일: endDate,
+          변환_회원권명_배열: membershipNames,
+          변환_수강권명_배열: courseNames,
+          변환_부가상품_배열: additionalProducts
         });
 
+        // 회원명, 연락처, 성별도 부분 매칭
+        const name = findColumn(row, ['회원명', '이름', '성명']) || '';
+        const phone = findColumn(row, ['연락처', '전화번호', '휴대폰', '폰번호', '전화']) || '';
+        const genderValue = findColumn(row, ['성별']);
+        const gender = genderValue === '남성' || genderValue === '남' ? 'male' :
+                      genderValue === '여성' || genderValue === '여' ? 'female' : '';
+
         return {
-          name: row['회원명'] || row['이름'] || '',
-          phone: row['연락처'] || row['전화번호'] || '',
+          name,
+          phone,
           birth_date: birthDate,
-          gender: row['성별'] === '남성' || row['성별'] === '남' ? 'male' : row['성별'] === '여성' || row['성별'] === '여' ? 'female' : '',
-          membership_name: row['회원권이름'] || row['회원권'] || '',
+          gender,
+          membership_names: membershipNames, // 배열로 변경
+          course_names: courseNames, // 배열로 변경
+          additional_products: additionalProducts, // 배열로 변경
           membership_start_date: startDate,
           membership_end_date: endDate,
         };
@@ -577,26 +705,87 @@ function AdminMembersPageContent() {
 
           if (memberError) throw memberError;
 
-          // 2. 회원권이 있으면 회원권 생성
-          if (row.membership_name && row.membership_start_date && row.membership_end_date && newMember) {
-            const { error: membershipError } = await supabase
-              .from('member_memberships')
-              .insert({
-                company_id: companyId,
-                gym_id: gymId,
-                member_id: newMember.id,
-                name: row.membership_name,
-                membership_type: 'PT', // 기본값, 상품명으로 추론 가능하면 개선 가능
-                total_sessions: null,
-                used_sessions: 0,
-                start_date: row.membership_start_date,
-                end_date: row.membership_end_date,
-                status: 'active'
-              });
+          // 2. 회원권/수강권/부가상품 등록 (엑셀에서 가져온 데이터)
+          const today = new Date().toISOString().split('T')[0];
 
-            if (membershipError) {
-              console.error('회원권 등록 실패:', membershipError);
-              // 회원권 실패해도 회원은 등록됨
+          // 2-1. 회원권 등록 (배열 순회)
+          if (row.membership_names && row.membership_names.length > 0 && newMember) {
+            for (const membershipName of row.membership_names) {
+              const { error: membershipError } = await supabase
+                .from('member_memberships')
+                .insert({
+                  company_id: companyId,
+                  gym_id: gymId,
+                  member_id: newMember.id,
+                  name: membershipName,
+                  membership_type: detectMembershipType(membershipName), // 자동 감지
+                  total_sessions: null,
+                  used_sessions: 0,
+                  start_date: row.membership_start_date || today,
+                  end_date: row.membership_end_date || null,
+                  status: 'active',
+                  memo: '[엑셀 가져오기 - 회원권] 수정 불가'
+                });
+
+              if (membershipError) {
+                console.error('❌ 회원권 등록 실패:', row.name, membershipName, membershipError);
+              } else {
+                console.log('✅ 회원권 등록 성공:', row.name, membershipName);
+              }
+            }
+          }
+
+          // 2-2. 수강권 등록 (배열 순회)
+          if (row.course_names && row.course_names.length > 0 && newMember) {
+            for (const courseName of row.course_names) {
+              const { error: courseError } = await supabase
+                .from('member_memberships')
+                .insert({
+                  company_id: companyId,
+                  gym_id: gymId,
+                  member_id: newMember.id,
+                  name: courseName,
+                  membership_type: detectMembershipType(courseName), // 자동 감지
+                  total_sessions: null,
+                  used_sessions: 0,
+                  start_date: row.membership_start_date || today,
+                  end_date: row.membership_end_date || null,
+                  status: 'active',
+                  memo: '[엑셀 가져오기 - 수강권] 수정 불가'
+                });
+
+              if (courseError) {
+                console.error('❌ 수강권 등록 실패:', row.name, courseName, courseError);
+              } else {
+                console.log('✅ 수강권 등록 성공:', row.name, courseName);
+              }
+            }
+          }
+
+          // 2-3. 부가상품 등록 (배열 순회)
+          if (row.additional_products && row.additional_products.length > 0 && newMember) {
+            for (const additionalProduct of row.additional_products) {
+              const { error: productError } = await supabase
+                .from('member_memberships')
+                .insert({
+                  company_id: companyId,
+                  gym_id: gymId,
+                  member_id: newMember.id,
+                  name: additionalProduct,
+                  membership_type: detectMembershipType(additionalProduct), // 자동 감지
+                  total_sessions: null,
+                  used_sessions: 0,
+                  start_date: row.membership_start_date || today,
+                  end_date: row.membership_end_date || null,
+                  status: 'active',
+                  memo: '[엑셀 가져오기 - 부가상품] 수정 불가'
+                });
+
+              if (productError) {
+                console.error('❌ 부가상품 등록 실패:', row.name, additionalProduct, productError);
+              } else {
+                console.log('✅ 부가상품 등록 성공:', row.name, additionalProduct);
+              }
             }
           }
 
@@ -753,10 +942,11 @@ function AdminMembersPageContent() {
 
   const openMembershipModal = (member: any) => {
     setSelectedMember(member);
+    setSelectedProductId(""); // 상품 선택 초기화
     setMembershipForm({
       // 회원권 정보
-      name: "PT 30회",
-      total_sessions: "30",
+      name: "",
+      total_sessions: "",
       start_date: new Date().toISOString().split('T')[0],
       end_date: "",
       amount: "",
@@ -1134,6 +1324,50 @@ function AdminMembersPageContent() {
     }
   };
 
+  // 단일 회원 상태 변경
+  const handleStatusChange = async (member: any, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("members")
+        .update({ status: newStatus })
+        .eq("id", member.id);
+
+      if (error) throw error;
+
+      // 데이터 새로고침
+      if (usePagination) {
+        paginatedData.mutate();
+      } else {
+        fetchMembers(gymId, companyId, myRole, myStaffId!);
+      }
+    } catch (error: any) {
+      console.error("상태 변경 실패:", error);
+      alert("상태 변경 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 대량 회원 삭제
+  const handleBulkDelete = async (memberIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from("members")
+        .delete()
+        .in("id", memberIds);
+
+      if (error) throw error;
+
+      // 데이터 새로고침
+      if (usePagination) {
+        paginatedData.mutate();
+      } else {
+        fetchMembers(gymId, companyId, myRole, myStaffId!);
+      }
+    } catch (error: any) {
+      console.error("대량 삭제 실패:", error);
+      throw error;
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
       active: "bg-emerald-100 text-emerald-700",
@@ -1262,18 +1496,20 @@ function AdminMembersPageContent() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <div className="text-sm text-gray-500">전체 회원</div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">{members.length}명</div>
+          <div className="text-2xl font-bold text-gray-900 mt-1">
+            {usePagination ? paginatedData.stats.total : members.length}명
+          </div>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <div className="text-sm text-gray-500">활성 회원</div>
           <div className="text-2xl font-bold text-emerald-600 mt-1">
-            {members.filter(m => m.status === 'active').length}명
+            {usePagination ? paginatedData.stats.active : members.filter(m => m.status === 'active').length}명
           </div>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <div className="text-sm text-gray-500">휴면 회원</div>
           <div className="text-2xl font-bold text-amber-600 mt-1">
-            {members.filter(m => m.status === 'paused').length}명
+            {usePagination ? paginatedData.stats.paused : members.filter(m => m.status === 'paused').length}명
           </div>
         </div>
       </div>
@@ -1283,11 +1519,13 @@ function AdminMembersPageContent() {
         <MembersTable
           data={displayMembers}
           isLoading={isDataLoading}
-          onAddMembership={openMembershipModal}
+          onViewDetail={openMemberDetailModal}
+          onStatusChange={handleStatusChange}
           searchQuery={searchQuery}
           statusFilter={statusFilter}
           onBulkStatusChange={handleBulkStatusChange}
           onBulkTrainerAssign={handleBulkTrainerAssign}
+          onBulkDelete={handleBulkDelete}
           trainers={staffList.map(staff => ({ id: staff.id, name: staff.name }))}
         />
       ) : (
@@ -1782,14 +2020,84 @@ function AdminMembersPageContent() {
             <DialogTitle>회원권 등록 - {selectedMember?.name}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {/* 상품 선택 */}
             <div className="space-y-2">
-              <Label>회원권 이름 <span className="text-red-500">*</span></Label>
-              <Input
-                value={membershipForm.name}
-                onChange={(e) => setMembershipForm({...membershipForm, name: e.target.value})}
-                placeholder="예: PT 30회, OT 20회"
-              />
+              <Label>상품 선택 <span className="text-red-500">*</span></Label>
+              <Select
+                value={selectedProductId}
+                onValueChange={(productId) => {
+                  const product = products.find(p => p.id === productId);
+                  if (product) {
+                    setSelectedProductId(productId);
+
+                    // PT/PPT 타입인 경우 총 유효일수 계산
+                    const isPTType = product.membership_type === 'PT' || product.membership_type === 'PPT';
+                    let calculatedEndDate = "";
+
+                    if (isPTType && product.default_sessions && product.days_per_session) {
+                      const totalDays = product.default_sessions * product.days_per_session;
+                      const startDate = new Date(membershipForm.start_date);
+                      const endDate = new Date(startDate);
+                      endDate.setDate(startDate.getDate() + totalDays);
+                      calculatedEndDate = endDate.toISOString().split('T')[0];
+                    } else if (product.validity_months) {
+                      // 기타 타입: 유효기간(개월) 사용
+                      const startDate = new Date(membershipForm.start_date);
+                      const endDate = new Date(startDate);
+                      endDate.setMonth(startDate.getMonth() + product.validity_months);
+                      calculatedEndDate = endDate.toISOString().split('T')[0];
+                    }
+
+                    setMembershipForm({
+                      ...membershipForm,
+                      name: product.name,
+                      total_sessions: product.default_sessions?.toString() || "",
+                      amount: product.default_price.toString(),
+                      end_date: calculatedEndDate
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="상품을 선택하세요" />
+                </SelectTrigger>
+                <SelectContent className="bg-white max-h-[300px]">
+                  {products.length === 0 ? (
+                    <div className="p-4 text-sm text-gray-500 text-center">
+                      등록된 상품이 없습니다.<br />
+                      상품 관리 탭에서 먼저 상품을 등록해주세요.
+                    </div>
+                  ) : (
+                    products.filter(p => p.is_active).map(product => (
+                      <SelectItem key={product.id} value={product.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{product.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {product.default_sessions ? `${product.default_sessions}회` : "무제한"} /
+                            {product.default_price.toLocaleString()}원
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* 선택된 상품 정보 표시 */}
+            {selectedProductId && (
+              <div className="bg-blue-50 p-3 rounded-md text-sm">
+                <div className="text-blue-900 font-medium mb-1">선택한 상품 정보</div>
+                <div className="text-blue-700">
+                  회원권명: {membershipForm.name} /
+                  횟수: {membershipForm.total_sessions || "무제한"}회 /
+                  금액: {parseInt(membershipForm.amount || "0").toLocaleString()}원
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  * 필요시 아래에서 횟수와 금액을 수정할 수 있습니다.
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>총 횟수 <span className="text-red-500">*</span></Label>

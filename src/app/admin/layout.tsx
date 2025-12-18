@@ -67,13 +67,14 @@ export default function AdminLayout({
       // 관리자 메뉴 (admin, company_admin, system_admin)
       return {
         main: [
-          { name: "지점 관리", href: "/admin", icon: LayoutDashboard },
+          { name: "대시보드", href: "/admin", icon: LayoutDashboard },
+          { name: "스케줄 관리", href: "/admin/schedule", icon: CalendarDays },
         ],
         branch: [
-          { name: "스케줄 관리", href: "/admin/schedule", icon: CalendarDays },
-          { name: "스케줄 승인", href: "/admin/reports", icon: FileCheck },
-          { name: "급여 관리", href: "/admin/salary", icon: DollarSign },
-          { name: "매출 관리", href: "/admin/sales", icon: ShoppingCart },
+          { name: "지점 관리", href: "/admin/branch", icon: Building2, isParent: true },
+          { name: "매출 관리", href: "/admin/sales", icon: ShoppingCart, isChild: true },
+          { name: "급여 관리", href: "/admin/salary", icon: DollarSign, isChild: true },
+          { name: "스케줄 승인", href: "/admin/reports", icon: FileCheck, isChild: true },
           { name: "회원 관리", href: "/admin/members", icon: Users },
           { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck },
         ],
@@ -130,46 +131,57 @@ export default function AdminLayout({
         {/* 메뉴 */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-1">
-            {/* 메인 메뉴 (지점 관리) */}
-            {menuItems.main.map((item) => (
+            {/* 메인 메뉴 (대시보드 & 하위 메뉴) */}
+            {menuItems.main.map((item, index) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
-                  pathname === item.href
-                    ? "bg-[#2F80ED] text-white shadow-sm"
-                    : "text-gray-700 hover:bg-gray-100"
+                className={`flex items-center rounded-lg transition-all ${
+                  index === 0
+                    ? `px-4 py-3 text-sm font-medium ${
+                        pathname === item.href
+                          ? "bg-[#2F80ED] text-white shadow-sm"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`
+                    : `pl-12 pr-4 py-2.5 text-sm ${
+                        pathname === item.href
+                          ? "bg-blue-50 text-[#2F80ED] font-medium"
+                          : "text-gray-600 hover:bg-gray-50"
+                      }`
                 }`}
               >
-                <item.icon className="mr-3 h-5 w-5" />
+                <item.icon className={`mr-3 ${index === 0 ? 'h-5 w-5' : 'h-4 w-4'}`} />
                 {item.name}
               </Link>
             ))}
 
-            {/* 지점 관리자 설정 섹션 */}
+            {/* 지점 관리 섹션 */}
             {menuItems.branch.length > 0 && userRole !== "staff" && (
               <>
                 <div className="pt-4 pb-2">
                   <div className="border-t border-gray-200"></div>
-                </div>
-                <div className="px-4 py-2">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    지점 관리자 설정
-                  </p>
                 </div>
                 {menuItems.branch.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all ${
-                      pathname === item.href
-                        ? "bg-[#2F80ED] text-white shadow-sm"
-                        : "text-gray-700 hover:bg-gray-100"
+                    className={`flex items-center rounded-lg transition-all ${
+                      item.isChild
+                        ? `pl-12 pr-4 py-2.5 text-sm ${
+                            pathname === item.href
+                              ? "bg-blue-50 text-[#2F80ED] font-medium"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`
+                        : `px-4 py-3 text-sm font-medium ${
+                            pathname === item.href
+                              ? "bg-[#2F80ED] text-white shadow-sm"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`
                     }`}
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
+                    <item.icon className={`mr-3 ${item.isChild ? 'h-4 w-4' : 'h-5 w-5'}`} />
                     {item.name}
                   </Link>
                 ))}
