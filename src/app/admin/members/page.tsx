@@ -71,6 +71,7 @@ function AdminMembersPageContent() {
   const [isMembershipOpen, setIsMembershipOpen] = useState(false);
   const [isExistingSalesOpen, setIsExistingSalesOpen] = useState(false); // 기존회원 매출등록 모달
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false); // Excel 가져오기 모달
+  const [isAddonSalesOpen, setIsAddonSalesOpen] = useState(false); // 부가상품 매출등록 모달
   const [isMemberDetailOpen, setIsMemberDetailOpen] = useState(false); // 회원 상세 모달
   const [isMemberEditOpen, setIsMemberEditOpen] = useState(false); // 회원정보 수정 모달
   const [selectedMember, setSelectedMember] = useState<any>(null);
@@ -111,8 +112,12 @@ function AdminMembersPageContent() {
 
     // 회원권 정보
     membership_name: "PT 30회",
+    membership_type: "PT", // 회원권 유형
     total_sessions: "30",
     membership_amount: "",
+
+    // 결제 정보
+    payment_method: "card", // 결제방법: card, cash, transfer
 
     // 담당자 정보
     registered_by: "", // 등록자 (현재 로그인한 사람으로 자동 설정)
@@ -202,7 +207,25 @@ function AdminMembersPageContent() {
     trainer_id: ""
   });
 
+  // 부가상품 매출등록 폼
+  const [addonSalesForm, setAddonSalesForm] = useState({
+    member_id: "",
+    addon_type: "", // 개인락커, 물품락커, 운동복, 양말, 기타
+    custom_addon_name: "", // 기타 선택 시 직접 입력
+    locker_number: "", // 락커 번호 (개인락커, 물품락커인 경우)
+    amount: "",
+    duration_type: "months" as "months" | "days", // 개월 또는 일
+    duration: "", // 기간 (개월수 또는 일수)
+    payment_date: new Date().toISOString().split('T')[0], // 결제일
+    start_date: new Date().toISOString().split('T')[0], // 시작일
+    end_date: "", // 종료일 (기간 입력 시 자동계산)
+    method: "card",
+    memo: ""
+  });
+
   const [isLoading, setIsLoading] = useState(false);
+  const [addonMemberSearch, setAddonMemberSearch] = useState(""); // 부가상품 회원 검색
+  const [existingMemberSearch, setExistingMemberSearch] = useState(""); // 기존회원 매출등록 회원 검색
 
   const supabase = createSupabaseClient();
 
@@ -896,8 +919,8 @@ function AdminMembersPageContent() {
           membership_id: membership.id,
           amount: amount,
           total_amount: amount,
-          method: "card", // 기본값
-          membership_type: "PT",
+          method: createForm.payment_method,
+          membership_type: createForm.membership_type,
           registration_type: "신규",
           memo: `${createForm.membership_name} 신규 등록`,
           paid_at: createForm.registered_at
@@ -912,7 +935,7 @@ function AdminMembersPageContent() {
         staff_id: myStaffId,
         type: "sale",
         amount: amount,
-        method: "card",
+        method: createForm.payment_method,
         memo: `${createForm.name} - ${createForm.membership_name} 신규 등록`,
         occurred_at: createForm.registered_at
       });
@@ -927,8 +950,10 @@ function AdminMembersPageContent() {
         phone: "",
         registered_at: new Date().toISOString().split('T')[0],
         membership_name: "PT 30회",
+        membership_type: "PT",
         total_sessions: "30",
         membership_amount: "",
+        payment_method: "card",
         registered_by: myStaffId || "",
         trainer_id: myStaffId || "",
         birth_date: "",
@@ -1305,6 +1330,98 @@ function AdminMembersPageContent() {
     }
   };
 
+  // 부가상품 매출 등록
+  const handleAddonSales = async () => {
+    if (!addonSalesForm.member_id || !addonSalesForm.addon_type) {
+      alert("회원과 부가상품 유형을 선택해주세요.");
+      return;
+    }
+
+    if (!addonSalesForm.amount) {
+      alert("금액을 입력해주세요.");
+      return;
+    }
+
+    if (!gymId || !companyId) {
+      alert("지점 정보를 찾을 수 없습니다.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const member = members.find(m => m.id === addonSalesForm.member_id);
+      if (!member) throw new Error("회원을 찾을 수 없습니다.");
+
+      // 상품명 구성
+      let addonName = addonSalesForm.addon_type === "기타"
+        ? addonSalesForm.custom_addon_name
+        : addonSalesForm.addon_type;
+
+      // 락커인 경우 번호 추가 (선택사항)
+      if ((addonSalesForm.addon_type === "개인락커" || addonSalesForm.addon_type === "물품락커") && addonSalesForm.locker_number) {
+        addonName += ` ${addonSalesForm.locker_number}번`;
+      }
+
+      // 기간 정보 추가
+      let periodInfo = "";
+      if (addonSalesForm.duration) {
+        const durationLabel = addonSalesForm.duration_type === "months" ? "개월" : "일";
+        periodInfo = ` (${addonSalesForm.duration}${durationLabel})`;
+      }
+      if (addonSalesForm.start_date && addonSalesForm.end_date) {
+        periodInfo += ` ${addonSalesForm.start_date} ~ ${addonSalesForm.end_date}`;
+      }
+
+      const amount = parseFloat(addonSalesForm.amount);
+
+      // 결제 기록 등록
+      const { error: paymentError } = await supabase
+        .from("member_payments")
+        .insert({
+          company_id: companyId,
+          gym_id: gymId,
+          member_id: member.id,
+          amount: amount,
+          total_amount: amount,
+          method: addonSalesForm.method,
+          membership_type: "부가상품",
+          registration_type: "부가상품",
+          memo: `${addonName}${periodInfo}${addonSalesForm.memo ? ` - ${addonSalesForm.memo}` : ""}`,
+          paid_at: addonSalesForm.payment_date || addonSalesForm.start_date
+        });
+
+      if (paymentError) throw paymentError;
+
+      showSuccess("부가상품 매출이 등록되었습니다!");
+      setIsAddonSalesOpen(false);
+      setAddonSalesForm({
+        member_id: "",
+        addon_type: "",
+        custom_addon_name: "",
+        locker_number: "",
+        amount: "",
+        duration_type: "months" as "months" | "days",
+        duration: "",
+        payment_date: new Date().toISOString().split('T')[0],
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: "",
+        method: "card",
+        memo: ""
+      });
+
+      // 데이터 새로고침
+      if (usePagination) {
+        paginatedData.mutate();
+      } else {
+        fetchMembers(gymId, companyId, myRole, myStaffId!);
+      }
+    } catch (error: any) {
+      showError(error, "부가상품 매출 등록");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 대량 상태 변경
   const handleBulkStatusChange = async (memberIds: string[], newStatus: string) => {
     try {
@@ -1463,25 +1580,31 @@ function AdminMembersPageContent() {
             onClick={() => setIsSimpleMemberCreateOpen(true)}
             className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <UserPlus className="mr-1 sm:mr-2 h-4 w-4"/> 회원 등록
+            <UserPlus className="mr-1 sm:mr-2 h-4 w-4"/> 수기회원등록
           </Button>
           <Button
             onClick={() => setIsExcelImportOpen(true)}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <Upload className="mr-1 sm:mr-2 h-4 w-4"/> Excel
+            <Upload className="mr-1 sm:mr-2 h-4 w-4"/> Excel 대량등록
           </Button>
           <Button
             onClick={() => setIsCreateOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <UserPlus className="mr-1 sm:mr-2 h-4 w-4"/> 신규 매출
+            <UserPlus className="mr-1 sm:mr-2 h-4 w-4"/> 신규 회원&매출
           </Button>
           <Button
             onClick={() => setIsExistingSalesOpen(true)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <CreditCard className="mr-1 sm:mr-2 h-4 w-4"/> 기존 매출
+            <CreditCard className="mr-1 sm:mr-2 h-4 w-4"/> 기존 회원&매출
+          </Button>
+          <Button
+            onClick={() => setIsAddonSalesOpen(true)}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
+          >
+            <CreditCard className="mr-1 sm:mr-2 h-4 w-4"/> 부가상품 매출
           </Button>
         </div>
       </div>
@@ -1748,6 +1871,35 @@ function AdminMembersPageContent() {
                     onChange={(e) => setCreateForm({...createForm, total_sessions: e.target.value})}
                     placeholder="30"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">회원권 유형 <span className="text-red-500">*</span></Label>
+                  <Select value={createForm.membership_type} onValueChange={(v) => setCreateForm({...createForm, membership_type: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="헬스">헬스</SelectItem>
+                      <SelectItem value="필라테스">필라테스</SelectItem>
+                      <SelectItem value="PT">PT</SelectItem>
+                      <SelectItem value="PPT">PPT</SelectItem>
+                      <SelectItem value="GPT">GPT</SelectItem>
+                      <SelectItem value="골프">골프</SelectItem>
+                      <SelectItem value="GX">GX</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">결제방법 <span className="text-red-500">*</span></Label>
+                  <Select value={createForm.payment_method} onValueChange={(v) => setCreateForm({...createForm, payment_method: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="card">카드</SelectItem>
+                      <SelectItem value="cash">현금</SelectItem>
+                      <SelectItem value="transfer">계좌이체</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -2430,7 +2582,10 @@ function AdminMembersPageContent() {
       {/* 기존회원 매출등록 모달 */}
       <Dialog open={isExistingSalesOpen} onOpenChange={(open) => {
         setIsExistingSalesOpen(open);
-        if (!open) setSelectedExistingProductId(""); // 모달 닫을 때 상품 선택 초기화
+        if (!open) {
+          setSelectedExistingProductId(""); // 모달 닫을 때 상품 선택 초기화
+          setExistingMemberSearch(""); // 모달 닫을 때 검색어 초기화
+        }
       }}>
         <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -2444,6 +2599,12 @@ function AdminMembersPageContent() {
               <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">회원 선택</h3>
               <div className="space-y-2">
                 <Label className="text-[#0F4C5C]">회원 <span className="text-red-500">*</span></Label>
+                <Input
+                  value={existingMemberSearch}
+                  onChange={(e) => setExistingMemberSearch(e.target.value)}
+                  placeholder="회원 이름 또는 전화번호 검색..."
+                  className="mb-2"
+                />
                 <Select
                   value={existingSalesForm.member_id}
                   onValueChange={(v) => {
@@ -2473,12 +2634,21 @@ function AdminMembersPageContent() {
                 >
                   <SelectTrigger><SelectValue placeholder="회원 선택" /></SelectTrigger>
                   <SelectContent className="bg-white max-h-[200px]">
-                    {members.map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.phone})
-                        {member.activeMembership && ` - ${member.activeMembership.name}`}
-                      </SelectItem>
-                    ))}
+                    {members
+                      .filter(member => {
+                        if (!existingMemberSearch.trim()) return true;
+                        const searchLower = existingMemberSearch.toLowerCase();
+                        return (
+                          member.name?.toLowerCase().includes(searchLower) ||
+                          member.phone?.includes(existingMemberSearch)
+                        );
+                      })
+                      .map(member => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name} ({member.phone})
+                          {member.activeMembership && ` - ${member.activeMembership.name}`}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -2743,11 +2913,246 @@ function AdminMembersPageContent() {
         </DialogContent>
       </Dialog>
 
+      {/* 부가상품 매출등록 모달 */}
+      <Dialog open={isAddonSalesOpen} onOpenChange={(open) => {
+        setIsAddonSalesOpen(open);
+        if (!open) setAddonMemberSearch(""); // 모달 닫힐 때 검색어 초기화
+      }}>
+        <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>부가상품 매출등록</DialogTitle>
+            <DialogDescription className="text-gray-500">기존 회원에게 부가상품을 판매합니다</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* 회원 선택 */}
+            <div className="space-y-2">
+              <Label>회원 선택 <span className="text-red-500">*</span></Label>
+              <Input
+                value={addonMemberSearch}
+                onChange={(e) => setAddonMemberSearch(e.target.value)}
+                placeholder="회원 이름 또는 전화번호 검색..."
+                className="mb-2"
+              />
+              <Select
+                value={addonSalesForm.member_id}
+                onValueChange={(v) => setAddonSalesForm({...addonSalesForm, member_id: v})}
+              >
+                <SelectTrigger><SelectValue placeholder="회원을 선택하세요" /></SelectTrigger>
+                <SelectContent className="bg-white max-h-[200px]">
+                  {members
+                    .filter(member => {
+                      if (!addonMemberSearch.trim()) return true;
+                      const searchLower = addonMemberSearch.toLowerCase();
+                      return (
+                        member.name?.toLowerCase().includes(searchLower) ||
+                        member.phone?.includes(addonMemberSearch)
+                      );
+                    })
+                    .map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name} ({member.phone})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 부가상품 유형 */}
+            <div className="space-y-2">
+              <Label>부가상품 유형 <span className="text-red-500">*</span></Label>
+              <Select
+                value={addonSalesForm.addon_type}
+                onValueChange={(v) => setAddonSalesForm({...addonSalesForm, addon_type: v, custom_addon_name: "", locker_number: ""})}
+              >
+                <SelectTrigger><SelectValue placeholder="유형 선택" /></SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="개인락커">개인락커</SelectItem>
+                  <SelectItem value="물품락커">물품락커</SelectItem>
+                  <SelectItem value="운동복">운동복</SelectItem>
+                  <SelectItem value="양말">양말</SelectItem>
+                  <SelectItem value="기타">기타</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 락커 번호 (락커 선택 시) */}
+            {(addonSalesForm.addon_type === "개인락커" || addonSalesForm.addon_type === "물품락커") && (
+              <div className="space-y-2">
+                <Label>락커 번호</Label>
+                <Input
+                  value={addonSalesForm.locker_number}
+                  onChange={(e) => setAddonSalesForm({...addonSalesForm, locker_number: e.target.value})}
+                  placeholder="예: 15"
+                />
+              </div>
+            )}
+
+            {/* 기타 선택 시 직접 입력 */}
+            {addonSalesForm.addon_type === "기타" && (
+              <div className="space-y-2">
+                <Label>상품명 직접 입력 <span className="text-red-500">*</span></Label>
+                <Input
+                  value={addonSalesForm.custom_addon_name}
+                  onChange={(e) => setAddonSalesForm({...addonSalesForm, custom_addon_name: e.target.value})}
+                  placeholder="상품명을 입력하세요"
+                />
+              </div>
+            )}
+
+            {/* 금액 */}
+            <div className="space-y-2">
+              <Label>금액 <span className="text-red-500">*</span></Label>
+              <Input
+                type="number"
+                value={addonSalesForm.amount}
+                onChange={(e) => setAddonSalesForm({...addonSalesForm, amount: e.target.value})}
+                placeholder="50000"
+              />
+            </div>
+
+            {/* 결제방법 */}
+            <div className="space-y-2">
+              <Label>결제방법</Label>
+              <Select
+                value={addonSalesForm.method}
+                onValueChange={(v) => setAddonSalesForm({...addonSalesForm, method: v})}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="card">카드</SelectItem>
+                  <SelectItem value="cash">현금</SelectItem>
+                  <SelectItem value="transfer">계좌이체</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 기간 (개월 또는 일) */}
+            <div className="space-y-2">
+              <Label>기간</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={addonSalesForm.duration}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    let newEndDate = "";
+                    if (value && addonSalesForm.start_date) {
+                      const num = parseInt(value);
+                      const startDate = new Date(addonSalesForm.start_date);
+                      const endDate = new Date(startDate);
+                      if (addonSalesForm.duration_type === "months") {
+                        endDate.setMonth(endDate.getMonth() + num);
+                        endDate.setDate(endDate.getDate() - 1);
+                      } else {
+                        endDate.setDate(endDate.getDate() + num - 1);
+                      }
+                      newEndDate = endDate.toISOString().split('T')[0];
+                    }
+                    setAddonSalesForm({...addonSalesForm, duration: value, end_date: newEndDate});
+                  }}
+                  placeholder="숫자 입력"
+                  className="flex-1"
+                />
+                <Select
+                  value={addonSalesForm.duration_type}
+                  onValueChange={(v: "months" | "days") => {
+                    // 타입 변경 시 종료일 재계산
+                    let newEndDate = "";
+                    if (addonSalesForm.duration && addonSalesForm.start_date) {
+                      const num = parseInt(addonSalesForm.duration);
+                      const startDate = new Date(addonSalesForm.start_date);
+                      const endDate = new Date(startDate);
+                      if (v === "months") {
+                        endDate.setMonth(endDate.getMonth() + num);
+                        endDate.setDate(endDate.getDate() - 1);
+                      } else {
+                        endDate.setDate(endDate.getDate() + num - 1);
+                      }
+                      newEndDate = endDate.toISOString().split('T')[0];
+                    }
+                    setAddonSalesForm({...addonSalesForm, duration_type: v, end_date: newEndDate});
+                  }}
+                >
+                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="months">개월</SelectItem>
+                    <SelectItem value="days">일</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 결제일 */}
+            <div className="space-y-2">
+              <Label>결제일</Label>
+              <Input
+                type="date"
+                value={addonSalesForm.payment_date}
+                onChange={(e) => setAddonSalesForm({...addonSalesForm, payment_date: e.target.value})}
+              />
+            </div>
+
+            {/* 시작일 / 종료일 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>시작일</Label>
+                <Input
+                  type="date"
+                  value={addonSalesForm.start_date}
+                  onChange={(e) => {
+                    // 시작일 변경 시 종료일도 재계산
+                    const newStartDate = e.target.value;
+                    let newEndDate = addonSalesForm.end_date;
+                    if (addonSalesForm.duration && newStartDate) {
+                      const num = parseInt(addonSalesForm.duration);
+                      const startDate = new Date(newStartDate);
+                      const endDate = new Date(startDate);
+                      if (addonSalesForm.duration_type === "months") {
+                        endDate.setMonth(endDate.getMonth() + num);
+                        endDate.setDate(endDate.getDate() - 1);
+                      } else {
+                        endDate.setDate(endDate.getDate() + num - 1);
+                      }
+                      newEndDate = endDate.toISOString().split('T')[0];
+                    }
+                    setAddonSalesForm({...addonSalesForm, start_date: newStartDate, end_date: newEndDate});
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>종료일</Label>
+                <Input
+                  type="date"
+                  value={addonSalesForm.end_date}
+                  onChange={(e) => setAddonSalesForm({...addonSalesForm, end_date: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* 메모 */}
+            <div className="space-y-2">
+              <Label>메모</Label>
+              <Input
+                value={addonSalesForm.memo}
+                onChange={(e) => setAddonSalesForm({...addonSalesForm, memo: e.target.value})}
+                placeholder="추가 메모"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddonSalesOpen(false)}>취소</Button>
+            <Button onClick={handleAddonSales} className="bg-purple-600 hover:bg-purple-700 text-white" disabled={isLoading}>
+              {isLoading ? "등록 중..." : "등록하기"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 간단한 회원 등록 모달 (매출 없이) */}
       <Dialog open={isSimpleMemberCreateOpen} onOpenChange={setIsSimpleMemberCreateOpen}>
         <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>회원 등록</DialogTitle>
+            <DialogTitle>수기회원등록</DialogTitle>
             <DialogDescription className="sr-only">회원 정보를 등록합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">

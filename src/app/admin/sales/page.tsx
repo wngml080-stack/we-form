@@ -10,8 +10,25 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { DollarSign, CreditCard, Banknote, Plus, Settings, X } from "lucide-react";
+
+// 기본 회원권 유형 (고정)
+const DEFAULT_MEMBERSHIP_TYPES = [
+  { name: "헬스", color: "bg-blue-100 text-blue-700" },
+  { name: "필라테스", color: "bg-pink-100 text-pink-700" },
+  { name: "PT", color: "bg-purple-100 text-purple-700" },
+  { name: "PPT", color: "bg-violet-100 text-violet-700" },
+  { name: "GPT", color: "bg-indigo-100 text-indigo-700" },
+  { name: "골프", color: "bg-green-100 text-green-700" },
+  { name: "GX", color: "bg-orange-100 text-orange-700" },
+];
+
+// 기본 결제방법 (고정)
+const DEFAULT_PAYMENT_METHODS = [
+  { name: "카드", code: "card", color: "bg-blue-100 text-blue-700" },
+  { name: "현금", code: "cash", color: "bg-emerald-100 text-emerald-700" },
+  { name: "계좌이체", code: "transfer", color: "bg-purple-100 text-purple-700" },
+];
 
 export default function SalesPage() {
   const { isLoading: authLoading } = useAuth();
@@ -26,44 +43,40 @@ export default function SalesPage() {
   const selectedCompanyId = branchFilter.selectedCompanyId;
   const gymName = branchFilter.gyms.find(g => g.id === selectedGymId)?.name || "We:form";
 
-  // 회원 목록
-  const [members, setMembers] = useState<any[]>([]);
+  // 커스텀 회원권 유형 및 결제방법 (추가 항목만 DB에서)
+  const [customMembershipTypes, setCustomMembershipTypes] = useState<any[]>([]);
+  const [customPaymentMethods, setCustomPaymentMethods] = useState<any[]>([]);
 
-  // 커스텀 회원권 유형 및 결제방법
-  const [membershipTypes, setMembershipTypes] = useState<any[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  // 전체 목록 (기본 + 커스텀)
+  const allMembershipTypes = [...DEFAULT_MEMBERSHIP_TYPES, ...customMembershipTypes];
+  const allPaymentMethods = [...DEFAULT_PAYMENT_METHODS, ...customPaymentMethods];
 
   // 설정 모달
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [newMembershipType, setNewMembershipType] = useState("");
   const [newPaymentMethod, setNewPaymentMethod] = useState({ name: "", code: "" });
 
-  // 결제 등록 모달
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    member_id: "",
-    membership_type: "PT",
-    registration_type: "신규",
-    visit_route: "",
-    amount: "",
-    total_amount: "",
-    method: "card",
-    installment_count: "1",
-    installment_current: "1",
-    paid_at: new Date().toISOString().split('T')[0],
-    memo: ""
-  });
+  // 날짜를 YYYY-MM-DD 형식으로 변환 (로컬 시간 기준)
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   // 필터
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
-    date.setDate(1); // 이번 달 1일
-    return date.toISOString().split('T')[0];
+    return formatDate(new Date(date.getFullYear(), date.getMonth(), 1));
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date();
+    return formatDate(new Date(date.getFullYear(), date.getMonth() + 1, 0));
+  });
   const [methodFilter, setMethodFilter] = useState("all");
   const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState("all");
+  const [quickSelect, setQuickSelect] = useState<string>("month"); // 빠른 선택 상태
 
   // 통계
   const [stats, setStats] = useState({
@@ -80,50 +93,61 @@ export default function SalesPage() {
   useEffect(() => {
     if (filterInitialized && selectedGymId && selectedCompanyId) {
       fetchPayments(selectedGymId, selectedCompanyId);
-      fetchMembers(selectedGymId, selectedCompanyId);
-      fetchCustomOptions(selectedGymId, selectedCompanyId);
+      fetchCustomOptions(selectedGymId);
     }
   }, [filterInitialized, selectedGymId, selectedCompanyId]);
 
   // 커스텀 옵션 (회원권 유형, 결제방법) 불러오기
-  const fetchCustomOptions = async (targetGymId: string, targetCompanyId: string) => {
+  const fetchCustomOptions = async (targetGymId: string) => {
     const [typesRes, methodsRes] = await Promise.all([
       supabase.from("membership_types").select("*").eq("gym_id", targetGymId).order("display_order"),
       supabase.from("payment_methods").select("*").eq("gym_id", targetGymId).order("display_order")
     ]);
-    if (typesRes.data) setMembershipTypes(typesRes.data);
-    if (methodsRes.data) setPaymentMethods(methodsRes.data);
+    if (typesRes.data) setCustomMembershipTypes(typesRes.data);
+    if (methodsRes.data) setCustomPaymentMethods(methodsRes.data);
   };
 
   // 회원권 유형 추가
   const handleAddMembershipType = async () => {
-    if (!newMembershipType.trim() || !selectedGymId || !selectedCompanyId) return;
+    if (!newMembershipType.trim() || !selectedGymId || !selectedCompanyId) {
+      console.log("handleAddMembershipType: 조건 미충족", { newMembershipType, selectedGymId, selectedCompanyId });
+      return;
+    }
     const { error } = await supabase.from("membership_types").insert({
       gym_id: selectedGymId,
       company_id: selectedCompanyId,
       name: newMembershipType.trim(),
-      display_order: membershipTypes.length + 1
+      display_order: customMembershipTypes.length + 1
     });
-    if (!error) {
+    if (error) {
+      console.error("회원권 유형 추가 에러:", error);
+      alert(`추가 실패: ${error.message}`);
+    } else {
       setNewMembershipType("");
-      fetchCustomOptions(selectedGymId, selectedCompanyId);
+      fetchCustomOptions(selectedGymId);
     }
   };
 
   // 결제방법 추가
   const handleAddPaymentMethod = async () => {
-    if (!newPaymentMethod.name.trim() || !selectedGymId || !selectedCompanyId) return;
+    if (!newPaymentMethod.name.trim() || !selectedGymId || !selectedCompanyId) {
+      console.log("handleAddPaymentMethod: 조건 미충족", { newPaymentMethod, selectedGymId, selectedCompanyId });
+      return;
+    }
     const code = newPaymentMethod.code.trim() || newPaymentMethod.name.trim().toLowerCase();
     const { error } = await supabase.from("payment_methods").insert({
       gym_id: selectedGymId,
       company_id: selectedCompanyId,
       name: newPaymentMethod.name.trim(),
       code: code,
-      display_order: paymentMethods.length + 1
+      display_order: customPaymentMethods.length + 1
     });
-    if (!error) {
+    if (error) {
+      console.error("결제방법 추가 에러:", error);
+      alert(`추가 실패: ${error.message}`);
+    } else {
       setNewPaymentMethod({ name: "", code: "" });
-      fetchCustomOptions(selectedGymId, selectedCompanyId);
+      fetchCustomOptions(selectedGymId);
     }
   };
 
@@ -131,14 +155,14 @@ export default function SalesPage() {
   const handleDeleteMembershipType = async (id: string) => {
     if (!confirm("이 회원권 유형을 삭제하시겠습니까?")) return;
     await supabase.from("membership_types").delete().eq("id", id);
-    fetchCustomOptions(selectedGymId, selectedCompanyId);
+    fetchCustomOptions(selectedGymId);
   };
 
   // 결제방법 삭제
   const handleDeletePaymentMethod = async (id: string) => {
     if (!confirm("이 결제방법을 삭제하시겠습니까?")) return;
     await supabase.from("payment_methods").delete().eq("id", id);
-    fetchCustomOptions(selectedGymId, selectedCompanyId);
+    fetchCustomOptions(selectedGymId);
   };
 
   // 날짜 필터 변경 시 데이터 다시 불러오기
@@ -185,24 +209,6 @@ export default function SalesPage() {
     setStats(stats);
   }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
 
-  const fetchMembers = async (targetGymId: string | null, targetCompanyId: string | null) => {
-    if (!targetGymId || !targetCompanyId) return;
-
-    const { data, error } = await supabase
-      .from("members")
-      .select("id, name, phone")
-      .eq("gym_id", targetGymId)
-      .eq("company_id", targetCompanyId)
-      .order("name", { ascending: true });
-
-    if (error) {
-      console.error("회원 목록 조회 에러:", error);
-      return;
-    }
-
-    setMembers(data || []);
-  };
-
   const fetchPayments = async (targetGymId: string | null, targetCompanyId: string | null) => {
     if (!targetGymId || !targetCompanyId) return;
 
@@ -226,7 +232,7 @@ export default function SalesPage() {
       query = query.lte("paid_at", endDateTime.toISOString());
     }
 
-    const { data, error } = await query.order("paid_at", { ascending: false });
+    const { data, error } = await query.order("paid_at", { ascending: true });
 
     if (error) {
       console.error("결제 내역 조회 에러:", error);
@@ -234,67 +240,6 @@ export default function SalesPage() {
     }
 
     setPayments(data || []);
-  };
-
-  const handleCreatePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedGymId || !selectedCompanyId) {
-      alert("지점 정보를 불러올 수 없습니다.");
-      return;
-    }
-
-    if (!createForm.member_id) {
-      alert("회원을 선택해주세요.");
-      return;
-    }
-
-    if (!createForm.amount) {
-      alert("결제 금액을 입력해주세요.");
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("member_payments")
-        .insert({
-          gym_id: selectedGymId,
-          company_id: selectedCompanyId,
-          member_id: createForm.member_id,
-          membership_type: createForm.membership_type,
-          registration_type: createForm.registration_type,
-          visit_route: createForm.visit_route || null,
-          amount: parseFloat(createForm.amount),
-          total_amount: parseFloat(createForm.total_amount || createForm.amount),
-          method: createForm.method,
-          installment_count: parseInt(createForm.installment_count),
-          installment_current: parseInt(createForm.installment_current),
-          paid_at: createForm.paid_at,
-          memo: createForm.memo || null
-        });
-
-      if (error) throw error;
-
-      alert("결제가 등록되었습니다.");
-      setIsCreateOpen(false);
-      setCreateForm({
-        member_id: "",
-        membership_type: "PT",
-        registration_type: "신규",
-        visit_route: "",
-        amount: "",
-        total_amount: "",
-        method: "card",
-        installment_count: "1",
-        installment_current: "1",
-        paid_at: new Date().toISOString().split('T')[0],
-        memo: ""
-      });
-      fetchPayments(selectedGymId, selectedCompanyId);
-    } catch (error: any) {
-      console.error("결제 등록 에러:", error);
-      alert(`결제 등록 실패: ${error.message}`);
-    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -318,21 +263,13 @@ export default function SalesPage() {
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">매출 현황</h1>
           <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">{gymName}의 매출을 관리합니다</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setIsSettingsOpen(true)}
-            className="px-3"
-          >
-            <Settings className="h-4 w-4" />
-          </Button>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold px-4 sm:px-6 py-2 shadow-sm"
-          >
-            <Plus className="mr-2 h-4 w-4"/> 결제 등록
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          onClick={() => setIsSettingsOpen(true)}
+          className="px-3"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* 필터 */}
@@ -362,7 +299,7 @@ export default function SalesPage() {
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="all">전체</SelectItem>
-                {membershipTypes.map((type) => (
+                {allMembershipTypes.map((type: any) => (
                   <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -391,7 +328,7 @@ export default function SalesPage() {
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="all">전체</SelectItem>
-                {paymentMethods.map((method) => (
+                {allPaymentMethods.map((method: any) => (
                   <SelectItem key={method.id} value={method.code}>{method.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -402,58 +339,63 @@ export default function SalesPage() {
             <div className="flex gap-2 flex-wrap">
               <Button
                 type="button"
-                variant="outline"
+                variant={quickSelect === "today" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
-                  const today = new Date().toISOString().split('T')[0];
+                  const today = formatDate(new Date());
                   setStartDate(today);
                   setEndDate(today);
+                  setQuickSelect("today");
                 }}
-                className="text-xs"
+                className={`text-xs ${quickSelect === "today" ? "bg-[#2F80ED] text-white" : ""}`}
               >
                 오늘
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant={quickSelect === "yesterday" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
                   const yesterday = new Date();
                   yesterday.setDate(yesterday.getDate() - 1);
-                  const date = yesterday.toISOString().split('T')[0];
+                  const date = formatDate(yesterday);
                   setStartDate(date);
                   setEndDate(date);
+                  setQuickSelect("yesterday");
                 }}
-                className="text-xs"
+                className={`text-xs ${quickSelect === "yesterday" ? "bg-[#2F80ED] text-white" : ""}`}
               >
                 어제
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant={quickSelect === "week" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
                   const today = new Date();
                   const weekAgo = new Date(today);
                   weekAgo.setDate(today.getDate() - 7);
-                  setStartDate(weekAgo.toISOString().split('T')[0]);
-                  setEndDate(today.toISOString().split('T')[0]);
+                  setStartDate(formatDate(weekAgo));
+                  setEndDate(formatDate(today));
+                  setQuickSelect("week");
                 }}
-                className="text-xs"
+                className={`text-xs ${quickSelect === "week" ? "bg-[#2F80ED] text-white" : ""}`}
               >
                 7일
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant={quickSelect === "month" ? "default" : "outline"}
                 size="sm"
                 onClick={() => {
                   const today = new Date();
                   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                  setStartDate(monthStart.toISOString().split('T')[0]);
-                  setEndDate(today.toISOString().split('T')[0]);
+                  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                  setStartDate(formatDate(monthStart));
+                  setEndDate(formatDate(monthEnd));
+                  setQuickSelect("month");
                 }}
-                className="text-xs"
+                className={`text-xs ${quickSelect === "month" ? "bg-[#2F80ED] text-white" : ""}`}
               >
                 이번달
               </Button>
@@ -646,178 +588,6 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* 결제 등록 모달 */}
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-900">결제 등록</DialogTitle>
-            <DialogDescription className="sr-only">새로운 결제를 등록합니다</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreatePayment} className="space-y-6">
-            {/* 회원 선택 */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700">회원 선택 <span className="text-red-500">*</span></Label>
-              <Select
-                value={createForm.member_id}
-                onValueChange={(v) => setCreateForm({...createForm, member_id: v})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="회원 선택" />
-                </SelectTrigger>
-                <SelectContent className="bg-white max-h-[200px]">
-                  {members.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name} ({member.phone})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 회원권 정보 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">회원권 유형 <span className="text-red-500">*</span></Label>
-                <Select
-                  value={createForm.membership_type}
-                  onValueChange={(v) => setCreateForm({...createForm, membership_type: v})}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {membershipTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">등록 타입 <span className="text-red-500">*</span></Label>
-                <Select
-                  value={createForm.registration_type}
-                  onValueChange={(v) => setCreateForm({...createForm, registration_type: v})}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="신규">신규</SelectItem>
-                    <SelectItem value="리뉴">리뉴</SelectItem>
-                    <SelectItem value="기간변경">기간변경</SelectItem>
-                    <SelectItem value="부가상품">부가상품</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 방문루트 */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700">방문루트</Label>
-              <Input
-                value={createForm.visit_route}
-                onChange={(e) => setCreateForm({...createForm, visit_route: e.target.value})}
-                placeholder="예: 인터넷 검색, 지인 추천, 전단지..."
-              />
-            </div>
-
-            {/* 결제 정보 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">결제 금액 <span className="text-red-500">*</span></Label>
-                <Input
-                  type="number"
-                  value={createForm.amount}
-                  onChange={(e) => setCreateForm({...createForm, amount: e.target.value})}
-                  placeholder="100000"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">결제 방법</Label>
-                <Select
-                  value={createForm.method}
-                  onValueChange={(v) => setCreateForm({...createForm, method: v})}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {paymentMethods.map((method) => (
-                      <SelectItem key={method.id} value={method.code}>{method.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">결제일</Label>
-                <Input
-                  type="date"
-                  value={createForm.paid_at}
-                  onChange={(e) => setCreateForm({...createForm, paid_at: e.target.value})}
-                />
-              </div>
-            </div>
-
-            {/* 분할 결제 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">전체 금액</Label>
-                <Input
-                  type="number"
-                  value={createForm.total_amount}
-                  onChange={(e) => setCreateForm({...createForm, total_amount: e.target.value})}
-                  placeholder="분할 시 전체 금액"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">분할 횟수</Label>
-                <Input
-                  type="number"
-                  value={createForm.installment_count}
-                  onChange={(e) => setCreateForm({...createForm, installment_count: e.target.value})}
-                  min="1"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700">현재 회차</Label>
-                <Input
-                  type="number"
-                  value={createForm.installment_current}
-                  onChange={(e) => setCreateForm({...createForm, installment_current: e.target.value})}
-                  min="1"
-                />
-              </div>
-            </div>
-
-            {/* 메모 */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700">메모</Label>
-              <Textarea
-                value={createForm.memo}
-                onChange={(e) => setCreateForm({...createForm, memo: e.target.value})}
-                placeholder="추가 정보나 특이사항 입력..."
-                rows={3}
-              />
-            </div>
-
-            <DialogFooter className="gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreateOpen(false)}
-              >
-                취소
-              </Button>
-              <Button
-                type="submit"
-                className="bg-[#2F80ED] hover:bg-[#2570d6] text-white"
-              >
-                등록하기
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
       {/* 설정 모달 */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -830,17 +600,30 @@ export default function SalesPage() {
             {/* 회원권 유형 관리 */}
             <div className="space-y-3">
               <Label className="text-sm font-bold text-gray-800">회원권 유형</Label>
-              <div className="flex flex-wrap gap-2">
-                {membershipTypes.map((type) => (
-                  <Badge key={type.id} className={`${type.color || 'bg-gray-100 text-gray-700'} px-3 py-1.5 flex items-center gap-2`}>
-                    {type.name}
-                    {!type.is_default && (
-                      <button onClick={() => handleDeleteMembershipType(type.id)} className="hover:text-red-600">
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </Badge>
-                ))}
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">기본 항목</p>
+                <div className="flex flex-wrap gap-2">
+                  {DEFAULT_MEMBERSHIP_TYPES.map((type) => (
+                    <Badge key={type.name} className={`${type.color} px-3 py-1.5`}>
+                      {type.name}
+                    </Badge>
+                  ))}
+                </div>
+                {customMembershipTypes.length > 0 && (
+                  <>
+                    <p className="text-xs text-gray-500 mt-3">추가 항목</p>
+                    <div className="flex flex-wrap gap-2">
+                      {customMembershipTypes.map((type: any) => (
+                        <Badge key={type.id} className="bg-gray-100 text-gray-700 px-3 py-1.5 flex items-center gap-2">
+                          {type.name}
+                          <button onClick={() => handleDeleteMembershipType(type.id)} className="hover:text-red-600">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex gap-2">
                 <Input
@@ -858,17 +641,30 @@ export default function SalesPage() {
             {/* 결제방법 관리 */}
             <div className="space-y-3">
               <Label className="text-sm font-bold text-gray-800">결제방법</Label>
-              <div className="flex flex-wrap gap-2">
-                {paymentMethods.map((method) => (
-                  <Badge key={method.id} className={`${method.color || 'bg-gray-100 text-gray-700'} px-3 py-1.5 flex items-center gap-2`}>
-                    {method.name}
-                    {!method.is_default && (
-                      <button onClick={() => handleDeletePaymentMethod(method.id)} className="hover:text-red-600">
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </Badge>
-                ))}
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500">기본 항목</p>
+                <div className="flex flex-wrap gap-2">
+                  {DEFAULT_PAYMENT_METHODS.map((method) => (
+                    <Badge key={method.code} className={`${method.color} px-3 py-1.5`}>
+                      {method.name}
+                    </Badge>
+                  ))}
+                </div>
+                {customPaymentMethods.length > 0 && (
+                  <>
+                    <p className="text-xs text-gray-500 mt-3">추가 항목</p>
+                    <div className="flex flex-wrap gap-2">
+                      {customPaymentMethods.map((method: any) => (
+                        <Badge key={method.id} className="bg-gray-100 text-gray-700 px-3 py-1.5 flex items-center gap-2">
+                          {method.name}
+                          <button onClick={() => handleDeletePaymentMethod(method.id)} className="hover:text-red-600">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex gap-2">
                 <Input

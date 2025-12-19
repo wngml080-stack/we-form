@@ -94,6 +94,7 @@ export default function AdminSchedulePage() {
     duration: "60",
     personalTitle: "",
     sub_type: "",
+    inbody_checked: false,
   });
 
   const supabase = createSupabaseClient();
@@ -627,6 +628,7 @@ export default function AdminSchedulePage() {
       duration: String(durationMinutes),
       personalTitle: selectedSchedule.title || "",
       sub_type: selectedSchedule.sub_type || "",
+      inbody_checked: selectedSchedule.inbody_checked || false,
     });
     setIsStatusModalOpen(false);
     setIsEditModalOpen(true);
@@ -814,6 +816,11 @@ export default function AdminSchedulePage() {
           updateData.title = `${selectedMember.name} (${editForm.type})`;
         }
 
+        // OT인 경우 인바디 체크 여부 저장
+        if (editForm.type === 'OT' || selectedSchedule?.type === 'OT') {
+          updateData.inbody_checked = editForm.inbody_checked;
+        }
+
         await supabase
           .from("schedules")
           .update(updateData)
@@ -875,6 +882,11 @@ export default function AdminSchedulePage() {
           // 상담인 경우 sub_type 저장
           if (editForm.type === 'Consulting' || selectedSchedule?.type?.toLowerCase() === 'consulting') {
             updateData.sub_type = editForm.sub_type;
+          }
+
+          // OT인 경우 인바디 체크 여부 저장
+          if (editForm.type === 'OT' || selectedSchedule?.type === 'OT') {
+            updateData.inbody_checked = editForm.inbody_checked;
           }
 
           const selectedMember = members.find(m => m.id === editForm.member_id);
@@ -2140,6 +2152,22 @@ export default function AdminSchedulePage() {
               </div>
             )}
 
+            {/* 인바디 체크 - OT */}
+            {(selectedSchedule?.type === 'OT' || editForm.type === 'OT') && (
+              <div className="flex items-center space-x-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <input
+                  type="checkbox"
+                  id="inbody_checked"
+                  checked={editForm.inbody_checked}
+                  onChange={(e) => setEditForm({ ...editForm, inbody_checked: e.target.checked })}
+                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                />
+                <Label htmlFor="inbody_checked" className="text-sm font-medium text-purple-700 cursor-pointer">
+                  인바디 측정 완료
+                </Label>
+              </div>
+            )}
+
             {/* 출석 상태 - 상담/기타 (개인일정 제외) */}
             {selectedSchedule?.type?.toLowerCase() !== 'personal' &&
              selectedSchedule?.type !== '개인' &&
@@ -2342,6 +2370,39 @@ export default function AdminSchedulePage() {
                         >
                           PT전환
                         </Button>
+                      </div>
+                      {/* 인바디 체크 토글 */}
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={async () => {
+                            const newValue = !selectedSchedule.inbody_checked;
+                            const { error } = await supabase
+                              .from("schedules")
+                              .update({ inbody_checked: newValue })
+                              .eq("id", selectedSchedule.id);
+                            if (!error) {
+                              setSelectedSchedule({ ...selectedSchedule, inbody_checked: newValue });
+                              showSuccess(newValue ? "인바디 측정 완료!" : "인바디 체크 해제됨");
+                              if (selectedGymId) fetchSchedules(selectedGymId, selectedStaffId);
+                            }
+                          }}
+                          className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                            selectedSchedule.inbody_checked
+                              ? 'bg-purple-100 border-purple-300 text-purple-700'
+                              : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-purple-50'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center ${
+                            selectedSchedule.inbody_checked ? 'bg-purple-500 border-purple-500' : 'border-gray-300'
+                          }`}>
+                            {selectedSchedule.inbody_checked && (
+                              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="text-sm font-medium">인바디 측정 완료</span>
+                        </button>
                       </div>
                     </div>
                   );
