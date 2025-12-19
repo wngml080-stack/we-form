@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 
 export type ReportStatus = "submitted" | "approved" | "rejected";
@@ -27,12 +27,12 @@ interface UseScheduleReportsParams {
 }
 
 export function useScheduleReports({ gymId, companyId, status = "all", yearMonth }: UseScheduleReportsParams) {
-  const supabase = createSupabaseClient();
+  const supabase = useMemo(() => createSupabaseClient(), []);
   const [reports, setReports] = useState<MonthlyReport[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     if (!gymId) return;
     setIsLoading(true);
     setError(null);
@@ -60,11 +60,11 @@ export function useScheduleReports({ gymId, companyId, status = "all", yearMonth
       setReports(data || []);
     }
     setIsLoading(false);
-  };
+  }, [gymId, companyId, status, yearMonth, supabase]);
 
   useEffect(() => {
     fetchReports();
-  }, [gymId, companyId, status, yearMonth]);
+  }, [fetchReports]);
 
   return { reports, isLoading, error, refetch: fetchReports };
 }

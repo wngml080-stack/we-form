@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,9 @@ import { cn } from "@/lib/utils";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 export default function BranchManagementPage() {
+  // AuthContext에서 사용자 정보 가져오기
+  const { user, isLoading: authLoading, companyName: authCompanyName, gymName: authGymName, gyms: authGyms, companies: authCompanies } = useAuth();
+
   const [gymName, setGymName] = useState("");
   const [gymData, setGymData] = useState<any>(null);
   const [stats, setStats] = useState({
@@ -58,16 +62,16 @@ export default function BranchManagementPage() {
   const [gymId, setGymId] = useState<string>("");
   const [companyId, setCompanyId] = useState<string>("");
   const [companyName, setCompanyName] = useState<string>("");
-  const [myRole, setMyRole] = useState<string>("");
-  const [myGymId, setMyGymId] = useState<string>(""); // 원래 내 지점 ID
-  const [gyms, setGyms] = useState<any[]>([]);
+  const myRole = user?.role || "";
+  const myGymId = user?.gym_id || "";
 
   // system_admin용 회사 목록
-  const [companies, setCompanies] = useState<any[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
 
-  // 지점 필터
+  // 지점 필터 (gyms, companies는 AuthContext에서 가져옴)
   const [selectedGymId, setSelectedGymId] = useState<string>("");
+  const gyms = authGyms;
+  const companies = authCompanies;
 
   // 매출 통계 모달
   const [isFcModalOpen, setIsFcModalOpen] = useState(false);
@@ -122,21 +126,55 @@ export default function BranchManagementPage() {
 
   const supabase = createSupabaseClient();
 
+  // AuthContext 데이터가 로드되면 초기화
   useEffect(() => {
-    init();
-  }, []);
+    if (authLoading) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
 
-  // system_admin이 회사를 변경했을 때 데이터 다시 가져오기
+    // AuthContext에서 데이터 설정
+    setCompanyId(user.company_id);
+    setCompanyName(authCompanyName);
+
+    if (user.role === 'system_admin') {
+      setSelectedCompanyId(user.company_id);
+    }
+
+    // 내 지점 정보 찾기
+    const myGym = gyms.find((g: any) => g.id === user.gym_id);
+
+    if (myGym) {
+      setGymName(myGym.name ?? "");
+      setGymData(myGym);
+      setGymId(user.gym_id);
+      setSelectedGymId(user.gym_id);
+      fetchBranchData(user.gym_id, user.company_id, myGym);
+      fetchAnnouncements(user.company_id, user.gym_id);
+    } else if (gyms.length > 0) {
+      // 지점이 없으면 첫 번째 지점 선택
+      const firstGym = gyms[0];
+      setGymName(firstGym.name ?? "");
+      setGymData(firstGym);
+      setGymId(firstGym.id);
+      setSelectedGymId(firstGym.id);
+      fetchBranchData(firstGym.id, user.company_id, firstGym);
+      fetchAnnouncements(user.company_id, firstGym.id);
+    }
+
+    setIsLoading(false);
+  }, [authLoading, user, gyms]);
+
+  // system_admin이 회사를 변경했을 때 (AuthContext에서 처리하므로 간단히)
   useEffect(() => {
     if (selectedCompanyId && myRole === 'system_admin') {
-      fetchGymsForCompany(selectedCompanyId);
-      // 선택된 회사의 이름 업데이트
       const selectedCompany = companies.find(c => c.id === selectedCompanyId);
       if (selectedCompany) {
         setCompanyName(selectedCompany.name);
       }
     }
-  }, [selectedCompanyId]);
+  }, [selectedCompanyId, companies, myRole]);
 
   // 지점 선택이 변경되었을 때 데이터 다시 가져오기
   useEffect(() => {
@@ -151,74 +189,6 @@ export default function BranchManagementPage() {
       }
     }
   }, [selectedGymId]);
-
-  const init = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: me } = await supabase
-        .from("staffs")
-        .select("gym_id, company_id, role, gyms(id, name, fc_bep, pt_bep), companies(name)")
-        .eq("user_id", user.id)
-        .single();
-
-      if (me) {
-        setMyGymId(me.gym_id);
-        setCompanyId(me.company_id);
-        setMyRole(me.role);
-        // @ts-ignore
-        setCompanyName(me.companies?.name ?? "");
-
-        // system_admin인 경우 운영 중인 회사 목록 가져오기
-        if (me.role === 'system_admin') {
-          const { data: companiesData } = await supabase
-            .from("companies")
-            .select("id, name")
-            .eq("status", "active")
-            .order("name", { ascending: true });
-
-          if (companiesData) {
-            setCompanies(companiesData);
-            setSelectedCompanyId(me.company_id); // 기본값은 자신의 회사
-          }
-        }
-
-        // 회사의 모든 지점 가져오기
-        await fetchGymsForCompany(me.company_id);
-
-        // 초기 선택 지점 설정
-        if (me.gyms) {
-          // @ts-ignore
-          setGymName(me.gyms.name ?? "");
-          // @ts-ignore
-          setGymData(me.gyms);
-          setGymId(me.gym_id);
-          setSelectedGymId(me.gym_id);
-
-          // @ts-ignore
-          await fetchBranchData(me.gym_id, me.company_id, me.gyms);
-          await fetchAnnouncements(me.company_id, me.gym_id);
-        }
-      }
-    } catch (error) {
-      console.error("init error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchGymsForCompany = async (targetCompanyId: string) => {
-    const { data: gymsData } = await supabase
-      .from("gyms")
-      .select("id, name, fc_bep, pt_bep")
-      .eq("company_id", targetCompanyId)
-      .order("name", { ascending: true });
-    if (gymsData) setGyms(gymsData);
-  };
 
   const fetchBranchData = async (gymId: string, companyId: string, gym: any) => {
     if (!gymId || !companyId) return;
@@ -239,18 +209,18 @@ export default function BranchManagementPage() {
     thisMonthStart.setHours(0, 0, 0, 0);
 
     const { data: salesData } = await supabase
-      .from("member_products")
-      .select("sale_price, product_type")
+      .from("member_payments")
+      .select("amount, membership_type")
       .eq("gym_id", gymId)
-      .gte("created_at", thisMonthStart.toISOString());
+      .gte("paid_at", thisMonthStart.toISOString());
 
-    const monthlyRevenue = salesData?.reduce((sum, sale) => sum + (sale.sale_price || 0), 0) || 0;
+    const monthlyRevenue = salesData?.reduce((sum, sale) => sum + (Number(sale.amount) || 0), 0) || 0;
 
     // FC/PT 매출 분리
-    const fcRevenue = salesData?.filter(s => s.product_type === 'membership')
-      .reduce((sum, sale) => sum + (sale.sale_price || 0), 0) || 0;
-    const ptRevenue = salesData?.filter(s => s.product_type === 'pt')
-      .reduce((sum, sale) => sum + (sale.sale_price || 0), 0) || 0;
+    const fcRevenue = salesData?.filter(s => s.membership_type === 'membership' || s.membership_type === 'FC')
+      .reduce((sum, sale) => sum + (Number(sale.amount) || 0), 0) || 0;
+    const ptRevenue = salesData?.filter(s => s.membership_type === 'pt' || s.membership_type === 'PT')
+      .reduce((sum, sale) => sum + (Number(sale.amount) || 0), 0) || 0;
 
     const fcBep = gym.fc_bep || 75000000;
     const ptBep = gym.pt_bep || 100000000;
@@ -674,10 +644,10 @@ export default function BranchManagementPage() {
               )}
             </div>
 
-            {/* Gym selector for system_admin and company_admin */}
+            {/* Gym selector */}
             <div className="flex items-center gap-2">
               <Label className="text-sm font-medium text-gray-700">지점:</Label>
-              {(myRole === 'system_admin' || myRole === 'company_admin') && gyms.length > 0 ? (
+              {gyms.length >= 1 ? (
                 <Select value={selectedGymId} onValueChange={setSelectedGymId}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue>
@@ -691,8 +661,8 @@ export default function BranchManagementPage() {
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="px-3 py-1.5 bg-[#2F80ED] text-white rounded-md text-sm font-medium">
-                  {gymName}
+                <div className="px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md text-sm font-medium">
+                  지점 없음
                 </div>
               )}
             </div>

@@ -110,22 +110,18 @@ export default function SalesPage() {
   }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
 
   const init = async () => {
-    console.log('🔄 init 시작');
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('👤 user:', user?.id);
       if (!user) {
         setIsLoading(false);
         return;
       }
 
-      const { data: me, error: meError } = await supabase
+      const { data: me } = await supabase
         .from("staffs")
         .select("gym_id, company_id, role, gyms(name)")
         .eq("user_id", user.id)
         .single();
-
-      console.log('🏢 staff data:', me, 'error:', meError);
 
       if (me) {
         setGymId(me.gym_id);
@@ -137,7 +133,7 @@ export default function SalesPage() {
       }
       setIsLoading(false);
     } catch (error) {
-      console.error('❌ init 에러:', error);
+      console.error('init 에러:', error);
       setIsLoading(false);
     }
   };
@@ -161,10 +157,8 @@ export default function SalesPage() {
   };
 
   const fetchPayments = async (targetGymId: string | null, targetCompanyId: string | null) => {
-    console.log('💰 fetchPayments 시작:', { targetGymId, targetCompanyId });
     if (!targetGymId || !targetCompanyId) return;
 
-    // ✅ 서버 사이드 필터링: 날짜 범위로 쿼리
     let query = supabase
       .from("member_payments")
       .select(`
@@ -180,7 +174,6 @@ export default function SalesPage() {
       query = query.gte("paid_at", startDate);
     }
     if (endDate) {
-      // 종료일은 23:59:59까지 포함
       const endDateTime = new Date(endDate);
       endDateTime.setHours(23, 59, 59, 999);
       query = query.lte("paid_at", endDateTime.toISOString());
@@ -188,10 +181,8 @@ export default function SalesPage() {
 
     const { data, error } = await query.order("paid_at", { ascending: false });
 
-    console.log('💰 fetchPayments 결과:', { count: data?.length, error });
-
     if (error) {
-      console.error("❌ 결제 내역 조회 에러:", error);
+      console.error("결제 내역 조회 에러:", error);
       return;
     }
 

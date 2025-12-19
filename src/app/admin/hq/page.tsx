@@ -15,6 +15,7 @@ import { Plus, Pencil, Trash2, MapPin, Calendar, User, Building2, Users, UserChe
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 // 카테고리 목록 정의
 const CATEGORY_OPTIONS = ["헬스", "PT", "필라테스", "골프", "GX", "요가"];
@@ -202,12 +203,6 @@ export default function HQPage() {
       .eq("company_id", targetCompanyId)
       .order("created_at", { ascending: false });
 
-    console.log('💳 결제 데이터 조회:', {
-      결제건수: paymentData?.length || 0,
-      에러: paymentError,
-      샘플데이터: paymentData?.slice(0, 3)
-    });
-
     // 회원에 결제 정보 연결
     if (memberData && paymentData) {
       const membersWithPayments = memberData.map(member => {
@@ -218,10 +213,6 @@ export default function HQPage() {
         };
       });
       setMembers(membersWithPayments);
-      console.log('👥 회원+결제 연결 완료:', {
-        전체회원수: membersWithPayments.length,
-        결제있는회원수: membersWithPayments.filter(m => m.payments.length > 0).length
-      });
     }
 
     // 직접 count 쿼리로 정확한 통계 가져오기
@@ -1391,17 +1382,6 @@ export default function HQPage() {
                               selectedMonth === "previous" ? "지난 달" :
                               "최근 3개월";
 
-            // 디버깅 로그
-            console.log('🔍 지점 통계 디버깅:', {
-              지점명: selectedGymDetail.name,
-              전체회원수: gymMembers.length,
-              전체결제건수: allPayments.length,
-              FC결제건수: fcPayments.length,
-              FC총매출: fcTotalSales,
-              PT결제건수: ptPayments.length,
-              PT총매출: ptTotalSales,
-              샘플결제데이터: allPayments.slice(0, 3)
-            });
 
             return (
               <div className="py-4 space-y-6">
@@ -1520,7 +1500,7 @@ export default function HQPage() {
                       </div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-amber-300">
-                      <div className="text-xs text-gray-600 mb-1">FC 객단가</div>
+                      <div className="text-xs text-gray-600 mb-1 flex items-center">FC 객단가<HelpTooltip content="1건당 평균 결제 금액" iconClassName="w-3 h-3" /></div>
                       <div className="text-lg font-bold text-gray-900">₩{Math.round(fcAvgPrice).toLocaleString()}</div>
                     </div>
                   </div>
@@ -1532,22 +1512,22 @@ export default function HQPage() {
                       <div className="text-xs text-gray-500">건</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
-                      <div className="text-xs text-gray-600 mb-1">워크인</div>
+                      <div className="text-xs text-gray-600 mb-1 flex items-center justify-center">워크인<HelpTooltip content="직접 방문 등록" iconClassName="w-3 h-3" /></div>
                       <div className="text-xl font-bold text-blue-600">{fcWalkinCount}</div>
                       <div className="text-xs text-gray-500">건</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
-                      <div className="text-xs text-gray-600 mb-1">비대면</div>
+                      <div className="text-xs text-gray-600 mb-1 flex items-center justify-center">비대면<HelpTooltip content="온라인/인터넷 등록" iconClassName="w-3 h-3" /></div>
                       <div className="text-xl font-bold text-purple-600">{fcOnlineCount}</div>
                       <div className="text-xs text-gray-500">건</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
-                      <div className="text-xs text-gray-600 mb-1">FC 리뉴얼</div>
+                      <div className="text-xs text-gray-600 mb-1 flex items-center justify-center">FC 리뉴얼<HelpTooltip content="기존 회원 재등록" iconClassName="w-3 h-3" /></div>
                       <div className="text-xl font-bold text-emerald-600">{fcRenewPayments.length}</div>
                       <div className="text-xs text-gray-500">건</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-amber-300 text-center">
-                      <div className="text-xs text-gray-600 mb-1">신규율</div>
+                      <div className="text-xs text-gray-600 mb-1 flex items-center justify-center">신규율<HelpTooltip content="신규 회원 비율" iconClassName="w-3 h-3" /></div>
                       <div className="text-xl font-bold text-orange-600">{fcNewRate.toFixed(1)}%</div>
                     </div>
                   </div>
@@ -1581,7 +1561,7 @@ export default function HQPage() {
                       </div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-blue-300">
-                      <div className="text-xs text-gray-600 mb-1">PT 객단가</div>
+                      <div className="text-xs text-gray-600 mb-1 flex items-center">PT 객단가<HelpTooltip content="PT 1건당 평균 결제 금액" iconClassName="w-3 h-3" /></div>
                       <div className="text-lg font-bold text-gray-900">₩{Math.round(ptAvgPrice).toLocaleString()}</div>
                     </div>
                   </div>
@@ -1603,7 +1583,7 @@ export default function HQPage() {
                       <div className="text-xs text-gray-500">건</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 border border-blue-300 text-center">
-                      <div className="text-xs text-gray-600 mb-1">재등록률</div>
+                      <div className="text-xs text-gray-600 mb-1 flex items-center justify-center">재등록률<HelpTooltip content="기존 회원 재등록 비율" iconClassName="w-3 h-3" /></div>
                       <div className="text-xl font-bold text-purple-600">
                         {ptRenewRate.toFixed(1)}%
                       </div>

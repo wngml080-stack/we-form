@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -19,32 +20,18 @@ import {
   X,
 } from "lucide-react";
 
-export default function AdminLayout({
+function AdminLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [userRole, setUserRole] = useState("");
+  const { user, isLoading } = useAuth();
+  const userRole = user?.role || "";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const supabase = createSupabaseClient();
-
-  useEffect(() => {
-    const getUserRole = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from("staffs")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-        if (data) setUserRole(data.role);
-      }
-    };
-    getUserRole();
-  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -269,5 +256,17 @@ export default function AdminLayout({
         {children}
       </main>
     </div>
+  );
+}
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthProvider>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </AuthProvider>
   );
 }

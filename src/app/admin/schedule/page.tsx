@@ -3,8 +3,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus, Filter, ShieldCheck, ShieldOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Filter, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -25,15 +26,18 @@ import { DailyStatsWidget } from "@/components/DailyStatsWidget";
 
 export default function AdminSchedulePage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+
   const [schedules, setSchedules] = useState<any[]>([]);
   const [staffs, setStaffs] = useState<any[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
-  const [gymName, setGymName] = useState("");
-  const [myGymId, setMyGymId] = useState<string | null>(null);
-  const [myStaffId, setMyStaffId] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string>("");
-  const [workStartTime, setWorkStartTime] = useState<string | null>(null);
-  const [workEndTime, setWorkEndTime] = useState<string | null>(null);
+
+  // AuthContext에서 사용자 정보 사용
+  const myGymId = user?.gym_id || null;
+  const myStaffId = user?.id || null;
+  const userRole = user?.role || "";
+  const workStartTime = user?.work_start_time || null;
+  const workEndTime = user?.work_end_time || null;
 
   // 뷰 타입 및 날짜
   const [viewType, setViewType] = useState<'day' | 'week' | 'month'>('week');
@@ -61,6 +65,8 @@ export default function AdminSchedulePage() {
     personalTitle: "",
   });
   const [members, setMembers] = useState<any[]>([]);
+  const [memberMemberships, setMemberMemberships] = useState<Record<string, any[]>>({});
+  const [selectedMemberMembership, setSelectedMemberMembership] = useState<any | null>(null);
   const [reportFilter, setReportFilter] = useState<"all" | "submitted" | "approved" | "rejected">("submitted");
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
@@ -92,75 +98,82 @@ export default function AdminSchedulePage() {
     yearMonth,
   });
 
+  // AuthContext 데이터가 로드되면 초기화
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
     const init = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return router.push("/login");
-
-        const { data: me, error: meError } = await supabase
-          .from("staffs")
-          .select("id, gym_id, role, work_start_time, work_end_time, gyms(name)")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (meError) {
-          console.error("❌ 사용자 정보 조회 에러:", meError);
-          alert("사용자 정보를 불러오는 중 오류가 발생했습니다.");
-          return;
-        }
-
-        if (!me) {
-          console.warn("⚠️ 사용자 데이터 없음");
-          alert("사용자 정보를 찾을 수 없습니다. 계정이 승인되었는지 확인해주세요.");
-          return router.push("/login");
-        }
-
-        // @ts-ignore
-        setGymName(me.gyms?.name || "센터");
-        setMyGymId(me.gym_id);
-        setMyStaffId(me.id);
-        setUserRole(me.role);
-        setWorkStartTime(me.work_start_time);
-        setWorkEndTime(me.work_end_time);
-
         // ✅ 병렬 쿼리 실행: 강사 목록, 회원 목록을 동시에 불러오기
-        const staffIdFilter = me.role === "staff" ? me.id : "all";
+        const staffIdFilter = user.role === "staff" ? user.id : "all";
         setSelectedStaffId(staffIdFilter);
 
-        if (me.role === "staff") {
-          // 일반 직원: 회원 목록만 불러오기
-          const { data: memberList } = await supabase
-            .from("members")
-            .select("id, name")
-            .eq("gym_id", me.gym_id)
-            .order("name", { ascending: true });
-
-          if (memberList) setMembers(memberList);
-        } else {
-          // 관리자: 강사 목록과 회원 목록을 병렬로 불러오기
-          const [memberResult, staffResult] = await Promise.all([
+        if (user.role === "staff") {
+          // 일반 직원: 회원 목록과 회원권 정보 불러오기
+          const [memberResult, membershipResult] = await Promise.all([
             supabase
               .from("members")
               .select("id, name")
-              .eq("gym_id", me.gym_id)
+              .eq("gym_id", user.gym_id)
+              .order("name", { ascending: true }),
+            supabase
+              .from("member_memberships")
+              .select("id, member_id, name, total_sessions, used_sessions, start_date, end_date, status")
+              .eq("gym_id", user.gym_id)
+              .eq("status", "active")
+          ]);
+
+          if (memberResult.data) setMembers(memberResult.data);
+          if (membershipResult.data) {
+            // 회원 ID별로 회원권 그룹화
+            const grouped = membershipResult.data.reduce((acc: Record<string, any[]>, m) => {
+              if (!acc[m.member_id]) acc[m.member_id] = [];
+              acc[m.member_id].push(m);
+              return acc;
+            }, {});
+            setMemberMemberships(grouped);
+          }
+        } else {
+          // 관리자: 강사 목록, 회원 목록, 회원권 정보를 병렬로 불러오기
+          const [memberResult, staffResult, membershipResult] = await Promise.all([
+            supabase
+              .from("members")
+              .select("id, name")
+              .eq("gym_id", user.gym_id)
               .order("name", { ascending: true }),
             supabase
               .from("staffs")
               .select("id, name, work_start_time, work_end_time")
-              .eq("gym_id", me.gym_id)
-              .order("name", { ascending: true })
+              .eq("gym_id", user.gym_id)
+              .order("name", { ascending: true }),
+            supabase
+              .from("member_memberships")
+              .select("id, member_id, name, total_sessions, used_sessions, start_date, end_date, status")
+              .eq("gym_id", user.gym_id)
+              .eq("status", "active")
           ]);
 
           if (memberResult.data) setMembers(memberResult.data);
           if (staffResult.data) {
-            console.log("📋 강사 목록:", staffResult.data);
             setStaffs(staffResult.data);
+          }
+          if (membershipResult.data) {
+            // 회원 ID별로 회원권 그룹화
+            const grouped = membershipResult.data.reduce((acc: Record<string, any[]>, m) => {
+              if (!acc[m.member_id]) acc[m.member_id] = [];
+              acc[m.member_id].push(m);
+              return acc;
+            }, {});
+            setMemberMemberships(grouped);
           }
         }
 
         // 스케줄 조회
-        fetchSchedules(me.gym_id, staffIdFilter);
+        fetchSchedules(user.gym_id, staffIdFilter);
 
         // 보고서 목록
         refetchReports();
@@ -173,7 +186,7 @@ export default function AdminSchedulePage() {
     };
 
     init();
-  }, [refetchReports]);
+  }, [authLoading, user]);
 
   // 스케줄 조회 함수
   const fetchSchedules = async (gymId: string, staffIdFilter: string) => {
@@ -243,27 +256,20 @@ export default function AdminSchedulePage() {
     setMonthlyStats(stats);
   };
 
-  // 날짜 변경 시 통계 재계산 및 월 변경 시 데이터 재조회
+  // 스케줄이 변경되면 통계 재계산
   useEffect(() => {
     if (schedules.length > 0) {
       calculateMonthlyStats(schedules);
     }
+  }, [schedules]);
 
-    // ✅ 월이 변경되면 스케줄 다시 불러오기
+  // 날짜 변경 시 스케줄 다시 불러오기
+  useEffect(() => {
     if (myGymId && selectedStaffId) {
-      const current = new Date(selectedDate);
-      const scheduleMonths = schedules.map(s => {
-        const d = new Date(s.start_time);
-        return `${d.getFullYear()}-${d.getMonth()}`;
-      });
-      const currentMonth = `${current.getFullYear()}-${current.getMonth()}`;
-
-      // 현재 월의 데이터가 없으면 다시 불러오기
-      if (!scheduleMonths.includes(currentMonth) && schedules.length > 0) {
-        fetchSchedules(myGymId, selectedStaffId);
-      }
+      fetchSchedules(myGymId, selectedStaffId);
     }
-  }, [selectedDate, schedules]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, myGymId, selectedStaffId]);
 
   // 날짜 네비게이션
   const handlePrevDate = () => {
@@ -448,6 +454,34 @@ export default function AdminSchedulePage() {
     }
   };
 
+  // 스케줄 삭제
+  const handleDeleteSchedule = async () => {
+    if (!selectedSchedule) return;
+
+    try {
+      setIsLoading(true);
+
+      const { error } = await supabase
+        .from("schedules")
+        .delete()
+        .eq("id", selectedSchedule.id);
+
+      if (error) throw error;
+
+      setIsEditModalOpen(false);
+      setSelectedSchedule(null);
+
+      // 스케줄 목록 새로고침
+      if (myGymId) {
+        fetchSchedules(myGymId, selectedStaffId);
+      }
+    } catch (error) {
+      showError(error, "스케줄 삭제");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 스케줄 생성
   const handleCreateSchedule = async () => {
     if (!selectedTimeSlot || !myGymId) return;
@@ -462,6 +496,24 @@ export default function AdminSchedulePage() {
       if (!createForm.member_id) {
         showError("회원을 선택해주세요.", "스케줄 생성");
         return;
+      }
+
+      // PT 수업인 경우 PT 회원권이 있는지 확인
+      if (createForm.type === "PT") {
+        const memberships = memberMemberships[createForm.member_id] || [];
+        const ptMembership = memberships.find((m: any) =>
+          m.name?.includes('PT') || m.name?.includes('피티')
+        );
+        if (!ptMembership) {
+          showError("PT 회원권이 없는 회원입니다.\nPT 수업은 PT 회원권이 있는 회원만 등록할 수 있습니다.", "스케줄 생성");
+          return;
+        }
+        // 잔여 횟수 확인
+        const remainingSessions = (ptMembership.total_sessions || 0) - (ptMembership.used_sessions || 0);
+        if (remainingSessions <= 0) {
+          showError("PT 회원권의 잔여 횟수가 없습니다.\n회원권을 갱신해 주세요.", "스케줄 생성");
+          return;
+        }
       }
     }
 
@@ -551,9 +603,9 @@ export default function AdminSchedulePage() {
 
       if (error) throw error;
 
-      showSuccess(createForm.isPersonal ? "개인 일정이 생성되었습니다!" : "스케줄이 생성되었습니다!");
       setIsCreateModalOpen(false);
       setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "" });
+      setSelectedMemberMembership(null);
 
       // 스케줄 목록 새로고침
       fetchSchedules(myGymId, selectedStaffId);
@@ -593,7 +645,7 @@ export default function AdminSchedulePage() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "스케줄");
 
     const today = new Date().toISOString().split('T')[0];
-    const fileName = `${gymName}_스케줄_${today}.xlsx`;
+    const fileName = `스케줄_${today}.xlsx`;
 
     XLSX.writeFile(workbook, fileName);
   };
@@ -628,7 +680,7 @@ export default function AdminSchedulePage() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
             {userRole === "staff" ? "내 스케줄" : "통합 스케줄"}
           </h1>
-          <p className="text-gray-500 mt-2 font-medium">{gymName}의 스케줄을 관리하세요</p>
+          <p className="text-gray-500 mt-2 font-medium">스케줄을 관리하세요</p>
         </div>
 
         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
@@ -649,7 +701,6 @@ export default function AdminSchedulePage() {
               {/* 선택된 강사의 근무시간 표시 */}
               {selectedStaffId !== "all" && (() => {
                 const selectedStaff = staffs.find(s => s.id === selectedStaffId);
-                console.log("🔍 선택된 강사:", selectedStaff);
                 if (selectedStaff) {
                   const formatTime = (time: string | null) => time ? time.substring(0, 5) : '--:--';
                   return (
@@ -947,7 +998,13 @@ export default function AdminSchedulePage() {
       )}
 
       {/* 스케줄 생성 모달 */}
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+      <Dialog open={isCreateModalOpen} onOpenChange={(open) => {
+        setIsCreateModalOpen(open);
+        if (!open) {
+          setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "" });
+          setSelectedMemberMembership(null);
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1004,7 +1061,15 @@ export default function AdminSchedulePage() {
                 <Label htmlFor="member_id">회원 선택 *</Label>
                 <Select
                   value={createForm.member_id}
-                  onValueChange={(value) => setCreateForm({ ...createForm, member_id: value })}
+                  onValueChange={(value) => {
+                    setCreateForm({ ...createForm, member_id: value });
+                    // 선택된 회원의 PT 회원권 정보 업데이트
+                    const memberships = memberMemberships[value] || [];
+                    const ptMembership = memberships.find((m: any) =>
+                      m.name?.includes('PT') || m.name?.includes('피티')
+                    );
+                    setSelectedMemberMembership(ptMembership || null);
+                  }}
                 >
                   <SelectTrigger className="border-gray-300">
                     <SelectValue placeholder="회원을 선택하세요" />
@@ -1013,14 +1078,85 @@ export default function AdminSchedulePage() {
                     {members.length === 0 ? (
                       <SelectItem value="none" disabled>등록된 회원이 없습니다</SelectItem>
                     ) : (
-                      members.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                          {member.name}
-                        </SelectItem>
-                      ))
+                      members.map((member) => {
+                        const memberships = memberMemberships[member.id] || [];
+                        const hasPT = memberships.some((m: any) =>
+                          m.name?.includes('PT') || m.name?.includes('피티')
+                        );
+                        return (
+                          <SelectItem key={member.id} value={member.id}>
+                            {member.name} {hasPT && <span className="text-blue-500 ml-1">●</span>}
+                          </SelectItem>
+                        );
+                      })
                     )}
                   </SelectContent>
                 </Select>
+
+                {/* PT 회원권 정보 표시 */}
+                {createForm.member_id && (() => {
+                  const memberships = memberMemberships[createForm.member_id] || [];
+                  const ptMembership = memberships.find((m: any) =>
+                    m.name?.includes('PT') || m.name?.includes('피티')
+                  );
+
+                  if (ptMembership) {
+                    const remainingSessions = (ptMembership.total_sessions || 0) - (ptMembership.used_sessions || 0);
+                    const today = new Date();
+                    const startDate = ptMembership.start_date ? new Date(ptMembership.start_date) : null;
+                    const endDate = ptMembership.end_date ? new Date(ptMembership.end_date) : null;
+                    const remainingDays = endDate ? Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+                    // 날짜 포맷 함수
+                    const formatDate = (date: Date | null) => {
+                      if (!date) return null;
+                      return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+                    };
+
+                    return (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="text-xs text-gray-500 mb-1">PT 회원권 정보</div>
+                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 flex-wrap">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            {ptMembership.total_sessions}회
+                          </span>
+                          <span className="text-gray-400">/</span>
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded">
+                            {ptMembership.used_sessions + 1}회차
+                          </span>
+                          {remainingDays !== null && (
+                            <>
+                              <span className="text-gray-400">/</span>
+                              <span className={`px-2 py-0.5 rounded ${
+                                remainingDays <= 7 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                잔여 {remainingDays}일
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+                          <div>잔여 횟수: {remainingSessions}회</div>
+                          <div>
+                            유효기간: {formatDate(startDate) || '시작일 미설정'} ~ {formatDate(endDate) || '종료일 미설정'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  } else if (createForm.type === "PT") {
+                    return (
+                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div className="text-sm text-yellow-700 font-medium">
+                          ⚠️ PT 회원권이 없습니다
+                        </div>
+                        <div className="text-xs text-yellow-600 mt-1">
+                          PT 수업은 PT 회원권이 있는 회원만 등록할 수 있습니다.
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             )}
 
@@ -1117,6 +1253,60 @@ export default function AdminSchedulePage() {
                     )}
                   </SelectContent>
                 </Select>
+
+                {/* PT 회원권 정보 표시 (수정 모달) */}
+                {editForm.member_id && editForm.type === "PT" && (() => {
+                  const memberships = memberMemberships[editForm.member_id] || [];
+                  const ptMembership = memberships.find((m: any) =>
+                    m.name?.includes('PT') || m.name?.includes('피티')
+                  );
+
+                  if (ptMembership) {
+                    const remainingSessions = (ptMembership.total_sessions || 0) - (ptMembership.used_sessions || 0);
+                    const today = new Date();
+                    const startDate = ptMembership.start_date ? new Date(ptMembership.start_date) : null;
+                    const endDate = ptMembership.end_date ? new Date(ptMembership.end_date) : null;
+                    const remainingDays = endDate ? Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+                    // 날짜 포맷 함수
+                    const formatDate = (date: Date | null) => {
+                      if (!date) return null;
+                      return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+                    };
+
+                    return (
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="text-xs text-gray-500 mb-1">PT 회원권 정보</div>
+                        <div className="flex items-center gap-2 text-sm font-semibold text-gray-800 flex-wrap">
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                            {ptMembership.total_sessions}회
+                          </span>
+                          <span className="text-gray-400">/</span>
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded">
+                            {ptMembership.used_sessions + 1}회차
+                          </span>
+                          {remainingDays !== null && (
+                            <>
+                              <span className="text-gray-400">/</span>
+                              <span className={`px-2 py-0.5 rounded ${
+                                remainingDays <= 7 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                잔여 {remainingDays}일
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-2 space-y-0.5">
+                          <div>잔여 횟수: {remainingSessions}회</div>
+                          <div>
+                            유효기간: {formatDate(startDate) || '시작일 미설정'} ~ {formatDate(endDate) || '종료일 미설정'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             )}
 
@@ -1204,21 +1394,32 @@ export default function AdminSchedulePage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex justify-between">
             <Button
-              variant="outline"
-              onClick={() => setIsEditModalOpen(false)}
-              className="border-gray-300"
-            >
-              취소
-            </Button>
-            <Button
-              onClick={handleUpdateSchedule}
+              variant="destructive"
+              onClick={handleDeleteSchedule}
               disabled={isLoading}
-              className="bg-[#2F80ED] hover:bg-[#2F80ED]/90"
+              className="mr-auto"
             >
-              {isLoading ? "수정 중..." : "수정"}
+              <Trash2 className="w-4 h-4 mr-1" />
+              삭제
             </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsEditModalOpen(false)}
+                className="border-gray-300"
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleUpdateSchedule}
+                disabled={isLoading}
+                className="bg-[#2F80ED] hover:bg-[#2F80ED]/90"
+              >
+                {isLoading ? "수정 중..." : "수정"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

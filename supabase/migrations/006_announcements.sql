@@ -1,10 +1,15 @@
--- 공지사항 및 회사 행사 테이블 생성
+-- ============================================
+-- 공지사항 및 회사 행사
+-- ============================================
 
--- 1. 공지사항 테이블
+-- ============================================
+-- PART 1: 공지사항 테이블
+-- ============================================
+
 CREATE TABLE IF NOT EXISTS announcements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-  gym_id UUID REFERENCES gyms(id) ON DELETE CASCADE, -- NULL이면 전사 공지, 값이 있으면 해당 지점만
+  gym_id UUID REFERENCES gyms(id) ON DELETE CASCADE, -- NULL이면 전사 공지
 
   -- 공지사항 내용
   title VARCHAR(200) NOT NULL,
@@ -27,7 +32,11 @@ CREATE TABLE IF NOT EXISTS announcements (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- 2. 회사 행사 일정 테이블
+
+-- ============================================
+-- PART 2: 회사 행사 일정 테이블
+-- ============================================
+
 CREATE TABLE IF NOT EXISTS company_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -56,7 +65,11 @@ CREATE TABLE IF NOT EXISTS company_events (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- 인덱스
+
+-- ============================================
+-- PART 3: 인덱스
+-- ============================================
+
 CREATE INDEX idx_announcements_company_gym ON announcements(company_id, gym_id);
 CREATE INDEX idx_announcements_dates ON announcements(start_date, end_date);
 CREATE INDEX idx_announcements_active ON announcements(is_active, priority);
@@ -65,7 +78,11 @@ CREATE INDEX idx_company_events_company_gym ON company_events(company_id, gym_id
 CREATE INDEX idx_company_events_date ON company_events(event_date);
 CREATE INDEX idx_company_events_active ON company_events(is_active);
 
--- RLS 정책
+
+-- ============================================
+-- PART 4: RLS 정책
+-- ============================================
+
 ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE company_events ENABLE ROW LEVEL SECURITY;
 

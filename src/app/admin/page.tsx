@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Users, DollarSign, Calendar, TrendingUp, UserPlus,
   CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight
@@ -14,9 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 
 export default function AdminDashboardPage() {
-  const [gymName, setGymName] = useState("");
-  const [userName, setUserName] = useState("관리자");
-  const [myStaffId, setMyStaffId] = useState<string>("");
+  const { user, isLoading: authLoading, gymName: authGymName } = useAuth();
+
   const [stats, setStats] = useState({
     totalMembers: 0,
     activeMembers: 0,
@@ -37,123 +37,78 @@ export default function AdminDashboardPage() {
 
   const supabase = createSupabaseClient();
 
+  // AuthContext에서 사용자 정보 사용
+  const gymName = authGymName || "We:form";
+  const userName = user?.name || "관리자";
+  const myStaffId = user?.id || "";
+
   useEffect(() => {
-    init();
-  }, []);
-
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: me } = await supabase
-      .from("staffs")
-      .select("id, name, gym_id, company_id, gyms(name)")
-      .eq("user_id", user.id)
-      .single();
-
-    if (me) {
-      setMyStaffId(me.id);
-      setUserName(me.name);
-      // @ts-ignore
-      setGymName(me.gyms?.name ?? "We:form");
-      await fetchDashboardData(me.gym_id, me.company_id, me.id);
+    if (authLoading) return;
+    if (!user) {
+      setIsLoading(false);
+      return;
     }
+
+    fetchDashboardData(user.gym_id, user.company_id, user.id);
     setIsLoading(false);
-  };
+  }, [authLoading, user]);
 
   const fetchDashboardData = async (gymId: string, companyId: string, staffId: string) => {
     if (!gymId || !companyId) return;
 
-    // 1. 회원 통계
-    const { data: members } = await supabase
-      .from("members")
-      .select("id, status, created_at")
-      .eq("gym_id", gymId)
-      .eq("company_id", companyId);
-
-    const totalMembers = members?.length || 0;
-    const activeMembers = members?.filter(m => m.status === 'active').length || 0;
-
+    const today = new Date().toISOString().split('T')[0];
     const thisMonthStart = new Date();
     thisMonthStart.setDate(1);
     thisMonthStart.setHours(0, 0, 0, 0);
-
-    const newMembersThisMonth = members?.filter(m =>
-      new Date(m.created_at) >= thisMonthStart
-    ).length || 0;
-
-    // 2. 오늘 나의 스케줄 (본인 담당 수업만)
-    const today = new Date().toISOString().split('T')[0];
-    const { data: schedules } = await supabase
-      .from("schedules")
-      .select(`
-        id,
-        member_name,
-        type,
-        status,
-        start_time,
-        end_time,
-        staffs (name)
-      `)
-      .eq("gym_id", gymId)
-      .eq("staff_id", staffId)
-      .gte("start_time", `${today}T00:00:00`)
-      .lte("start_time", `${today}T23:59:59`)
-      .order("start_time", { ascending: true });
-
-    setTodaySchedules(schedules || []);
-
-    // 3. 오늘 매출
-    const { data: todayPayments } = await supabase
-      .from("member_payments")
-      .select("amount")
-      .eq("gym_id", gymId)
-      .eq("company_id", companyId)
-      .gte("paid_at", `${today}T00:00:00`);
-
-    const todaySales = todayPayments?.reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
-
-    // 4. 이번 달 매출
     const monthStart = thisMonthStart.toISOString();
-    const { data: monthPayments } = await supabase
-      .from("member_payments")
-      .select("amount")
-      .eq("gym_id", gymId)
-      .eq("company_id", companyId)
-      .gte("paid_at", monthStart);
-
-    const monthSales = monthPayments?.reduce((sum, p) => sum + parseFloat(p.amount), 0) || 0;
-
-    // 5. 공지사항 조회 (활성, 최근 5개)
-    const { data: announcementsData } = await supabase
-      .from("announcements")
-      .select("*")
-      .eq("company_id", companyId)
-      .eq("is_active", true)
-      .or(`gym_id.is.null,gym_id.eq.${gymId}`)
-      .lte("start_date", today)
-      .order("priority", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    setAnnouncements(announcementsData || []);
-
-    // 6. 이번 달 회사 행사 조회
     const monthEnd = new Date(thisMonthStart);
     monthEnd.setMonth(monthEnd.getMonth() + 1);
     const monthEndStr = monthEnd.toISOString().split('T')[0];
 
-    const { data: eventsData } = await supabase
-      .from("company_events")
-      .select("*")
-      .eq("company_id", companyId)
-      .eq("is_active", true)
-      .or(`gym_id.is.null,gym_id.eq.${gymId}`)
-      .gte("event_date", today)
-      .lte("event_date", monthEndStr)
-      .order("event_date", { ascending: true });
+    // 모든 쿼리를 병렬로 실행
+    const [
+      membersResult,
+      schedulesResult,
+      todayPaymentsResult,
+      monthPaymentsResult,
+      announcementsResult,
+      eventsResult
+    ] = await Promise.all([
+      // 1. 회원 통계
+      supabase.from("members").select("id, status, created_at").eq("gym_id", gymId).eq("company_id", companyId),
+      // 2. 오늘 스케줄
+      supabase.from("schedules").select("id, member_name, type, status, start_time, end_time")
+        .eq("gym_id", gymId).eq("staff_id", staffId)
+        .gte("start_time", `${today}T00:00:00`).lte("start_time", `${today}T23:59:59`)
+        .order("start_time", { ascending: true }),
+      // 3. 오늘 매출
+      supabase.from("member_payments").select("amount").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", `${today}T00:00:00`),
+      // 4. 이번달 매출
+      supabase.from("member_payments").select("amount").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", monthStart),
+      // 5. 공지사항
+      supabase.from("announcements").select("*").eq("company_id", companyId).eq("is_active", true)
+        .or(`gym_id.is.null,gym_id.eq.${gymId}`).lte("start_date", today)
+        .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(5),
+      // 6. 회사 행사
+      supabase.from("company_events").select("*").eq("company_id", companyId).eq("is_active", true)
+        .or(`gym_id.is.null,gym_id.eq.${gymId}`).gte("event_date", today).lte("event_date", monthEndStr)
+        .order("event_date", { ascending: true })
+    ]);
 
-    setCompanyEvents(eventsData || []);
+    const members = membersResult.data || [];
+    const schedules = schedulesResult.data || [];
+    const todayPayments = todayPaymentsResult.data || [];
+    const monthPayments = monthPaymentsResult.data || [];
+
+    const totalMembers = members.length;
+    const activeMembers = members.filter(m => m.status === 'active').length;
+    const newMembersThisMonth = members.filter(m => new Date(m.created_at) >= thisMonthStart).length;
+    const todaySales = todayPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const monthSales = monthPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+
+    setTodaySchedules(schedules);
+    setAnnouncements(announcementsResult.data || []);
+    setCompanyEvents(eventsResult.data || []);
 
     setStats({
       totalMembers,
