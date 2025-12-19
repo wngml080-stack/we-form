@@ -3,14 +3,17 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, CreditCard, Upload, Eye, ArrowUpDown } from "lucide-react";
+import { Search, UserPlus, CreditCard, Upload, Eye, ArrowUpDown, Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 import { showSuccess, showError, showConfirm } from "@/lib/utils/error-handler";
 import { usePaginatedMembers } from "@/lib/hooks/usePaginatedMembers";
 import { Pagination } from "@/components/ui/pagination";
@@ -27,6 +30,10 @@ export const dynamic = 'force-dynamic';
 function AdminMembersPageContent() {
   const searchParams = useSearchParams();
   const registrationType = searchParams.get('type'); // 'new' or 'existing'
+
+  // Auth & Filter Context
+  const { user, isLoading: authLoading } = useAuth();
+  const { membersFilter, isInitialized: filterInitialized } = useAdminFilter();
 
   // Feature flags
   const usePagination = process.env.NEXT_PUBLIC_USE_PAGINATED_MEMBERS === "true";
@@ -45,9 +52,18 @@ function AdminMembersPageContent() {
   // 검색 디바운싱 (300ms 지연)
   const debouncedSearch = useDebounce(searchQuery, 300);
 
-  const [gymId, setGymId] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [gymName, setGymName] = useState("");
+  // 현재 선택된 필터 정보
+  const selectedCompanyId = membersFilter.selectedCompanyId;
+  const selectedGymId = membersFilter.selectedGymId;
+  const gyms = membersFilter.gyms;
+  const userRole = user?.role || "";
+
+  // 편의를 위한 별칭
+  const companyId = selectedCompanyId;
+  const gymId = selectedGymId;
+
+  // 현재 선택된 지점명
+  const gymName = gyms.find(g => g.id === selectedGymId)?.name || "We:form";
 
   // 모달 상태
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -56,8 +72,21 @@ function AdminMembersPageContent() {
   const [isExistingSalesOpen, setIsExistingSalesOpen] = useState(false); // 기존회원 매출등록 모달
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false); // Excel 가져오기 모달
   const [isMemberDetailOpen, setIsMemberDetailOpen] = useState(false); // 회원 상세 모달
+  const [isMemberEditOpen, setIsMemberEditOpen] = useState(false); // 회원정보 수정 모달
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]); // 회원 결제 이력
+  const [memberEditForm, setMemberEditForm] = useState({
+    name: "",
+    phone: "",
+    birth_date: "",
+    gender: "",
+    exercise_goal: "",
+    weight: "",
+    body_fat_mass: "",
+    skeletal_muscle_mass: "",
+    trainer_id: "",
+    memo: ""
+  });
 
   // Excel 가져오기 상태
   const [excelFile, setExcelFile] = useState<File | null>(null);
@@ -180,18 +209,34 @@ function AdminMembersPageContent() {
   // 페이지네이션 훅 (Feature Flag로 활성화된 경우)
   // 디바운스된 검색어를 사용하여 불필요한 API 호출 방지
   const paginatedData = usePaginatedMembers({
-    gymId,
-    companyId,
-    trainerId: myRole === "staff" ? myStaffId : null,
+    gymId: selectedGymId,
+    companyId: selectedCompanyId,
+    trainerId: userRole === "staff" ? myStaffId : null,
     search: debouncedSearch,
     status: statusFilter,
     page: currentPage,
     enabled: usePagination,
   });
 
+  // 필터 변경 시 데이터 재조회
   useEffect(() => {
-    init();
-  }, []);
+    if (authLoading || !filterInitialized) return;
+    if (!user) return;
+
+    // 등록자를 현재 로그인한 사람으로 자동 설정
+    setCreateForm(prev => ({
+      ...prev,
+      registered_by: user.id,
+      trainer_id: user.id
+    }));
+    setMyStaffId(user.id);
+
+    if (selectedGymId && selectedCompanyId) {
+      fetchMembers(selectedGymId, selectedCompanyId, userRole, user.id);
+      fetchStaffList(selectedGymId);
+      fetchProducts(selectedGymId);
+    }
+  }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
 
   // 페이지네이션 미사용 시에만 클라이언트 사이드 필터링
   useEffect(() => {
@@ -215,38 +260,6 @@ function AdminMembersPageContent() {
       setIsExistingSalesOpen(true);
     }
   }, [registrationType, members]);
-
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // 내 정보 가져오기
-    const { data: me } = await supabase
-      .from("staffs")
-      .select("id, gym_id, company_id, role, gyms(name)")
-      .eq("user_id", user.id)
-      .single();
-
-    if (me) {
-      setGymId(me.gym_id);
-      setCompanyId(me.company_id);
-      setMyStaffId(me.id);
-      setMyRole(me.role);
-      // @ts-ignore
-      setGymName(me.gyms?.name ?? "We:form");
-
-      // 등록자를 현재 로그인한 사람으로 자동 설정
-      setCreateForm(prev => ({
-        ...prev,
-        registered_by: me.id,
-        trainer_id: me.id // 기본값으로 본인 설정
-      }));
-
-      fetchMembers(me.gym_id, me.company_id, me.role, me.id);
-      fetchStaffList(me.gym_id);
-      fetchProducts(me.gym_id);
-    }
-  };
 
   const fetchStaffList = async (targetGymId: string | null) => {
     if (!targetGymId) return;
@@ -943,15 +956,17 @@ function AdminMembersPageContent() {
   const openMembershipModal = (member: any) => {
     setSelectedMember(member);
     setSelectedProductId(""); // 상품 선택 초기화
+
+    // 회원권 등록 전용 - 빈 값으로 초기화 (새 회원권 등록)
     setMembershipForm({
-      // 회원권 정보
+      // 회원권 정보 (빈 값으로 초기화 - 새 회원권)
       name: "",
       total_sessions: "",
       start_date: new Date().toISOString().split('T')[0],
       end_date: "",
       amount: "",
       method: "card",
-      // 회원 정보 (선택된 회원의 정보로 채움)
+      // 회원 정보 (선택된 회원의 기본 정보 - 참고용)
       member_name: member.name || "",
       member_phone: member.phone || "",
       birth_date: member.birth_date || "",
@@ -964,6 +979,67 @@ function AdminMembersPageContent() {
       memo: member.memo || ""
     });
     setIsMembershipOpen(true);
+  };
+
+  // 회원정보 수정 모달 열기
+  const openMemberEditModal = (member: any) => {
+    setSelectedMember(member);
+    setMemberEditForm({
+      name: member.name || "",
+      phone: member.phone || "",
+      birth_date: member.birth_date || "",
+      gender: member.gender || "",
+      exercise_goal: member.exercise_goal || "",
+      weight: member.weight?.toString() || "",
+      body_fat_mass: member.body_fat_mass?.toString() || "",
+      skeletal_muscle_mass: member.skeletal_muscle_mass?.toString() || "",
+      trainer_id: member.trainer_id || "",
+      memo: member.memo || ""
+    });
+    setIsMemberEditOpen(true);
+  };
+
+  // 회원정보 수정 처리
+  const handleUpdateMemberInfo = async () => {
+    if (!selectedMember || !selectedGymId || !selectedCompanyId) return;
+
+    setIsLoading(true);
+    try {
+      const updateData: any = {
+        name: memberEditForm.name,
+        phone: memberEditForm.phone,
+        birth_date: memberEditForm.birth_date || null,
+        gender: memberEditForm.gender || null,
+        exercise_goal: memberEditForm.exercise_goal || null,
+        memo: memberEditForm.memo || null
+      };
+
+      if (memberEditForm.weight) updateData.weight = parseFloat(memberEditForm.weight);
+      if (memberEditForm.body_fat_mass) updateData.body_fat_mass = parseFloat(memberEditForm.body_fat_mass);
+      if (memberEditForm.skeletal_muscle_mass) updateData.skeletal_muscle_mass = parseFloat(memberEditForm.skeletal_muscle_mass);
+      if (memberEditForm.trainer_id) updateData.trainer_id = memberEditForm.trainer_id;
+
+      const { error } = await supabase
+        .from("members")
+        .update(updateData)
+        .eq("id", selectedMember.id);
+
+      if (error) throw error;
+
+      showSuccess("회원정보가 수정되었습니다!");
+      setIsMemberEditOpen(false);
+
+      // 데이터 새로고침
+      if (usePagination) {
+        paginatedData.mutate();
+      } else {
+        fetchMembers(selectedGymId, selectedCompanyId, userRole, myStaffId!);
+      }
+    } catch (error: any) {
+      showError(error, "회원정보 수정");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 회원 상세 모달 열기 (결제 이력 + 현재 회원권 조회)
@@ -1014,8 +1090,9 @@ function AdminMembersPageContent() {
     }
   };
 
-  const handleCreateMembership = async () => {
-    if (!selectedMember || !gymId || !companyId) return;
+  // 회원권 등록 처리 (회원정보 수정은 별도 모달로 분리됨)
+  const handleUpdateMembership = async () => {
+    if (!selectedMember || !selectedGymId || !selectedCompanyId) return;
     if (!membershipForm.name || !membershipForm.total_sessions) {
       alert("회원권 이름과 횟수는 필수입니다.");
       return;
@@ -1023,11 +1100,11 @@ function AdminMembersPageContent() {
 
     setIsLoading(true);
     try {
-      // 1. 회원권 생성
-      const { data: membership, error: membershipError } = await supabase
+      // 새 회원권 생성
+      const { error: membershipError } = await supabase
         .from("member_memberships")
         .insert({
-          gym_id: gymId,
+          gym_id: selectedGymId,
           member_id: selectedMember.id,
           name: membershipForm.name,
           total_sessions: parseInt(membershipForm.total_sessions),
@@ -1035,61 +1112,9 @@ function AdminMembersPageContent() {
           start_date: membershipForm.start_date || null,
           end_date: membershipForm.end_date || null,
           status: "active"
-        })
-        .select()
-        .single();
+        });
 
       if (membershipError) throw membershipError;
-
-      // 2. 결제 정보가 있으면 결제 기록 생성
-      if (membershipForm.amount && parseFloat(membershipForm.amount) > 0) {
-        const { error: paymentError } = await supabase
-          .from("member_payments")
-          .insert({
-            company_id: companyId,
-            gym_id: gymId,
-            member_id: selectedMember.id,
-            membership_id: membership.id,
-            amount: parseFloat(membershipForm.amount),
-            method: membershipForm.method,
-            memo: `${membershipForm.name} 구매`
-          });
-
-        if (paymentError) throw paymentError;
-
-        // 3. 매출 로그에도 기록
-        await supabase.from("sales_logs").insert({
-          company_id: companyId,
-          gym_id: gymId,
-          type: "sale",
-          amount: parseFloat(membershipForm.amount),
-          method: membershipForm.method,
-          memo: `${selectedMember.name} - ${membershipForm.name}`,
-          occurred_at: new Date().toISOString()
-        });
-      }
-
-      // 4. 회원 정보 업데이트
-      const memberUpdateData: any = {};
-      if (membershipForm.member_name) memberUpdateData.name = membershipForm.member_name;
-      if (membershipForm.member_phone) memberUpdateData.phone = membershipForm.member_phone;
-      if (membershipForm.birth_date) memberUpdateData.birth_date = membershipForm.birth_date;
-      if (membershipForm.gender) memberUpdateData.gender = membershipForm.gender;
-      if (membershipForm.exercise_goal) memberUpdateData.exercise_goal = membershipForm.exercise_goal;
-      if (membershipForm.weight) memberUpdateData.weight = parseFloat(membershipForm.weight);
-      if (membershipForm.body_fat_mass) memberUpdateData.body_fat_mass = parseFloat(membershipForm.body_fat_mass);
-      if (membershipForm.skeletal_muscle_mass) memberUpdateData.skeletal_muscle_mass = parseFloat(membershipForm.skeletal_muscle_mass);
-      if (membershipForm.trainer_id) memberUpdateData.trainer_id = membershipForm.trainer_id;
-      if (membershipForm.memo) memberUpdateData.memo = membershipForm.memo;
-
-      if (Object.keys(memberUpdateData).length > 0) {
-        const { error: memberUpdateError } = await supabase
-          .from("members")
-          .update(memberUpdateData)
-          .eq("id", selectedMember.id);
-
-        if (memberUpdateError) throw memberUpdateError;
-      }
 
       showSuccess("회원권이 등록되었습니다!");
       setIsMembershipOpen(false);
@@ -1098,7 +1123,7 @@ function AdminMembersPageContent() {
       if (usePagination) {
         paginatedData.mutate();
       } else {
-        fetchMembers(gymId, companyId, myRole, myStaffId!);
+        fetchMembers(selectedGymId, selectedCompanyId, userRole, myStaffId!);
       }
     } catch (error: any) {
       showError(error, "회원권 등록");
@@ -1424,37 +1449,39 @@ function AdminMembersPageContent() {
   const isDataLoading = usePagination ? paginatedData.isLoading : isLoading;
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">회원 관리</h1>
-          <p className="text-gray-500 mt-2 font-medium">{gymName}의 회원을 관리합니다</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">회원 관리</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">{gymName}의 회원을 관리합니다</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+
+        {/* 버튼들 */}
+        <div className="grid grid-cols-2 sm:flex gap-2 w-full xl:w-auto">
           <Button
             onClick={() => setIsSimpleMemberCreateOpen(true)}
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 shadow-sm"
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <UserPlus className="mr-2 h-4 w-4"/> 회원 등록
+            <UserPlus className="mr-1 sm:mr-2 h-4 w-4"/> 회원 등록
           </Button>
           <Button
             onClick={() => setIsExcelImportOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 shadow-sm"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <Upload className="mr-2 h-4 w-4"/> Excel 가져오기
+            <Upload className="mr-1 sm:mr-2 h-4 w-4"/> Excel
           </Button>
           <Button
             onClick={() => setIsCreateOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow-sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <UserPlus className="mr-2 h-4 w-4"/> 신규회원 매출등록
+            <UserPlus className="mr-1 sm:mr-2 h-4 w-4"/> 신규 매출
           </Button>
           <Button
             onClick={() => setIsExistingSalesOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 shadow-sm"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm"
           >
-            <CreditCard className="mr-2 h-4 w-4"/> 기존회원 매출등록
+            <CreditCard className="mr-1 sm:mr-2 h-4 w-4"/> 기존 매출
           </Button>
         </div>
       </div>
@@ -1493,22 +1520,22 @@ function AdminMembersPageContent() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white border rounded-lg p-4">
-          <div className="text-sm text-gray-500">전체 회원</div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white border rounded-xl p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-gray-500">전체 회원</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 mt-1">
             {usePagination ? paginatedData.stats.total : members.length}명
           </div>
         </div>
-        <div className="bg-white border rounded-lg p-4">
-          <div className="text-sm text-gray-500">활성 회원</div>
-          <div className="text-2xl font-bold text-emerald-600 mt-1">
+        <div className="bg-white border rounded-xl p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-gray-500">활성 회원</div>
+          <div className="text-lg sm:text-2xl font-bold text-emerald-600 mt-1">
             {usePagination ? paginatedData.stats.active : members.filter(m => m.status === 'active').length}명
           </div>
         </div>
-        <div className="bg-white border rounded-lg p-4">
-          <div className="text-sm text-gray-500">휴면 회원</div>
-          <div className="text-2xl font-bold text-amber-600 mt-1">
+        <div className="bg-white border rounded-xl p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-gray-500">휴면 회원</div>
+          <div className="text-lg sm:text-2xl font-bold text-amber-600 mt-1">
             {usePagination ? paginatedData.stats.paused : members.filter(m => m.status === 'paused').length}명
           </div>
         </div>
@@ -1668,6 +1695,7 @@ function AdminMembersPageContent() {
         <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>신규 회원 등록</DialogTitle>
+            <DialogDescription className="sr-only">신규 회원을 등록합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
 
@@ -1688,8 +1716,8 @@ function AdminMembersPageContent() {
                   <Label className="text-[#0F4C5C]">연락처 <span className="text-red-500">*</span></Label>
                   <Input
                     value={createForm.phone}
-                    onChange={(e) => setCreateForm({...createForm, phone: e.target.value})}
-                    placeholder="010-1234-5678"
+                    onChange={(e) => setCreateForm({...createForm, phone: formatPhoneNumberOnChange(e.target.value)})}
+                    placeholder="010-0000-0000"
                   />
                 </div>
               </div>
@@ -1915,6 +1943,7 @@ function AdminMembersPageContent() {
             <DialogTitle className="text-2xl font-bold text-gray-900">
               {selectedMember?.name} 회원 상세 정보
             </DialogTitle>
+            <DialogDescription className="sr-only">회원 상세 정보를 확인합니다</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
@@ -1992,12 +2021,22 @@ function AdminMembersPageContent() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex gap-2">
             <Button
               variant="outline"
               onClick={() => setIsMemberDetailOpen(false)}
             >
               닫기
+            </Button>
+            <Button
+              onClick={() => {
+                setIsMemberDetailOpen(false);
+                openMemberEditModal(selectedMember);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              회원정보 수정
             </Button>
             <Button
               onClick={() => {
@@ -2013,11 +2052,137 @@ function AdminMembersPageContent() {
         </DialogContent>
       </Dialog>
 
+      {/* 회원정보 수정 모달 */}
+      <Dialog open={isMemberEditOpen} onOpenChange={setIsMemberEditOpen}>
+        <DialogContent className="bg-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>회원정보 수정 - {selectedMember?.name}</DialogTitle>
+            <DialogDescription className="sr-only">회원정보를 수정합니다</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* 기본 정보 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>이름 <span className="text-red-500">*</span></Label>
+                <Input
+                  value={memberEditForm.name}
+                  onChange={(e) => setMemberEditForm({...memberEditForm, name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>연락처</Label>
+                <Input
+                  value={memberEditForm.phone}
+                  onChange={(e) => setMemberEditForm({...memberEditForm, phone: formatPhoneNumberOnChange(e.target.value)})}
+                  placeholder="010-0000-0000"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>생년월일</Label>
+                <Input
+                  type="date"
+                  value={memberEditForm.birth_date}
+                  onChange={(e) => setMemberEditForm({...memberEditForm, birth_date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>성별</Label>
+                <Select value={memberEditForm.gender} onValueChange={(v) => setMemberEditForm({...memberEditForm, gender: v})}>
+                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">남성</SelectItem>
+                    <SelectItem value="female">여성</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* 담당 트레이너 */}
+            <div className="space-y-2">
+              <Label>담당 트레이너</Label>
+              <Select value={memberEditForm.trainer_id || "none"} onValueChange={(v) => setMemberEditForm({...memberEditForm, trainer_id: v === "none" ? "" : v})}>
+                <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">미지정</SelectItem>
+                  {staffList.map(staff => (
+                    <SelectItem key={staff.id} value={staff.id}>{staff.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 운동 목표 */}
+            <div className="space-y-2">
+              <Label>운동 목표</Label>
+              <Input
+                value={memberEditForm.exercise_goal}
+                onChange={(e) => setMemberEditForm({...memberEditForm, exercise_goal: e.target.value})}
+                placeholder="예: 체중 감량, 근력 강화"
+              />
+            </div>
+
+            {/* 인바디 정보 */}
+            <div className="border-t pt-4">
+              <Label className="text-sm font-semibold text-gray-700 mb-3 block">인바디 정보</Label>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500">체중 (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={memberEditForm.weight}
+                    onChange={(e) => setMemberEditForm({...memberEditForm, weight: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500">체지방량 (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={memberEditForm.body_fat_mass}
+                    onChange={(e) => setMemberEditForm({...memberEditForm, body_fat_mass: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-500">골격근량 (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={memberEditForm.skeletal_muscle_mass}
+                    onChange={(e) => setMemberEditForm({...memberEditForm, skeletal_muscle_mass: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 메모 */}
+            <div className="space-y-2">
+              <Label>메모</Label>
+              <Textarea
+                value={memberEditForm.memo}
+                onChange={(e) => setMemberEditForm({...memberEditForm, memo: e.target.value})}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMemberEditOpen(false)}>취소</Button>
+            <Button onClick={handleUpdateMemberInfo} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
+              {isLoading ? "저장 중..." : "저장"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* 회원권 등록 모달 */}
       <Dialog open={isMembershipOpen} onOpenChange={setIsMembershipOpen}>
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>회원권 등록 - {selectedMember?.name}</DialogTitle>
+            <DialogDescription className="sr-only">회원권을 등록합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {/* 상품 선택 */}
@@ -2165,7 +2330,7 @@ function AdminMembersPageContent() {
                     <Label>전화번호</Label>
                     <Input
                       value={membershipForm.member_phone}
-                      onChange={(e) => setMembershipForm({...membershipForm, member_phone: e.target.value})}
+                      onChange={(e) => setMembershipForm({...membershipForm, member_phone: formatPhoneNumberOnChange(e.target.value)})}
                       placeholder="010-0000-0000"
                     />
                   </div>
@@ -2254,7 +2419,8 @@ function AdminMembersPageContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleCreateMembership} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
+            <Button variant="outline" onClick={() => setIsMembershipOpen(false)}>취소</Button>
+            <Button onClick={handleUpdateMembership} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
               {isLoading ? "등록 중..." : "등록하기"}
             </Button>
           </DialogFooter>
@@ -2269,6 +2435,7 @@ function AdminMembersPageContent() {
         <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>기존회원 매출등록</DialogTitle>
+            <DialogDescription className="sr-only">기존 회원의 매출을 등록합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
 
@@ -2581,6 +2748,7 @@ function AdminMembersPageContent() {
         <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>회원 등록</DialogTitle>
+            <DialogDescription className="sr-only">회원 정보를 등록합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
 
@@ -2601,8 +2769,8 @@ function AdminMembersPageContent() {
                   <Label className="text-[#0F4C5C]">연락처 <span className="text-red-500">*</span></Label>
                   <Input
                     value={simpleMemberForm.phone}
-                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, phone: e.target.value})}
-                    placeholder="010-1234-5678"
+                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, phone: formatPhoneNumberOnChange(e.target.value)})}
+                    placeholder="010-0000-0000"
                   />
                 </div>
               </div>
@@ -2705,16 +2873,9 @@ function AdminMembersPageContent() {
               <div className="space-y-2">
                 <Label className="text-[#0F4C5C]">상품 선택</Label>
                 <Select
-                  value={selectedSimpleProductId}
+                  value={selectedSimpleProductId || "none"}
                   onValueChange={(productId) => {
-                    const product = products.find(p => p.id === productId);
-                    if (product) {
-                      setSelectedSimpleProductId(productId);
-                      setSimpleMemberForm({
-                        ...simpleMemberForm,
-                        membership_product_id: productId
-                      });
-                    } else {
+                    if (productId === "none") {
                       setSelectedSimpleProductId("");
                       setSimpleMemberForm({
                         ...simpleMemberForm,
@@ -2722,6 +2883,15 @@ function AdminMembersPageContent() {
                         membership_start_date: "",
                         membership_end_date: ""
                       });
+                    } else {
+                      const product = products.find(p => p.id === productId);
+                      if (product) {
+                        setSelectedSimpleProductId(productId);
+                        setSimpleMemberForm({
+                          ...simpleMemberForm,
+                          membership_product_id: productId
+                        });
+                      }
                     }
                   }}
                 >
@@ -2729,7 +2899,7 @@ function AdminMembersPageContent() {
                     <SelectValue placeholder="회원권을 선택하세요 (선택사항)" />
                   </SelectTrigger>
                   <SelectContent className="bg-white max-h-[200px]">
-                    <SelectItem value="">선택 안 함</SelectItem>
+                    <SelectItem value="none">선택 안 함</SelectItem>
                     {products.filter(p => p.is_active).map(product => (
                       <SelectItem key={product.id} value={product.id}>
                         {product.name} ({product.membership_type})
@@ -2810,6 +2980,7 @@ function AdminMembersPageContent() {
         <DialogContent className="bg-white max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Excel 회원 데이터 가져오기</DialogTitle>
+            <DialogDescription className="sr-only">Excel 파일에서 회원 데이터를 가져옵니다</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
@@ -2915,7 +3086,7 @@ function AdminMembersPageContent() {
 export default function AdminMembersPage() {
   return (
     <Suspense fallback={
-      <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto">
         <div className="flex items-center justify-center h-96">
           <div className="text-gray-500">로딩 중...</div>
         </div>

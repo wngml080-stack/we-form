@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { ReportStatusBadge } from "./ReportStatusBadge";
 
@@ -36,6 +36,7 @@ export function ApproveModal({ open, onOpenChange, report, onSubmit }: Props) {
             <span>월간 스케줄 승인</span>
             <ReportStatusBadge status={report.status} />
           </DialogTitle>
+          <DialogDescription className="sr-only">월간 스케줄을 승인합니다</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm text-gray-700">
           <div className="flex items-center justify-between">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -58,10 +60,13 @@ const PRESET_RULES = [
 ];
 
 export default function SalaryTemplateManager() {
+    const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+    const selectedGymId = branchFilter.selectedGymId;
+
     const [templates, setTemplates] = useState<SalaryTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
+
     // 편집 중인 템플릿 상태
     const [editingTemplate, setEditingTemplate] = useState<{
         id?: string;
@@ -77,22 +82,13 @@ export default function SalaryTemplateManager() {
     const supabase = createSupabaseClient();
 
     useEffect(() => {
-        fetchTemplates();
-    }, []);
+        if (filterInitialized && selectedGymId) {
+            fetchTemplates(selectedGymId);
+        }
+    }, [filterInitialized, selectedGymId]);
 
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (gymId: string) => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const { data: staff } = await supabase
-                .from("staffs")
-                .select("gym_id")
-                .eq("user_id", user.id)
-                .single();
-            
-            if (!staff) return;
-
             // 템플릿과 연결된 규칙들을 가져옵니다 (조인 쿼리)
             const { data, error } = await supabase
                 .from("salary_templates")
@@ -102,7 +98,7 @@ export default function SalaryTemplateManager() {
                         rule:salary_rules (*)
                     )
                 `)
-                .eq("gym_id", staff.gym_id)
+                .eq("gym_id", gymId)
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -184,10 +180,10 @@ export default function SalaryTemplateManager() {
 
     const handleSave = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            const { data: staff } = await supabase.from("staffs").select("gym_id").eq("user_id", user.id).single();
-            if (!staff) return;
+            if (!selectedGymId) {
+                alert("지점을 선택해주세요.");
+                return;
+            }
 
             // 1. 템플릿 저장/수정
             let templateId = editingTemplate.id;
@@ -196,7 +192,7 @@ export default function SalaryTemplateManager() {
                 const { data, error } = await supabase
                     .from("salary_templates")
                     .insert({
-                        gym_id: staff.gym_id,
+                        gym_id: selectedGymId,
                         name: editingTemplate.name,
                         description: editingTemplate.description
                     })
@@ -224,13 +220,13 @@ export default function SalaryTemplateManager() {
                 
                 if (!ruleId) {
                     let compId;
-                    const { data: comp } = await supabase.from("salary_components").select("id").eq("gym_id", staff.gym_id).eq("name", rule.name).single();
+                    const { data: comp } = await supabase.from("salary_components").select("id").eq("gym_id", selectedGymId).eq("name", rule.name).single();
                     
                     if (comp) {
                         compId = comp.id;
                     } else {
                         const { data: newComp, error: compError } = await supabase.from("salary_components").insert({
-                            gym_id: staff.gym_id,
+                            gym_id: selectedGymId,
                             name: rule.name || "기타", 
                             type: rule.calculation_type === 'fixed' ? 'fixed' : 'computed'
                         }).select().single();
@@ -240,7 +236,7 @@ export default function SalaryTemplateManager() {
                     }
 
                     const { data: newRuleData, error: ruleError } = await supabase.from("salary_rules").insert({
-                        gym_id: staff.gym_id,
+                        gym_id: selectedGymId,
                         component_id: compId,
                         name: rule.name || "새 항목",
                         calculation_type: rule.calculation_type,
@@ -260,7 +256,7 @@ export default function SalaryTemplateManager() {
             }
 
             setIsModalOpen(false);
-            fetchTemplates();
+            if (selectedGymId) fetchTemplates(selectedGymId);
             alert("저장되었습니다.");
 
         } catch (error: unknown) {
@@ -334,6 +330,7 @@ export default function SalaryTemplateManager() {
                 <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
                     <DialogHeader>
                         <DialogTitle>{editingTemplate.id ? "템플릿 수정" : "새 템플릿 생성"}</DialogTitle>
+                        <DialogDescription className="sr-only">급여 템플릿을 설정합니다</DialogDescription>
                     </DialogHeader>
                     
                     <div className="space-y-6 py-4">

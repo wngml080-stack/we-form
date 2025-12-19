@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,42 +22,24 @@ interface StaffStats {
 }
 
 export default function MonthlyStatsViewer() {
+  const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+  const gymId = branchFilter.selectedGymId;
+  const gymName = branchFilter.gyms.find(g => g.id === gymId)?.name || "센터";
+
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [staffStats, setStaffStats] = useState<StaffStats[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [gymId, setGymId] = useState<string | null>(null);
-  const [gymName, setGymName] = useState<string>("");
 
   const supabase = createSupabaseClient();
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: me } = await supabase
-        .from("staffs")
-        .select("gym_id, gyms(name)")
-        .eq("user_id", user.id)
-        .single();
-
-      if (me) {
-        setGymId(me.gym_id);
-        // @ts-ignore
-        setGymName(me.gyms?.name || "센터");
-      }
-    };
-    init();
-  }, []);
-
-  useEffect(() => {
-    if (gymId && selectedMonth) {
+    if (filterInitialized && gymId && selectedMonth) {
       fetchMonthlyStats();
     }
-  }, [gymId, selectedMonth]);
+  }, [filterInitialized, gymId, selectedMonth]);
 
   const fetchMonthlyStats = async () => {
     if (!gymId) return;

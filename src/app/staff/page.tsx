@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -90,6 +91,8 @@ export default function StaffPage() {
     memberId: string | null;
     status: string;
     is_locked?: boolean;
+    title?: string;
+    sub_type?: string;
   } | null>(null);
 
   // 수정용 상태
@@ -98,6 +101,8 @@ export default function StaffPage() {
   const [editDuration, setEditDuration] = useState("50");
   const [editClassType, setEditClassType] = useState("PT");
   const [editMemberName, setEditMemberName] = useState("");
+  const [editPersonalTitle, setEditPersonalTitle] = useState("");
+  const [editSubType, setEditSubType] = useState("");
 
   const supabase = createSupabaseClient();
 
@@ -216,9 +221,77 @@ export default function StaffPage() {
     if (error) {
       console.error("스케줄 로딩 실패:", error);
     } else {
-      setSchedules(data || []);
-      calculateMonthlyStats(data || []);
+      // PT/OT 스케줄에 세션 정보 추가
+      const enrichedSchedules = enrichSchedulesWithSessionInfo(data || []);
+      setSchedules(enrichedSchedules);
+      calculateMonthlyStats(enrichedSchedules);
     }
+  };
+
+  // 스케줄에 세션 정보 추가 (PT/OT)
+  // 진행된 수업(completed, service)만 회차로 카운트
+  const enrichSchedulesWithSessionInfo = (allSchedules: any[]) => {
+    // 회원별 PT/OT 스케줄 그룹화
+    const memberSchedules: Record<string, { pt: any[]; ot: any[] }> = {};
+
+    allSchedules.forEach(s => {
+      if (!s.member_id) return;
+      const type = (s.type || '').toLowerCase();
+      if (type !== 'pt' && type !== 'ot') return;
+
+      if (!memberSchedules[s.member_id]) {
+        memberSchedules[s.member_id] = { pt: [], ot: [] };
+      }
+      if (type === 'pt') {
+        memberSchedules[s.member_id].pt.push(s);
+      } else if (type === 'ot') {
+        memberSchedules[s.member_id].ot.push(s);
+      }
+    });
+
+    // 차감되는 수업인지 확인 (회차로 카운트됨)
+    const isCompleted = (status: string) => status === 'completed' || status === 'service' || status === 'no_show_deducted';
+
+    // 각 회원별로 시간순 정렬 후 세션 번호 할당
+    Object.values(memberSchedules).forEach(({ pt, ot }) => {
+      // PT 스케줄 정렬 및 세션 번호 할당
+      pt.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      let ptSessionCount = 0;
+      pt.forEach((schedule) => {
+        // 회원의 멤버십에서 total_sessions 가져오기
+        const member = members.find(m => m.id === schedule.member_id);
+        const membership = member?.memberships?.find(
+          (m: any) => m.name?.toLowerCase().includes('pt')
+        );
+        if (membership) {
+          schedule.total_sessions = membership.total_sessions;
+        }
+
+        // 진행된 수업만 회차 카운트
+        if (isCompleted(schedule.status)) {
+          ptSessionCount++;
+          schedule.session_number = ptSessionCount;
+        } else {
+          schedule.session_number = ptSessionCount + 1;
+          schedule.is_not_completed = true;
+        }
+      });
+
+      // OT 스케줄 정렬 및 세션 번호 할당
+      ot.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      let otSessionCount = 0;
+      ot.forEach((schedule) => {
+        if (isCompleted(schedule.status)) {
+          otSessionCount++;
+          schedule.session_number = otSessionCount;
+        } else {
+          schedule.session_number = otSessionCount + 1;
+          schedule.is_not_completed = true;
+        }
+      });
+    });
+
+    return allSchedules;
   };
 
   const calculateMonthlyStats = (scheduleList: any[]) => {
@@ -410,6 +483,28 @@ export default function StaffPage() {
     }
   };
 
+  // sub_type 변경 (상담/개인일정용)
+  const handleSubTypeChange = async (newSubType: string) => {
+    if (!selectedEvent || !myStaffId) return;
+
+    try {
+      const { error } = await supabase
+        .from("schedules")
+        .update({ sub_type: newSubType })
+        .eq("id", selectedEvent.id)
+        .eq("staff_id", myStaffId);
+
+      if (error) throw error;
+
+      setIsStatusModalOpen(false);
+      setSelectedEvent(null);
+      fetchSchedules(myStaffId);
+    } catch (error: any) {
+      console.error(error);
+      alert("분류 변경 실패: " + error.message);
+    }
+  };
+
   const handleDeleteSchedule = async () => {
     if (!selectedEvent || !myStaffId) return;
     if (selectedEvent.is_locked || isMonthLocked) {
@@ -439,20 +534,44 @@ export default function StaffPage() {
       return;
     }
 
+    const isPersonalSchedule = selectedEvent.type?.toLowerCase() === 'personal';
+
+    // 개인일정: 제목 필수
+    if (isPersonalSchedule && !editPersonalTitle?.trim()) {
+      alert("일정 제목을 입력해주세요.");
+      return;
+    }
+
     const startDateTime = new Date(`${editDate}T${editStartTime}:00`);
     const durationMin = parseInt(editDuration);
     const endDateTime = new Date(startDateTime.getTime() + durationMin * 60 * 1000);
     const scheduleType = classifyScheduleType(startDateTime, myWorkStartTime, myWorkEndTime);
 
+    const updateData: any = {
+      start_time: startDateTime.toISOString(),
+      end_time: endDateTime.toISOString(),
+      schedule_type: scheduleType,
+    };
+
+    if (isPersonalSchedule) {
+      // 개인일정 업데이트
+      updateData.title = editPersonalTitle || '개인일정';
+      updateData.sub_type = editSubType;
+      updateData.type = 'Personal';
+    } else if (selectedEvent.type?.toLowerCase() === 'consulting') {
+      // 상담 업데이트
+      updateData.type = 'Consulting';
+      updateData.sub_type = editSubType;
+      updateData.title = `${editMemberName} (상담)`;
+    } else {
+      // PT/OT 스케줄 업데이트
+      updateData.type = editClassType;
+      updateData.title = `${editMemberName} (${editClassType})`;
+    }
+
     const { error } = await supabase
       .from("schedules")
-      .update({
-        start_time: startDateTime.toISOString(),
-        end_time: endDateTime.toISOString(),
-        type: editClassType,
-        schedule_type: scheduleType,
-        title: `${editMemberName} (${editClassType})`
-      })
+      .update(updateData)
       .eq("id", selectedEvent.id)
       .eq("staff_id", myStaffId);
 
@@ -513,18 +632,27 @@ export default function StaffPage() {
       duration: String(durationMin),
       memberId: schedule.member_id,
       status: schedule.status,
-      is_locked: schedule.is_locked
+      is_locked: schedule.is_locked,
+      title: schedule.title,
+      sub_type: schedule.sub_type
     });
     setIsStatusModalOpen(true);
   };
 
   const handleOpenEditModal = () => {
     if (!selectedEvent) return;
-    setEditDate(selectedEvent.startTime.toISOString().split('T')[0]);
+    // 로컬 시간 기준으로 날짜 문자열 생성 (타임존 문제 방지)
+    const startDate = selectedEvent.startTime;
+    const year = startDate.getFullYear();
+    const month = String(startDate.getMonth() + 1).padStart(2, '0');
+    const day = String(startDate.getDate()).padStart(2, '0');
+    setEditDate(`${year}-${month}-${day}`);
     setEditStartTime(selectedEvent.startTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }));
     setEditDuration(selectedEvent.duration);
     setEditClassType(selectedEvent.type);
     setEditMemberName(selectedEvent.memberName);
+    setEditPersonalTitle(selectedEvent.title || '');
+    setEditSubType(selectedEvent.sub_type || '');
     setIsStatusModalOpen(false);
     setIsEditModalOpen(true);
   };
@@ -827,17 +955,16 @@ export default function StaffPage() {
                         </div>
 
                         <div className="mt-auto pt-6 border-t border-gray-100">
-                             <Button 
-                                disabled={isMonthApproved}
+                             <Button
+                                disabled={isMonthLocked}
                                 className="w-full h-14 text-lg font-bold bg-[#2F80ED] hover:bg-[#1c6cd7] shadow-lg shadow-blue-200 disabled:shadow-none disabled:bg-gray-200 disabled:text-gray-400 rounded-xl transition-all"
-                                onClick={() => {
-                                    if (confirm(`${year}년 ${month}월 스케줄을 마감하고 관리자에게 전송하시겠습니까?\n전송 후에는 수정이 불가능합니다.`)) {
-                                        setIsMonthApproved(true); 
-                                        alert("관리자에게 전송되었습니다.");
-                                    }
-                                }}
+                                onClick={handleSubmitMonth}
                             >
-                                {isMonthApproved ? "전송 완료 (수정 불가)" : "관리자에게 스케줄 전송 (마감)"}
+                                {submissionStatus === "approved"
+                                  ? "승인 완료 (수정 불가)"
+                                  : submissionStatus === "submitted"
+                                  ? "승인 대기 중 (수정 불가)"
+                                  : "관리자에게 스케줄 전송 (마감)"}
                             </Button>
                             <p className="text-xs text-gray-400 text-center mt-3">
                                 * 매월 1일 ~ 5일 사이에 전송해주세요. 전송 후에는 수정이 불가능합니다.
@@ -878,6 +1005,7 @@ export default function StaffPage() {
         <DialogContent className="sm:max-w-[425px] bg-white rounded-2xl p-0 overflow-hidden gap-0">
           <DialogHeader className="p-6 pb-2">
             <DialogTitle className="text-xl font-bold">수업 등록</DialogTitle>
+            <DialogDescription className="sr-only">새로운 수업을 등록합니다</DialogDescription>
           </DialogHeader>
           <div className="p-6 pt-2 space-y-5">
             <div className="space-y-1.5">
@@ -994,6 +1122,7 @@ export default function StaffPage() {
         <DialogContent className="sm:max-w-[425px] bg-white rounded-2xl">
             <DialogHeader>
                 <DialogTitle className="text-xl font-bold">새 회원 등록</DialogTitle>
+                <DialogDescription className="sr-only">새로운 회원을 등록합니다</DialogDescription>
             </DialogHeader>
             <div className="grid gap-5 py-4">
                 <div className="space-y-1.5">
@@ -1039,77 +1168,158 @@ export default function StaffPage() {
       <Dialog open={isStatusModalOpen} onOpenChange={setIsStatusModalOpen}>
         <DialogContent className="sm:max-w-[425px] bg-white rounded-2xl p-0 overflow-hidden gap-0">
           <div className="bg-[#2F80ED] p-6 text-white">
-              <h3 className="text-xl font-bold">{selectedEvent?.memberName}님 수업</h3>
+              <h3 className="text-xl font-bold">
+                {selectedEvent?.type?.toLowerCase() === 'personal'
+                  ? selectedEvent?.title || '개인일정'
+                  : `${selectedEvent?.memberName}님 수업`}
+              </h3>
               <p className="opacity-80 text-sm font-medium mt-1">
                 {selectedEvent?.timeLabel} ({selectedEvent?.duration}분) · {selectedEvent?.type}
               </p>
           </div>
-          
+
           <div className="p-6">
-            <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">상태 변경</h4>
-            <div className="grid grid-cols-2 gap-3 mb-6">
-                <button
-                    onClick={() => handleStatusChange("completed")}
-                    className={cn(
-                        "flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all active:scale-95 active:border-b-0 active:translate-y-1",
-                        selectedEvent?.status === 'completed' 
-                            ? "bg-orange-50 border-orange-200 text-orange-600 ring-2 ring-orange-400 ring-offset-2" 
-                            : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50"
-                    )}
-                >
-                    <span className="text-2xl mb-1">🟢</span>
-                    <span className="font-bold text-sm">출석 완료</span>
+            <h4 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">
+              {selectedEvent?.type?.toLowerCase() === 'personal' || selectedEvent?.type?.toLowerCase() === 'consulting'
+                ? '분류 선택' : '상태 변경'}
+            </h4>
+
+            {/* PT 예약 */}
+            {selectedEvent?.type === 'PT' && (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button onClick={() => handleStatusChange("reserved")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'reserved' ? "bg-indigo-50 border-indigo-200 text-indigo-600 ring-2 ring-indigo-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">📅</span><span className="font-bold text-sm">예약완료</span>
                 </button>
-                <button
-                    onClick={() => handleStatusChange("no_show_deducted")}
-                    className={cn(
-                        "flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all active:scale-95 active:border-b-0 active:translate-y-1",
-                        selectedEvent?.status === 'no_show_deducted' 
-                            ? "bg-red-50 border-red-200 text-red-600 ring-2 ring-red-400 ring-offset-2" 
-                            : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50"
-                    )}
-                >
-                    <span className="text-2xl mb-1">🔴</span>
-                    <span className="font-bold text-sm">노쇼 (차감)</span>
+                <button onClick={() => handleStatusChange("completed")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'completed' ? "bg-green-50 border-green-200 text-green-600 ring-2 ring-green-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">🟢</span><span className="font-bold text-sm">수업완료</span>
                 </button>
-                <button
-                    onClick={() => handleStatusChange("no_show")}
-                    className={cn(
-                        "flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all active:scale-95 active:border-b-0 active:translate-y-1",
-                        selectedEvent?.status === 'no_show' 
-                            ? "bg-gray-100 border-gray-300 text-gray-700 ring-2 ring-gray-400 ring-offset-2" 
-                            : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50"
-                    )}
-                >
-                    <span className="text-2xl mb-1">⚪</span>
-                    <span className="font-bold text-sm">단순 노쇼</span>
+                <button onClick={() => handleStatusChange("no_show_deducted")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'no_show_deducted' ? "bg-red-50 border-red-200 text-red-600 ring-2 ring-red-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">🔴</span><span className="font-bold text-sm">노쇼(차감)</span>
                 </button>
-                <button
-                    onClick={() => handleStatusChange("service")}
-                    className={cn(
-                        "flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all active:scale-95 active:border-b-0 active:translate-y-1",
-                        selectedEvent?.status === 'service' 
-                            ? "bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-400 ring-offset-2" 
-                            : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50"
-                    )}
-                >
-                    <span className="text-2xl mb-1">🔵</span>
-                    <span className="font-bold text-sm">서비스</span>
+                <button onClick={() => handleStatusChange("no_show")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'no_show' ? "bg-gray-100 border-gray-300 text-gray-700 ring-2 ring-gray-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">⚪</span><span className="font-bold text-sm">노쇼</span>
                 </button>
-            </div>
-            
+                <button onClick={() => handleStatusChange("service")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'service' ? "bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">🔵</span><span className="font-bold text-sm">서비스</span>
+                </button>
+                <button onClick={() => handleStatusChange("cancelled")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'cancelled' ? "bg-gray-100 border-gray-300 text-gray-500 ring-2 ring-gray-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">❌</span><span className="font-bold text-sm">취소</span>
+                </button>
+              </div>
+            )}
+
+            {/* OT 예약 */}
+            {selectedEvent?.type === 'OT' && (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button onClick={() => handleStatusChange("completed")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'completed' ? "bg-green-50 border-green-200 text-green-600 ring-2 ring-green-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">🟢</span><span className="font-bold text-sm">수업완료</span>
+                </button>
+                <button onClick={() => handleStatusChange("no_show")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'no_show' ? "bg-gray-100 border-gray-300 text-gray-700 ring-2 ring-gray-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">⚪</span><span className="font-bold text-sm">노쇼</span>
+                </button>
+                <button onClick={() => handleStatusChange("cancelled")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'cancelled' ? "bg-gray-100 border-gray-300 text-gray-500 ring-2 ring-gray-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">❌</span><span className="font-bold text-sm">취소</span>
+                </button>
+                <button onClick={() => handleStatusChange("converted")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.status === 'converted' ? "bg-purple-50 border-purple-200 text-purple-600 ring-2 ring-purple-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">🔄</span><span className="font-bold text-sm">PT전환</span>
+                </button>
+              </div>
+            )}
+
+            {/* 상담 */}
+            {selectedEvent?.type?.toLowerCase() === 'consulting' && (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <button onClick={() => handleSubTypeChange("sales")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'sales' ? "bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">💰</span><span className="font-bold text-sm">세일즈</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("info")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'info' ? "bg-teal-50 border-teal-200 text-teal-600 ring-2 ring-teal-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">ℹ️</span><span className="font-bold text-sm">안내상담</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("status")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'status' ? "bg-amber-50 border-amber-200 text-amber-600 ring-2 ring-amber-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">📊</span><span className="font-bold text-sm">현황상담</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("other")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'other' ? "bg-gray-100 border-gray-300 text-gray-600 ring-2 ring-gray-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">📝</span><span className="font-bold text-sm">기타</span>
+                </button>
+              </div>
+            )}
+
+            {/* 개인일정 */}
+            {selectedEvent?.type?.toLowerCase() === 'personal' && (
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <button onClick={() => handleSubTypeChange("meal")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'meal' ? "bg-yellow-50 border-yellow-200 text-yellow-600 ring-2 ring-yellow-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">🍽️</span><span className="font-bold text-sm">식사</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("conference")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'conference' ? "bg-indigo-50 border-indigo-200 text-indigo-600 ring-2 ring-indigo-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">🏢</span><span className="font-bold text-sm">회의</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("meeting")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'meeting' ? "bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">👥</span><span className="font-bold text-sm">미팅</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("rest")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'rest' ? "bg-green-50 border-green-200 text-green-600 ring-2 ring-green-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">☕</span><span className="font-bold text-sm">휴식</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("workout")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'workout' ? "bg-purple-50 border-purple-200 text-purple-600 ring-2 ring-purple-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">💪</span><span className="font-bold text-sm">운동</span>
+                </button>
+                <button onClick={() => handleSubTypeChange("other")}
+                  className={cn("flex flex-col items-center justify-center p-4 rounded-2xl border-b-4 transition-all",
+                    selectedEvent?.sub_type === 'other' ? "bg-gray-100 border-gray-300 text-gray-600 ring-2 ring-gray-400" : "bg-white border-gray-100 text-gray-600 hover:bg-gray-50")}>
+                  <span className="text-2xl mb-1">📝</span><span className="font-bold text-sm">기타</span>
+                </button>
+              </div>
+            )}
+
             {!isMonthApproved && (
                 <div className="flex gap-3 pt-6 border-t border-gray-100">
-                    <Button 
+                    <Button
                         onClick={handleOpenEditModal}
-                        variant="outline" 
+                        variant="outline"
                         className="flex-1 h-12 rounded-xl font-bold border-gray-200 text-gray-600 hover:bg-gray-50"
                     >
                         수정하기
                     </Button>
-                    <Button 
+                    <Button
                         onClick={handleDeleteSchedule}
-                        variant="ghost" 
+                        variant="ghost"
                         className="h-12 px-4 rounded-xl font-bold text-red-500 hover:bg-red-50 hover:text-red-600"
                     >
                         삭제
@@ -1124,15 +1334,35 @@ export default function StaffPage() {
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="sm:max-w-[425px] bg-white rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">수업 수정</DialogTitle>
+            <DialogTitle className="text-xl font-bold">
+              {selectedEvent?.type?.toLowerCase() === 'personal' ? '개인일정 수정' : '수업 수정'}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedEvent?.type?.toLowerCase() === 'personal' ? '개인일정 정보를 수정합니다' : '수업 정보를 수정합니다'}
+            </DialogDescription>
           </DialogHeader>
+
           <div className="grid gap-5 py-4">
-            <div className="space-y-1.5">
+            {/* 개인일정: 제목 입력 */}
+            {selectedEvent?.type?.toLowerCase() === 'personal' ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-gray-500">일정 제목</Label>
+                <Input
+                  type="text"
+                  value={editPersonalTitle}
+                  onChange={(e) => setEditPersonalTitle(e.target.value)}
+                  placeholder="일정 제목을 입력하세요"
+                  className="h-11 bg-gray-50 border-gray-200 font-bold"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-500">회원 이름</Label>
                 <div className="h-11 flex items-center px-3 bg-gray-100 rounded-lg text-gray-500 font-bold border border-gray-200">
                     {editMemberName}
                 </div>
-            </div>
+              </div>
+            )}
             <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-gray-500">날짜 변경</Label>
                 <Input
@@ -1166,19 +1396,60 @@ export default function StaffPage() {
                     </Select>
                 </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-gray-500">수업 종류</Label>
-              <Select value={editClassType} onValueChange={setEditClassType}>
-                <SelectTrigger className="h-11 bg-gray-50 border-gray-200 font-bold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PT">PT</SelectItem>
-                  <SelectItem value="OT">OT</SelectItem>
-                  <SelectItem value="Consulting">상담</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* 개인일정: sub_type 선택 */}
+            {selectedEvent?.type?.toLowerCase() === 'personal' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-gray-500">일정 분류</Label>
+                <Select value={editSubType} onValueChange={setEditSubType}>
+                  <SelectTrigger className="h-11 bg-gray-50 border-gray-200 font-bold">
+                    <SelectValue placeholder="분류를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="meal">식사</SelectItem>
+                    <SelectItem value="conference">회의</SelectItem>
+                    <SelectItem value="meeting">미팅</SelectItem>
+                    <SelectItem value="rest">휴식</SelectItem>
+                    <SelectItem value="workout">운동</SelectItem>
+                    <SelectItem value="other">기타</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* 상담: sub_type 선택 */}
+            {selectedEvent?.type?.toLowerCase() === 'consulting' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-gray-500">상담 분류</Label>
+                <Select value={editSubType} onValueChange={setEditSubType}>
+                  <SelectTrigger className="h-11 bg-gray-50 border-gray-200 font-bold">
+                    <SelectValue placeholder="분류를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sales">세일즈</SelectItem>
+                    <SelectItem value="info">안내상담</SelectItem>
+                    <SelectItem value="status">현황상담</SelectItem>
+                    <SelectItem value="other">기타</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* PT/OT: 수업 종류 선택 */}
+            {selectedEvent?.type?.toLowerCase() !== 'personal' && selectedEvent?.type?.toLowerCase() !== 'consulting' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-gray-500">수업 종류</Label>
+                <Select value={editClassType} onValueChange={setEditClassType}>
+                  <SelectTrigger className="h-11 bg-gray-50 border-gray-200 font-bold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PT">PT</SelectItem>
+                    <SelectItem value="OT">OT</SelectItem>
+                    <SelectItem value="Consulting">상담</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button 

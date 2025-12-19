@@ -11,6 +11,10 @@ interface Schedule {
   type: string;
   status: string;
   schedule_type?: string;
+  sub_type?: string;
+  total_sessions?: number;
+  session_number?: number;
+  is_not_completed?: boolean;
 }
 
 interface WeeklyTimetableProps {
@@ -281,7 +285,10 @@ export default function WeeklyTimetable({
                     <td
                       key={dayIdx}
                       rowSpan={cellRowSpan}
-                      className="border border-gray-200 p-0 align-top hover:bg-blue-50 cursor-pointer transition-colors relative h-[50px]"
+                      className={cn(
+                        "p-0 align-top cursor-pointer transition-colors relative h-[50px]",
+                        schedulesInSlot.length === 0 && "border border-gray-200 hover:bg-blue-50"
+                      )}
                       onClick={() => {
                         if (schedulesInSlot.length === 0) {
                           handleTimeSlotClick(date, timeSlot);
@@ -298,7 +305,6 @@ export default function WeeklyTimetable({
                             }}
                             className={cn(
                               "px-1.5 py-1 border-l-[3px] text-[10px] md:text-xs font-medium cursor-pointer hover:brightness-95 transition-all w-full overflow-hidden flex flex-col justify-center",
-                              sIdx < schedulesInSlot.length - 1 && "border-b border-black/5",
                               getScheduleColor(schedule)
                             )}
                             style={{
@@ -306,8 +312,67 @@ export default function WeeklyTimetable({
                               minHeight: `${schedule.rowSpan * 50}px`
                             }}
                           >
-                            <div className="font-bold truncate leading-tight">{schedule.type}</div>
-                            <div className="truncate leading-tight">{schedule.member_name}</div>
+                            <div className="font-bold truncate leading-tight">
+                              {(() => {
+                                const scheduleType = schedule.type?.toLowerCase();
+                                // Consulting → "상담 | 분류"
+                                if (scheduleType === 'consulting' || scheduleType === '상담') {
+                                  const subTypeLabel = schedule.sub_type === 'sales' ? '세일즈' :
+                                    schedule.sub_type === 'info' ? '안내상담' :
+                                    schedule.sub_type === 'status' ? '현황상담' :
+                                    schedule.sub_type === 'other' ? '기타' : null;
+                                  return subTypeLabel ? `상담 | ${subTypeLabel}` : '상담';
+                                }
+                                // PT → "PT 30회/5회차" 또는 "PT 30회/노쇼"
+                                if (scheduleType === 'pt') {
+                                  // 미진행 상태 (회차 카운트 안됨: no_show, cancelled, reserved)
+                                  const statusLabel = schedule.status === 'no_show' ? '노쇼' :
+                                    schedule.status === 'cancelled' ? '취소' :
+                                    schedule.status === 'reserved' ? '예약' : null;
+
+                                  if (schedule.total_sessions) {
+                                    // 미진행 수업은 상태 표시
+                                    if (statusLabel && schedule.is_not_completed) {
+                                      return `PT ${schedule.total_sessions}회/${statusLabel}`;
+                                    }
+                                    // 진행/차감된 수업은 회차 표시
+                                    if (schedule.session_number) {
+                                      return `PT ${schedule.total_sessions}회/${schedule.session_number}회차`;
+                                    }
+                                    return `PT ${schedule.total_sessions}회`;
+                                  }
+                                  return 'PT';
+                                }
+                                // OT → "OT 2회차" 또는 "OT 노쇼"
+                                if (scheduleType === 'ot') {
+                                  const statusLabel = schedule.status === 'no_show' ? '노쇼' :
+                                    schedule.status === 'cancelled' ? '취소' :
+                                    schedule.status === 'converted' ? 'PT전환' : null;
+
+                                  // 미진행 수업은 상태 표시
+                                  if (statusLabel && schedule.is_not_completed) {
+                                    return `OT ${statusLabel}`;
+                                  }
+                                  // 진행된 수업은 회차 표시
+                                  if (schedule.session_number) {
+                                    return `OT ${schedule.session_number}회차`;
+                                  }
+                                  return 'OT';
+                                }
+                                return schedule.type;
+                              })()}
+                            </div>
+                            <div className="truncate leading-tight">
+                              {(schedule.type === '개인' || schedule.type?.toLowerCase() === 'personal')
+                                ? (schedule.sub_type === 'meal' ? '식사시간' :
+                                   schedule.sub_type === 'conference' ? '회의시간' :
+                                   schedule.sub_type === 'meeting' ? '미팅시간' :
+                                   schedule.sub_type === 'rest' ? '휴식시간' :
+                                   schedule.sub_type === 'workout' ? '운동시간' :
+                                   schedule.sub_type === 'other' ? '기타' :
+                                   schedule.member_name || '개인일정')
+                                : schedule.member_name}
+                            </div>
                             {/* 모바일에서는 시간 숨기거나 간소화 */}
                             <div className="hidden md:block text-[9px] opacity-80 mt-0.5">
                               {new Date(schedule.start_time).toLocaleTimeString('ko-KR', {

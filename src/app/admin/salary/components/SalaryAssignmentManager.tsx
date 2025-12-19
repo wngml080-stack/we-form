@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -45,12 +47,16 @@ type SalaryTemplate = {
 };
 
 export default function SalaryAssignmentManager() {
+    const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+    const selectedGymId = branchFilter.selectedGymId;
+    const selectedCompanyId = branchFilter.selectedCompanyId;
+
     const [staffs, setStaffs] = useState<Staff[]>([]);
     const [templates, setTemplates] = useState<SalaryTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
+
     // 폼 상태
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
     const [personalParams, setPersonalParams] = useState<any>({});
@@ -62,31 +68,22 @@ export default function SalaryAssignmentManager() {
     const supabase = createSupabaseClient();
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (filterInitialized && selectedGymId && selectedCompanyId) {
+            fetchData(selectedGymId, selectedCompanyId);
+        }
+    }, [filterInitialized, selectedGymId, selectedCompanyId]);
 
-    const fetchData = async () => {
+    const fetchData = async (gymId: string, companyId: string) => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const { data: myStaff } = await supabase
-                .from("staffs")
-                .select("gym_id, company_id, role")
-                .eq("user_id", user.id)
-                .single();
-
-            if (!myStaff) return;
-
             // 템플릿 조회: gym_id 기준 (템플릿은 지점별로 관리)
             const { data: tmplData } = await supabase
                 .from("salary_templates")
                 .select(`*, items:salary_template_items(rule:salary_rules(*))`)
-                .eq("gym_id", myStaff.gym_id);
+                .eq("gym_id", gymId);
             setTemplates(tmplData || []);
 
-            // 직원 목록 조회: role에 따라 다른 필터링
-            let staffQuery = supabase
+            // 직원 목록 조회: 선택한 지점 기준
+            const { data: staffData } = await supabase
                 .from("staffs")
                 .select(`
                     id, user_id, name, job_title, role, gym_id,
@@ -94,20 +91,8 @@ export default function SalaryAssignmentManager() {
                         id, template_id, personal_parameters,
                         template:salary_templates(name)
                     )
-                `);
-
-            // 역할별 필터링
-            if (myStaff.role === 'system_admin') {
-                // system_admin: 모든 직원 조회 (필터 없음)
-            } else if (myStaff.role === 'company_admin') {
-                // company_admin: 회사 전체 직원 조회
-                staffQuery = staffQuery.eq("company_id", myStaff.company_id);
-            } else {
-                // admin, staff: 지점 직원만 조회
-                staffQuery = staffQuery.eq("gym_id", myStaff.gym_id);
-            }
-
-            const { data: staffData } = await staffQuery;
+                `)
+                .eq("gym_id", gymId);
 
             const formattedStaffs = (staffData || []).map((s: any) => ({
                 ...s,
@@ -199,7 +184,7 @@ export default function SalaryAssignmentManager() {
             }
 
             setIsModalOpen(false);
-            fetchData();
+            if (selectedGymId && selectedCompanyId) fetchData(selectedGymId, selectedCompanyId);
             alert("저장되었습니다.");
         } catch (error: unknown) {
             console.error("상세 에러:", error);
@@ -282,7 +267,7 @@ export default function SalaryAssignmentManager() {
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#1A1D21] text-white border-none">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold">급여 및 인센티브 설정</DialogTitle>
-                        <p className="text-sm text-gray-400">{selectedStaff?.name} / {(selectedStaff as any)?.job_title || selectedStaff?.role}</p>
+                        <DialogDescription className="text-sm text-gray-400">{selectedStaff?.name} / {(selectedStaff as any)?.job_title || selectedStaff?.role}</DialogDescription>
                     </DialogHeader>
                     
                     <div className="space-y-8 py-4">

@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { showError } from "@/lib/utils/error-handler";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, XCircle, Calendar, User, Building, FileText } from "lucide-react";
 
@@ -35,73 +37,83 @@ interface MonthlyReport {
 
 export default function AdminReportsPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+  const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+  const selectedGymId = branchFilter.selectedGymId;
+  const gymName = branchFilter.gyms.find(g => g.id === selectedGymId)?.name || "";
+  const userRole = user?.role || "";
+
   const [reports, setReports] = useState<MonthlyReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<MonthlyReport | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [adminMemo, setAdminMemo] = useState("");
-  const [myStaffId, setMyStaffId] = useState<string>("");
 
   const supabase = createSupabaseClient();
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return router.push("/login");
+    if (authLoading) return;
 
-      const { data: me } = await supabase
-        .from("staffs")
-        .select("id, role, gym_id")
-        .eq("user_id", user.id)
-        .single();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
 
-      if (!me || !["admin", "company_admin", "system_admin"].includes(me.role)) {
-        showError("접근 권한이 없습니다.", "권한 확인");
-        return router.push("/admin");
-      }
+    if (!["admin", "company_admin", "system_admin"].includes(userRole)) {
+      showError("접근 권한이 없습니다.", "권한 확인");
+      router.push("/admin");
+      return;
+    }
 
-      setMyStaffId(me.id);
-      fetchReports(me.gym_id, me.role);
-    };
-    init();
-  }, []);
+    if (filterInitialized && selectedGymId) {
+      fetchReports(selectedGymId);
+    }
+  }, [authLoading, user, filterInitialized, selectedGymId, userRole]);
 
-  const fetchReports = async (gymId: string, role: string) => {
+  const fetchReports = async (gymId: string) => {
     setIsLoading(true);
 
     try {
-      let query = supabase
+      // 1. 보고서 조회 - 선택한 지점의 보고서만 조회
+      const { data: reportsData, error: reportsError } = await supabase
         .from("monthly_schedule_reports")
-        .select(`
-          *,
-          staffs(name, email),
-          gyms(name)
-        `)
+        .select("*")
+        .eq("gym_id", gymId)
         .order("submitted_at", { ascending: false });
 
-      // Gym admin can only see their gym's reports
-      if (role === "admin") {
-        query = query.eq("gym_id", gymId);
-      }
-      // company_admin and system_admin can see all reports (handled by RLS)
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching reports:", error);
-        console.error("Error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        // RLS 정책이 없어서 발생할 수 있는 오류 무시
-        if (error.code !== 'PGRST116') {
-          showError(`보고서 조회 실패: ${error.message}`, "데이터 조회");
+      if (reportsError) {
+        console.error("Error fetching reports:", reportsError);
+        if (reportsError.code !== 'PGRST116') {
+          showError(`보고서 조회 실패: ${reportsError.message}`, "데이터 조회");
         }
-      } else if (data) {
-        setReports(data as MonthlyReport[]);
+        return;
       }
+
+      if (!reportsData || reportsData.length === 0) {
+        setReports([]);
+        return;
+      }
+
+      // 2. 관련된 staff, gym 정보 별도 조회
+      const staffIds = [...new Set(reportsData.map(r => r.staff_id).filter(Boolean))];
+      const gymIds = [...new Set(reportsData.map(r => r.gym_id).filter(Boolean))];
+
+      const [staffsResult, gymsResult] = await Promise.all([
+        supabase.from("staffs").select("id, name, email").in("id", staffIds),
+        supabase.from("gyms").select("id, name").in("id", gymIds)
+      ]);
+
+      // 3. 매핑
+      const staffMap = new Map(staffsResult.data?.map(s => [s.id, s]) || []);
+      const gymMap = new Map(gymsResult.data?.map(g => [g.id, g]) || []);
+
+      const reportsWithRelations = reportsData.map(report => ({
+        ...report,
+        staffs: staffMap.get(report.staff_id) || { name: "-", email: "-" },
+        gyms: gymMap.get(report.gym_id) || { name: "-" },
+      }));
+
+      setReports(reportsWithRelations as MonthlyReport[]);
     } catch (err) {
       console.error("Unexpected error:", err);
     } finally {
@@ -116,7 +128,7 @@ export default function AdminReportsPage() {
   };
 
   const handleReview = async (action: "approved" | "rejected") => {
-    if (!selectedReport) return;
+    if (!selectedReport || !user) return;
 
     const confirmMsg = action === "approved"
       ? "승인하시겠습니까? 승인 후에는 해당 월의 스케줄을 수정할 수 없습니다."
@@ -129,7 +141,7 @@ export default function AdminReportsPage() {
       .update({
         status: action,
         reviewed_at: new Date().toISOString(),
-        reviewed_by: myStaffId,
+        reviewed_by: user.id,
         admin_memo: adminMemo,
         updated_at: new Date().toISOString(),
       })
@@ -142,16 +154,8 @@ export default function AdminReportsPage() {
       setIsReviewOpen(false);
 
       // Refetch reports
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: me } = await supabase
-          .from("staffs")
-          .select("gym_id, role")
-          .eq("user_id", user.id)
-          .single();
-        if (me) {
-          fetchReports(me.gym_id, me.role);
-        }
+      if (selectedGymId) {
+        fetchReports(selectedGymId);
       }
     }
   };
@@ -178,14 +182,14 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
             월별 스케줄 승인
           </h1>
-          <p className="text-gray-500 mt-2 font-medium">
-            직원들이 제출한 월별 스케줄을 검토하고 승인합니다.
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">
+            {gymName ? `${gymName} 직원들의 스케줄을 승인합니다.` : "직원들이 제출한 월별 스케줄을 검토하고 승인합니다."}
           </p>
         </div>
       </div>
@@ -286,6 +290,7 @@ export default function AdminReportsPage() {
         <DialogContent className="bg-white max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">스케줄 보고서 검토</DialogTitle>
+            <DialogDescription className="sr-only">스케줄 보고서를 검토합니다</DialogDescription>
           </DialogHeader>
 
           {selectedReport && (

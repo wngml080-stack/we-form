@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Plus, Pencil, Trash2, MapPin, Calendar, User, Building2, Users, UserCheck, TrendingUp, Clock, Activity, BarChart3, Bell } from "lucide-react";
@@ -62,7 +62,7 @@ export default function HQPage() {
   const [isStaffEditOpen, setIsStaffEditOpen] = useState(false);
   const [staffEditForm, setStaffEditForm] = useState({ job_title: "", role: "", employment_status: "" });
 
-  // 회사 행사 관리
+  // 회사 일정 & 행사 관리
   const [companyEvents, setCompanyEvents] = useState<any[]>([]);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
@@ -312,7 +312,7 @@ export default function HQPage() {
 
     setGymStats(gymStatsData);
 
-    // 회사 행사 조회 (자기 회사 것만)
+    // 회사 일정 & 행사 조회 (자기 회사 것만)
     const { data: eventsData } = await supabase
       .from("company_events")
       .select("*, gyms(name)")
@@ -330,7 +330,7 @@ export default function HQPage() {
     if (!error) { alert("발령 완료!"); fetchData(companyId, myRole); } else { alert(error.message); }
   };
 
-  // 회사 행사 관리 함수들
+  // 회사 일정 & 행사 관리 함수들
   const openEventModal = (event: any = null) => {
     if (event) {
       // 수정 모드
@@ -403,7 +403,7 @@ export default function HQPage() {
           .eq("id", editingEvent.id);
 
         if (error) throw error;
-        alert("회사 행사가 수정되었습니다.");
+        alert("회사 일정 & 행사가 수정되었습니다.");
       } else {
         // 신규 등록
         const { error } = await supabase
@@ -411,7 +411,7 @@ export default function HQPage() {
           .insert(eventData);
 
         if (error) throw error;
-        alert("회사 행사가 등록되었습니다.");
+        alert("회사 일정 & 행사가 등록되었습니다.");
       }
 
       setIsEventModalOpen(false);
@@ -434,7 +434,7 @@ export default function HQPage() {
 
       if (error) throw error;
 
-      alert("회사 행사가 삭제되었습니다.");
+      alert("회사 일정 & 행사가 삭제되었습니다.");
       const targetCompanyId = companyId || selectedCompanyId;
       fetchData(targetCompanyId, myRole);
     } catch (error: any) {
@@ -643,11 +643,11 @@ export default function HQPage() {
     : members.filter(m => m.gym_id === selectedGymFilter);
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">본사 관리</h1>
-          <p className="text-gray-500 mt-2 font-medium">{companyName}의 지점과 직원을 관리합니다</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">본사 관리</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">{companyName}의 지점과 직원을 관리합니다</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -870,7 +870,7 @@ export default function HQPage() {
         </div>
       </div>
 
-      {/* 3. 회사 행사 관리 */}
+      {/* 3. 회사 일정 & 행사 관리 */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
         <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -878,7 +878,7 @@ export default function HQPage() {
               <Calendar className="w-4 h-4 text-blue-600" />
             </div>
             <div className="flex items-center gap-3">
-              <h3 className="text-base font-semibold text-gray-900">회사 행사 관리</h3>
+              <h3 className="text-base font-semibold text-gray-900">회사 일정 & 행사 관리</h3>
               <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
                 {companyEvents.length}개
               </span>
@@ -896,7 +896,7 @@ export default function HQPage() {
           {companyEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-gray-400">
               <Calendar className="w-10 h-10 mb-2 opacity-20" />
-              <p className="text-sm">등록된 회사 행사가 없습니다.</p>
+              <p className="text-sm">등록된 회사 일정 & 행사가 없습니다.</p>
             </div>
           ) : (
             companyEvents.map((event) => {
@@ -1142,7 +1142,7 @@ export default function HQPage() {
       ].map((modal, idx) => (
         <Dialog key={idx} open={modal.isOpen} onOpenChange={modal.setIsOpen}>
             <DialogContent className="bg-white sm:max-w-[500px]">
-                <DialogHeader><DialogTitle>{modal.title}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{modal.title}</DialogTitle><DialogDescription className="sr-only">지점 정보를 입력합니다</DialogDescription></DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-2 gap-4">
                         {/* 👇 필수 항목에 빨간색 * 표시 추가 */}
@@ -1218,7 +1218,7 @@ export default function HQPage() {
       {/* 직원 정보 수정 모달 */}
       <Dialog open={isStaffEditOpen} onOpenChange={setIsStaffEditOpen}>
         <DialogContent className="bg-white sm:max-w-[500px]">
-          <DialogHeader><DialogTitle>직원 정보 수정</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>직원 정보 수정</DialogTitle><DialogDescription className="sr-only">직원 정보를 수정합니다</DialogDescription></DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
               <Label>직책</Label>
@@ -1269,6 +1269,7 @@ export default function HQPage() {
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl">{selectedGymDetail?.name} 상세 현황</DialogTitle>
+              <DialogDescription className="sr-only">지점 상세 현황을 확인합니다</DialogDescription>
               {!isEditingBep ? (
                 <Button
                   variant="outline"
@@ -1617,13 +1618,14 @@ export default function HQPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 회사 행사 등록/수정 모달 */}
+      {/* 회사 일정 & 행사 등록/수정 모달 */}
       <Dialog open={isEventModalOpen} onOpenChange={setIsEventModalOpen}>
         <DialogContent className="max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">
-              {editingEvent ? '회사 행사 수정' : '새 회사 행사 등록'}
+              {editingEvent ? '회사 일정 & 행사 수정' : '새 회사 일정 & 행사 등록'}
             </DialogTitle>
+            <DialogDescription className="sr-only">회사 일정 & 행사 정보를 입력합니다</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* 행사명 */}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AdminFilterProvider, useAdminFilter } from "@/contexts/AdminFilterContext";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -18,7 +19,15 @@ import {
   ShoppingCart,
   Menu,
   X,
+  ChevronDown,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function AdminLayoutContent({
   children,
@@ -27,11 +36,23 @@ function AdminLayoutContent({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, companyName: authCompanyName } = useAuth();
+  const {
+    selectedCompanyId,
+    selectedGymId,
+    gyms,
+    companies,
+    setCompany,
+    setGym,
+    gymName,
+    companyName: filterCompanyName,
+    isInitialized: filterInitialized,
+  } = useAdminFilter();
   const userRole = user?.role || "";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const supabase = createSupabaseClient();
+  const companyName = filterCompanyName || authCompanyName || "";
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -114,6 +135,46 @@ function AdminLayoutContent({
             </div>
           </Link>
         </div>
+
+        {/* 전역 회사/지점 선택 */}
+        {filterInitialized && (
+          <div className="px-4 py-3 border-b border-gray-200 space-y-2">
+            {/* 회사 선택 (system_admin만) */}
+            {userRole === "system_admin" && companies.length > 0 ? (
+              <Select value={selectedCompanyId} onValueChange={setCompany}>
+                <SelectTrigger className="w-full h-9 text-xs bg-gray-50 border-gray-200">
+                  <SelectValue placeholder="회사 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id} className="text-xs">
+                      {company.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="px-3 py-2 bg-[#2F80ED] text-white rounded-lg text-xs font-medium text-center">
+                {companyName || "회사"}
+              </div>
+            )}
+
+            {/* 지점 선택 */}
+            <Select value={selectedGymId} onValueChange={setGym}>
+              <SelectTrigger className="w-full h-9 text-xs bg-white border-gray-200">
+                <Building2 className="w-3.5 h-3.5 mr-1.5 text-gray-500" />
+                <SelectValue placeholder="지점 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {gyms.map((gym) => (
+                  <SelectItem key={gym.id} value={gym.id} className="text-xs">
+                    {gym.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* 메뉴 */}
         <nav className="flex-1 p-4 overflow-y-auto">
@@ -251,9 +312,11 @@ function AdminLayoutContent({
       </aside>
 
       {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-auto">
-        <div className="lg:hidden h-16"></div>
-        {children}
+      <main className="flex-1 overflow-auto bg-gray-50/50">
+        <div className="lg:hidden h-14"></div>
+        <div className="min-h-full">
+          {children}
+        </div>
       </main>
     </div>
   );
@@ -266,7 +329,9 @@ export default function AdminLayout({
 }) {
   return (
     <AuthProvider>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
+      <AdminFilterProvider>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </AdminFilterProvider>
     </AuthProvider>
   );
 }

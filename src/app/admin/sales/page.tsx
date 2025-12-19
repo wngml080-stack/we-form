@@ -2,26 +2,41 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { DollarSign, CreditCard, Banknote, Plus } from "lucide-react";
+import { DollarSign, CreditCard, Banknote, Plus, Settings, X } from "lucide-react";
 
 export default function SalesPage() {
+  const { isLoading: authLoading } = useAuth();
+  const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+
   const [payments, setPayments] = useState<any[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const isLoading = !filterInitialized || authLoading;
 
-  const [gymId, setGymId] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [gymName, setGymName] = useState("");
+  // 지점관리 필터에서 회사/지점 정보 사용
+  const selectedGymId = branchFilter.selectedGymId;
+  const selectedCompanyId = branchFilter.selectedCompanyId;
+  const gymName = branchFilter.gyms.find(g => g.id === selectedGymId)?.name || "We:form";
 
   // 회원 목록
   const [members, setMembers] = useState<any[]>([]);
+
+  // 커스텀 회원권 유형 및 결제방법
+  const [membershipTypes, setMembershipTypes] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+
+  // 설정 모달
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [newMembershipType, setNewMembershipType] = useState("");
+  const [newPaymentMethod, setNewPaymentMethod] = useState({ name: "", code: "" });
 
   // 결제 등록 모달
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -61,14 +76,75 @@ export default function SalesPage() {
 
   const supabase = createSupabaseClient();
 
+  // 필터 초기화 시 데이터 로드
   useEffect(() => {
-    init();
-  }, []);
+    if (filterInitialized && selectedGymId && selectedCompanyId) {
+      fetchPayments(selectedGymId, selectedCompanyId);
+      fetchMembers(selectedGymId, selectedCompanyId);
+      fetchCustomOptions(selectedGymId, selectedCompanyId);
+    }
+  }, [filterInitialized, selectedGymId, selectedCompanyId]);
+
+  // 커스텀 옵션 (회원권 유형, 결제방법) 불러오기
+  const fetchCustomOptions = async (targetGymId: string, targetCompanyId: string) => {
+    const [typesRes, methodsRes] = await Promise.all([
+      supabase.from("membership_types").select("*").eq("gym_id", targetGymId).order("display_order"),
+      supabase.from("payment_methods").select("*").eq("gym_id", targetGymId).order("display_order")
+    ]);
+    if (typesRes.data) setMembershipTypes(typesRes.data);
+    if (methodsRes.data) setPaymentMethods(methodsRes.data);
+  };
+
+  // 회원권 유형 추가
+  const handleAddMembershipType = async () => {
+    if (!newMembershipType.trim() || !selectedGymId || !selectedCompanyId) return;
+    const { error } = await supabase.from("membership_types").insert({
+      gym_id: selectedGymId,
+      company_id: selectedCompanyId,
+      name: newMembershipType.trim(),
+      display_order: membershipTypes.length + 1
+    });
+    if (!error) {
+      setNewMembershipType("");
+      fetchCustomOptions(selectedGymId, selectedCompanyId);
+    }
+  };
+
+  // 결제방법 추가
+  const handleAddPaymentMethod = async () => {
+    if (!newPaymentMethod.name.trim() || !selectedGymId || !selectedCompanyId) return;
+    const code = newPaymentMethod.code.trim() || newPaymentMethod.name.trim().toLowerCase();
+    const { error } = await supabase.from("payment_methods").insert({
+      gym_id: selectedGymId,
+      company_id: selectedCompanyId,
+      name: newPaymentMethod.name.trim(),
+      code: code,
+      display_order: paymentMethods.length + 1
+    });
+    if (!error) {
+      setNewPaymentMethod({ name: "", code: "" });
+      fetchCustomOptions(selectedGymId, selectedCompanyId);
+    }
+  };
+
+  // 회원권 유형 삭제
+  const handleDeleteMembershipType = async (id: string) => {
+    if (!confirm("이 회원권 유형을 삭제하시겠습니까?")) return;
+    await supabase.from("membership_types").delete().eq("id", id);
+    fetchCustomOptions(selectedGymId, selectedCompanyId);
+  };
+
+  // 결제방법 삭제
+  const handleDeletePaymentMethod = async (id: string) => {
+    if (!confirm("이 결제방법을 삭제하시겠습니까?")) return;
+    await supabase.from("payment_methods").delete().eq("id", id);
+    fetchCustomOptions(selectedGymId, selectedCompanyId);
+  };
 
   // 날짜 필터 변경 시 데이터 다시 불러오기
   useEffect(() => {
-    if (gymId && companyId) {
-      fetchPayments(gymId, companyId);
+    if (selectedGymId && selectedCompanyId) {
+      fetchPayments(selectedGymId, selectedCompanyId);
     }
   }, [startDate, endDate]);
 
@@ -108,35 +184,6 @@ export default function SalesPage() {
 
     setStats(stats);
   }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
-
-  const init = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: me } = await supabase
-        .from("staffs")
-        .select("gym_id, company_id, role, gyms(name)")
-        .eq("user_id", user.id)
-        .single();
-
-      if (me) {
-        setGymId(me.gym_id);
-        setCompanyId(me.company_id);
-        // @ts-ignore
-        setGymName(me.gyms?.name ?? "We:form");
-        await fetchPayments(me.gym_id, me.company_id);
-        await fetchMembers(me.gym_id, me.company_id);
-      }
-      setIsLoading(false);
-    } catch (error) {
-      console.error('init 에러:', error);
-      setIsLoading(false);
-    }
-  };
 
   const fetchMembers = async (targetGymId: string | null, targetCompanyId: string | null) => {
     if (!targetGymId || !targetCompanyId) return;
@@ -192,7 +239,7 @@ export default function SalesPage() {
   const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!gymId || !companyId) {
+    if (!selectedGymId || !selectedCompanyId) {
       alert("지점 정보를 불러올 수 없습니다.");
       return;
     }
@@ -211,8 +258,8 @@ export default function SalesPage() {
       const { error } = await supabase
         .from("member_payments")
         .insert({
-          gym_id: gymId,
-          company_id: companyId,
+          gym_id: selectedGymId,
+          company_id: selectedCompanyId,
           member_id: createForm.member_id,
           membership_type: createForm.membership_type,
           registration_type: createForm.registration_type,
@@ -243,7 +290,7 @@ export default function SalesPage() {
         paid_at: new Date().toISOString().split('T')[0],
         memo: ""
       });
-      fetchPayments(gymId, companyId);
+      fetchPayments(selectedGymId, selectedCompanyId);
     } catch (error: any) {
       console.error("결제 등록 에러:", error);
       alert(`결제 등록 실패: ${error.message}`);
@@ -264,24 +311,33 @@ export default function SalesPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">매출 현황</h1>
-          <p className="text-gray-500 mt-2 font-medium">{gymName}의 매출을 관리합니다</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">매출 현황</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">{gymName}의 매출을 관리합니다</p>
         </div>
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold px-6 py-2 shadow-sm"
-        >
-          <Plus className="mr-2 h-4 w-4"/> 결제 등록
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsSettingsOpen(true)}
+            className="px-3"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold px-4 sm:px-6 py-2 shadow-sm"
+          >
+            <Plus className="mr-2 h-4 w-4"/> 결제 등록
+          </Button>
+        </div>
       </div>
 
       {/* 필터 */}
-      <div className="bg-white border rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="bg-white border rounded-xl p-4 sm:p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           <div className="space-y-2">
             <Label className="text-sm font-medium">시작일</Label>
             <Input
@@ -306,13 +362,9 @@ export default function SalesPage() {
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="all">전체</SelectItem>
-                <SelectItem value="헬스">헬스</SelectItem>
-                <SelectItem value="필라테스">필라테스</SelectItem>
-                <SelectItem value="PT">PT</SelectItem>
-                <SelectItem value="PPT">PPT</SelectItem>
-                <SelectItem value="GPT">GPT</SelectItem>
-                <SelectItem value="골프">골프</SelectItem>
-                <SelectItem value="GX">GX</SelectItem>
+                {membershipTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -339,84 +391,116 @@ export default function SalesPage() {
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="all">전체</SelectItem>
-                <SelectItem value="card">카드</SelectItem>
-                <SelectItem value="cash">현금</SelectItem>
-                <SelectItem value="transfer">계좌이체</SelectItem>
+                {paymentMethods.map((method) => (
+                  <SelectItem key={method.id} value={method.code}>{method.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label className="text-sm font-medium">빠른 선택</Label>
-            <Select
-              onValueChange={(value) => {
-                const today = new Date();
-                if (value === "today") {
-                  setStartDate(today.toISOString().split('T')[0]);
-                  setEndDate(today.toISOString().split('T')[0]);
-                } else if (value === "week") {
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  setStartDate(today);
+                  setEndDate(today);
+                }}
+                className="text-xs"
+              >
+                오늘
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  const date = yesterday.toISOString().split('T')[0];
+                  setStartDate(date);
+                  setEndDate(date);
+                }}
+                className="text-xs"
+              >
+                어제
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date();
                   const weekAgo = new Date(today);
                   weekAgo.setDate(today.getDate() - 7);
                   setStartDate(weekAgo.toISOString().split('T')[0]);
                   setEndDate(today.toISOString().split('T')[0]);
-                } else if (value === "month") {
+                }}
+                className="text-xs"
+              >
+                7일
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const today = new Date();
                   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
                   setStartDate(monthStart.toISOString().split('T')[0]);
                   setEndDate(today.toISOString().split('T')[0]);
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="선택" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="today">오늘</SelectItem>
-                <SelectItem value="week">최근 7일</SelectItem>
-                <SelectItem value="month">이번 달</SelectItem>
-              </SelectContent>
-            </Select>
+                }}
+                className="text-xs"
+              >
+                이번달
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-[#2F80ED] text-white rounded-xl p-5 shadow-sm">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-[#2F80ED] text-white rounded-xl p-4 sm:p-5 shadow-sm col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">총 매출</span>
-            <DollarSign className="w-5 h-5" />
+            <span className="text-xs sm:text-sm font-medium">총 매출</span>
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div className="text-2xl font-bold">{formatCurrency(stats.total)}</div>
-          <div className="text-xs mt-1">{stats.count}건</div>
+          <div className="text-xl sm:text-2xl font-bold">{formatCurrency(stats.total)}</div>
+          <div className="text-xs mt-1 opacity-80">{stats.count}건</div>
         </div>
 
-        <div className="bg-white border rounded-lg p-5">
+        <div className="bg-white border rounded-xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">카드 결제</span>
-            <CreditCard className="w-5 h-5 text-blue-500" />
+            <span className="text-xs sm:text-sm text-gray-600">카드 결제</span>
+            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
           </div>
-          <div className="text-xl font-bold text-blue-600">{formatCurrency(stats.card)}</div>
+          <div className="text-lg sm:text-xl font-bold text-blue-600">{formatCurrency(stats.card)}</div>
           <div className="text-xs text-gray-500 mt-1">
             {((stats.card / stats.total) * 100 || 0).toFixed(1)}%
           </div>
         </div>
 
-        <div className="bg-white border rounded-lg p-5">
+        <div className="bg-white border rounded-xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">현금 결제</span>
-            <Banknote className="w-5 h-5 text-emerald-500" />
+            <span className="text-xs sm:text-sm text-gray-600">현금 결제</span>
+            <Banknote className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
           </div>
-          <div className="text-xl font-bold text-emerald-600">{formatCurrency(stats.cash)}</div>
+          <div className="text-lg sm:text-xl font-bold text-emerald-600">{formatCurrency(stats.cash)}</div>
           <div className="text-xs text-gray-500 mt-1">
             {((stats.cash / stats.total) * 100 || 0).toFixed(1)}%
           </div>
         </div>
 
-        <div className="bg-white border rounded-lg p-5">
+        <div className="bg-white border rounded-xl p-4 sm:p-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-600">계좌이체</span>
-            <DollarSign className="w-5 h-5 text-purple-500" />
+            <span className="text-xs sm:text-sm text-gray-600">계좌이체</span>
+            <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
           </div>
-          <div className="text-xl font-bold text-purple-600">{formatCurrency(stats.transfer)}</div>
+          <div className="text-lg sm:text-xl font-bold text-purple-600">{formatCurrency(stats.transfer)}</div>
           <div className="text-xs text-gray-500 mt-1">
             {((stats.transfer / stats.total) * 100 || 0).toFixed(1)}%
           </div>
@@ -424,12 +508,12 @@ export default function SalesPage() {
       </div>
 
       {/* 결제 내역 */}
-      <div className="rounded-md border bg-white">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold">결제 내역</h3>
+      <div className="rounded-xl border bg-white overflow-hidden">
+        <div className="p-4 border-b bg-gray-50/50">
+          <h3 className="font-semibold text-gray-900">결제 내역</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left min-w-[1200px]">
+          <table className="w-full text-sm text-left min-w-[900px]">
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="px-4 py-3">결제일</th>
@@ -567,6 +651,7 @@ export default function SalesPage() {
         <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">결제 등록</DialogTitle>
+            <DialogDescription className="sr-only">새로운 결제를 등록합니다</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreatePayment} className="space-y-6">
             {/* 회원 선택 */}
@@ -599,13 +684,9 @@ export default function SalesPage() {
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="헬스">헬스</SelectItem>
-                    <SelectItem value="필라테스">필라테스</SelectItem>
-                    <SelectItem value="PT">PT</SelectItem>
-                    <SelectItem value="PPT">PPT</SelectItem>
-                    <SelectItem value="GPT">GPT</SelectItem>
-                    <SelectItem value="골프">골프</SelectItem>
-                    <SelectItem value="GX">GX</SelectItem>
+                    {membershipTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -657,9 +738,9 @@ export default function SalesPage() {
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="card">카드</SelectItem>
-                    <SelectItem value="cash">현금</SelectItem>
-                    <SelectItem value="transfer">계좌이체</SelectItem>
+                    {paymentMethods.map((method) => (
+                      <SelectItem key={method.id} value={method.code}>{method.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -734,6 +815,85 @@ export default function SalesPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* 설정 모달 */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900">매출 설정</DialogTitle>
+            <DialogDescription className="text-gray-500">회원권 유형과 결제방법을 관리합니다</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* 회원권 유형 관리 */}
+            <div className="space-y-3">
+              <Label className="text-sm font-bold text-gray-800">회원권 유형</Label>
+              <div className="flex flex-wrap gap-2">
+                {membershipTypes.map((type) => (
+                  <Badge key={type.id} className={`${type.color || 'bg-gray-100 text-gray-700'} px-3 py-1.5 flex items-center gap-2`}>
+                    {type.name}
+                    {!type.is_default && (
+                      <button onClick={() => handleDeleteMembershipType(type.id)} className="hover:text-red-600">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="새 회원권 유형 이름"
+                  value={newMembershipType}
+                  onChange={(e) => setNewMembershipType(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddMembershipType()}
+                />
+                <Button onClick={handleAddMembershipType} size="sm" className="bg-[#2F80ED] text-white">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* 결제방법 관리 */}
+            <div className="space-y-3">
+              <Label className="text-sm font-bold text-gray-800">결제방법</Label>
+              <div className="flex flex-wrap gap-2">
+                {paymentMethods.map((method) => (
+                  <Badge key={method.id} className={`${method.color || 'bg-gray-100 text-gray-700'} px-3 py-1.5 flex items-center gap-2`}>
+                    {method.name}
+                    {!method.is_default && (
+                      <button onClick={() => handleDeletePaymentMethod(method.id)} className="hover:text-red-600">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="새 결제방법 이름"
+                  value={newPaymentMethod.name}
+                  onChange={(e) => setNewPaymentMethod({...newPaymentMethod, name: e.target.value})}
+                  className="flex-1"
+                />
+                <Input
+                  placeholder="코드 (영문)"
+                  value={newPaymentMethod.code}
+                  onChange={(e) => setNewPaymentMethod({...newPaymentMethod, code: e.target.value})}
+                  className="w-32"
+                />
+                <Button onClick={handleAddPaymentMethod} size="sm" className="bg-[#2F80ED] text-white">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">코드는 내부 식별용이며, 비워두면 이름을 기반으로 자동 생성됩니다.</p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>닫기</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

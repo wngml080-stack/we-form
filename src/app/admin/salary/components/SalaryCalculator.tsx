@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,14 +44,16 @@ type StaffSalaryResult = {
 };
 
 export default function SalaryCalculator() {
+    const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+    const gymId = branchFilter.selectedGymId;
+    const gymName = branchFilter.gyms.find(g => g.id === gymId)?.name || "";
+
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     });
     const [results, setResults] = useState<StaffSalaryResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [gymId, setGymId] = useState<string | null>(null);
-    const [gymName, setGymName] = useState<string>("");
 
     // 임시 매출 데이터 상태
     const [salesData, setSalesData] = useState<Record<string, number>>({});
@@ -59,30 +62,12 @@ export default function SalaryCalculator() {
 
     const supabase = createSupabaseClient();
 
-    useEffect(() => {
-        const init = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            const { data: me } = await supabase
-                .from("staffs")
-                .select("gym_id, gyms(name)")
-                .eq("user_id", user.id)
-                .single();
-            if (me) {
-                setGymId(me.gym_id);
-                // @ts-ignore
-                setGymName(me.gyms?.name || "");
-            }
-        };
-        init();
-    }, []);
-
     // 월이 바뀌거나 지점ID가 로드되면 저장된 데이터 불러오기
     useEffect(() => {
-        if (gymId && selectedMonth) {
+        if (filterInitialized && gymId && selectedMonth) {
             fetchSavedData();
         }
-    }, [gymId, selectedMonth]);
+    }, [filterInitialized, gymId, selectedMonth]);
 
     const fetchSavedData = async () => {
         if (!gymId) return;

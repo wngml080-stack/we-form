@@ -2,24 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Plus, CheckCircle, Users } from "lucide-react";
+import { formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 
 const JOB_TITLES = ["대표", "이사", "실장", "지점장", "FC사원", "FC주임", "FC팀장", "PT팀장", "트레이너", "프리랜서", "필라팀장", "필라전임", "필라파트", "골프프로", "기타"];
 
 export default function AdminStaffPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const { staffFilter, isInitialized: filterInitialized } = useAdminFilter();
+
   const [activeStaffs, setActiveStaffs] = useState<any[]>([]);
   const [pendingStaffs, setPendingStaffs] = useState<any[]>([]);
-
-  const [myRole, setMyRole] = useState<string>("");
-  const [gymId, setGymId] = useState<string | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [gymName, setGymName] = useState("");
 
   // 지점 목록 (이동 발령용)
   const [gymList, setGymList] = useState<any[]>([]);
@@ -39,38 +40,35 @@ export default function AdminStaffPage() {
 
   const supabase = createSupabaseClient();
 
+  // 현재 선택된 필터 정보
+  const selectedCompanyId = staffFilter.selectedCompanyId;
+  const selectedGymId = staffFilter.selectedGymId;
+  const gyms = staffFilter.gyms;
+
+  // 현재 선택된 지점명
+  const gymName = gyms.find(g => g.id === selectedGymId)?.name || "We:form";
+
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (authLoading || !filterInitialized) return;
+    if (!user) return;
 
-      // 1. 내 정보 가져오기
-      const { data: me } = await supabase
-        .from("staffs")
-        .select("gym_id, company_id, role, gyms(name)")
-        .eq("user_id", user.id)
-        .single();
+    // 직원 목록 조회
+    if (selectedGymId) {
+      fetchStaffs(selectedGymId, selectedCompanyId);
+    }
 
-      if (me) {
-        setGymId(me.gym_id);
-        setCompanyId(me.company_id);
-        setMyRole(me.role);
-        // @ts-ignore
-        setGymName(me.gyms?.name ?? "We:form");
-
-        // 2. 직원 목록 조회
-        fetchStaffs(me.gym_id, me.role);
-
-        // 3. 지점 목록 조회 (이동 발령을 위해 미리 가져옴)
-        const { data: gyms } = await supabase.from("gyms").select("id, name").order("name");
-        if (gyms) setGymList(gyms);
-      }
+    // 지점 목록 조회 (이동 발령을 위해)
+    const fetchGymList = async () => {
+      const { data: allGyms } = await supabase.from("gyms").select("id, name").eq("company_id", selectedCompanyId).order("name");
+      if (allGyms) setGymList(allGyms);
     };
-    init();
-  }, []);
+    if (selectedCompanyId) {
+      fetchGymList();
+    }
+  }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
 
   // 직원 목록 조회
-  const fetchStaffs = async (targetGymId: string | null, role: string) => {
+  const fetchStaffs = async (targetGymId: string, targetCompanyId: string) => {
     let query = supabase
       .from("staffs")
       .select(`
@@ -78,11 +76,12 @@ export default function AdminStaffPage() {
         work_start_time, work_end_time,
         gyms ( name )
       `)
+      .eq("company_id", targetCompanyId)
       .order("name", { ascending: true });
 
-    // 슈퍼 관리자가 아니면 자기 지점만 조회
-    if (role !== 'super_admin' && role !== 'system_admin' && targetGymId) {
-        query = query.eq("gym_id", targetGymId);
+    // 선택한 지점이 있으면 해당 지점만 조회 (관리자도 지점 선택 시 해당 지점만 표시)
+    if (targetGymId) {
+      query = query.eq("gym_id", targetGymId);
     }
 
     const { data, error } = await query;
@@ -102,7 +101,7 @@ export default function AdminStaffPage() {
   const handleApprove = async (staffId: string) => {
     if (!confirm("이 직원의 가입을 승인하시겠습니까?")) return;
     const { error } = await supabase.from("staffs").update({ employment_status: "재직", role: "staff" }).eq("id", staffId);
-    if (!error) { alert("승인되었습니다."); fetchStaffs(gymId, myRole); }
+    if (!error) { alert("승인되었습니다."); fetchStaffs(selectedGymId, selectedCompanyId); }
   };
 
   // 수정 모달 열기
@@ -136,7 +135,7 @@ export default function AdminStaffPage() {
     if (!error) {
         alert("정보가 수정되었습니다.");
         setIsEditOpen(false);
-        fetchStaffs(gymId, myRole);
+        fetchStaffs(selectedGymId, selectedCompanyId);
     } else {
         alert("실패: " + error.message);
     }
@@ -146,21 +145,19 @@ export default function AdminStaffPage() {
   const handleCreateStaff = async () => {
     if (!createForm.name || !createForm.email || !createForm.password) return alert("필수 정보를 입력해주세요.");
 
-    const targetCompanyId = companyId;
-
     setIsCreating(true);
     try {
         const res = await fetch("/api/admin/create-staff", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             // gym_id를 null로 설정하여 발령 대기 상태로 생성
-            body: JSON.stringify({ ...createForm, gym_id: null, company_id: targetCompanyId })
+            body: JSON.stringify({ ...createForm, gym_id: null, company_id: selectedCompanyId })
         });
         if (!res.ok) throw new Error("등록 실패");
         alert("직원이 등록되었습니다. 본사관리에서 발령을 진행해주세요.");
         setIsCreateOpen(false);
         setCreateForm({ name: "", email: "", password: "", phone: "", job_title: "트레이너", joined_at: "" });
-        fetchStaffs(gymId, myRole);
+        fetchStaffs(selectedGymId, selectedCompanyId);
     } catch (e: any) { alert(e.message); }
     finally { setIsCreating(false); }
   };
@@ -172,14 +169,15 @@ export default function AdminStaffPage() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">직원 관리</h1>
-          <p className="text-gray-500 mt-2 font-medium">{gymName}의 직원을 관리합니다</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">직원 관리</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">{gymName}의 직원을 관리합니다</p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold px-6 py-2 shadow-sm">
+
+        <Button onClick={() => setIsCreateOpen(true)} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold px-4 sm:px-6 py-2 shadow-sm">
           <Plus className="mr-2 h-4 w-4"/> 직원 등록
         </Button>
       </div>
@@ -270,6 +268,7 @@ export default function AdminStaffPage() {
         <DialogContent className="bg-white max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">직원 정보 수정</DialogTitle>
+            <DialogDescription className="sr-only">직원 정보를 수정합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
 
@@ -294,7 +293,7 @@ export default function AdminStaffPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">연락처</Label>
-                <Input value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})}/>
+                <Input value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: formatPhoneNumberOnChange(e.target.value)})} placeholder="010-0000-0000"/>
               </div>
             </div>
             <div className="space-y-2">
@@ -357,6 +356,7 @@ export default function AdminStaffPage() {
         <DialogContent className="bg-white max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">신규 직원 등록</DialogTitle>
+            <DialogDescription className="sr-only">새로운 직원을 등록합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -366,7 +366,7 @@ export default function AdminStaffPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">연락처</Label>
-                <Input value={createForm.phone} onChange={(e) => setCreateForm({...createForm, phone: e.target.value})}/>
+                <Input value={createForm.phone} onChange={(e) => setCreateForm({...createForm, phone: formatPhoneNumberOnChange(e.target.value)})} placeholder="010-0000-0000"/>
               </div>
             </div>
             <div className="space-y-2">

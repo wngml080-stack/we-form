@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -307,12 +308,12 @@ export default function AdminAttendancePage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">출석 관리</h1>
-          <p className="text-gray-500 mt-2 font-medium">{gymName}의 회원 출석 기록을 관리합니다</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">출석 관리</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">{gymName}의 회원 출석 기록을 관리합니다</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -323,6 +324,7 @@ export default function AdminAttendancePage() {
           <DialogContent className="bg-white max-w-2xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-gray-900">출석 기록 등록</DialogTitle>
+              <DialogDescription className="sr-only">출석 기록을 등록합니다</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateRecord} className="space-y-4">
               <div>

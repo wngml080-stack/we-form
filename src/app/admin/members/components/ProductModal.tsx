@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -160,6 +161,7 @@ export function ProductModal({
           <DialogTitle>
             {editingProduct ? "상품 수정" : "상품 등록"}
           </DialogTitle>
+          <DialogDescription className="sr-only">상품 정보를 입력합니다</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">

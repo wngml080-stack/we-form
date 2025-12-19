@@ -1,20 +1,24 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import SalaryTemplateManager from "@/app/admin/salary/components/SalaryTemplateManager";
 import SalaryAssignmentManager from "@/app/admin/salary/components/SalaryAssignmentManager";
 import MonthlyStatsViewer from "@/app/admin/salary/components/MonthlyStatsViewer";
 import SalaryCalculator from "@/app/admin/salary/components/SalaryCalculator";
 
 export default function AdminSalaryPage() {
+  const { branchFilter } = useAdminFilter();
+  const gymName = branchFilter.gyms.find(g => g.id === branchFilter.selectedGymId)?.name || "";
+
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">급여 관리</h1>
-          <p className="text-gray-500 mt-2 font-medium">
-            직원별 급여 템플릿을 설정하고 월별 실적을 관리합니다.
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">급여 관리</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">
+            {gymName ? `${gymName}의 급여를 관리합니다.` : "직원별 급여 템플릿을 설정하고 월별 실적을 관리합니다."}
           </p>
         </div>
       </div>

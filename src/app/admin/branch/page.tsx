@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -24,9 +25,16 @@ import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 export default function BranchManagementPage() {
   // AuthContext에서 사용자 정보 가져오기
-  const { user, isLoading: authLoading, companyName: authCompanyName, gymName: authGymName, gyms: authGyms, companies: authCompanies } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
-  const [gymName, setGymName] = useState("");
+  // AdminFilterContext에서 branchFilter 사용
+  const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+
+  // branchFilter에서 값 가져오기
+  const selectedGymId = branchFilter.selectedGymId;
+  const selectedCompanyId = branchFilter.selectedCompanyId;
+  const gyms = branchFilter.gyms;
+
   const [gymData, setGymData] = useState<any>(null);
   const [stats, setStats] = useState({
     totalMembers: 0,
@@ -58,20 +66,8 @@ export default function BranchManagementPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDateAnnouncementsModalOpen, setIsDateAnnouncementsModalOpen] = useState(false);
 
-  // Gym and company IDs
-  const [gymId, setGymId] = useState<string>("");
-  const [companyId, setCompanyId] = useState<string>("");
-  const [companyName, setCompanyName] = useState<string>("");
-  const myRole = user?.role || "";
-  const myGymId = user?.gym_id || "";
-
-  // system_admin용 회사 목록
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-
-  // 지점 필터 (gyms, companies는 AuthContext에서 가져옴)
-  const [selectedGymId, setSelectedGymId] = useState<string>("");
-  const gyms = authGyms;
-  const companies = authCompanies;
+  // 현재 선택된 지점명
+  const gymName = gyms.find(g => g.id === selectedGymId)?.name || "We:form";
 
   // 매출 통계 모달
   const [isFcModalOpen, setIsFcModalOpen] = useState(false);
@@ -126,69 +122,25 @@ export default function BranchManagementPage() {
 
   const supabase = createSupabaseClient();
 
-  // AuthContext 데이터가 로드되면 초기화
+  // 필터 초기화 시 데이터 로드
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !filterInitialized) return;
     if (!user) {
       setIsLoading(false);
       return;
     }
 
-    // AuthContext에서 데이터 설정
-    setCompanyId(user.company_id);
-    setCompanyName(authCompanyName);
-
-    if (user.role === 'system_admin') {
-      setSelectedCompanyId(user.company_id);
-    }
-
-    // 내 지점 정보 찾기
-    const myGym = gyms.find((g: any) => g.id === user.gym_id);
-
-    if (myGym) {
-      setGymName(myGym.name ?? "");
-      setGymData(myGym);
-      setGymId(user.gym_id);
-      setSelectedGymId(user.gym_id);
-      fetchBranchData(user.gym_id, user.company_id, myGym);
-      fetchAnnouncements(user.company_id, user.gym_id);
-    } else if (gyms.length > 0) {
-      // 지점이 없으면 첫 번째 지점 선택
-      const firstGym = gyms[0];
-      setGymName(firstGym.name ?? "");
-      setGymData(firstGym);
-      setGymId(firstGym.id);
-      setSelectedGymId(firstGym.id);
-      fetchBranchData(firstGym.id, user.company_id, firstGym);
-      fetchAnnouncements(user.company_id, firstGym.id);
+    if (selectedGymId && selectedCompanyId) {
+      const selectedGym = gyms.find(g => g.id === selectedGymId);
+      if (selectedGym) {
+        setGymData(selectedGym);
+        fetchBranchData(selectedGymId, selectedCompanyId, selectedGym);
+        fetchAnnouncements(selectedCompanyId, selectedGymId);
+      }
     }
 
     setIsLoading(false);
-  }, [authLoading, user, gyms]);
-
-  // system_admin이 회사를 변경했을 때 (AuthContext에서 처리하므로 간단히)
-  useEffect(() => {
-    if (selectedCompanyId && myRole === 'system_admin') {
-      const selectedCompany = companies.find(c => c.id === selectedCompanyId);
-      if (selectedCompany) {
-        setCompanyName(selectedCompany.name);
-      }
-    }
-  }, [selectedCompanyId, companies, myRole]);
-
-  // 지점 선택이 변경되었을 때 데이터 다시 가져오기
-  useEffect(() => {
-    if (selectedGymId && companyId) {
-      const targetCompanyId = myRole === 'system_admin' ? selectedCompanyId : companyId;
-      const selectedGym = gyms.find(g => g.id === selectedGymId);
-      if (selectedGym) {
-        setGymName(selectedGym.name);
-        setGymData(selectedGym);
-        fetchBranchData(selectedGymId, targetCompanyId, selectedGym);
-        fetchAnnouncements(targetCompanyId, selectedGymId);
-      }
-    }
-  }, [selectedGymId]);
+  }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
 
   const fetchBranchData = async (gymId: string, companyId: string, gym: any) => {
     if (!gymId || !companyId) return;
@@ -260,7 +212,7 @@ export default function BranchManagementPage() {
         title: announcement.title,
         content: announcement.content,
         priority: announcement.priority,
-        gym_id: announcement.gym_id || gymId,
+        gym_id: announcement.gym_id || selectedGymId,
         start_date: announcement.start_date,
         end_date: announcement.end_date || "",
         is_active: announcement.is_active
@@ -272,7 +224,7 @@ export default function BranchManagementPage() {
         title: "",
         content: "",
         priority: "normal",
-        gym_id: gymId,
+        gym_id: selectedGymId,
         start_date: new Date().toISOString().split('T')[0],
         end_date: "",
         is_active: true
@@ -289,7 +241,7 @@ export default function BranchManagementPage() {
 
     setIsLoading(true);
     try {
-      if (!companyId) {
+      if (!selectedCompanyId) {
         throw new Error("회사 정보를 찾을 수 없습니다.");
       }
 
@@ -306,7 +258,7 @@ export default function BranchManagementPage() {
       if (!me) throw new Error("사용자 정보를 찾을 수 없습니다.");
 
       const announcementData = {
-        company_id: companyId,
+        company_id: selectedCompanyId,
         gym_id: announcementForm.gym_id,
         title: announcementForm.title,
         content: announcementForm.content,
@@ -325,7 +277,7 @@ export default function BranchManagementPage() {
           .eq("id", editingAnnouncement.id);
 
         if (error) throw error;
-        alert("공지사항이 수정되었습니다.");
+        alert("지점 공지사항이 수정되었습니다.");
       } else {
         // Create new announcement
         const { error } = await supabase
@@ -333,11 +285,11 @@ export default function BranchManagementPage() {
           .insert(announcementData);
 
         if (error) throw error;
-        alert("공지사항이 등록되었습니다.");
+        alert("지점 공지사항이 등록되었습니다.");
       }
 
       setIsAnnouncementModalOpen(false);
-      await fetchAnnouncements(companyId, gymId);
+      await fetchAnnouncements(selectedCompanyId, selectedGymId);
     } catch (error: any) {
       alert("오류: " + error.message);
     } finally {
@@ -355,7 +307,7 @@ export default function BranchManagementPage() {
 
       if (error) throw error;
 
-      await fetchAnnouncements(companyId, gymId);
+      await fetchAnnouncements(selectedCompanyId, selectedGymId);
     } catch (error: any) {
       alert("오류: " + error.message);
     }
@@ -373,8 +325,8 @@ export default function BranchManagementPage() {
 
       if (error) throw error;
 
-      alert("공지사항이 삭제되었습니다.");
-      await fetchAnnouncements(companyId, gymId);
+      alert("지점 공지사항이 삭제되었습니다.");
+      await fetchAnnouncements(selectedCompanyId, selectedGymId);
     } catch (error: any) {
       alert("오류: " + error.message);
     }
@@ -408,10 +360,8 @@ export default function BranchManagementPage() {
   // 상세 매출 데이터 가져오기
   const fetchDetailedSales = async (type: "all" | "fc" | "pt", period: "thisMonth" | "lastMonth" | "custom") => {
     setSalesLoading(true);
-    const targetGymId = selectedGymId || gymId;
-    const targetCompanyId = myRole === 'system_admin' ? selectedCompanyId : companyId;
 
-    if (!targetGymId || !targetCompanyId) {
+    if (!selectedGymId || !selectedCompanyId) {
       setSalesLoading(false);
       return;
     }
@@ -421,8 +371,8 @@ export default function BranchManagementPage() {
     const { data: salesData } = await supabase
       .from("member_payments")
       .select("*, members(name, phone)")
-      .eq("gym_id", targetGymId)
-      .eq("company_id", targetCompanyId)
+      .eq("gym_id", selectedGymId)
+      .eq("company_id", selectedCompanyId)
       .gte("paid_at", start.toISOString())
       .lte("paid_at", end.toISOString())
       .order("paid_at", { ascending: false });
@@ -521,8 +471,8 @@ export default function BranchManagementPage() {
       const { data: prevMonthData } = await supabase
         .from("member_payments")
         .select("membership_type, amount")
-        .eq("gym_id", targetGymId)
-        .eq("company_id", targetCompanyId)
+        .eq("gym_id", selectedGymId)
+        .eq("company_id", selectedCompanyId)
         .gte("paid_at", prevMonthStart.toISOString())
         .lte("paid_at", prevMonthEnd.toISOString());
 
@@ -530,8 +480,8 @@ export default function BranchManagementPage() {
       const { data: prevYearData } = await supabase
         .from("member_payments")
         .select("membership_type, amount")
-        .eq("gym_id", targetGymId)
-        .eq("company_id", targetCompanyId)
+        .eq("gym_id", selectedGymId)
+        .eq("company_id", selectedCompanyId)
         .gte("paid_at", prevYearStart.toISOString())
         .lte("paid_at", prevYearEnd.toISOString());
 
@@ -606,68 +556,17 @@ export default function BranchManagementPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
             지점 관리
           </h1>
-          <p className="text-gray-500 mt-2 font-medium">
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">
             <span className="text-[#2F80ED] font-bold">{gymName}</span> 지점의 운영 현황을 확인하세요
           </p>
         </div>
-
-        {/* 회사/지점 필터 */}
-        {!isLoading && (
-          <div className="flex items-center gap-3">
-            {/* Company selector for system_admin */}
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium text-gray-700">회사:</Label>
-              {myRole === 'system_admin' ? (
-                <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue>
-                      {selectedCompanyId ? (companies.find(c => c.id === selectedCompanyId)?.name || '회사 선택') : '회사 선택'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {companies.map(company => (
-                      <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="px-3 py-1.5 bg-[#2F80ED] text-white rounded-md text-sm font-medium">
-                  {companyName}
-                </div>
-              )}
-            </div>
-
-            {/* Gym selector */}
-            <div className="flex items-center gap-2">
-              <Label className="text-sm font-medium text-gray-700">지점:</Label>
-              {gyms.length >= 1 ? (
-                <Select value={selectedGymId} onValueChange={setSelectedGymId}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue>
-                      {selectedGymId ? (gyms.find(g => g.id === selectedGymId)?.name || '지점 선택') : '지점 선택'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    {gyms.map(gym => (
-                      <SelectItem key={gym.id} value={gym.id}>{gym.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md text-sm font-medium">
-                  지점 없음
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 핵심 지표 카드 */}
@@ -754,7 +653,7 @@ export default function BranchManagementPage() {
         </div>
       </div>
 
-      {/* 공지사항 관리 - 달력 형태 */}
+      {/* 지점 공지사항 관리 - 달력 형태 */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
         <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -762,7 +661,7 @@ export default function BranchManagementPage() {
               <Bell className="w-4 h-4 text-purple-600" />
             </div>
             <div className="flex items-center gap-3">
-              <h3 className="text-base font-semibold text-gray-900">공지사항 관리</h3>
+              <h3 className="text-base font-semibold text-gray-900">지점 공지사항 관리</h3>
               <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
                 {announcements.length}개
               </span>
@@ -922,13 +821,14 @@ export default function BranchManagementPage() {
         </div>
       </div>
 
-      {/* 공지사항 등록/수정 모달 */}
+      {/* 지점 공지사항 등록/수정 모달 */}
       <Dialog open={isAnnouncementModalOpen} onOpenChange={setIsAnnouncementModalOpen}>
         <DialogContent className="max-w-2xl bg-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">
-              {editingAnnouncement ? '공지사항 수정' : '새 공지사항 등록'}
+              {editingAnnouncement ? '지점 공지사항 수정' : '새 지점 공지사항 등록'}
             </DialogTitle>
+            <DialogDescription className="sr-only">지점 공지사항 정보를 입력합니다</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* 제목 */}
@@ -940,7 +840,7 @@ export default function BranchManagementPage() {
                 id="announcement-title"
                 value={announcementForm.title}
                 onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
-                placeholder="공지사항 제목을 입력하세요"
+                placeholder="지점 공지사항 제목을 입력하세요"
                 className="mt-1"
               />
             </div>
@@ -1129,13 +1029,14 @@ export default function BranchManagementPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 선택한 날짜의 공지사항 보기 모달 */}
+      {/* 선택한 날짜의 지점 공지사항 보기 모달 */}
       <Dialog open={isDateAnnouncementsModalOpen} onOpenChange={setIsDateAnnouncementsModalOpen}>
         <DialogContent className="max-w-3xl bg-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedDate && format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })} 공지사항
+              {selectedDate && format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })} 지점 공지사항
             </DialogTitle>
+            <DialogDescription className="sr-only">선택한 날짜의 지점 공지사항 목록입니다</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4">
             {selectedDate && (() => {
@@ -1162,7 +1063,7 @@ export default function BranchManagementPage() {
                 return (
                   <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                     <Bell className="w-12 h-12 mb-3 opacity-20" />
-                    <p className="text-sm">이 날짜에 등록된 공지사항이 없습니다.</p>
+                    <p className="text-sm">이 날짜에 등록된 지점 공지사항이 없습니다.</p>
                   </div>
                 );
               }
@@ -1243,6 +1144,7 @@ export default function BranchManagementPage() {
               <Target className="w-6 h-6 text-[#2F80ED]" />
               FC (회원권) 매출 현황
             </DialogTitle>
+            <DialogDescription className="sr-only">FC 회원권 매출 현황을 확인합니다</DialogDescription>
           </DialogHeader>
 
           {/* 기간 선택 */}
@@ -1370,6 +1272,7 @@ export default function BranchManagementPage() {
               <Award className="w-6 h-6 text-orange-500" />
               PT 매출 현황
             </DialogTitle>
+            <DialogDescription className="sr-only">PT 매출 현황을 확인합니다</DialogDescription>
           </DialogHeader>
 
           {/* 기간 선택 */}
@@ -1489,6 +1392,7 @@ export default function BranchManagementPage() {
               <TrendingUp className="w-6 h-6 text-purple-600" />
               매출 현황
             </DialogTitle>
+            <DialogDescription className="sr-only">전체 매출 현황을 확인합니다</DialogDescription>
           </DialogHeader>
 
           {/* 기간 선택 */}

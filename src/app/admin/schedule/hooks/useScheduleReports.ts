@@ -37,29 +37,57 @@ export function useScheduleReports({ gymId, companyId, status = "all", yearMonth
     setIsLoading(true);
     setError(null);
 
-    let query = supabase
-      .from("monthly_schedule_reports")
-      .select("*, staffs!staff_id(name, job_title)")
-      .eq("gym_id", gymId)
-      .order("submitted_at", { ascending: false });
+    try {
+      // 1. 먼저 보고서 조회 (staffs 조인 없이)
+      let query = supabase
+        .from("monthly_schedule_reports")
+        .select("*")
+        .eq("gym_id", gymId)
+        .order("submitted_at", { ascending: false });
 
-    if (companyId) {
-      query = query.eq("company_id", companyId);
-    }
-    if (status !== "all") {
-      query = query.eq("status", status);
-    }
-    if (yearMonth) {
-      query = query.eq("year_month", yearMonth);
-    }
+      if (companyId) {
+        query = query.eq("company_id", companyId);
+      }
+      if (status !== "all") {
+        query = query.eq("status", status);
+      }
+      if (yearMonth) {
+        query = query.eq("year_month", yearMonth);
+      }
 
-    const { data, error } = await query;
-    if (error) {
-      setError(error.message);
-    } else {
-      setReports(data || []);
+      const { data: reportsData, error: reportsError } = await query;
+      if (reportsError) {
+        setError(reportsError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!reportsData || reportsData.length === 0) {
+        setReports([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. 관련된 staff 정보 별도 조회
+      const staffIds = [...new Set(reportsData.map(r => r.staff_id))];
+      const { data: staffsData } = await supabase
+        .from("staffs")
+        .select("id, name, job_title")
+        .in("id", staffIds);
+
+      // 3. 보고서에 staff 정보 매핑
+      const staffMap = new Map(staffsData?.map(s => [s.id, s]) || []);
+      const reportsWithStaff = reportsData.map(report => ({
+        ...report,
+        staffs: staffMap.get(report.staff_id) || null,
+      }));
+
+      setReports(reportsWithStaff);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [gymId, companyId, status, yearMonth, supabase]);
 
   useEffect(() => {

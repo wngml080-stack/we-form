@@ -3,19 +3,22 @@
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import {
   Users, DollarSign, Calendar, TrendingUp, UserPlus,
-  CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight
+  CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight, Building2, Package, BarChart3
 } from "lucide-react";
 import Link from "next/link";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function AdminDashboardPage() {
   const { user, isLoading: authLoading, gymName: authGymName } = useAuth();
+  const { dashboardFilter, isInitialized: filterInitialized } = useAdminFilter();
 
   const [stats, setStats] = useState({
     totalMembers: 0,
@@ -28,42 +31,81 @@ export default function AdminDashboardPage() {
   const [todaySchedules, setTodaySchedules] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [companyEvents, setCompanyEvents] = useState<any[]>([]);
+  const [systemAnnouncements, setSystemAnnouncements] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // 달력 관련 상태
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+
+  // 센터 현황 관련 상태
+  const [centerStatsMonthOffset, setCenterStatsMonthOffset] = useState(0); // 0: 이번달, -1: 저번달, ...
+  const [monthlySalesData, setMonthlySalesData] = useState<Record<string, number>>({}); // { "2024-01": 1000000, ... }
+  const [statsViewMode, setStatsViewMode] = useState<'monthly' | '3month' | '6month' | 'firstHalf' | 'secondHalf'>('monthly');
+
+  // 지점 공지사항 모달 상태
+  const [selectedBranchAnnouncement, setSelectedBranchAnnouncement] = useState<any>(null);
+  const [isBranchAnnouncementModalOpen, setIsBranchAnnouncementModalOpen] = useState(false);
 
   const supabase = createSupabaseClient();
 
   // AuthContext에서 사용자 정보 사용
-  const gymName = authGymName || "We:form";
   const userName = user?.name || "관리자";
   const myStaffId = user?.id || "";
+  const userRole = user?.role || "";
+
+  // 현재 선택된 회사/지점 정보 (AdminFilterContext)
+  const selectedCompanyId = dashboardFilter.selectedCompanyId;
+  const selectedGymId = dashboardFilter.selectedGymId;
+  const gyms = dashboardFilter.gyms;
+
+  // 현재 선택된 지점명
+  const gymName = gyms.find(g => g.id === selectedGymId)?.name || authGymName || "We:form";
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !filterInitialized) return;
     if (!user) {
       setIsLoading(false);
       return;
     }
 
-    fetchDashboardData(user.gym_id, user.company_id, user.id);
+    if (selectedGymId && selectedCompanyId) {
+      fetchDashboardData(selectedGymId, selectedCompanyId, user.id);
+    }
     setIsLoading(false);
-  }, [authLoading, user]);
+  }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
 
   const fetchDashboardData = async (gymId: string, companyId: string, staffId: string) => {
     if (!gymId || !companyId) return;
 
-    const today = new Date().toISOString().split('T')[0];
-    const thisMonthStart = new Date();
-    thisMonthStart.setDate(1);
-    thisMonthStart.setHours(0, 0, 0, 0);
+    // 한국 시간 기준 오늘 날짜 계산
+    const now = new Date();
+    const koreaOffset = 9 * 60; // UTC+9
+    const koreaTime = new Date(now.getTime() + (koreaOffset + now.getTimezoneOffset()) * 60000);
+    const today = koreaTime.toISOString().split('T')[0];
+
+    const thisMonthStart = new Date(koreaTime.getFullYear(), koreaTime.getMonth(), 1);
     const monthStart = thisMonthStart.toISOString();
-    const monthEnd = new Date(thisMonthStart);
-    monthEnd.setMonth(monthEnd.getMonth() + 1);
-    const monthEndStr = monthEnd.toISOString().split('T')[0];
+
+    // 12개월 전부터의 매출 데이터를 위한 날짜 계산
+    const twelveMonthsAgo = new Date(koreaTime.getFullYear(), koreaTime.getMonth() - 11, 1);
+    const twelveMonthsAgoStr = twelveMonthsAgo.toISOString();
+
+    // 오늘 스케줄 쿼리 (시스템관리자는 전체, 일반 직원은 본인 담당만)
+    // 한국 시간대(+09:00) 명시하여 정확한 날짜 필터링
+    let schedulesQuery = supabase.from("schedules")
+      .select("id, member_name, type, status, start_time, end_time, staff_id, staffs(name)")
+      .eq("gym_id", gymId)
+      .gte("start_time", `${today}T00:00:00+09:00`)
+      .lte("start_time", `${today}T23:59:59+09:00`)
+      .order("start_time", { ascending: true });
+
+    // 시스템관리자가 아니면 본인 담당 스케줄만
+    if (userRole !== "system_admin") {
+      schedulesQuery = schedulesQuery.eq("staff_id", staffId);
+    }
 
     // 모든 쿼리를 병렬로 실행
     const [
@@ -72,33 +114,58 @@ export default function AdminDashboardPage() {
       todayPaymentsResult,
       monthPaymentsResult,
       announcementsResult,
-      eventsResult
+      eventsResult,
+      systemAnnouncementsResult,
+      historicalPaymentsResult
     ] = await Promise.all([
       // 1. 회원 통계
       supabase.from("members").select("id, status, created_at").eq("gym_id", gymId).eq("company_id", companyId),
       // 2. 오늘 스케줄
-      supabase.from("schedules").select("id, member_name, type, status, start_time, end_time")
-        .eq("gym_id", gymId).eq("staff_id", staffId)
-        .gte("start_time", `${today}T00:00:00`).lte("start_time", `${today}T23:59:59`)
-        .order("start_time", { ascending: true }),
+      schedulesQuery,
       // 3. 오늘 매출
       supabase.from("member_payments").select("amount").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", `${today}T00:00:00`),
       // 4. 이번달 매출
       supabase.from("member_payments").select("amount").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", monthStart),
-      // 5. 공지사항
+      // 5. 지점 공지사항 (해당 지점 공지 또는 전사 공지)
       supabase.from("announcements").select("*").eq("company_id", companyId).eq("is_active", true)
-        .or(`gym_id.is.null,gym_id.eq.${gymId}`).lte("start_date", today)
-        .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(5),
-      // 6. 회사 행사
+        .or(`gym_id.eq.${gymId},gym_id.is.null`)
+        .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(10),
+      // 6. 회사 일정 & 행사 (이번 달 전체)
       supabase.from("company_events").select("*").eq("company_id", companyId).eq("is_active", true)
-        .or(`gym_id.is.null,gym_id.eq.${gymId}`).gte("event_date", today).lte("event_date", monthEndStr)
-        .order("event_date", { ascending: true })
+        .order("event_date", { ascending: true }),
+      // 7. 시스템 공지사항 (흘러가는 배너용)
+      supabase.from("system_announcements").select("*").eq("is_active", true)
+        .lte("start_date", today)
+        .or(`end_date.is.null,end_date.gte.${today}`)
+        .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(5),
+      // 8. 12개월 매출 데이터 (통계용)
+      supabase.from("member_payments").select("amount, paid_at").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", twelveMonthsAgoStr)
     ]);
 
     const members = membersResult.data || [];
     const schedules = schedulesResult.data || [];
     const todayPayments = todayPaymentsResult.data || [];
     const monthPayments = monthPaymentsResult.data || [];
+    const historicalPayments = historicalPaymentsResult.data || [];
+
+    // 월별 매출 데이터 정리
+    const monthlySales: Record<string, number> = {};
+    historicalPayments.forEach((payment: { amount: string; paid_at: string }) => {
+      const paymentDate = new Date(payment.paid_at);
+      const monthKey = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
+      monthlySales[monthKey] = (monthlySales[monthKey] || 0) + parseFloat(payment.amount);
+    });
+    setMonthlySalesData(monthlySales);
+
+    // 디버깅: 쿼리 파라미터 확인
+    console.log("=== 대시보드 스케줄 디버깅 ===");
+    console.log("today:", today);
+    console.log("staffId:", staffId);
+    console.log("gymId:", gymId);
+    console.log("schedules result:", schedules);
+    if (schedulesResult.error) {
+      console.error("schedules error:", schedulesResult.error);
+    }
 
     const totalMembers = members.length;
     const activeMembers = members.filter(m => m.status === 'active').length;
@@ -109,6 +176,7 @@ export default function AdminDashboardPage() {
     setTodaySchedules(schedules);
     setAnnouncements(announcementsResult.data || []);
     setCompanyEvents(eventsResult.data || []);
+    setSystemAnnouncements(systemAnnouncementsResult.data || []);
 
     setStats({
       totalMembers,
@@ -122,6 +190,87 @@ export default function AdminDashboardPage() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR').format(amount) + '원';
+  };
+
+  // 특정 월의 매출 가져오기
+  const getSalesForMonth = (offset: number) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+    return monthlySalesData[monthKey] || 0;
+  };
+
+  // 월 레이블 가져오기
+  const getMonthLabel = (offset: number) => {
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    return format(targetDate, "yyyy년 M월", { locale: ko });
+  };
+
+  // 통계 평균 계산
+  const calculateStatistics = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    switch (statsViewMode) {
+      case '3month': {
+        // 최근 3개월 평균
+        let total = 0;
+        let count = 0;
+        for (let i = 0; i < 3; i++) {
+          const targetDate = new Date(currentYear, currentMonth - i, 1);
+          const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+          if (monthlySalesData[monthKey] !== undefined) {
+            total += monthlySalesData[monthKey];
+            count++;
+          }
+        }
+        return { label: '최근 3개월 평균', value: count > 0 ? total / count : 0 };
+      }
+      case '6month': {
+        // 최근 6개월 평균
+        let total = 0;
+        let count = 0;
+        for (let i = 0; i < 6; i++) {
+          const targetDate = new Date(currentYear, currentMonth - i, 1);
+          const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+          if (monthlySalesData[monthKey] !== undefined) {
+            total += monthlySalesData[monthKey];
+            count++;
+          }
+        }
+        return { label: '최근 6개월 평균', value: count > 0 ? total / count : 0 };
+      }
+      case 'firstHalf': {
+        // 상반기 (1~6월) 평균
+        let total = 0;
+        let count = 0;
+        for (let m = 0; m < 6; m++) {
+          const monthKey = `${currentYear}-${String(m + 1).padStart(2, '0')}`;
+          if (monthlySalesData[monthKey] !== undefined) {
+            total += monthlySalesData[monthKey];
+            count++;
+          }
+        }
+        return { label: `${currentYear}년 상반기 평균 (1~6월)`, value: count > 0 ? total / count : 0 };
+      }
+      case 'secondHalf': {
+        // 하반기 (7~12월) 평균
+        let total = 0;
+        let count = 0;
+        for (let m = 6; m < 12; m++) {
+          const monthKey = `${currentYear}-${String(m + 1).padStart(2, '0')}`;
+          if (monthlySalesData[monthKey] !== undefined) {
+            total += monthlySalesData[monthKey];
+            count++;
+          }
+        }
+        return { label: `${currentYear}년 하반기 평균 (7~12월)`, value: count > 0 ? total / count : 0 };
+      }
+      default:
+        return null;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -148,11 +297,38 @@ export default function AdminDashboardPage() {
   });
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8">
-      
-      {/* 1. Welcome Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="space-y-0">
+      {/* 흘러가는 시스템 공지 배너 */}
+      {systemAnnouncements.length > 0 && (
+        <div
+          className="bg-gradient-to-r from-[#2F80ED] to-[#56CCF2] py-2.5 overflow-hidden cursor-pointer"
+          onClick={() => setIsAnnouncementModalOpen(true)}
+        >
+          <div className="flex animate-marquee whitespace-nowrap">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center mx-8">
+                <span className={`text-white text-xs font-bold px-2 py-0.5 rounded mr-3 ${
+                  systemAnnouncements[0]?.priority === 'urgent' ? 'bg-red-500/80' : 'bg-white/20'
+                }`}>
+                  {systemAnnouncements[0]?.priority === 'urgent' ? '긴급' :
+                   systemAnnouncements[0]?.priority === 'update' ? '업데이트' : '공지'}
+                </span>
+                <span className="text-white font-medium text-sm">
+                  {systemAnnouncements[0]?.title}
+                </span>
+                <span className="mx-8 text-white/30">•</span>
+                <Bell className="w-4 h-4 text-white/80" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-6 lg:space-y-8">
+
+        {/* 1. Welcome Header */}
         <div>
+          <div className="text-sm font-medium text-gray-400 mb-1">{todayDate}</div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
             {userName}님 즐거운 오후입니다. <span className="text-yellow-500">😊</span>
           </h1>
@@ -160,48 +336,14 @@ export default function AdminDashboardPage() {
              오늘도 <span className="text-[#2F80ED] font-bold">{gymName}</span>의 성장을 응원합니다!
           </p>
         </div>
-        <div className="text-right hidden md:block">
-          <div className="text-sm font-medium text-gray-500 mb-2">{todayDate}</div>
-          <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2 ml-auto shadow-sm">
-            <Settings className="w-4 h-4" /> 위젯 설정
-          </button>
-        </div>
-      </div>
-
-      {/* 업데이트 공지 배너 */}
-      {announcements.filter(a => a.priority === 'urgent').length > 0 && (
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl p-4 md:p-5 text-white shadow-lg flex items-center gap-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-2xl"></div>
-          <div className="relative z-10 flex items-center gap-3 flex-1">
-            <div className="bg-white/20 backdrop-blur p-2 rounded-lg">
-              <Bell className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <div className="font-semibold text-sm mb-1">🔔 중요 공지</div>
-              <p className="text-sm opacity-90">{announcements.filter(a => a.priority === 'urgent')[0]?.title}</p>
-            </div>
-            <button
-              onClick={() => {
-                const urgentAnn = announcements.filter(a => a.priority === 'urgent')[0];
-                if (urgentAnn) {
-                  alert(`${urgentAnn.title}\n\n${urgentAnn.content}`);
-                }
-              }}
-              className="px-4 py-2 bg-white text-purple-600 rounded-lg text-sm font-semibold hover:bg-purple-50 transition-colors whitespace-nowrap"
-            >
-              자세히 보기
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* 2. Quick Actions (아이콘 메뉴) */}
-      <div className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide">
-        <QuickAction icon={UserPlus} label="신규회원 매출등록" href="/admin/members?type=new" color="bg-blue-100 text-blue-600" />
-        <QuickAction icon={Users} label="기존회원 매출등록" href="/admin/members?type=existing" color="bg-indigo-100 text-indigo-600" />
+      <div className="flex gap-6 md:gap-8 overflow-x-auto pb-2 scrollbar-hide">
+        <QuickAction icon={UserPlus} label="신규회원 등록" href="/admin/members?type=new" color="bg-blue-100 text-blue-600" />
+        <QuickAction icon={Users} label="기존회원 등록" href="/admin/members?type=existing" color="bg-indigo-100 text-indigo-600" />
+        <QuickAction icon={Package} label="부가상품 등록" href="#" color="bg-green-100 text-green-600" disabled />
         <QuickAction icon={Calendar} label="스케줄 관리" href="/admin/schedule" color="bg-purple-100 text-purple-600" />
         <QuickAction icon={CheckCircle2} label="출석 체크" href="/admin/attendance" color="bg-orange-100 text-orange-600" />
-        <QuickAction icon={Plus} label="추가 메뉴" href="#" color="bg-gray-100 text-gray-500" />
       </div>
 
       {/* 3. Banner Widget - Google Calendar 연동 */}
@@ -232,44 +374,135 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* 4. Bento Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+
         {/* Left Column: 현황 카드 */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-[#2F80ED] rounded-full"></div>
                 센터 현황
               </h3>
-              <button className="text-gray-400 hover:text-gray-600"><Settings className="w-4 h-4" /></button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="text-gray-400 hover:text-[#2F80ED] transition-colors p-1.5 rounded-lg hover:bg-blue-50">
+                    <BarChart3 className="w-5 h-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-white">
+                  <DropdownMenuItem
+                    onClick={() => setStatsViewMode('monthly')}
+                    className={cn("cursor-pointer", statsViewMode === 'monthly' && "bg-blue-50 text-blue-600")}
+                  >
+                    월별 매출
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setStatsViewMode('3month')}
+                    className={cn("cursor-pointer", statsViewMode === '3month' && "bg-blue-50 text-blue-600")}
+                  >
+                    최근 3개월 평균
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setStatsViewMode('6month')}
+                    className={cn("cursor-pointer", statsViewMode === '6month' && "bg-blue-50 text-blue-600")}
+                  >
+                    최근 6개월 평균
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setStatsViewMode('firstHalf')}
+                    className={cn("cursor-pointer", statsViewMode === 'firstHalf' && "bg-blue-50 text-blue-600")}
+                  >
+                    상반기 평균 (1~6월)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setStatsViewMode('secondHalf')}
+                    className={cn("cursor-pointer", statsViewMode === 'secondHalf' && "bg-blue-50 text-blue-600")}
+                  >
+                    하반기 평균 (7~12월)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            
+
             <div className="space-y-4">
-              <StatRow 
-                icon={Users} 
-                label="전체 회원" 
-                value={`${stats.totalMembers}명`} 
+              <StatRow
+                icon={Users}
+                label="전체 회원"
+                value={`${stats.totalMembers}명`}
                 subValue={`신규 ${stats.newMembersThisMonth}명`}
                 iconBg="bg-blue-50"
                 iconColor="text-blue-600"
               />
-              <StatRow 
-                icon={TrendingUp} 
-                label="활성 회원" 
-                value={`${stats.activeMembers}명`} 
+              <StatRow
+                icon={TrendingUp}
+                label="활성 회원"
+                value={`${stats.activeMembers}명`}
                 subValue={`${stats.totalMembers > 0 ? ((stats.activeMembers/stats.totalMembers)*100).toFixed(0) : 0}% 활성`}
                 iconBg="bg-emerald-50"
                 iconColor="text-emerald-600"
               />
-              <StatRow 
-                icon={DollarSign} 
-                label="이번 달 매출" 
-                value={formatCurrency(stats.monthSales)} 
-                subValue="목표 대비 85%"
-                iconBg="bg-purple-50"
-                iconColor="text-purple-600"
-              />
+
+              {/* 매출 현황 - 스와이프 또는 평균 통계 */}
+              {statsViewMode === 'monthly' ? (
+                <div className="relative">
+                  <div className="flex items-center justify-between group cursor-pointer">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <DollarSign className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-400 font-medium mb-0.5">{getMonthLabel(centerStatsMonthOffset)} 매출</div>
+                        <div className="text-lg font-bold text-gray-900">{formatCurrency(getSalesForMonth(centerStatsMonthOffset))}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCenterStatsMonthOffset(prev => prev - 1)}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                        disabled={centerStatsMonthOffset <= -11}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setCenterStatsMonthOffset(prev => Math.min(prev + 1, 0))}
+                        className={cn(
+                          "p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors",
+                          centerStatsMonthOffset >= 0 && "opacity-30 cursor-not-allowed"
+                        )}
+                        disabled={centerStatsMonthOffset >= 0}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {centerStatsMonthOffset !== 0 && (
+                    <button
+                      onClick={() => setCenterStatsMonthOffset(0)}
+                      className="mt-2 text-xs text-blue-500 hover:text-blue-600 font-medium"
+                    >
+                      이번 달로 돌아가기
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+                      <BarChart3 className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-400 font-medium mb-0.5">{calculateStatistics()?.label}</div>
+                      <div className="text-lg font-bold text-gray-900">{formatCurrency(calculateStatistics()?.value || 0)}</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-medium text-purple-500 bg-purple-50 px-2 py-1 rounded-md">
+                      평균 통계
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -277,7 +510,7 @@ export default function AdminDashboardPage() {
              <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                   <Bell className="w-5 h-5 text-[#2F80ED]" />
-                  공지사항
+                  지점 공지사항
                 </h3>
                 <span className="text-xs text-gray-400">{announcements.length}개</span>
              </div>
@@ -285,7 +518,7 @@ export default function AdminDashboardPage() {
                 {announcements.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-32 text-gray-400">
                     <Bell className="w-8 h-8 mb-2 opacity-20" />
-                    <p className="text-sm">등록된 공지사항이 없습니다.</p>
+                    <p className="text-sm">등록된 지점 공지사항이 없습니다.</p>
                   </div>
                 ) : (
                   announcements.map((announcement) => {
@@ -301,7 +534,14 @@ export default function AdminDashboardPage() {
                     };
 
                     return (
-                      <div key={announcement.id} className="p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer border border-gray-100">
+                      <div
+                        key={announcement.id}
+                        className="p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer border border-gray-100"
+                        onClick={() => {
+                          setSelectedBranchAnnouncement(announcement);
+                          setIsBranchAnnouncementModalOpen(true);
+                        }}
+                      >
                         <div className="flex items-start gap-3">
                           <span className={`px-2 py-0.5 rounded text-xs font-bold ${priorityColors[announcement.priority]}`}>
                             {priorityLabels[announcement.priority]}
@@ -355,26 +595,23 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                       <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(schedule.status)}`}></div>
-                      {new Date(schedule.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 시작
+                      {new Date(schedule.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                       <span className="text-gray-300">|</span>
                       {schedule.staffs?.name} 강사
                     </div>
                   </div>
-                  <button className="px-3 py-1.5 text-xs font-bold text-gray-500 bg-white border border-gray-200 rounded-lg group-hover:text-[#2F80ED] group-hover:border-blue-200 transition-colors">
-                    상세
-                  </button>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* Right Column: 회사 행사 일정 - 미니 달력 */}
+        {/* Right Column: 회사 일정 & 행사 - 미니 달력 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow h-full flex flex-col">
           <div className="flex justify-between items-center mb-4">
              <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                <Calendar className="w-5 h-5 text-[#2F80ED]" />
-               회사 행사
+               회사 일정 & 행사
              </h3>
              <span className="text-xs text-gray-400">{companyEvents.length}개</span>
           </div>
@@ -518,6 +755,7 @@ export default function AdminDashboardPage() {
             <DialogTitle>
               {selectedDate && format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })} 행사
             </DialogTitle>
+            <DialogDescription className="sr-only">선택한 날짜의 행사 목록입니다</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4">
             {selectedDate && (() => {
@@ -587,19 +825,151 @@ export default function AdminDashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 시스템 공지사항 모달 */}
+      <Dialog open={isAnnouncementModalOpen} onOpenChange={setIsAnnouncementModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-lg">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2F80ED] to-[#56CCF2] flex items-center justify-center">
+                <Bell className="w-5 h-5 text-white" />
+              </div>
+              시스템 공지사항
+            </DialogTitle>
+            <DialogDescription className="sr-only">시스템 공지사항 내용입니다</DialogDescription>
+          </DialogHeader>
+
+          {systemAnnouncements.length > 0 && (
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+              {systemAnnouncements.map((announcement) => (
+                <div key={announcement.id} className={`border rounded-xl p-4 ${
+                  announcement.priority === 'urgent' ? 'bg-red-50 border-red-100' :
+                  announcement.priority === 'update' ? 'bg-purple-50 border-purple-100' :
+                  announcement.priority === 'info' ? 'bg-cyan-50 border-cyan-100' :
+                  'bg-blue-50 border-blue-100'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                      announcement.priority === 'urgent' ? 'bg-red-500 text-white' :
+                      announcement.priority === 'update' ? 'bg-purple-500 text-white' :
+                      announcement.priority === 'info' ? 'bg-cyan-500 text-white' :
+                      'bg-blue-500 text-white'
+                    }`}>
+                      {announcement.priority === 'urgent' ? '긴급' :
+                       announcement.priority === 'update' ? '업데이트' :
+                       announcement.priority === 'info' ? '안내' : '일반'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {announcement.start_date && new Date(announcement.start_date).toLocaleDateString('ko-KR')}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-gray-900 mb-2">{announcement.title}</h4>
+                  <p className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
+                    {announcement.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={() => setIsAnnouncementModalOpen(false)}
+              className="bg-[#2F80ED] hover:bg-[#2570d6] text-white"
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 지점 공지사항 모달 */}
+      <Dialog open={isBranchAnnouncementModalOpen} onOpenChange={setIsBranchAnnouncementModalOpen}>
+        <DialogContent className="max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-lg">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-white" />
+              </div>
+              지점 공지사항
+            </DialogTitle>
+            <DialogDescription className="sr-only">지점 공지사항 상세 내용입니다</DialogDescription>
+          </DialogHeader>
+
+          {selectedBranchAnnouncement && (
+            <div className="py-4">
+              <div className={`border rounded-xl p-5 ${
+                selectedBranchAnnouncement.priority === 'urgent' ? 'bg-red-50 border-red-200' :
+                selectedBranchAnnouncement.priority === 'low' ? 'bg-gray-50 border-gray-200' :
+                'bg-blue-50 border-blue-200'
+              }`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`px-2.5 py-1 rounded text-xs font-bold ${
+                    selectedBranchAnnouncement.priority === 'urgent' ? 'bg-red-500 text-white' :
+                    selectedBranchAnnouncement.priority === 'low' ? 'bg-gray-500 text-white' :
+                    'bg-blue-500 text-white'
+                  }`}>
+                    {selectedBranchAnnouncement.priority === 'urgent' ? '긴급' :
+                     selectedBranchAnnouncement.priority === 'low' ? '참고' : '일반'}
+                  </span>
+                  {selectedBranchAnnouncement.gym_id ? (
+                    <span className="text-xs text-gray-500 bg-white px-2 py-0.5 rounded border">지점 공지</span>
+                  ) : (
+                    <span className="text-xs text-green-600 font-semibold bg-green-100 px-2 py-0.5 rounded">전사 공지</span>
+                  )}
+                </div>
+                <h4 className="font-bold text-gray-900 text-lg mb-3">{selectedBranchAnnouncement.title}</h4>
+                <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed mb-4">
+                  {selectedBranchAnnouncement.content}
+                </p>
+                <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-200">
+                  <span>
+                    게시일: {new Date(selectedBranchAnnouncement.start_date || selectedBranchAnnouncement.created_at).toLocaleDateString('ko-KR')}
+                  </span>
+                  {selectedBranchAnnouncement.end_date && (
+                    <span>
+                      종료일: {new Date(selectedBranchAnnouncement.end_date).toLocaleDateString('ko-KR')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              onClick={() => setIsBranchAnnouncementModalOpen(false)}
+              className="bg-[#2F80ED] hover:bg-[#2570d6] text-white"
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      </div>
     </div>
   );
 }
 
 // Sub Components
 
-function QuickAction({ icon: Icon, label, href, color }: { icon: any, label: string, href: string, color: string }) {
-  return (
-    <Link href={href} className="flex flex-col items-center gap-2 min-w-[80px] group">
-      <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-200`}>
-        <Icon className="w-6 h-6" />
+function QuickAction({ icon: Icon, label, href, color, disabled }: { icon: any, label: string, href: string, color: string, disabled?: boolean }) {
+  if (disabled) {
+    return (
+      <div className="flex flex-col items-center gap-2 opacity-50 cursor-not-allowed">
+        <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${color} flex items-center justify-center shadow-sm`}>
+          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+        </div>
+        <span className="text-xs font-bold text-gray-400 text-center leading-tight">{label}</span>
       </div>
-      <span className="text-xs font-bold text-gray-600 group-hover:text-[#2F80ED] transition-colors">{label}</span>
+    );
+  }
+  return (
+    <Link href={href} className="flex flex-col items-center gap-2 group">
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-200`}>
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+      </div>
+      <span className="text-xs font-bold text-gray-600 group-hover:text-[#2F80ED] transition-colors text-center leading-tight">{label}</span>
     </Link>
   );
 }

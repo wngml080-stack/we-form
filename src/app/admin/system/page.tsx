@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, Building, Phone, User, Pencil, ChevronRight, ChevronDown, MapPin, Plus, Trash2, Dumbbell, Ruler, Calendar, Building2, Users } from "lucide-react";
+import { CheckCircle, Building, Phone, User, Pencil, ChevronRight, ChevronDown, MapPin, Plus, Trash2, Dumbbell, Ruler, Calendar, Building2, Users, Bell, Megaphone, AlertTriangle, Info, Sparkles } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function SystemAdminPage() {
   const router = useRouter();
@@ -44,6 +45,30 @@ export default function SystemAdminPage() {
   const [isCreateCompanyOpen, setIsCreateCompanyOpen] = useState(false);
   const [createCompanyForm, setCreateCompanyForm] = useState({ name: "", representative_name: "", contact_phone: "", status: "pending" });
 
+  // 시스템 공지사항 상태
+  const [systemAnnouncements, setSystemAnnouncements] = useState<any[]>([]);
+  const [isCreateAnnouncementOpen, setIsCreateAnnouncementOpen] = useState(false);
+  const [isEditAnnouncementOpen, setIsEditAnnouncementOpen] = useState(false);
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: "",
+    content: "",
+    priority: "normal",
+    announcement_type: "general",
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: "",
+    is_active: true
+  });
+  const [editAnnouncementForm, setEditAnnouncementForm] = useState({
+    id: "",
+    title: "",
+    content: "",
+    priority: "normal",
+    announcement_type: "general",
+    start_date: "",
+    end_date: "",
+    is_active: true
+  });
+
   // 전체 통계
   const [totalGymsCount, setTotalGymsCount] = useState(0);
   const [totalStaffsCount, setTotalStaffsCount] = useState(0);
@@ -56,7 +81,7 @@ export default function SystemAdminPage() {
       if (!user) return router.push("/login");
 
       const { data: me } = await supabase.from("staffs").select("role").eq("user_id", user.id).single();
-      
+
       // 시스템 관리자가 아니면 쫓아내기
       if (me?.role !== "system_admin") {
         showError("접근 권한이 없습니다.", "권한 확인");
@@ -64,6 +89,7 @@ export default function SystemAdminPage() {
       }
 
       fetchCompanies();
+      fetchSystemAnnouncements();
     };
     init();
   }, []);
@@ -86,6 +112,152 @@ export default function SystemAdminPage() {
     if (staffsCount !== null) setTotalStaffsCount(staffsCount);
 
     setIsLoading(false);
+  };
+
+  // 시스템 공지사항 가져오기
+  const fetchSystemAnnouncements = async () => {
+    const { data } = await supabase
+      .from("system_announcements")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setSystemAnnouncements(data);
+  };
+
+  // 시스템 공지사항 생성
+  const handleCreateAnnouncement = async () => {
+    if (!announcementForm.title || !announcementForm.content) {
+      alert("제목과 내용을 입력해주세요.");
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: staff } = await supabase.from("staffs").select("id").eq("user_id", user?.id).single();
+
+      const { error } = await supabase
+        .from("system_announcements")
+        .insert({
+          title: announcementForm.title,
+          content: announcementForm.content,
+          priority: announcementForm.priority,
+          announcement_type: announcementForm.announcement_type,
+          start_date: announcementForm.start_date,
+          end_date: announcementForm.end_date || null,
+          is_active: announcementForm.is_active,
+          created_by: staff?.id || null
+        });
+
+      if (error) {
+        alert("공지사항 생성 실패: " + error.message);
+        return;
+      }
+
+      alert("시스템 공지사항이 생성되었습니다!");
+      setIsCreateAnnouncementOpen(false);
+      setAnnouncementForm({
+        title: "",
+        content: "",
+        priority: "normal",
+        announcement_type: "general",
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: "",
+        is_active: true
+      });
+      fetchSystemAnnouncements();
+    } catch (error: any) {
+      alert("오류 발생: " + error.message);
+    }
+  };
+
+  // 시스템 공지사항 수정 모달 열기
+  const openEditAnnouncement = (announcement: any) => {
+    setEditAnnouncementForm({
+      id: announcement.id,
+      title: announcement.title || "",
+      content: announcement.content || "",
+      priority: announcement.priority || "normal",
+      announcement_type: announcement.announcement_type || "general",
+      start_date: announcement.start_date || "",
+      end_date: announcement.end_date || "",
+      is_active: announcement.is_active ?? true
+    });
+    setIsEditAnnouncementOpen(true);
+  };
+
+  // 시스템 공지사항 수정
+  const handleUpdateAnnouncement = async () => {
+    if (!editAnnouncementForm.title || !editAnnouncementForm.content) {
+      alert("제목과 내용을 입력해주세요.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("system_announcements")
+        .update({
+          title: editAnnouncementForm.title,
+          content: editAnnouncementForm.content,
+          priority: editAnnouncementForm.priority,
+          announcement_type: editAnnouncementForm.announcement_type,
+          start_date: editAnnouncementForm.start_date,
+          end_date: editAnnouncementForm.end_date || null,
+          is_active: editAnnouncementForm.is_active,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", editAnnouncementForm.id);
+
+      if (error) {
+        alert("공지사항 수정 실패: " + error.message);
+        return;
+      }
+
+      alert("시스템 공지사항이 수정되었습니다!");
+      setIsEditAnnouncementOpen(false);
+      fetchSystemAnnouncements();
+    } catch (error: any) {
+      alert("오류 발생: " + error.message);
+    }
+  };
+
+  // 시스템 공지사항 삭제
+  const handleDeleteAnnouncement = async (id: string, title: string) => {
+    if (!confirm(`'${title}' 공지사항을 삭제하시겠습니까?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from("system_announcements")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        alert("공지사항 삭제 실패: " + error.message);
+        return;
+      }
+
+      alert("공지사항이 삭제되었습니다.");
+      fetchSystemAnnouncements();
+    } catch (error: any) {
+      alert("오류 발생: " + error.message);
+    }
+  };
+
+  // 시스템 공지사항 활성화 토글
+  const toggleAnnouncementActive = async (id: string, currentActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("system_announcements")
+        .update({ is_active: !currentActive })
+        .eq("id", id);
+
+      if (error) {
+        alert("상태 변경 실패: " + error.message);
+        return;
+      }
+
+      fetchSystemAnnouncements();
+    } catch (error: any) {
+      alert("오류 발생: " + error.message);
+    }
   };
 
   // 회사 클릭 시 지점 목록 가져오기
@@ -507,15 +679,15 @@ export default function SystemAdminPage() {
   const pendingCompanies = companies.filter(c => c.status === 'pending');
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">시스템 관리</h1>
-          <p className="text-gray-500 mt-2 font-medium">서비스를 이용 중인 고객사를 관리합니다</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">시스템 관리</h1>
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">서비스를 이용 중인 고객사를 관리합니다</p>
         </div>
         <Button
           onClick={openCreateCompany}
-          className="bg-[#2F80ED] hover:bg-[#1c6cd7] text-white"
+          className="bg-[#2F80ED] hover:bg-[#1c6cd7] text-white w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
           고객사 추가
@@ -523,7 +695,7 @@ export default function SystemAdminPage() {
       </div>
 
       {/* 통계 대시보드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -574,6 +746,128 @@ export default function SystemAdminPage() {
           </div>
           <div className="text-3xl font-bold text-gray-900 mb-1">{pendingCompanies.length}</div>
           <p className="text-sm text-gray-500">개 업체 대기 중</p>
+        </div>
+      </div>
+
+      {/* 시스템 공지사항 관리 섹션 */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-[#2F80ED] to-[#56CCF2] rounded-xl">
+                <Megaphone className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">시스템 공지사항</h2>
+                <p className="text-sm text-gray-500">전체 사용자에게 표시되는 공지사항을 관리합니다</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => setIsCreateAnnouncementOpen(true)}
+              className="bg-[#2F80ED] hover:bg-[#1c6cd7] text-white w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              공지 추가
+            </Button>
+          </div>
+        </div>
+
+        <div className="divide-y divide-gray-100">
+          {systemAnnouncements.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                <Bell className="w-8 h-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 font-medium">등록된 시스템 공지사항이 없습니다</p>
+              <p className="text-sm text-gray-400 mt-1">새 공지사항을 추가하여 전체 사용자에게 알림을 보내세요</p>
+            </div>
+          ) : (
+            systemAnnouncements.map((announcement) => {
+              const priorityConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+                urgent: { icon: AlertTriangle, color: "text-red-600", bg: "bg-red-100", label: "긴급" },
+                normal: { icon: Bell, color: "text-blue-600", bg: "bg-blue-100", label: "일반" },
+                info: { icon: Info, color: "text-cyan-600", bg: "bg-cyan-100", label: "안내" },
+                update: { icon: Sparkles, color: "text-purple-600", bg: "bg-purple-100", label: "업데이트" }
+              };
+              const typeConfig: Record<string, string> = {
+                general: "일반",
+                update: "업데이트",
+                maintenance: "점검",
+                feature: "신기능",
+                notice: "공지"
+              };
+              const priority = priorityConfig[announcement.priority] || priorityConfig.normal;
+              const PriorityIcon = priority.icon;
+
+              return (
+                <div
+                  key={announcement.id}
+                  className={`p-4 sm:p-5 hover:bg-gray-50 transition-colors ${!announcement.is_active ? 'opacity-60' : ''}`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className={`p-2 rounded-lg ${priority.bg} flex-shrink-0`}>
+                      <PriorityIcon className={`w-5 h-5 ${priority.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold text-gray-900">{announcement.title}</h3>
+                            <Badge className={`text-xs ${priority.bg} ${priority.color} border-0`}>
+                              {priority.label}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {typeConfig[announcement.announcement_type] || announcement.announcement_type}
+                            </Badge>
+                            {!announcement.is_active && (
+                              <Badge variant="outline" className="text-xs bg-gray-100 text-gray-500">
+                                비활성
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1.5 line-clamp-2">{announcement.content}</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {announcement.start_date}
+                              {announcement.end_date && ` ~ ${announcement.end_date}`}
+                            </span>
+                            <span>조회 {announcement.view_count || 0}회</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-8 px-2 ${announcement.is_active ? 'text-emerald-600 hover:text-emerald-700' : 'text-gray-400 hover:text-gray-600'}`}
+                            onClick={() => toggleAnnouncementActive(announcement.id, announcement.is_active)}
+                          >
+                            {announcement.is_active ? "활성" : "비활성"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEditAnnouncement(announcement)}
+                          >
+                            <Pencil className="w-4 h-4 text-gray-400 hover:text-[#2F80ED]"/>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDeleteAnnouncement(announcement.id, announcement.title)}
+                          >
+                            <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500"/>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -849,7 +1143,7 @@ export default function SystemAdminPage() {
       {/* 회사 수정 모달 */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="bg-white">
-            <DialogHeader><DialogTitle>회사 정보 수정</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>회사 정보 수정</DialogTitle><DialogDescription className="sr-only">회사 정보를 수정합니다</DialogDescription></DialogHeader>
             <div className="grid gap-4 py-4">
                 <div className="space-y-2"><Label>회사명</Label><Input value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})}/></div>
                 <div className="space-y-2"><Label>대표자</Label><Input value={editForm.representative_name} onChange={(e) => setEditForm({...editForm, representative_name: e.target.value})}/></div>
@@ -874,6 +1168,7 @@ export default function SystemAdminPage() {
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>새 지점 추가</DialogTitle>
+            <DialogDescription className="sr-only">새로운 지점을 추가합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -959,6 +1254,7 @@ export default function SystemAdminPage() {
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>지점 정보 수정</DialogTitle>
+            <DialogDescription className="sr-only">지점 정보를 수정합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -1055,6 +1351,7 @@ export default function SystemAdminPage() {
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>직원 정보 수정</DialogTitle>
+            <DialogDescription className="sr-only">직원 정보를 수정합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -1117,6 +1414,7 @@ export default function SystemAdminPage() {
         <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>고객사 추가</DialogTitle>
+            <DialogDescription className="sr-only">새로운 고객사를 추가합니다</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -1158,6 +1456,188 @@ export default function SystemAdminPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setIsCreateCompanyOpen(false)}>취소</Button>
             <Button onClick={handleCreateCompany} className="bg-[#2F80ED]">추가</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 시스템 공지사항 생성 모달 */}
+      <Dialog open={isCreateAnnouncementOpen} onOpenChange={setIsCreateAnnouncementOpen}>
+        <DialogContent className="bg-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-[#2F80ED]" />
+              시스템 공지사항 추가
+            </DialogTitle>
+            <DialogDescription className="sr-only">새로운 시스템 공지사항을 추가합니다</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-2">
+              <Label>제목 *</Label>
+              <Input
+                value={announcementForm.title}
+                onChange={(e) => setAnnouncementForm({...announcementForm, title: e.target.value})}
+                placeholder="공지사항 제목을 입력하세요"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>내용 *</Label>
+              <Textarea
+                value={announcementForm.content}
+                onChange={(e) => setAnnouncementForm({...announcementForm, content: e.target.value})}
+                placeholder="공지사항 내용을 입력하세요"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>우선순위</Label>
+                <Select value={announcementForm.priority} onValueChange={(v) => setAnnouncementForm({...announcementForm, priority: v})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="urgent">긴급</SelectItem>
+                    <SelectItem value="normal">일반</SelectItem>
+                    <SelectItem value="info">안내</SelectItem>
+                    <SelectItem value="update">업데이트</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>유형</Label>
+                <Select value={announcementForm.announcement_type} onValueChange={(v) => setAnnouncementForm({...announcementForm, announcement_type: v})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="general">일반</SelectItem>
+                    <SelectItem value="update">업데이트</SelectItem>
+                    <SelectItem value="maintenance">점검</SelectItem>
+                    <SelectItem value="feature">신기능</SelectItem>
+                    <SelectItem value="notice">공지</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>시작일</Label>
+                <Input
+                  type="date"
+                  value={announcementForm.start_date}
+                  onChange={(e) => setAnnouncementForm({...announcementForm, start_date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>종료일 (선택)</Label>
+                <Input
+                  type="date"
+                  value={announcementForm.end_date}
+                  onChange={(e) => setAnnouncementForm({...announcementForm, end_date: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={announcementForm.is_active}
+                onChange={(e) => setAnnouncementForm({...announcementForm, is_active: e.target.checked})}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <Label htmlFor="is_active" className="cursor-pointer">즉시 활성화</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsCreateAnnouncementOpen(false)}>취소</Button>
+            <Button onClick={handleCreateAnnouncement} className="bg-[#2F80ED]">추가</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 시스템 공지사항 수정 모달 */}
+      <Dialog open={isEditAnnouncementOpen} onOpenChange={setIsEditAnnouncementOpen}>
+        <DialogContent className="bg-white max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-[#2F80ED]" />
+              시스템 공지사항 수정
+            </DialogTitle>
+            <DialogDescription className="sr-only">시스템 공지사항을 수정합니다</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-2">
+              <Label>제목 *</Label>
+              <Input
+                value={editAnnouncementForm.title}
+                onChange={(e) => setEditAnnouncementForm({...editAnnouncementForm, title: e.target.value})}
+                placeholder="공지사항 제목을 입력하세요"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>내용 *</Label>
+              <Textarea
+                value={editAnnouncementForm.content}
+                onChange={(e) => setEditAnnouncementForm({...editAnnouncementForm, content: e.target.value})}
+                placeholder="공지사항 내용을 입력하세요"
+                rows={4}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>우선순위</Label>
+                <Select value={editAnnouncementForm.priority} onValueChange={(v) => setEditAnnouncementForm({...editAnnouncementForm, priority: v})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="urgent">긴급</SelectItem>
+                    <SelectItem value="normal">일반</SelectItem>
+                    <SelectItem value="info">안내</SelectItem>
+                    <SelectItem value="update">업데이트</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>유형</Label>
+                <Select value={editAnnouncementForm.announcement_type} onValueChange={(v) => setEditAnnouncementForm({...editAnnouncementForm, announcement_type: v})}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="general">일반</SelectItem>
+                    <SelectItem value="update">업데이트</SelectItem>
+                    <SelectItem value="maintenance">점검</SelectItem>
+                    <SelectItem value="feature">신기능</SelectItem>
+                    <SelectItem value="notice">공지</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>시작일</Label>
+                <Input
+                  type="date"
+                  value={editAnnouncementForm.start_date}
+                  onChange={(e) => setEditAnnouncementForm({...editAnnouncementForm, start_date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>종료일 (선택)</Label>
+                <Input
+                  type="date"
+                  value={editAnnouncementForm.end_date}
+                  onChange={(e) => setEditAnnouncementForm({...editAnnouncementForm, end_date: e.target.value})}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="edit_is_active"
+                checked={editAnnouncementForm.is_active}
+                onChange={(e) => setEditAnnouncementForm({...editAnnouncementForm, is_active: e.target.checked})}
+                className="w-4 h-4 rounded border-gray-300"
+              />
+              <Label htmlFor="edit_is_active" className="cursor-pointer">활성화</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsEditAnnouncementOpen(false)}>취소</Button>
+            <Button onClick={handleUpdateAnnouncement} className="bg-[#2F80ED]">저장</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
