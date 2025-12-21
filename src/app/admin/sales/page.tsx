@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -10,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { DollarSign, CreditCard, Banknote, Plus, Settings, X } from "lucide-react";
+import { DollarSign, CreditCard, Banknote, Plus, Settings, X, Check, Edit2 } from "lucide-react";
 
 // 기본 회원권 유형 (고정)
 const DEFAULT_MEMBERSHIP_TYPES = [
@@ -33,6 +34,7 @@ const DEFAULT_PAYMENT_METHODS = [
 export default function SalesPage() {
   const { isLoading: authLoading } = useAuth();
   const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
+  const searchParams = useSearchParams();
 
   const [payments, setPayments] = useState<any[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<any[]>([]);
@@ -63,6 +65,13 @@ export default function SalesPage() {
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
+
+  // 새 행 추가 (엑셀 스타일)
+  const [newRows, setNewRows] = useState<any[]>([]);
+
+  // 인라인 편집
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   // 필터
   const [startDate, setStartDate] = useState(() => {
@@ -96,6 +105,15 @@ export default function SalesPage() {
       fetchCustomOptions(selectedGymId);
     }
   }, [filterInitialized, selectedGymId, selectedCompanyId]);
+
+  // URL 파라미터로 새 행 자동 추가
+  useEffect(() => {
+    if (searchParams.get("addon") === "true" && filterInitialized) {
+      addNewRow();
+      // URL에서 파라미터 제거
+      window.history.replaceState({}, "", "/admin/sales");
+    }
+  }, [searchParams, filterInitialized]);
 
   // 커스텀 옵션 (회원권 유형, 결제방법) 불러오기
   const fetchCustomOptions = async (targetGymId: string) => {
@@ -163,6 +181,121 @@ export default function SalesPage() {
     if (!confirm("이 결제방법을 삭제하시겠습니까?")) return;
     await supabase.from("payment_methods").delete().eq("id", id);
     fetchCustomOptions(selectedGymId);
+  };
+
+  // 새 행 추가 (엑셀 스타일 - 부가상품 전용)
+  const addNewRow = () => {
+    const newRow = {
+      id: `new-${Date.now()}`,
+      isNew: true,
+      paid_at: formatDate(new Date()),
+      customer_name: "",  // 수기 입력
+      customer_phone: "", // 수기 입력
+      product_name: "",   // 상품명
+      method: "card",
+      amount: "",
+      memo: ""
+    };
+    setNewRows([...newRows, newRow]);
+  };
+
+  // 새 행 값 변경
+  const updateNewRow = (rowId: string, field: string, value: any) => {
+    setNewRows(prev => prev.map(row =>
+      row.id === rowId ? { ...row, [field]: value } : row
+    ));
+  };
+
+  // 새 행 저장 (부가상품 전용)
+  const saveNewRow = async (rowId: string) => {
+    const row = newRows.find(r => r.id === rowId);
+    if (!row) return;
+
+    if (!row.amount || parseFloat(row.amount) <= 0) {
+      alert("금액을 입력해주세요.");
+      return;
+    }
+
+    // 메모에 상품명, 이름, 전화번호 포함
+    const memoDetails = [
+      row.product_name,
+      row.customer_name ? `(${row.customer_name})` : null,
+      row.customer_phone ? `${row.customer_phone}` : null,
+      row.memo
+    ].filter(Boolean).join(" ");
+
+    const { error } = await supabase.from("member_payments").insert({
+      gym_id: selectedGymId,
+      company_id: selectedCompanyId,
+      member_id: null, // 부가상품은 회원 연결 없음
+      amount: parseFloat(row.amount),
+      total_amount: parseFloat(row.amount),
+      method: row.method,
+      membership_type: "부가상품",
+      registration_type: "회원 이외",
+      visit_route: null,
+      memo: memoDetails || null,
+      paid_at: row.paid_at || new Date().toISOString(),
+      installment_count: 1,
+      installment_current: 1
+    });
+
+    if (error) {
+      console.error("저장 에러:", error);
+      alert(`저장 실패: ${error.message}`);
+    } else {
+      // 저장된 행 제거하고 데이터 새로고침
+      setNewRows(prev => prev.filter(r => r.id !== rowId));
+      fetchPayments(selectedGymId, selectedCompanyId);
+    }
+  };
+
+  // 새 행 삭제
+  const removeNewRow = (rowId: string) => {
+    setNewRows(prev => prev.filter(r => r.id !== rowId));
+  };
+
+  // 인라인 편집 시작
+  const startEditing = (id: string, field: string, currentValue: string) => {
+    setEditingCell({ id, field });
+    setEditValue(currentValue);
+  };
+
+  // 인라인 편집 저장
+  const saveEdit = async (paymentId: string, field: string) => {
+    let updateValue: any = editValue;
+
+    // 금액 필드는 숫자로 변환
+    if (field === "amount") {
+      updateValue = parseFloat(editValue.replace(/[^0-9.-]/g, ""));
+      if (isNaN(updateValue)) {
+        alert("올바른 금액을 입력해주세요.");
+        return;
+      }
+    }
+
+    const { error } = await supabase
+      .from("member_payments")
+      .update({ [field]: updateValue })
+      .eq("id", paymentId);
+
+    if (error) {
+      console.error("수정 에러:", error);
+      alert(`수정 실패: ${error.message}`);
+    } else {
+      // 로컬 상태 업데이트
+      setPayments(prev => prev.map(p =>
+        p.id === paymentId ? { ...p, [field]: updateValue } : p
+      ));
+    }
+    setEditingCell(null);
+    setEditValue("");
+  };
+
+  // 편집 취소
+  const cancelEdit = () => {
+    setEditingCell(null);
+    setEditValue("");
   };
 
   // 날짜 필터 변경 시 데이터 다시 불러오기
@@ -263,13 +396,22 @@ export default function SalesPage() {
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">매출 현황</h1>
           <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">{gymName}의 매출을 관리합니다</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setIsSettingsOpen(true)}
-          className="px-3"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={addNewRow}
+            className="bg-[#2F80ED] hover:bg-[#2570d6] text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            새 결제 추가
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsSettingsOpen(true)}
+            className="px-3"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* 필터 */}
@@ -316,7 +458,7 @@ export default function SalesPage() {
                 <SelectItem value="신규">신규</SelectItem>
                 <SelectItem value="리뉴">리뉴</SelectItem>
                 <SelectItem value="기간변경">기간변경</SelectItem>
-                <SelectItem value="부가상품">부가상품</SelectItem>
+                <SelectItem value="회원 이외">회원 이외</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -499,17 +641,42 @@ export default function SalesPage() {
                 "신규": "bg-emerald-100 text-emerald-700",
                 "리뉴": "bg-cyan-100 text-cyan-700",
                 "기간변경": "bg-amber-100 text-amber-700",
-                "부가상품": "bg-rose-100 text-rose-700"
+                "회원 이외": "bg-rose-100 text-rose-700"
               };
 
               return (
-                <tr key={payment.id} className="border-b hover:bg-gray-50">
+                <tr key={payment.id} className="border-b hover:bg-blue-50/30 group">
+                  {/* 결제일 - 편집 가능 */}
                   <td className="px-4 py-3 text-gray-600">
-                    {new Date(payment.paid_at).toLocaleDateString('ko-KR', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit'
-                    })}
+                    {editingCell?.id === payment.id && editingCell?.field === "paid_at" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="date"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-8 w-32 text-xs"
+                          autoFocus
+                        />
+                        <button onClick={() => saveEdit(payment.id, "paid_at")} className="p-1 hover:bg-green-100 rounded">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </button>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="cursor-pointer hover:bg-blue-100 px-2 py-1 rounded flex items-center gap-1 group/cell"
+                        onClick={() => startEditing(payment.id, "paid_at", formatDate(new Date(payment.paid_at)))}
+                      >
+                        {new Date(payment.paid_at).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit'
+                        })}
+                        <Edit2 className="w-3 h-3 text-gray-400 opacity-0 group-hover/cell:opacity-100" />
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-medium">
@@ -521,37 +688,173 @@ export default function SalesPage() {
                       {payment.members?.phone || ""}
                     </div>
                   </td>
+                  {/* 회원권 유형 - 편집 가능 */}
                   <td className="px-4 py-3">
-                    {payment.membership_type ? (
-                      <Badge className={`border-0 ${membershipTypeColors[payment.membership_type] || "bg-gray-100 text-gray-700"} w-fit`}>
-                        {payment.membership_type}
-                      </Badge>
+                    {editingCell?.id === payment.id && editingCell?.field === "membership_type" ? (
+                      <div className="flex items-center gap-1">
+                        <Select value={editValue} onValueChange={(v) => { setEditValue(v); }}>
+                          <SelectTrigger className="h-8 w-24 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            {allMembershipTypes.map((type: any) => (
+                              <SelectItem key={type.name} value={type.name}>{type.name}</SelectItem>
+                            ))}
+                            <SelectItem value="부가상품">부가상품</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <button onClick={() => saveEdit(payment.id, "membership_type")} className="p-1 hover:bg-green-100 rounded">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </button>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <div
+                        className="cursor-pointer hover:bg-blue-100 px-1 py-1 rounded inline-flex items-center gap-1 group/cell"
+                        onClick={() => startEditing(payment.id, "membership_type", payment.membership_type || "")}
+                      >
+                        {payment.membership_type ? (
+                          <Badge className={`border-0 ${membershipTypeColors[payment.membership_type] || "bg-gray-100 text-gray-700"} w-fit`}>
+                            {payment.membership_type}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                        <Edit2 className="w-3 h-3 text-gray-400 opacity-0 group-hover/cell:opacity-100" />
+                      </div>
                     )}
                   </td>
+                  {/* 등록 타입 - 편집 가능 */}
                   <td className="px-4 py-3">
-                    {payment.registration_type ? (
-                      <Badge className={`border-0 ${registrationTypeColors[payment.registration_type] || "bg-gray-100 text-gray-700"} w-fit`}>
-                        {payment.registration_type}
-                      </Badge>
+                    {editingCell?.id === payment.id && editingCell?.field === "registration_type" ? (
+                      <div className="flex items-center gap-1">
+                        <Select value={editValue} onValueChange={(v) => { setEditValue(v); }}>
+                          <SelectTrigger className="h-8 w-24 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="신규">신규</SelectItem>
+                            <SelectItem value="리뉴">리뉴</SelectItem>
+                            <SelectItem value="기간변경">기간변경</SelectItem>
+                            <SelectItem value="회원 이외">회원 이외</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <button onClick={() => saveEdit(payment.id, "registration_type")} className="p-1 hover:bg-green-100 rounded">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </button>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <div
+                        className="cursor-pointer hover:bg-blue-100 px-1 py-1 rounded inline-flex items-center gap-1 group/cell"
+                        onClick={() => startEditing(payment.id, "registration_type", payment.registration_type || "")}
+                      >
+                        {payment.registration_type ? (
+                          <Badge className={`border-0 ${registrationTypeColors[payment.registration_type] || "bg-gray-100 text-gray-700"} w-fit`}>
+                            {payment.registration_type}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                        <Edit2 className="w-3 h-3 text-gray-400 opacity-0 group-hover/cell:opacity-100" />
+                      </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {payment.visit_route || "-"}
-                  </td>
+                  {/* 방문루트 - 편집 가능 */}
                   <td className="px-4 py-3">
-                    <Badge className={`border-0 ${methodBadge.color} flex items-center gap-1 w-fit`}>
-                      <MethodIcon className="w-3 h-3" />
-                      {methodBadge.label}
-                    </Badge>
+                    {editingCell?.id === payment.id && editingCell?.field === "visit_route" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-8 w-20 text-xs"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && saveEdit(payment.id, "visit_route")}
+                        />
+                        <button onClick={() => saveEdit(payment.id, "visit_route")} className="p-1 hover:bg-green-100 rounded">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </button>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="cursor-pointer hover:bg-blue-100 px-2 py-1 rounded flex items-center gap-1 group/cell text-gray-600"
+                        onClick={() => startEditing(payment.id, "visit_route", payment.visit_route || "")}
+                      >
+                        {payment.visit_route || "-"}
+                        <Edit2 className="w-3 h-3 text-gray-400 opacity-0 group-hover/cell:opacity-100" />
+                      </div>
+                    )}
                   </td>
+                  {/* 결제 방법 - 편집 가능 */}
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-gray-900">
-                      {formatCurrency(parseFloat(payment.amount))}
-                    </div>
+                    {editingCell?.id === payment.id && editingCell?.field === "method" ? (
+                      <div className="flex items-center gap-1">
+                        <Select value={editValue} onValueChange={(v) => { setEditValue(v); }}>
+                          <SelectTrigger className="h-8 w-24 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            {allPaymentMethods.map((method: any) => (
+                              <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <button onClick={() => saveEdit(payment.id, "method")} className="p-1 hover:bg-green-100 rounded">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </button>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="cursor-pointer hover:bg-blue-100 px-1 py-1 rounded inline-flex items-center gap-1 group/cell"
+                        onClick={() => startEditing(payment.id, "method", payment.method || "")}
+                      >
+                        <Badge className={`border-0 ${methodBadge.color} flex items-center gap-1 w-fit`}>
+                          <MethodIcon className="w-3 h-3" />
+                          {methodBadge.label}
+                        </Badge>
+                        <Edit2 className="w-3 h-3 text-gray-400 opacity-0 group-hover/cell:opacity-100" />
+                      </div>
+                    )}
+                  </td>
+                  {/* 금액 - 편집 가능 */}
+                  <td className="px-4 py-3">
+                    {editingCell?.id === payment.id && editingCell?.field === "amount" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-8 w-28 text-xs"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && saveEdit(payment.id, "amount")}
+                        />
+                        <button onClick={() => saveEdit(payment.id, "amount")} className="p-1 hover:bg-green-100 rounded">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </button>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="cursor-pointer hover:bg-blue-100 px-2 py-1 rounded flex items-center gap-1 group/cell"
+                        onClick={() => startEditing(payment.id, "amount", payment.amount?.toString() || "0")}
+                      >
+                        <div className="font-semibold text-gray-900">
+                          {formatCurrency(parseFloat(payment.amount))}
+                        </div>
+                        <Edit2 className="w-3 h-3 text-gray-400 opacity-0 group-hover/cell:opacity-100" />
+                      </div>
+                    )}
                     {payment.total_amount && parseFloat(payment.total_amount) !== parseFloat(payment.amount) && (
                       <div className="text-xs text-gray-500">
                         전체: {formatCurrency(parseFloat(payment.total_amount))}
@@ -570,19 +873,156 @@ export default function SalesPage() {
                       <span className="text-gray-400">일시불</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs max-w-[150px] truncate">
-                    {payment.memo || "-"}
+                  {/* 메모 - 편집 가능 */}
+                  <td className="px-4 py-3">
+                    {editingCell?.id === payment.id && editingCell?.field === "memo" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-8 w-32 text-xs"
+                          autoFocus
+                          onKeyDown={(e) => e.key === 'Enter' && saveEdit(payment.id, "memo")}
+                        />
+                        <button onClick={() => saveEdit(payment.id, "memo")} className="p-1 hover:bg-green-100 rounded">
+                          <Check className="w-4 h-4 text-green-600" />
+                        </button>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-red-100 rounded">
+                          <X className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        className="cursor-pointer hover:bg-blue-100 px-2 py-1 rounded flex items-center gap-1 group/cell text-gray-500 text-xs max-w-[150px]"
+                        onClick={() => startEditing(payment.id, "memo", payment.memo || "")}
+                      >
+                        <span className="truncate">{payment.memo || "-"}</span>
+                        <Edit2 className="w-3 h-3 text-gray-400 opacity-0 group-hover/cell:opacity-100 flex-shrink-0" />
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
             })}
-            {!isLoading && filteredPayments.length === 0 && (
+            {!isLoading && filteredPayments.length === 0 && newRows.length === 0 && (
               <tr>
                 <td colSpan={9} className="text-center py-20 text-gray-400">
                   선택한 기간에 결제 내역이 없습니다.
                 </td>
               </tr>
             )}
+            {/* 새 행 입력 (부가상품 전용 - 엑셀 스타일) */}
+            {newRows.map((row) => (
+              <tr key={row.id} className="border-b bg-green-50/50 border-green-200">
+                {/* 결제일 */}
+                <td className="px-4 py-2">
+                  <Input
+                    type="date"
+                    value={row.paid_at}
+                    onChange={(e) => updateNewRow(row.id, "paid_at", e.target.value)}
+                    className="h-8 w-32 text-xs bg-white"
+                  />
+                </td>
+                {/* 이름 & 전화번호 (수기 입력) */}
+                <td className="px-4 py-2">
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      placeholder="이름"
+                      value={row.customer_name}
+                      onChange={(e) => updateNewRow(row.id, "customer_name", e.target.value)}
+                      className="h-7 w-24 text-xs bg-white"
+                    />
+                    <Input
+                      placeholder="전화번호"
+                      value={row.customer_phone}
+                      onChange={(e) => updateNewRow(row.id, "customer_phone", e.target.value)}
+                      className="h-7 w-24 text-xs bg-white"
+                    />
+                  </div>
+                </td>
+                {/* 회원권 유형 - 부가상품 고정 */}
+                <td className="px-4 py-2">
+                  <Badge className="bg-rose-100 text-rose-700 border-0">부가상품</Badge>
+                </td>
+                {/* 등록 타입 - 회원 이외 고정 */}
+                <td className="px-4 py-2">
+                  <Badge className="bg-rose-100 text-rose-700 border-0">회원 이외</Badge>
+                </td>
+                {/* 상품명 (방문루트 자리에 상품명) */}
+                <td className="px-4 py-2">
+                  <Input
+                    placeholder="상품명"
+                    value={row.product_name}
+                    onChange={(e) => updateNewRow(row.id, "product_name", e.target.value)}
+                    className="h-8 w-24 text-xs bg-white"
+                  />
+                </td>
+                {/* 결제 방법 */}
+                <td className="px-4 py-2">
+                  <Select value={row.method} onValueChange={(v) => updateNewRow(row.id, "method", v)}>
+                    <SelectTrigger className="h-8 w-20 text-xs bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {allPaymentMethods.map((method: any) => (
+                        <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </td>
+                {/* 금액 */}
+                <td className="px-4 py-2">
+                  <Input
+                    type="number"
+                    placeholder="금액"
+                    value={row.amount}
+                    onChange={(e) => updateNewRow(row.id, "amount", e.target.value)}
+                    className="h-8 w-28 text-xs bg-white"
+                  />
+                </td>
+                {/* 분할정보 - 고정 */}
+                <td className="px-4 py-2 text-gray-400 text-xs">
+                  일시불
+                </td>
+                {/* 메모 & 액션 버튼 */}
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="메모"
+                      value={row.memo}
+                      onChange={(e) => updateNewRow(row.id, "memo", e.target.value)}
+                      className="h-8 w-20 text-xs bg-white"
+                    />
+                    <button
+                      onClick={() => saveNewRow(row.id)}
+                      className="p-1.5 bg-green-500 hover:bg-green-600 text-white rounded"
+                      title="저장"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => removeNewRow(row.id)}
+                      className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded"
+                      title="취소"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {/* 새 행 추가 버튼 */}
+            <tr className="border-b hover:bg-gray-50">
+              <td colSpan={9} className="px-4 py-3">
+                <button
+                  onClick={addNewRow}
+                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#2F80ED] transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  새 결제 내역 추가
+                </button>
+              </td>
+            </tr>
           </tbody>
         </table>
         </div>
@@ -692,6 +1132,7 @@ export default function SalesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

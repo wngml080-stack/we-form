@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import {
   Users, DollarSign, Calendar, TrendingUp, UserPlus,
-  CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight, Building2, Package, BarChart3
+  CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight, Building2, Package, BarChart3, Ghost, UserCheck
 } from "lucide-react";
 import Link from "next/link";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from "date-fns";
@@ -26,7 +26,11 @@ export default function AdminDashboardPage() {
     todaySchedules: 0,
     todaySales: 0,
     monthSales: 0,
-    newMembersThisMonth: 0
+    newMembersThisMonth: 0,
+    // PT회원 현황
+    totalPTMembers: 0,
+    activePTMembers: 0,
+    ghostMembers: 0 // 30일 이상 미출석
   });
   const [todaySchedules, setTodaySchedules] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -107,6 +111,11 @@ export default function AdminDashboardPage() {
       schedulesQuery = schedulesQuery.eq("staff_id", staffId);
     }
 
+    // 30일 전 날짜 계산 (유령회원 기준)
+    const thirtyDaysAgo = new Date(koreaTime);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
+
     // 모든 쿼리를 병렬로 실행
     const [
       membersResult,
@@ -116,7 +125,9 @@ export default function AdminDashboardPage() {
       announcementsResult,
       eventsResult,
       systemAnnouncementsResult,
-      historicalPaymentsResult
+      historicalPaymentsResult,
+      ptMembersResult,
+      recentSchedulesResult
     ] = await Promise.all([
       // 1. 회원 통계
       supabase.from("members").select("id, status, created_at").eq("gym_id", gymId).eq("company_id", companyId),
@@ -138,34 +149,147 @@ export default function AdminDashboardPage() {
         .lte("start_date", today)
         .or(`end_date.is.null,end_date.gte.${today}`)
         .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(5),
-      // 8. 12개월 매출 데이터 (통계용)
-      supabase.from("member_payments").select("amount, paid_at").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", twelveMonthsAgoStr)
+      // 8. 12개월 매출 데이터 + PT 회원 데이터 (통합 조회)
+      supabase.from("member_payments")
+        .select("*")
+        .eq("gym_id", gymId)
+        .eq("company_id", companyId),
+      // 9. PT 회원권 데이터 (member_memberships에서 조회)
+      supabase.from("member_memberships")
+        .select("member_id, membership_type, total_sessions, used_sessions, start_date, end_date, status")
+        .eq("gym_id", gymId)
+        .eq("status", "active"),
+      // 10. 최근 30일 스케줄 (유령회원 계산용)
+      supabase.from("schedules")
+        .select("member_id, start_time, status")
+        .eq("gym_id", gymId)
+        .gte("start_time", thirtyDaysAgoStr)
     ]);
 
     const members = membersResult.data || [];
     const schedules = schedulesResult.data || [];
     const todayPayments = todayPaymentsResult.data || [];
     const monthPayments = monthPaymentsResult.data || [];
-    const historicalPayments = historicalPaymentsResult.data || [];
+    const allPayments = historicalPaymentsResult.data || []; // 통합 데이터
+    // 최근 스케줄 - completed, reserved 상태만 필터링 (클라이언트)
+    const recentSchedules = (recentSchedulesResult.data || []).filter(
+      (s: any) => s.status === "completed" || s.status === "reserved"
+    );
 
-    // 월별 매출 데이터 정리
+    // 에러 로깅
+    if (historicalPaymentsResult.error) {
+      console.error("결제 데이터 조회 에러:", JSON.stringify(historicalPaymentsResult.error));
+    }
+    if (recentSchedulesResult.error) {
+      console.error("최근 스케줄 조회 에러:", JSON.stringify(recentSchedulesResult.error));
+    }
+
+    // 디버그: 회원 결제 데이터 확인
+    console.log("=== 대시보드 데이터 디버그 ===");
+    console.log("전체 결제 데이터:", allPayments.length, "건");
+    if (allPayments.length > 0) {
+      console.log("결제 데이터 샘플 (첫 번째):", JSON.stringify(allPayments[0], null, 2));
+    }
+    const uniqueTypes = [...new Set(allPayments.map((p: any) => p.membership_type))];
+    console.log("존재하는 회원권 유형들:", uniqueTypes);
+
+    // PT/PPT/GPT 타입만 필터링 (클라이언트 측) - 대소문자 구분 없이, 공백 제거
+    const ptTypes = ["PT", "PPT", "GPT"];
+    const ptTypePayments = allPayments.filter((p: any) => {
+      const membershipType = (p.membership_type || "").toString().trim().toUpperCase();
+      return ptTypes.includes(membershipType);
+    });
+    console.log("PT/PPT/GPT 결제 수:", ptTypePayments.length);
+
+    // 각 결제 데이터의 회원권 유형과 활성 상태 상세 로그
+    if (ptTypePayments.length > 0) {
+      console.log("=== PT 결제 데이터 상세 ===");
+      ptTypePayments.forEach((payment: any, idx: number) => {
+        console.log(`[${idx + 1}] member_id: ${payment.member_id}, 유형: ${payment.membership_type}, 잔여횟수: ${payment.remaining_sessions}, 종료일: ${payment.end_date}`);
+      });
+    } else {
+      console.log("⚠️ PT/PPT/GPT 타입의 결제 데이터가 없습니다.");
+      console.log("전체 결제 데이터 샘플 (최대 5개):");
+      allPayments.slice(0, 5).forEach((p: any, idx: number) => {
+        console.log(`[${idx + 1}] membership_type: "${p.membership_type}", member_id: ${p.member_id}`);
+      });
+    }
+
+    // 월별 매출 데이터 정리 (최근 12개월만)
     const monthlySales: Record<string, number> = {};
-    historicalPayments.forEach((payment: { amount: string; paid_at: string }) => {
+    const twelveMonthsAgoDate = new Date();
+    twelveMonthsAgoDate.setMonth(twelveMonthsAgoDate.getMonth() - 11);
+    twelveMonthsAgoDate.setDate(1);
+
+    allPayments.forEach((payment: { amount: string; paid_at: string }) => {
+      if (!payment.paid_at) return;
       const paymentDate = new Date(payment.paid_at);
-      const monthKey = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
-      monthlySales[monthKey] = (monthlySales[monthKey] || 0) + parseFloat(payment.amount);
+      // 12개월 이내 데이터만 포함
+      if (paymentDate >= twelveMonthsAgoDate) {
+        const monthKey = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
+        monthlySales[monthKey] = (monthlySales[monthKey] || 0) + parseFloat(payment.amount || "0");
+      }
     });
     setMonthlySalesData(monthlySales);
 
-    // 디버깅: 쿼리 파라미터 확인
-    console.log("=== 대시보드 스케줄 디버깅 ===");
-    console.log("today:", today);
-    console.log("staffId:", staffId);
-    console.log("gymId:", gymId);
-    console.log("schedules result:", schedules);
-    if (schedulesResult.error) {
-      console.error("schedules error:", schedulesResult.error);
-    }
+    // PT 회원 통계 계산 (member_memberships 기준)
+    // ptMembersResult에서 PT/PPT/GPT 회원권 데이터 사용
+    const ptMemberships = (ptMembersResult.data || []) as any[];
+    // ptTypes는 위에서 이미 선언됨: ["PT", "PPT", "GPT"]
+
+    // 고유 PT 회원 ID 추출
+    const ptMemberIds = new Set<string>();
+    const activePtMemberIds = new Set<string>();
+
+    console.log("=== 활성 회원 계산 (member_memberships) ===");
+    console.log("오늘 날짜:", today);
+    console.log("전체 활성 회원권 수:", ptMemberships.length);
+
+    ptMemberships.forEach((membership: any) => {
+      if (!membership.member_id) return;
+
+      const membershipType = (membership.membership_type || "").toString().trim().toUpperCase();
+      if (!ptTypes.includes(membershipType)) return;
+
+      ptMemberIds.add(membership.member_id);
+
+      // 잔여 횟수 계산: total_sessions - used_sessions
+      const totalSessions = parseInt(membership.total_sessions) || 0;
+      const usedSessions = parseInt(membership.used_sessions) || 0;
+      const remainingSessions = totalSessions - usedSessions;
+      const hasRemainingSessions = remainingSessions > 0;
+
+      const endDate = membership.end_date ? new Date(membership.end_date) : null;
+      const todayDate = new Date(today);
+      const isNotExpired = endDate && endDate >= todayDate;
+
+      console.log(`회원 ${membership.member_id}: 유형=${membership.membership_type}, 잔여횟수=${remainingSessions}/${totalSessions}(${hasRemainingSessions ? '있음' : '없음'}), 종료일=${membership.end_date}(${isNotExpired ? '유효' : '만료/없음'})`);
+
+      if (hasRemainingSessions || isNotExpired) {
+        activePtMemberIds.add(membership.member_id);
+        console.log(`  → 활성 회원으로 추가됨`);
+      }
+    });
+
+    console.log("=== PT 회원 통계 결과 ===");
+    console.log("전체 PT 회원 수:", ptMemberIds.size);
+    console.log("활성 PT 회원 수:", activePtMemberIds.size);
+
+    // 최근 30일 내 출석한 회원 ID
+    const recentlyActiveMemberIds = new Set<string>();
+    recentSchedules.forEach((schedule: any) => {
+      if (schedule.member_id) {
+        recentlyActiveMemberIds.add(schedule.member_id);
+      }
+    });
+
+    // 유령회원: 활성 PT회원 중 30일 이상 미출석
+    let ghostMemberCount = 0;
+    activePtMemberIds.forEach(memberId => {
+      if (!recentlyActiveMemberIds.has(memberId)) {
+        ghostMemberCount++;
+      }
+    });
 
     const totalMembers = members.length;
     const activeMembers = members.filter(m => m.status === 'active').length;
@@ -184,7 +308,10 @@ export default function AdminDashboardPage() {
       todaySchedules: schedules?.length || 0,
       todaySales,
       monthSales,
-      newMembersThisMonth
+      newMembersThisMonth,
+      totalPTMembers: ptMemberIds.size,
+      activePTMembers: activePtMemberIds.size,
+      ghostMembers: ghostMemberCount
     });
   };
 
@@ -341,7 +468,7 @@ export default function AdminDashboardPage() {
       <div className="flex gap-6 md:gap-8 overflow-x-auto pb-2 scrollbar-hide">
         <QuickAction icon={UserPlus} label="신규회원 등록" href="/admin/members?type=new" color="bg-blue-100 text-blue-600" />
         <QuickAction icon={Users} label="기존회원 등록" href="/admin/members?type=existing" color="bg-indigo-100 text-indigo-600" />
-        <QuickAction icon={Package} label="부가상품 등록" href="#" color="bg-green-100 text-green-600" disabled />
+        <QuickAction icon={Package} label="회원이외 부가등록" href="/admin/sales?addon=true" color="bg-green-100 text-green-600" />
         <QuickAction icon={Calendar} label="스케줄 관리" href="/admin/schedule" color="bg-purple-100 text-purple-600" />
         <QuickAction icon={CheckCircle2} label="출석 체크" href="/admin/attendance" color="bg-orange-100 text-orange-600" />
       </div>
@@ -376,13 +503,13 @@ export default function AdminDashboardPage() {
       {/* 4. Bento Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
 
-        {/* Left Column: 현황 카드 */}
+        {/* Left Column: PT회원 현황 카드 */}
         <div className="space-y-4 sm:space-y-6">
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-[#2F80ED] rounded-full"></div>
-                센터 현황
+                PT회원 현황
               </h3>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -428,19 +555,27 @@ export default function AdminDashboardPage() {
             <div className="space-y-4">
               <StatRow
                 icon={Users}
-                label="전체 회원"
-                value={`${stats.totalMembers}명`}
-                subValue={`신규 ${stats.newMembersThisMonth}명`}
+                label="전체회원"
+                value={`${stats.totalPTMembers ?? 0}명`}
+                subValue={`총 ${stats.totalMembers ?? 0}명 중`}
                 iconBg="bg-blue-50"
                 iconColor="text-blue-600"
               />
               <StatRow
-                icon={TrendingUp}
-                label="활성 회원"
-                value={`${stats.activeMembers}명`}
-                subValue={`${stats.totalMembers > 0 ? ((stats.activeMembers/stats.totalMembers)*100).toFixed(0) : 0}% 활성`}
+                icon={UserCheck}
+                label="활성회원"
+                value={`${stats.activePTMembers ?? 0}명`}
+                subValue={`${(stats.totalPTMembers ?? 0) > 0 ? (((stats.activePTMembers ?? 0)/(stats.totalPTMembers ?? 1))*100).toFixed(0) : 0}% 활성`}
                 iconBg="bg-emerald-50"
                 iconColor="text-emerald-600"
+              />
+              <StatRow
+                icon={Ghost}
+                label="30일 이상 유령회원"
+                value={`${stats.ghostMembers ?? 0}명`}
+                subValue={(stats.ghostMembers ?? 0) > 0 ? "관리 필요" : "없음"}
+                iconBg={(stats.ghostMembers ?? 0) > 0 ? "bg-red-50" : "bg-gray-50"}
+                iconColor={(stats.ghostMembers ?? 0) > 0 ? "text-red-500" : "text-gray-400"}
               />
 
               {/* 매출 현황 - 스와이프 또는 평균 통계 */}

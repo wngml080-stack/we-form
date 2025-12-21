@@ -76,6 +76,16 @@ function AdminMembersPageContent() {
   const [isMemberEditOpen, setIsMemberEditOpen] = useState(false); // 회원정보 수정 모달
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]); // 회원 결제 이력
+  const [isMembershipEditOpen, setIsMembershipEditOpen] = useState(false); // 회원권 수정 모달
+  const [membershipEditForm, setMembershipEditForm] = useState({
+    id: "",
+    name: "",
+    membership_type: "",
+    start_date: "",
+    end_date: "",
+    total_sessions: "",
+    used_sessions: ""
+  });
   const [memberEditForm, setMemberEditForm] = useState({
     name: "",
     phone: "",
@@ -325,6 +335,7 @@ function AdminMembersPageContent() {
         member_memberships!left (
           id,
           name,
+          membership_type,
           total_sessions,
           used_sessions,
           start_date,
@@ -1024,6 +1035,54 @@ function AdminMembersPageContent() {
     setIsMemberEditOpen(true);
   };
 
+  // 회원권 수정 모달 열기
+  const openMembershipEditModal = (member: any) => {
+    setSelectedMember(member);
+    const membership = member.activeMembership;
+    if (membership) {
+      setMembershipEditForm({
+        id: membership.id || "",
+        name: membership.name || "",
+        membership_type: membership.membership_type || "",
+        start_date: membership.start_date || "",
+        end_date: membership.end_date || "",
+        total_sessions: membership.total_sessions?.toString() || "",
+        used_sessions: membership.used_sessions?.toString() || ""
+      });
+    }
+    setIsMembershipEditOpen(true);
+  };
+
+  // 회원권 수정 처리 (시작일/종료일/횟수 편집)
+  const handleEditMembership = async () => {
+    if (!membershipEditForm.id || !selectedGymId) return;
+
+    setIsLoading(true);
+    try {
+      const updateData: any = {
+        start_date: membershipEditForm.start_date || null,
+        end_date: membershipEditForm.end_date || null,
+        total_sessions: parseInt(membershipEditForm.total_sessions) || 0,
+        used_sessions: parseInt(membershipEditForm.used_sessions) || 0
+      };
+
+      const { error } = await supabase
+        .from("member_memberships")
+        .update(updateData)
+        .eq("id", membershipEditForm.id);
+
+      if (error) throw error;
+
+      showSuccess("회원권 정보가 수정되었습니다!");
+      setIsMembershipEditOpen(false);
+      await fetchMembers();
+    } catch (error: any) {
+      showError(`회원권 수정 실패: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // 회원정보 수정 처리
   const handleUpdateMemberInfo = async () => {
     if (!selectedMember || !selectedGymId || !selectedCompanyId) return;
@@ -1695,6 +1754,7 @@ function AdminMembersPageContent() {
                 <th className="px-4 py-3 whitespace-nowrap">연락처</th>
                 <th className="px-4 py-3 whitespace-nowrap">생년월일</th>
                 <th className="px-4 py-3 whitespace-nowrap">성별</th>
+                <th className="px-4 py-3 whitespace-nowrap">담당 트레이너</th>
                 <th className="px-4 py-3 whitespace-nowrap">활성 회원권</th>
                 <th className="px-4 py-3 whitespace-nowrap">
                   <button
@@ -1722,7 +1782,7 @@ function AdminMembersPageContent() {
             <tbody>
               {isDataLoading ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-20 text-gray-400">
+                  <td colSpan={11} className="text-center py-20 text-gray-400">
                     로딩 중...
                   </td>
                 </tr>
@@ -1740,6 +1800,9 @@ function AdminMembersPageContent() {
                         <td className="px-4 py-3 text-gray-600">{member.phone || "-"}</td>
                         <td className="px-4 py-3 text-gray-600">{member.birth_date || "-"}</td>
                         <td className="px-4 py-3 text-gray-600">{member.gender || "-"}</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {staffList.find(s => s.id === member.trainer_id)?.name || "-"}
+                        </td>
                         <td className="px-4 py-3 text-gray-600">
                           {member.activeMembership ? member.activeMembership.name : "-"}
                         </td>
@@ -1778,7 +1841,7 @@ function AdminMembersPageContent() {
                   })}
                   {displayMembers.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="text-center py-20 text-gray-400">
+                      <td colSpan={11} className="text-center py-20 text-gray-400">
                         {searchQuery || statusFilter !== "all"
                           ? "검색 결과가 없습니다."
                           : "등록된 회원이 없습니다."}
@@ -2190,6 +2253,18 @@ function AdminMembersPageContent() {
               <Pencil className="mr-2 h-4 w-4" />
               회원정보 수정
             </Button>
+            {selectedMember?.activeMembership && (
+              <Button
+                onClick={() => {
+                  setIsMemberDetailOpen(false);
+                  openMembershipEditModal(selectedMember);
+                }}
+                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                회원권 수정
+              </Button>
+            )}
             <Button
               onClick={() => {
                 setIsMemberDetailOpen(false);
@@ -2323,6 +2398,94 @@ function AdminMembersPageContent() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsMemberEditOpen(false)}>취소</Button>
             <Button onClick={handleUpdateMemberInfo} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
+              {isLoading ? "저장 중..." : "저장"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 회원권 수정 모달 */}
+      <Dialog open={isMembershipEditOpen} onOpenChange={setIsMembershipEditOpen}>
+        <DialogContent className="bg-white max-w-md">
+          <DialogHeader>
+            <DialogTitle>회원권 수정 - {selectedMember?.name}</DialogTitle>
+            <DialogDescription className="sr-only">회원권 정보를 수정합니다</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* 회원권명 (읽기 전용) */}
+            <div className="space-y-2">
+              <Label className="text-gray-700">회원권명</Label>
+              <Input
+                value={membershipEditForm.name}
+                disabled
+                className="bg-gray-50"
+              />
+            </div>
+
+            {/* 회원권 유형 (읽기 전용) */}
+            <div className="space-y-2">
+              <Label className="text-gray-700">회원권 유형</Label>
+              <Input
+                value={membershipEditForm.membership_type}
+                disabled
+                className="bg-gray-50"
+              />
+            </div>
+
+            {/* 시작일 */}
+            <div className="space-y-2">
+              <Label className="text-gray-700">시작일</Label>
+              <Input
+                type="date"
+                value={membershipEditForm.start_date}
+                onChange={(e) => setMembershipEditForm({...membershipEditForm, start_date: e.target.value})}
+              />
+            </div>
+
+            {/* 종료일 */}
+            <div className="space-y-2">
+              <Label className="text-gray-700">종료일</Label>
+              <Input
+                type="date"
+                value={membershipEditForm.end_date}
+                onChange={(e) => setMembershipEditForm({...membershipEditForm, end_date: e.target.value})}
+              />
+            </div>
+
+            {/* 총 횟수 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-gray-700">총 횟수</Label>
+                <Input
+                  type="number"
+                  value={membershipEditForm.total_sessions}
+                  onChange={(e) => setMembershipEditForm({...membershipEditForm, total_sessions: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-gray-700">사용 횟수</Label>
+                <Input
+                  type="number"
+                  value={membershipEditForm.used_sessions}
+                  onChange={(e) => setMembershipEditForm({...membershipEditForm, used_sessions: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* 잔여 횟수 표시 */}
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <span className="text-blue-700 font-medium">
+                잔여 횟수: {(parseInt(membershipEditForm.total_sessions) || 0) - (parseInt(membershipEditForm.used_sessions) || 0)}회
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMembershipEditOpen(false)}>취소</Button>
+            <Button
+              onClick={handleEditMembership}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+              disabled={isLoading}
+            >
               {isLoading ? "저장 중..." : "저장"}
             </Button>
           </DialogFooter>
