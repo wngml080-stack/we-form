@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import {
   Users, DollarSign, Calendar, TrendingUp, UserPlus,
-  CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight, Building2, Package, BarChart3, Ghost, UserCheck
+  CreditCard, Settings, Plus, Bell, Search, CheckCircle2, ChevronLeft, ChevronRight, Building2, Package, BarChart3, Ghost, UserCheck, History, Clock
 } from "lucide-react";
 import Link from "next/link";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay } from "date-fns";
@@ -14,6 +14,9 @@ import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function AdminDashboardPage() {
@@ -53,7 +56,54 @@ export default function AdminDashboardPage() {
   const [selectedBranchAnnouncement, setSelectedBranchAnnouncement] = useState<any>(null);
   const [isBranchAnnouncementModalOpen, setIsBranchAnnouncementModalOpen] = useState(false);
 
-  const supabase = createSupabaseClient();
+  // 등록 모달 상태
+  const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);
+  const [isExistingMemberModalOpen, setIsExistingMemberModalOpen] = useState(false);
+  const [isAddonModalOpen, setIsAddonModalOpen] = useState(false);
+  const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 신규회원 등록 폼
+  const [newMemberForm, setNewMemberForm] = useState({
+    name: "",
+    phone: "",
+    membership_type: "PT",
+    membership_name: "",
+    sessions: "",
+    amount: "",
+    payment_method: "card",
+    memo: ""
+  });
+
+  // 기존회원 등록 폼
+  const [existingMemberForm, setExistingMemberForm] = useState({
+    member_id: "",
+    member_name: "",
+    membership_type: "PT",
+    membership_name: "",
+    sessions: "",
+    amount: "",
+    payment_method: "card",
+    memo: ""
+  });
+  const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+
+  // 부가등록 폼
+  const [addonForm, setAddonForm] = useState({
+    customer_name: "",
+    customer_phone: "",
+    product_name: "",
+    amount: "",
+    payment_method: "card",
+    memo: ""
+  });
+
+  // 상품 목록
+  const [products, setProducts] = useState<any[]>([]);
+
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   // AuthContext에서 사용자 정보 사용
   const userName = user?.name || "관리자";
@@ -68,6 +118,19 @@ export default function AdminDashboardPage() {
   // 현재 선택된 지점명
   const gymName = gyms.find(g => g.id === selectedGymId)?.name || authGymName || "We:form";
 
+  // 상품 목록 조회
+  const fetchProducts = async (gymId: string) => {
+    try {
+      const response = await fetch(`/api/admin/schedule/products?gym_id=${gymId}`);
+      const data = await response.json();
+      if (data.success) {
+        setProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error("상품 목록 조회 에러:", error);
+    }
+  };
+
   useEffect(() => {
     if (authLoading || !filterInitialized) return;
     if (!user) {
@@ -77,6 +140,7 @@ export default function AdminDashboardPage() {
 
     if (selectedGymId && selectedCompanyId) {
       fetchDashboardData(selectedGymId, selectedCompanyId, user.id);
+      fetchProducts(selectedGymId);
     }
     setIsLoading(false);
   }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
@@ -116,6 +180,18 @@ export default function AdminDashboardPage() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
 
+    // 시스템 공지사항은 API로 별도 조회 (RLS 우회)
+    const fetchSystemAnnouncementsPromise = fetch("/api/admin/system/announcements")
+      .then(res => res.json())
+      .then(data => data.announcements || [])
+      .catch(() => []);
+
+    // 회사 일정 & 행사도 API로 조회 (RLS 우회)
+    const fetchCompanyEventsPromise = fetch(`/api/admin/schedule/events?company_id=${companyId}&gym_id=${gymId}`)
+      .then(res => res.json())
+      .then(data => data.events || [])
+      .catch(() => []);
+
     // 모든 쿼리를 병렬로 실행
     const [
       membersResult,
@@ -124,7 +200,7 @@ export default function AdminDashboardPage() {
       monthPaymentsResult,
       announcementsResult,
       eventsResult,
-      systemAnnouncementsResult,
+      systemAnnouncementsData,
       historicalPaymentsResult,
       ptMembersResult,
       recentSchedulesResult
@@ -141,14 +217,10 @@ export default function AdminDashboardPage() {
       supabase.from("announcements").select("*").eq("company_id", companyId).eq("is_active", true)
         .or(`gym_id.eq.${gymId},gym_id.is.null`)
         .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(10),
-      // 6. 회사 일정 & 행사 (이번 달 전체)
-      supabase.from("company_events").select("*").eq("company_id", companyId).eq("is_active", true)
-        .order("event_date", { ascending: true }),
-      // 7. 시스템 공지사항 (흘러가는 배너용)
-      supabase.from("system_announcements").select("*").eq("is_active", true)
-        .lte("start_date", today)
-        .or(`end_date.is.null,end_date.gte.${today}`)
-        .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(5),
+      // 6. 회사 일정 & 행사 (API로 조회 - RLS 우회)
+      fetchCompanyEventsPromise,
+      // 7. 시스템 공지사항 (API로 조회)
+      fetchSystemAnnouncementsPromise,
       // 8. 12개월 매출 데이터 + PT 회원 데이터 (통합 조회)
       supabase.from("member_payments")
         .select("*")
@@ -156,7 +228,7 @@ export default function AdminDashboardPage() {
         .eq("company_id", companyId),
       // 9. PT 회원권 데이터 (member_memberships에서 조회)
       supabase.from("member_memberships")
-        .select("member_id, membership_type, total_sessions, used_sessions, start_date, end_date, status")
+        .select("member_id, name, total_sessions, used_sessions, start_date, end_date, status")
         .eq("gym_id", gymId)
         .eq("status", "active"),
       // 10. 최근 30일 스케줄 (유령회원 계산용)
@@ -176,44 +248,8 @@ export default function AdminDashboardPage() {
       (s: any) => s.status === "completed" || s.status === "reserved"
     );
 
-    // 에러 로깅
-    if (historicalPaymentsResult.error) {
-      console.error("결제 데이터 조회 에러:", JSON.stringify(historicalPaymentsResult.error));
-    }
-    if (recentSchedulesResult.error) {
-      console.error("최근 스케줄 조회 에러:", JSON.stringify(recentSchedulesResult.error));
-    }
-
-    // 디버그: 회원 결제 데이터 확인
-    console.log("=== 대시보드 데이터 디버그 ===");
-    console.log("전체 결제 데이터:", allPayments.length, "건");
-    if (allPayments.length > 0) {
-      console.log("결제 데이터 샘플 (첫 번째):", JSON.stringify(allPayments[0], null, 2));
-    }
-    const uniqueTypes = [...new Set(allPayments.map((p: any) => p.membership_type))];
-    console.log("존재하는 회원권 유형들:", uniqueTypes);
-
-    // PT/PPT/GPT 타입만 필터링 (클라이언트 측) - 대소문자 구분 없이, 공백 제거
+    // PT/PPT/GPT 타입 정의
     const ptTypes = ["PT", "PPT", "GPT"];
-    const ptTypePayments = allPayments.filter((p: any) => {
-      const membershipType = (p.membership_type || "").toString().trim().toUpperCase();
-      return ptTypes.includes(membershipType);
-    });
-    console.log("PT/PPT/GPT 결제 수:", ptTypePayments.length);
-
-    // 각 결제 데이터의 회원권 유형과 활성 상태 상세 로그
-    if (ptTypePayments.length > 0) {
-      console.log("=== PT 결제 데이터 상세 ===");
-      ptTypePayments.forEach((payment: any, idx: number) => {
-        console.log(`[${idx + 1}] member_id: ${payment.member_id}, 유형: ${payment.membership_type}, 잔여횟수: ${payment.remaining_sessions}, 종료일: ${payment.end_date}`);
-      });
-    } else {
-      console.log("⚠️ PT/PPT/GPT 타입의 결제 데이터가 없습니다.");
-      console.log("전체 결제 데이터 샘플 (최대 5개):");
-      allPayments.slice(0, 5).forEach((p: any, idx: number) => {
-        console.log(`[${idx + 1}] membership_type: "${p.membership_type}", member_id: ${p.member_id}`);
-      });
-    }
 
     // 월별 매출 데이터 정리 (최근 12개월만)
     const monthlySales: Record<string, number> = {};
@@ -240,16 +276,13 @@ export default function AdminDashboardPage() {
     // 고유 PT 회원 ID 추출
     const ptMemberIds = new Set<string>();
     const activePtMemberIds = new Set<string>();
-
-    console.log("=== 활성 회원 계산 (member_memberships) ===");
-    console.log("오늘 날짜:", today);
-    console.log("전체 활성 회원권 수:", ptMemberships.length);
+    const todayDateObj = new Date(today);
 
     ptMemberships.forEach((membership: any) => {
       if (!membership.member_id) return;
 
-      const membershipType = (membership.membership_type || "").toString().trim().toUpperCase();
-      if (!ptTypes.includes(membershipType)) return;
+      const membershipName = (membership.name || "").toString().trim().toUpperCase();
+      if (!ptTypes.includes(membershipName)) return;
 
       ptMemberIds.add(membership.member_id);
 
@@ -260,20 +293,12 @@ export default function AdminDashboardPage() {
       const hasRemainingSessions = remainingSessions > 0;
 
       const endDate = membership.end_date ? new Date(membership.end_date) : null;
-      const todayDate = new Date(today);
-      const isNotExpired = endDate && endDate >= todayDate;
-
-      console.log(`회원 ${membership.member_id}: 유형=${membership.membership_type}, 잔여횟수=${remainingSessions}/${totalSessions}(${hasRemainingSessions ? '있음' : '없음'}), 종료일=${membership.end_date}(${isNotExpired ? '유효' : '만료/없음'})`);
+      const isNotExpired = endDate && endDate >= todayDateObj;
 
       if (hasRemainingSessions || isNotExpired) {
         activePtMemberIds.add(membership.member_id);
-        console.log(`  → 활성 회원으로 추가됨`);
       }
     });
-
-    console.log("=== PT 회원 통계 결과 ===");
-    console.log("전체 PT 회원 수:", ptMemberIds.size);
-    console.log("활성 PT 회원 수:", activePtMemberIds.size);
 
     // 최근 30일 내 출석한 회원 ID
     const recentlyActiveMemberIds = new Set<string>();
@@ -299,8 +324,10 @@ export default function AdminDashboardPage() {
 
     setTodaySchedules(schedules);
     setAnnouncements(announcementsResult.data || []);
-    setCompanyEvents(eventsResult.data || []);
-    setSystemAnnouncements(systemAnnouncementsResult.data || []);
+    setCompanyEvents(eventsResult || []);
+    // 시스템 공지사항 - 활성화된 것만 필터링
+    const activeSystemAnnouncements = (systemAnnouncementsData || []).filter((a: any) => a.is_active);
+    setSystemAnnouncements(activeSystemAnnouncements);
 
     setStats({
       totalMembers,
@@ -313,6 +340,158 @@ export default function AdminDashboardPage() {
       activePTMembers: activePtMemberIds.size,
       ghostMembers: ghostMemberCount
     });
+
+    // 최근 등록 로그도 함께 조회
+    fetchRecentLogs(gymId, companyId);
+  };
+
+  // 최근 등록 로그 조회
+  const fetchRecentLogs = async (gymId: string, companyId: string) => {
+    try {
+      const response = await fetch(`/api/admin/schedule/logs?gym_id=${gymId}&company_id=${companyId}&limit=10`);
+      const data = await response.json();
+      if (data.success) {
+        setRecentLogs(data.logs || []);
+      }
+    } catch (error) {
+      console.error("등록 로그 조회 에러:", error);
+    }
+  };
+
+  // 회원 검색
+  const searchMembers = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setMemberSearchResults([]);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("members")
+        .select("id, name, phone")
+        .eq("gym_id", selectedGymId)
+        .eq("company_id", selectedCompanyId)
+        .or(`name.ilike.%${query}%,phone.ilike.%${query}%`)
+        .limit(10);
+
+      if (!error && data) {
+        setMemberSearchResults(data);
+      }
+    } catch (error) {
+      console.error("회원 검색 에러:", error);
+    }
+  };
+
+  // 신규회원 등록
+  const handleNewMemberRegistration = async () => {
+    if (!newMemberForm.name || !newMemberForm.phone || !newMemberForm.amount) {
+      alert("이름, 연락처, 금액은 필수입니다.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/admin/schedule/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "new_member",
+          gym_id: selectedGymId,
+          company_id: selectedCompanyId,
+          staff_id: myStaffId,
+          data: newMemberForm
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert("신규 회원이 등록되었습니다!");
+        setIsNewMemberModalOpen(false);
+        setNewMemberForm({ name: "", phone: "", membership_type: "PT", membership_name: "", sessions: "", amount: "", payment_method: "card", memo: "" });
+        fetchRecentLogs(selectedGymId, selectedCompanyId);
+        fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+      } else {
+        alert(result.error || "등록에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("신규회원 등록 에러:", error);
+      alert("등록 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 기존회원 등록 (회원권 추가)
+  const handleExistingMemberRegistration = async () => {
+    if (!existingMemberForm.member_id || !existingMemberForm.amount) {
+      alert("회원 선택과 금액은 필수입니다.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/admin/schedule/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "existing_member",
+          gym_id: selectedGymId,
+          company_id: selectedCompanyId,
+          staff_id: myStaffId,
+          data: existingMemberForm
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert("회원권이 등록되었습니다!");
+        setIsExistingMemberModalOpen(false);
+        setExistingMemberForm({ member_id: "", member_name: "", membership_type: "PT", membership_name: "", sessions: "", amount: "", payment_method: "card", memo: "" });
+        setMemberSearchQuery("");
+        setMemberSearchResults([]);
+        fetchRecentLogs(selectedGymId, selectedCompanyId);
+        fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+      } else {
+        alert(result.error || "등록에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("기존회원 등록 에러:", error);
+      alert("등록 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 부가상품 등록
+  const handleAddonRegistration = async () => {
+    if (!addonForm.customer_name || !addonForm.product_name || !addonForm.amount) {
+      alert("고객명, 상품명, 금액은 필수입니다.");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/admin/schedule/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "addon",
+          gym_id: selectedGymId,
+          company_id: selectedCompanyId,
+          staff_id: myStaffId,
+          data: addonForm
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert("부가상품이 등록되었습니다!");
+        setIsAddonModalOpen(false);
+        setAddonForm({ customer_name: "", customer_phone: "", product_name: "", amount: "", payment_method: "card", memo: "" });
+        fetchRecentLogs(selectedGymId, selectedCompanyId);
+        fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+      } else {
+        alert(result.error || "등록에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("부가상품 등록 에러:", error);
+      alert("등록 중 오류가 발생했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -428,23 +607,29 @@ export default function AdminDashboardPage() {
       {/* 흘러가는 시스템 공지 배너 */}
       {systemAnnouncements.length > 0 && (
         <div
-          className="bg-gradient-to-r from-[#2F80ED] to-[#56CCF2] py-2.5 overflow-hidden cursor-pointer"
+          className="py-2.5 overflow-hidden cursor-pointer -mx-4 lg:-mx-6 -mt-4 lg:-mt-6 mb-4 lg:mb-6"
+          style={{ background: 'linear-gradient(to right, #2F80ED, #1e5bb8)' }}
           onClick={() => setIsAnnouncementModalOpen(true)}
         >
-          <div className="flex animate-marquee whitespace-nowrap">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex items-center mx-8">
-                <span className={`text-white text-xs font-bold px-2 py-0.5 rounded mr-3 ${
-                  systemAnnouncements[0]?.priority === 'urgent' ? 'bg-red-500/80' : 'bg-white/20'
-                }`}>
-                  {systemAnnouncements[0]?.priority === 'urgent' ? '긴급' :
-                   systemAnnouncements[0]?.priority === 'update' ? '업데이트' : '공지'}
-                </span>
-                <span className="text-white font-medium text-sm">
-                  {systemAnnouncements[0]?.title}
-                </span>
-                <span className="mx-8 text-white/30">•</span>
-                <Bell className="w-4 h-4 text-white/80" />
+          <div className="flex whitespace-nowrap animate-marquee-scroll">
+            {/* 공지사항 세트 x2 (무한 스크롤용) */}
+            {[0, 1].map((setIndex) => (
+              <div key={setIndex} className="flex shrink-0 items-center px-4">
+                {systemAnnouncements.map((announcement, idx) => (
+                  <div key={`${setIndex}-${idx}`} className="flex items-center">
+                    <span className="text-white/40 mx-6">◆</span>
+                    <span className={`text-white text-xs font-bold px-2 py-0.5 rounded mr-3 ${
+                      announcement.priority === 'urgent' ? 'bg-red-500/80' : 'bg-white/20'
+                    }`}>
+                      {announcement.priority === 'urgent' ? '긴급' :
+                       announcement.priority === 'update' ? '업데이트' : '공지'}
+                    </span>
+                    <span className="text-white font-medium text-sm">
+                      {announcement.title}
+                    </span>
+                    <Bell className="w-4 h-4 text-white/80 ml-3" />
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -466,21 +651,21 @@ export default function AdminDashboardPage() {
 
       {/* 2. Quick Actions (아이콘 메뉴) */}
       <div className="flex gap-6 md:gap-8 overflow-x-auto pb-2 scrollbar-hide">
-        <QuickAction icon={UserPlus} label="신규회원 등록" href="/admin/members?type=new" color="bg-blue-100 text-blue-600" />
-        <QuickAction icon={Users} label="기존회원 등록" href="/admin/members?type=existing" color="bg-indigo-100 text-indigo-600" />
-        <QuickAction icon={Package} label="회원이외 부가등록" href="/admin/sales?addon=true" color="bg-green-100 text-green-600" />
+        <QuickActionButton icon={UserPlus} label="신규회원 등록" onClick={() => setIsNewMemberModalOpen(true)} color="bg-blue-100 text-blue-600" />
+        <QuickActionButton icon={Users} label="기존회원 등록" onClick={() => setIsExistingMemberModalOpen(true)} color="bg-indigo-100 text-indigo-600" />
+        <QuickActionButton icon={Package} label="회원이외 부가등록" onClick={() => setIsAddonModalOpen(true)} color="bg-green-100 text-green-600" />
         <QuickAction icon={Calendar} label="스케줄 관리" href="/admin/schedule" color="bg-purple-100 text-purple-600" />
         <QuickAction icon={CheckCircle2} label="출석 체크" href="/admin/attendance" color="bg-orange-100 text-orange-600" />
       </div>
 
       {/* 3. Banner Widget - Google Calendar 연동 */}
-      <div className="bg-gradient-to-r from-[#2F80ED] to-[#56CCF2] rounded-2xl p-6 md:p-8 text-white shadow-lg shadow-blue-100 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#0a192f] via-[#172a45] to-[#2F80ED] rounded-2xl p-6 md:p-8 text-white shadow-lg shadow-blue-200 flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
             <span className="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-xs font-bold">Notice</span>
             <span className="font-medium opacity-90">새로운 기능 업데이트</span>
           </div>
-          <h3 className="text-xl md:text-2xl font-bold mb-2">
+          <h3 className="text-xl md:text-2xl font-bold mb-2" style={{ color: '#ffffff' }}>
             Google Calendar 연동 기능이 추가되었습니다!
           </h3>
           <p className="opacity-90 text-sm md:text-base">이제 외부 캘린더와 스케줄을 동기화하여 더 편리하게 관리하세요.</p>
@@ -490,7 +675,7 @@ export default function AdminDashboardPage() {
             // TODO: Google Calendar 연동 페이지로 이동 또는 모달 열기
             alert("Google Calendar 연동 기능은 곧 출시됩니다!");
           }}
-          className="relative z-10 px-6 py-3 bg-white text-[#2F80ED] rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap"
+          className="relative z-10 px-6 py-3 bg-white text-[#0a192f] rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap"
         >
           지금 연동하기
         </button>
@@ -883,6 +1068,66 @@ export default function AdminDashboardPage() {
 
       </div>
 
+      {/* 5. 최근 등록 기록 */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+            <History className="w-5 h-5 text-[#2F80ED]" />
+            최근 등록 기록
+          </h3>
+          <span className="text-xs text-gray-400">{recentLogs.length}건</span>
+        </div>
+        <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+          {recentLogs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+              <Clock className="w-8 h-8 mb-2 opacity-20" />
+              <p className="text-sm">최근 등록 기록이 없습니다.</p>
+            </div>
+          ) : (
+            recentLogs.map((log) => {
+              const typeLabels: Record<string, { label: string; color: string }> = {
+                new_member: { label: "신규회원", color: "bg-blue-100 text-blue-600" },
+                existing_member: { label: "재등록", color: "bg-indigo-100 text-indigo-600" },
+                addon: { label: "부가상품", color: "bg-green-100 text-green-600" },
+                other: { label: "기타", color: "bg-gray-100 text-gray-600" }
+              };
+              const typeInfo = typeLabels[log.type] || typeLabels.other;
+              const methodLabels: Record<string, string> = {
+                card: "카드",
+                cash: "현금",
+                transfer: "계좌이체"
+              };
+
+              return (
+                <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${typeInfo.color}`}>
+                      {typeInfo.label}
+                    </span>
+                    <div>
+                      <div className="font-medium text-gray-800 text-sm">{log.member_name}</div>
+                      <div className="text-xs text-gray-400 flex items-center gap-2">
+                        <span>{log.membership_type || log.memo}</span>
+                        <span className="text-gray-300">|</span>
+                        <span>{methodLabels[log.payment_method] || log.payment_method}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-gray-900 text-sm">{formatCurrency(log.amount)}</div>
+                    <div className="text-xs text-gray-400">
+                      {new Date(log.created_at).toLocaleString('ko-KR', {
+                        month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
       {/* 선택한 날짜의 행사 모달 */}
       <Dialog open={isEventModalOpen} onOpenChange={setIsEventModalOpen}>
         <DialogContent className="max-w-2xl bg-white">
@@ -1023,7 +1268,7 @@ export default function AdminDashboardPage() {
         <DialogContent className="max-w-lg bg-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3 text-lg">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2F80ED] to-[#1c60b8] flex items-center justify-center">
                 <Bell className="w-5 h-5 text-white" />
               </div>
               지점 공지사항
@@ -1081,6 +1326,321 @@ export default function AdminDashboardPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 신규회원 등록 모달 */}
+      <Dialog open={isNewMemberModalOpen} onOpenChange={setIsNewMemberModalOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-blue-600" />
+              신규회원 등록
+            </DialogTitle>
+            <DialogDescription className="sr-only">신규 회원을 등록합니다</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>이름 *</Label>
+                <Input
+                  value={newMemberForm.name}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
+                  placeholder="홍길동"
+                />
+              </div>
+              <div>
+                <Label>연락처 *</Label>
+                <Input
+                  value={newMemberForm.phone}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
+                  placeholder="010-1234-5678"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>상품 선택 *</Label>
+              <Select
+                value={newMemberForm.membership_name}
+                onValueChange={(productId) => {
+                  const product = products.find(p => p.id === productId);
+                  if (product) {
+                    setNewMemberForm({
+                      ...newMemberForm,
+                      membership_type: product.membership_type,
+                      membership_name: product.id,
+                      sessions: product.default_sessions?.toString() || "",
+                      amount: product.default_price?.toString() || ""
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="상품을 선택하세요" /></SelectTrigger>
+                <SelectContent>
+                  {products.length === 0 ? (
+                    <SelectItem value="" disabled>등록된 상품이 없습니다</SelectItem>
+                  ) : (
+                    products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} ({product.membership_type}) - {product.default_price?.toLocaleString()}원
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {products.length === 0 && (
+                <p className="text-xs text-orange-500 mt-1">매출관리 &gt; 상품관리에서 상품을 먼저 등록해주세요.</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>횟수</Label>
+                <Input
+                  type="number"
+                  value={newMemberForm.sessions}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, sessions: e.target.value })}
+                  placeholder="30"
+                />
+              </div>
+              <div>
+                <Label>결제금액 *</Label>
+                <Input
+                  type="number"
+                  value={newMemberForm.amount}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, amount: e.target.value })}
+                  placeholder="1000000"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>결제방법</Label>
+              <Select value={newMemberForm.payment_method} onValueChange={(v) => setNewMemberForm({ ...newMemberForm, payment_method: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="card">카드</SelectItem>
+                  <SelectItem value="cash">현금</SelectItem>
+                  <SelectItem value="transfer">계좌이체</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>메모</Label>
+              <Input
+                value={newMemberForm.memo}
+                onChange={(e) => setNewMemberForm({ ...newMemberForm, memo: e.target.value })}
+                placeholder="특이사항"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewMemberModalOpen(false)}>취소</Button>
+            <Button onClick={handleNewMemberRegistration} disabled={isSaving}>
+              {isSaving ? "등록 중..." : "등록"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 기존회원 등록 모달 */}
+      <Dialog open={isExistingMemberModalOpen} onOpenChange={setIsExistingMemberModalOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              기존회원 등록
+            </DialogTitle>
+            <DialogDescription className="sr-only">기존 회원에게 회원권을 추가합니다</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>회원 검색 *</Label>
+              <Input
+                value={memberSearchQuery}
+                onChange={(e) => {
+                  setMemberSearchQuery(e.target.value);
+                  searchMembers(e.target.value);
+                }}
+                placeholder="이름 또는 전화번호로 검색"
+              />
+              {memberSearchResults.length > 0 && (
+                <div className="mt-2 border rounded-lg max-h-40 overflow-y-auto">
+                  {memberSearchResults.map((member) => (
+                    <div
+                      key={member.id}
+                      className="p-2 hover:bg-blue-50 cursor-pointer flex justify-between"
+                      onClick={() => {
+                        setExistingMemberForm({ ...existingMemberForm, member_id: member.id, member_name: member.name });
+                        setMemberSearchQuery(member.name);
+                        setMemberSearchResults([]);
+                      }}
+                    >
+                      <span className="font-medium">{member.name}</span>
+                      <span className="text-gray-400 text-sm">{member.phone}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {existingMemberForm.member_id && (
+                <div className="mt-2 text-sm text-green-600">선택됨: {existingMemberForm.member_name}</div>
+              )}
+            </div>
+            <div>
+              <Label>상품 선택 *</Label>
+              <Select
+                value={existingMemberForm.membership_name}
+                onValueChange={(productId) => {
+                  const product = products.find(p => p.id === productId);
+                  if (product) {
+                    setExistingMemberForm({
+                      ...existingMemberForm,
+                      membership_type: product.membership_type,
+                      membership_name: product.id,
+                      sessions: product.default_sessions?.toString() || "",
+                      amount: product.default_price?.toString() || ""
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="상품을 선택하세요" /></SelectTrigger>
+                <SelectContent>
+                  {products.length === 0 ? (
+                    <SelectItem value="" disabled>등록된 상품이 없습니다</SelectItem>
+                  ) : (
+                    products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name} ({product.membership_type}) - {product.default_price?.toLocaleString()}원
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {products.length === 0 && (
+                <p className="text-xs text-orange-500 mt-1">매출관리 &gt; 상품관리에서 상품을 먼저 등록해주세요.</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>횟수</Label>
+                <Input
+                  type="number"
+                  value={existingMemberForm.sessions}
+                  onChange={(e) => setExistingMemberForm({ ...existingMemberForm, sessions: e.target.value })}
+                  placeholder="30"
+                />
+              </div>
+              <div>
+                <Label>결제금액 *</Label>
+                <Input
+                  type="number"
+                  value={existingMemberForm.amount}
+                  onChange={(e) => setExistingMemberForm({ ...existingMemberForm, amount: e.target.value })}
+                  placeholder="1000000"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>결제방법</Label>
+              <Select value={existingMemberForm.payment_method} onValueChange={(v) => setExistingMemberForm({ ...existingMemberForm, payment_method: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="card">카드</SelectItem>
+                  <SelectItem value="cash">현금</SelectItem>
+                  <SelectItem value="transfer">계좌이체</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>메모</Label>
+              <Input
+                value={existingMemberForm.memo}
+                onChange={(e) => setExistingMemberForm({ ...existingMemberForm, memo: e.target.value })}
+                placeholder="특이사항"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExistingMemberModalOpen(false)}>취소</Button>
+            <Button onClick={handleExistingMemberRegistration} disabled={isSaving}>
+              {isSaving ? "등록 중..." : "등록"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 부가상품 등록 모달 */}
+      <Dialog open={isAddonModalOpen} onOpenChange={setIsAddonModalOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-green-600" />
+              회원이외 부가등록
+            </DialogTitle>
+            <DialogDescription className="sr-only">부가상품을 등록합니다</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>고객명 *</Label>
+                <Input
+                  value={addonForm.customer_name}
+                  onChange={(e) => setAddonForm({ ...addonForm, customer_name: e.target.value })}
+                  placeholder="홍길동"
+                />
+              </div>
+              <div>
+                <Label>연락처</Label>
+                <Input
+                  value={addonForm.customer_phone}
+                  onChange={(e) => setAddonForm({ ...addonForm, customer_phone: e.target.value })}
+                  placeholder="010-1234-5678"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>상품명 *</Label>
+              <Input
+                value={addonForm.product_name}
+                onChange={(e) => setAddonForm({ ...addonForm, product_name: e.target.value })}
+                placeholder="운동복, 프로틴 등"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>금액 *</Label>
+                <Input
+                  type="number"
+                  value={addonForm.amount}
+                  onChange={(e) => setAddonForm({ ...addonForm, amount: e.target.value })}
+                  placeholder="50000"
+                />
+              </div>
+              <div>
+                <Label>결제방법</Label>
+                <Select value={addonForm.payment_method} onValueChange={(v) => setAddonForm({ ...addonForm, payment_method: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="card">카드</SelectItem>
+                    <SelectItem value="cash">현금</SelectItem>
+                    <SelectItem value="transfer">계좌이체</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>메모</Label>
+              <Input
+                value={addonForm.memo}
+                onChange={(e) => setAddonForm({ ...addonForm, memo: e.target.value })}
+                placeholder="특이사항"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddonModalOpen(false)}>취소</Button>
+            <Button onClick={handleAddonRegistration} disabled={isSaving}>
+              {isSaving ? "등록 중..." : "등록"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     </div>
   );
@@ -1106,6 +1666,17 @@ function QuickAction({ icon: Icon, label, href, color, disabled }: { icon: any, 
       </div>
       <span className="text-xs font-bold text-gray-600 group-hover:text-[#2F80ED] transition-colors text-center leading-tight">{label}</span>
     </Link>
+  );
+}
+
+function QuickActionButton({ icon: Icon, label, onClick, color }: { icon: any, label: string, onClick: () => void, color: string }) {
+  return (
+    <button onClick={onClick} className="flex flex-col items-center gap-2 group">
+      <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-200`}>
+        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+      </div>
+      <span className="text-xs font-bold text-gray-600 group-hover:text-[#2F80ED] transition-colors text-center leading-tight">{label}</span>
+    </button>
   );
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -91,8 +92,6 @@ export default function HQPage() {
   const [editTargetId, setEditTargetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const supabase = createSupabaseClient();
-
   const formatDate = (value?: string | null) => {
     if (!value) return "-";
     try {
@@ -102,14 +101,34 @@ export default function HQPage() {
     }
   };
 
+  // AuthContext에서 사용자 정보 가져오기
+  const { user: authUser, isLoading: authLoading, companyName: authCompanyName } = useAuth();
+  const { companies: filterCompanies, selectedCompanyId: filterSelectedCompanyId, setCompany: setFilterCompany } = useAdminFilter();
+
+  // 초기화: AuthContext가 로드되면 데이터 가져오기
   useEffect(() => {
-    init();
-  }, []);
+    if (authLoading || !authUser) return;
+
+    setCompanyId(authUser.company_id);
+    setMyRole(authUser.role);
+    setCompanyName(authCompanyName || "");
+
+    // system_admin인 경우 회사 목록 설정
+    if (authUser.role === 'system_admin' && filterCompanies.length > 0) {
+      setCompanies(filterCompanies);
+      setSelectedCompanyId(filterSelectedCompanyId || authUser.company_id || "");
+    }
+
+    // 데이터 조회
+    if (authUser.company_id) {
+      fetchData(authUser.company_id);
+    }
+  }, [authLoading, authUser, authCompanyName, filterCompanies, filterSelectedCompanyId]);
 
   // system_admin이 회사를 변경했을 때 데이터 다시 가져오기
   useEffect(() => {
     if (selectedCompanyId && myRole === 'system_admin') {
-      fetchData(selectedCompanyId, myRole);
+      fetchData(selectedCompanyId);
       // 선택된 회사의 이름 업데이트
       const selectedCompany = companies.find(c => c.id === selectedCompanyId);
       if (selectedCompany) {
@@ -120,214 +139,135 @@ export default function HQPage() {
     }
   }, [selectedCompanyId]);
 
-  const init = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // 내 정보 가져오기
-    const { data: me } = await supabase
-      .from("staffs")
-      .select("company_id, role, companies(name)")
-      .eq("user_id", user.id)
-      .single();
-
-    if (me) {
-      setCompanyId(me.company_id);
-      setMyRole(me.role);
-      // @ts-ignore
-      setCompanyName(me.companies?.name ?? "");
-
-      // system_admin인 경우 운영 중인 회사 목록만 가져오기
-      if (me.role === 'system_admin') {
-        const { data: companiesData } = await supabase
-          .from("companies")
-          .select("id, name")
-          .eq("status", "active")
-          .order("name", { ascending: true });
-
-        if (companiesData) {
-          setCompanies(companiesData);
-          setSelectedCompanyId(me.company_id); // 기본값은 자신의 회사
-        }
-      }
-
-      // company_id 기준으로 데이터 조회
-      fetchData(me.company_id, me.role);
-    }
-  };
-
-  const fetchData = async (targetCompanyId: string | null, role: string) => {
+  const fetchData = async (targetCompanyId: string | null) => {
     if (!targetCompanyId) return;
 
-    // 지점 목록 (자기 회사 것만)
-    const { data: gymData, error: gymError } = await supabase
-        .from("gyms")
-        .select(`*, staffs(id, name, role, email)`)
-        .eq("company_id", targetCompanyId)
-        .order("created_at", { ascending: false });
+    try {
+      const response = await fetch(`/api/admin/hq/data?company_id=${targetCompanyId}`);
+      const result = await response.json();
 
-    if (gymError) {
-      console.error('❌ 지점 조회 오류:', gymError);
-    }
-    if (gymData) setGyms(gymData);
+      if (!result.success) {
+        console.error('❌ 데이터 조회 오류:', result.error);
+        return;
+      }
 
-    // 대기 직원 (자기 회사 것만, gym_id가 null인 사람)
-    const { data: pendingData } = await supabase
-      .from("staffs")
-      .select("*")
-      .eq("company_id", targetCompanyId)
-      .is("gym_id", null)
-      .order("created_at", { ascending: false });
-    if (pendingData) setPendingStaffs(pendingData);
+      const { gyms: gymData, allStaffs: allData, pendingStaffs: pendingData, members: memberData, payments: paymentData, events: eventsData, stats: statsData } = result;
 
-    // 전체 직원 (자기 회사 것만)
-    const { data: allData } = await supabase
-        .from("staffs")
-        .select("id, name, email, role, job_title, gym_id, created_at, updated_at, user_id, gyms(name)")
-        .eq("company_id", targetCompanyId)
-        .order("name", { ascending: true });
-    if (allData) setAllStaffs(allData);
+      // 지점 목록 설정
+      if (gymData) setGyms(gymData);
 
-    // 회원 데이터 (자기 회사 것만)
-    const { data: memberData } = await supabase
-      .from("members")
-      .select("id, name, phone, status, created_at, gym_id, gyms(name)")
-      .eq("company_id", targetCompanyId)
-      .order("created_at", { ascending: false });
-    if (memberData) setMembers(memberData);
+      // 대기 직원 설정
+      if (pendingData) setPendingStaffs(pendingData);
 
-    // 결제 데이터 가져오기 (매출 계산용)
-    const { data: paymentData, error: paymentError } = await supabase
-      .from("member_payments")
-      .select("id, member_id, amount, membership_type, registration_type, created_at, gym_id, visit_route")
-      .eq("company_id", targetCompanyId)
-      .order("created_at", { ascending: false });
+      // 전체 직원 설정
+      if (allData) setAllStaffs(allData);
 
-    // 회원에 결제 정보 연결
-    if (memberData && paymentData) {
-      const membersWithPayments = memberData.map(member => {
-        const payments = paymentData.filter(p => p.member_id === member.id);
+      // 회원 데이터 설정 (결제 정보 연결)
+      if (memberData && paymentData) {
+        const membersWithPayments = memberData.map((member: any) => {
+          const payments = paymentData.filter((p: any) => p.member_id === member.id);
+          return { ...member, payments };
+        });
+        setMembers(membersWithPayments);
+      } else if (memberData) {
+        setMembers(memberData);
+      }
+
+      // 최근 활동 데이터 생성 (최근 30일 이내 직원 활동만)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const activities: any[] = [];
+      const recentStaffs = allData?.filter((s: any) =>
+        s.created_at && new Date(s.created_at) >= thirtyDaysAgo
+      ) || [];
+
+      recentStaffs.forEach((staff: any) => {
+        const gymName = staff.gyms?.name || '미배정';
+        const isManualAdd = !staff.user_id;
+        const activityType = isManualAdd ? '수동 추가' : '자체 가입';
+        const badgeColor = isManualAdd ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700';
+        const jobTitle = staff.job_title || '-';
+        const roleText = staff.role === 'admin' ? '관리자' : staff.role === 'company_admin' ? '본사 관리자' : '직원';
+
+        activities.push({
+          id: `staff-${staff.id}`,
+          name: staff.name,
+          type: 'staff',
+          activityType,
+          gymName,
+          jobTitle,
+          roleText,
+          created_at: staff.created_at,
+          badgeColor
+        });
+      });
+
+      activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setRecentActivities(activities.slice(0, 15));
+
+      // 통계 설정
+      setStats(statsData);
+
+      // 지점별 통계
+      const firstDayOfMonth = new Date();
+      firstDayOfMonth.setDate(1);
+      firstDayOfMonth.setHours(0, 0, 0, 0);
+
+      const gymStatsData = gymData?.map((gym: any) => {
+        const staffCount = allData?.filter((s: any) => s.gym_id === gym.id).length || 0;
+        const memberCount = memberData?.filter((m: any) => m.gym_id === gym.id).length || 0;
+        const newMembersCount = memberData?.filter((m: any) => {
+          if (m.gym_id !== gym.id) return false;
+          const createdAt = new Date(m.created_at);
+          return createdAt >= firstDayOfMonth;
+        }).length || 0;
+
         return {
-          ...member,
-          payments: payments
+          id: gym.id,
+          name: gym.name,
+          status: gym.status,
+          staffCount,
+          memberCount,
+          newMembersCount
         };
-      });
-      setMembers(membersWithPayments);
+      }) || [];
+
+      setGymStats(gymStatsData);
+
+      // 회사 일정 & 행사 설정
+      if (eventsData) setCompanyEvents(eventsData);
+
+    } catch (error) {
+      console.error('❌ 데이터 조회 오류:', error);
     }
-
-    // 직접 count 쿼리로 정확한 통계 가져오기
-    const { count: totalGymsCount } = await supabase
-      .from("gyms")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", targetCompanyId);
-
-    const { count: totalStaffsCount } = await supabase
-      .from("staffs")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", targetCompanyId);
-
-    const { count: totalMembersCount } = await supabase
-      .from("members")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", targetCompanyId);
-
-    // 최근 활동 데이터 생성 (최근 30일 이내 직원 활동만)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const activities: any[] = [];
-
-    // 최근 직원 활동 (최근 30일 이내)
-    const recentStaffs = allData?.filter(s =>
-      s.created_at &&
-      new Date(s.created_at) >= thirtyDaysAgo
-    ) || [];
-
-    recentStaffs.forEach(staff => {
-      // @ts-ignore
-      const gymName = staff.gyms?.name || '미배정';
-
-      // user_id가 있으면 자체 가입, 없으면 수동 추가
-      const isManualAdd = !staff.user_id;
-      const activityType = isManualAdd ? '수동 추가' : '자체 가입';
-      const badgeColor = isManualAdd ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700';
-
-      // 직책 정보
-      const jobTitle = staff.job_title || '-';
-      const roleText = staff.role === 'admin' ? '관리자' : staff.role === 'company_admin' ? '본사 관리자' : '직원';
-
-      activities.push({
-        id: `staff-${staff.id}`,
-        name: staff.name,
-        type: 'staff',
-        activityType,
-        gymName,
-        jobTitle,
-        roleText,
-        created_at: staff.created_at,
-        badgeColor
-      });
-    });
-
-    // 날짜순 정렬 (최신순)
-    activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    setRecentActivities(activities.slice(0, 15));
-
-    // 이번 달 신규 회원 수 (count 쿼리 사용)
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const { count: newMembersThisMonthCount } = await supabase
-      .from("members")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", targetCompanyId)
-      .gte("created_at", firstDayOfMonth.toISOString());
-
-    // 통계 설정 (count 쿼리 결과 사용)
-    setStats({
-      totalGyms: totalGymsCount || 0,
-      totalStaffs: totalStaffsCount || 0,
-      totalMembers: totalMembersCount || 0,
-      newMembersThisMonth: newMembersThisMonthCount || 0
-    });
-
-    // 지점별 통계
-    const gymStatsData = gymData?.map(gym => {
-      const staffCount = allData?.filter(s => s.gym_id === gym.id).length || 0;
-      const memberCount = memberData?.filter(m => m.gym_id === gym.id).length || 0;
-      const newMembersCount = memberData?.filter(m => {
-        if (m.gym_id !== gym.id) return false;
-        const createdAt = new Date(m.created_at);
-        return createdAt >= firstDayOfMonth;
-      }).length || 0;
-
-      return {
-        id: gym.id,
-        name: gym.name,
-        status: gym.status,
-        staffCount,
-        memberCount,
-        newMembersCount
-      };
-    }) || [];
-
-    setGymStats(gymStatsData);
-
-    // 회사 일정 & 행사 조회 (자기 회사 것만)
-    const { data: eventsData } = await supabase
-      .from("company_events")
-      .select("*, gyms(name)")
-      .eq("company_id", targetCompanyId)
-      .order("event_date", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (eventsData) setCompanyEvents(eventsData);
   };
 
   const handleAssign = async (staffId: string) => {
     if (!selectedGym || !selectedRole) return alert("지점과 권한을 선택해주세요.");
     if (!confirm("발령 보내시겠습니까?")) return;
-    const { error } = await supabase.from("staffs").update({ gym_id: selectedGym, role: selectedRole, employment_status: "재직" }).eq("id", staffId);
-    if (!error) { alert("발령 완료!"); fetchData(companyId, myRole); } else { alert(error.message); }
+
+    try {
+      const response = await fetch("/api/admin/hq/assign-staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffId,
+          gymId: selectedGym,
+          role: selectedRole
+        })
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        alert("발령 완료!");
+        fetchData(companyId || selectedCompanyId);
+      } else {
+        alert(result.error);
+      }
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   // 회사 일정 & 행사 관리 함수들
@@ -395,27 +335,22 @@ export default function HQPage() {
         is_active: eventForm.is_active
       };
 
-      if (editingEvent) {
-        // 수정
-        const { error } = await supabase
-          .from("company_events")
-          .update(eventData)
-          .eq("id", editingEvent.id);
+      const response = await fetch("/api/admin/hq/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: editingEvent?.id || null,
+          eventData
+        })
+      });
+      const result = await response.json();
 
-        if (error) throw error;
-        alert("회사 일정 & 행사가 수정되었습니다.");
-      } else {
-        // 신규 등록
-        const { error } = await supabase
-          .from("company_events")
-          .insert(eventData);
+      if (!result.success) throw new Error(result.error);
 
-        if (error) throw error;
-        alert("회사 일정 & 행사가 등록되었습니다.");
-      }
+      alert(editingEvent ? "회사 일정 & 행사가 수정되었습니다." : "회사 일정 & 행사가 등록되었습니다.");
 
       setIsEventModalOpen(false);
-      fetchData(targetCompanyId, myRole);
+      fetchData(targetCompanyId);
     } catch (error: any) {
       alert("오류: " + error.message);
     } finally {
@@ -427,16 +362,16 @@ export default function HQPage() {
     if (!confirm("정말 삭제하시겠습니까?")) return;
 
     try {
-      const { error } = await supabase
-        .from("company_events")
-        .delete()
-        .eq("id", id);
+      const response = await fetch(`/api/admin/hq/events?id=${id}`, {
+        method: "DELETE"
+      });
+      const result = await response.json();
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error);
 
       alert("회사 일정 & 행사가 삭제되었습니다.");
       const targetCompanyId = companyId || selectedCompanyId;
-      fetchData(targetCompanyId, myRole);
+      fetchData(targetCompanyId);
     } catch (error: any) {
       alert("오류: " + error.message);
     }
@@ -444,15 +379,20 @@ export default function HQPage() {
 
   const handleToggleEventActive = async (event: any) => {
     try {
-      const { error } = await supabase
-        .from("company_events")
-        .update({ is_active: !event.is_active })
-        .eq("id", event.id);
+      const response = await fetch("/api/admin/hq/events", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          isActive: !event.is_active
+        })
+      });
+      const result = await response.json();
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error);
 
       const targetCompanyId = companyId || selectedCompanyId;
-      fetchData(targetCompanyId, myRole);
+      fetchData(targetCompanyId);
     } catch (error: any) {
       alert("오류: " + error.message);
     }
@@ -472,19 +412,22 @@ export default function HQPage() {
   const handleCreateBranch = async () => {
     // 필수값 체크 강화
     if (!formData.gymName || !formData.managerId) return alert("필수 정보(지점명, 지점장)를 입력해주세요.");
-    
+
     setIsLoading(true);
     try {
+        const targetCompanyId = companyId || selectedCompanyId;
         const res = await fetch("/api/admin/create-branch", {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 ...formData,
-                category: formData.category.join(", ") 
+                category: formData.category.join(", "),
+                company_id: targetCompanyId
             })
         });
-        if (!res.ok) throw new Error("실패");
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "지점 생성 실패");
         alert("생성 완료!");
-        setIsCreateOpen(false); setFormData(initialForm); fetchData(companyId, myRole);
+        setIsCreateOpen(false); setFormData(initialForm); fetchData(targetCompanyId);
     } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
   };
 
@@ -503,7 +446,7 @@ export default function HQPage() {
         });
         if (!res.ok) throw new Error("실패");
         alert("수정 완료!");
-        setIsEditOpen(false); setEditTargetId(null); setFormData(initialForm); fetchData(companyId, myRole);
+        setIsEditOpen(false); setEditTargetId(null); setFormData(initialForm); fetchData(companyId || selectedCompanyId);
     } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
   };
 
@@ -523,8 +466,17 @@ export default function HQPage() {
 
   const handleDeleteGym = async (gymId: string) => {
     if (!confirm("정말 삭제하시겠습니까?")) return;
-    await supabase.from("gyms").delete().eq("id", gymId);
-    fetchData(companyId, myRole);
+    try {
+      const response = await fetch(`/api/admin/hq/delete-gym?id=${gymId}`, {
+        method: "DELETE"
+      });
+      const result = await response.json();
+
+      if (!result.success) throw new Error(result.error);
+      fetchData(companyId || selectedCompanyId);
+    } catch (error: any) {
+      alert("오류: " + error.message);
+    }
   };
 
   const openStaffEditModal = (staff: any) => {
@@ -541,19 +493,22 @@ export default function HQPage() {
     if (!editingStaff) return;
     setIsLoading(true);
     try {
-      const { error } = await supabase
-        .from("staffs")
-        .update({
-          job_title: staffEditForm.job_title,
+      const response = await fetch("/api/admin/hq/update-staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffId: editingStaff.id,
+          jobTitle: staffEditForm.job_title,
           role: staffEditForm.role,
-          employment_status: staffEditForm.employment_status
+          employmentStatus: staffEditForm.employment_status
         })
-        .eq("id", editingStaff.id);
+      });
+      const result = await response.json();
 
-      if (error) throw error;
+      if (!result.success) throw new Error(result.error);
       alert("직원 정보가 수정되었습니다.");
       setIsStaffEditOpen(false);
-      fetchData(companyId || selectedCompanyId, myRole);
+      fetchData(companyId || selectedCompanyId);
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -591,7 +546,7 @@ export default function HQPage() {
 
       alert("BEP가 업데이트되었습니다!");
       setIsEditingBep(false);
-      fetchData(companyId || selectedCompanyId, myRole);
+      fetchData(companyId || selectedCompanyId);
 
       // 모달 데이터도 업데이트
       setSelectedGymDetail({

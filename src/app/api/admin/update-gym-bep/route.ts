@@ -1,8 +1,19 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
 
 export async function POST(request: Request) {
   try {
+    // 인증 확인
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff || !isAdmin(staff.role)) {
+      return NextResponse.json(
+        { error: "관리자 권한이 필요합니다." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const { gym_id, fc_bep, pt_bep } = body;
 
@@ -13,13 +24,23 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const supabaseAdmin = getSupabaseAdmin();
 
-    const updateData: any = {};
+    // 지점의 회사 확인 및 권한 체크
+    const { data: gym } = await supabaseAdmin
+      .from("gyms")
+      .select("company_id")
+      .eq("id", gym_id)
+      .single();
+
+    if (!canAccessGym(staff, gym_id, gym?.company_id)) {
+      return NextResponse.json(
+        { error: "해당 지점에 대한 권한이 없습니다." },
+        { status: 403 }
+      );
+    }
+
+    const updateData: Record<string, number> = {};
     if (fc_bep !== undefined) updateData.fc_bep = fc_bep;
     if (pt_bep !== undefined) updateData.pt_bep = pt_bep;
 
@@ -32,6 +53,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error("[API] Error updating gym BEP:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

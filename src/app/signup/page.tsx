@@ -61,7 +61,7 @@ export default function SignupPage() {
       
       if (res.ok) {
         alert("가입 신청 완료! 본사 승인 후 이용 가능합니다.");
-        router.push("/login");
+        router.push("/sign-in");
       } else {
         const err = await res.json();
         alert("가입 실패: " + err.error);

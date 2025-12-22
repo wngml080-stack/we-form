@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { createSupabaseClient } from "@/lib/supabase/client";
+import { useEffect, useState, useCallback } from "react";
 
 export type ReportStatus = "submitted" | "approved" | "rejected";
 
@@ -27,7 +26,6 @@ interface UseScheduleReportsParams {
 }
 
 export function useScheduleReports({ gymId, companyId, status = "all", yearMonth }: UseScheduleReportsParams) {
-  const supabase = useMemo(() => createSupabaseClient(), []);
   const [reports, setReports] = useState<MonthlyReport[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,57 +36,26 @@ export function useScheduleReports({ gymId, companyId, status = "all", yearMonth
     setError(null);
 
     try {
-      // 1. 먼저 보고서 조회 (staffs 조인 없이)
-      let query = supabase
-        .from("monthly_schedule_reports")
-        .select("*")
-        .eq("gym_id", gymId)
-        .order("submitted_at", { ascending: false });
+      const params = new URLSearchParams({ gym_id: gymId });
+      if (companyId) params.append("company_id", companyId);
+      if (status !== "all") params.append("status", status);
+      if (yearMonth) params.append("year_month", yearMonth);
 
-      if (companyId) {
-        query = query.eq("company_id", companyId);
-      }
-      if (status !== "all") {
-        query = query.eq("status", status);
-      }
-      if (yearMonth) {
-        query = query.eq("year_month", yearMonth);
-      }
+      const response = await fetch(`/api/admin/schedule/reports?${params.toString()}`);
+      const result = await response.json();
 
-      const { data: reportsData, error: reportsError } = await query;
-      if (reportsError) {
-        setError(reportsError.message);
-        setIsLoading(false);
+      if (!response.ok) {
+        setError(result.error || "보고서 조회 실패");
         return;
       }
 
-      if (!reportsData || reportsData.length === 0) {
-        setReports([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. 관련된 staff 정보 별도 조회
-      const staffIds = [...new Set(reportsData.map(r => r.staff_id))];
-      const { data: staffsData } = await supabase
-        .from("staffs")
-        .select("id, name, job_title")
-        .in("id", staffIds);
-
-      // 3. 보고서에 staff 정보 매핑
-      const staffMap = new Map(staffsData?.map(s => [s.id, s]) || []);
-      const reportsWithStaff = reportsData.map(report => ({
-        ...report,
-        staffs: staffMap.get(report.staff_id) || null,
-      }));
-
-      setReports(reportsWithStaff);
+      setReports(result.reports || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [gymId, companyId, status, yearMonth, supabase]);
+  }, [gymId, companyId, status, yearMonth]);
 
   useEffect(() => {
     fetchReports();
@@ -96,4 +63,3 @@ export function useScheduleReports({ gymId, companyId, status = "all", yearMonth
 
   return { reports, isLoading, error, refetch: fetchReports };
 }
-

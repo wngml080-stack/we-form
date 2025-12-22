@@ -97,7 +97,9 @@ export default function AdminSchedulePage() {
     inbody_checked: false,
   });
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
+
   const yearMonth = useMemo(() => {
     const d = new Date(selectedDate);
     const yyyy = d.getFullYear();
@@ -118,7 +120,7 @@ export default function AdminSchedulePage() {
   useEffect(() => {
     if (authLoading || !filterInitialized) return;
     if (!user) {
-      router.push("/login");
+      router.push("/sign-in");
       return;
     }
     if (!selectedGymId) return;
@@ -1239,24 +1241,26 @@ export default function AdminSchedulePage() {
         </div>
       </div>
 
-      {/* 내 스케줄 제출 배너 */}
-      <MonthlySubmissionBanner
-        yearMonth={yearMonth}
-        status={
-          mySubmissionStatus === "none"
-            ? "not_submitted"
-            : mySubmissionStatus === "submitted"
-            ? "submitted"
-            : mySubmissionStatus === "approved"
-            ? "approved"
-            : "rejected"
-        }
-        submittedAt={mySubmittedAt}
-        reviewedAt={myReviewedAt}
-        adminMemo={myAdminMemo}
-        onSubmit={handleSubmitMonth}
-        onResubmit={handleSubmitMonth}
-      />
+      {/* 내 스케줄 제출 배너 - staff 역할에만 표시 */}
+      {userRole === "staff" && (
+        <MonthlySubmissionBanner
+          yearMonth={yearMonth}
+          status={
+            mySubmissionStatus === "none"
+              ? "not_submitted"
+              : mySubmissionStatus === "submitted"
+              ? "submitted"
+              : mySubmissionStatus === "approved"
+              ? "approved"
+              : "rejected"
+          }
+          submittedAt={mySubmittedAt}
+          reviewedAt={myReviewedAt}
+          adminMemo={myAdminMemo}
+          onSubmit={handleSubmitMonth}
+          onResubmit={handleSubmitMonth}
+        />
+      )}
 
       {/* 컨트롤 바 (날짜 + 뷰 전환) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

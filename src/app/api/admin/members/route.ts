@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest, canAccessCompany, canAccessGym, isAdmin } from "@/lib/api/auth";
 
-// Service Role로 RLS 우회해서 회원 조회 (페이지네이션 적용)
 export async function GET(request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    // 인증 확인
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff || !isAdmin(staff.role)) {
+      return NextResponse.json(
+        { error: "관리자 권한이 필요합니다." },
+        { status: 403 }
+      );
+    }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const supabase = getSupabaseAdmin();
 
     // URL에서 파라미터 가져오기
     const { searchParams } = new URL(request.url);
@@ -21,7 +23,33 @@ export async function GET(request: Request) {
     const status = searchParams.get('status') || 'all';
     const gymId = searchParams.get('gym_id');
     const companyId = searchParams.get('company_id');
-    const trainerId = searchParams.get('trainer_id'); // 직원 페이지용
+    const trainerId = searchParams.get('trainer_id');
+
+    // 권한 확인
+    if (gymId) {
+      const { data: gym } = await supabase
+        .from("gyms")
+        .select("company_id")
+        .eq("id", gymId)
+        .single();
+
+      if (!canAccessGym(staff, gymId, gym?.company_id)) {
+        return NextResponse.json(
+          { error: "해당 지점에 대한 접근 권한이 없습니다." },
+          { status: 403 }
+        );
+      }
+    } else if (companyId) {
+      if (!canAccessCompany(staff, companyId)) {
+        return NextResponse.json(
+          { error: "해당 회사에 대한 접근 권한이 없습니다." },
+          { status: 403 }
+        );
+      }
+    } else {
+      // gymId나 companyId가 없으면 자신의 권한 범위 내에서 조회
+      // admin 역할은 자기 지점만, company_admin은 자기 회사만
+    }
 
     // 페이지네이션 설정
     const PAGE_SIZE = 50;
@@ -38,11 +66,19 @@ export async function GET(request: Request) {
         )
       `, { count: 'exact' });
 
-    // 역할별 필터링 (staffs 패턴과 동일)
+    // 역할별 필터링
     if (gymId) {
       query = query.eq("gym_id", gymId);
     } else if (companyId) {
       query = query.eq("company_id", companyId);
+    } else {
+      // 명시적 필터가 없으면 사용자 권한에 맞게 자동 필터
+      if (staff.role === "admin" && staff.gym_id) {
+        query = query.eq("gym_id", staff.gym_id);
+      } else if (staff.role === "company_admin" && staff.company_id) {
+        query = query.eq("company_id", staff.company_id);
+      }
+      // system_admin은 필터 없이 전체 조회 가능
     }
 
     // 트레이너별 필터링 (직원 페이지용)
@@ -66,7 +102,7 @@ export async function GET(request: Request) {
       .range(start, end);
 
     if (error) {
-      console.error("❌ 회원 조회 오류:", error);
+      console.error("회원 조회 오류:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -79,13 +115,19 @@ export async function GET(request: Request) {
       statsQuery = statsQuery.eq("gym_id", gymId);
     } else if (companyId) {
       statsQuery = statsQuery.eq("company_id", companyId);
+    } else {
+      if (staff.role === "admin" && staff.gym_id) {
+        statsQuery = statsQuery.eq("gym_id", staff.gym_id);
+      } else if (staff.role === "company_admin" && staff.company_id) {
+        statsQuery = statsQuery.eq("company_id", staff.company_id);
+      }
     }
 
     if (trainerId) {
       statsQuery = statsQuery.eq("trainer_id", trainerId);
     }
 
-    const { data: statsData, error: statsError } = await statsQuery;
+    const { data: statsData } = await statsQuery;
 
     // 상태별 집계
     const stats = {
@@ -95,7 +137,7 @@ export async function GET(request: Request) {
       expired: statsData?.filter(m => m.status === 'expired').length || 0,
     };
 
-    // 활성 회원권만 필터링 (클라이언트 사이드 처리)
+    // 활성 회원권만 필터링
     const membersWithActiveMemberships = data?.map(member => ({
       ...member,
       member_memberships: member.member_memberships?.filter(
@@ -113,7 +155,7 @@ export async function GET(request: Request) {
       filter: { gymId, companyId, trainerId, status, search }
     });
   } catch (error: any) {
-    console.error("❌ 회원 API 오류:", error);
+    console.error("회원 API 오류:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -49,13 +49,14 @@ export default function AdminReportsPage() {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [adminMemo, setAdminMemo] = useState("");
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   useEffect(() => {
     if (authLoading) return;
 
     if (!user) {
-      router.push("/login");
+      router.push("/sign-in");
       return;
     }
 

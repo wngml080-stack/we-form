@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { showError } from "@/lib/utils/error-handler";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function SystemAdminPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [companies, setCompanies] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,54 +75,54 @@ export default function SystemAdminPage() {
   const [totalGymsCount, setTotalGymsCount] = useState(0);
   const [totalStaffsCount, setTotalStaffsCount] = useState(0);
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return router.push("/login");
 
-      const { data: me } = await supabase.from("staffs").select("role").eq("user_id", user.id).single();
+    if (authLoading) return;
 
-      // 시스템 관리자가 아니면 쫓아내기
-      if (me?.role !== "system_admin") {
-        showError("접근 권한이 없습니다.", "권한 확인");
-        return router.push("/admin");
-      }
+    // 시스템 관리자가 아니면 쫓아내기
+    if (user?.role !== "system_admin") {
+      showError("접근 권한이 없습니다.", "권한 확인");
+      router.push("/admin");
+      return;
+    }
 
-      fetchCompanies();
-      fetchSystemAnnouncements();
-    };
-    init();
-  }, []);
+    fetchCompanies();
+    fetchSystemAnnouncements();
+  }, [authLoading, user, router]);
 
   const fetchCompanies = async () => {
     setIsLoading(true);
-    const { data } = await supabase.from("companies").select("*").order("created_at", { ascending: false });
-    if (data) setCompanies(data);
-
-    // 전체 지점 수 계산
-    const { count: gymsCount } = await supabase
-      .from("gyms")
-      .select("*", { count: "exact", head: true });
-    if (gymsCount !== null) setTotalGymsCount(gymsCount);
-
-    // 전체 직원 수 계산
-    const { count: staffsCount } = await supabase
-      .from("staffs")
-      .select("*", { count: "exact", head: true });
-    if (staffsCount !== null) setTotalStaffsCount(staffsCount);
-
+    try {
+      const response = await fetch("/api/admin/system/companies");
+      const result = await response.json();
+      if (result.success) {
+        setCompanies(result.companies || []);
+        setTotalGymsCount(result.totalGymsCount || 0);
+        setTotalStaffsCount(result.totalStaffsCount || 0);
+      }
+    } catch (error) {
+      console.error("회사 목록 조회 실패:", error);
+    }
     setIsLoading(false);
   };
 
   // 시스템 공지사항 가져오기
   const fetchSystemAnnouncements = async () => {
-    const { data } = await supabase
-      .from("system_announcements")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (data) setSystemAnnouncements(data);
+    try {
+      const response = await fetch("/api/admin/system/announcements");
+      const result = await response.json();
+
+      if (result.success) {
+        setSystemAnnouncements(result.announcements || []);
+      } else {
+        console.error("[fetchSystemAnnouncements] API Error:", result.error);
+      }
+    } catch (error) {
+      console.error("[fetchSystemAnnouncements] Fetch error:", error);
+    }
   };
 
   // 시스템 공지사항 생성
@@ -131,24 +133,20 @@ export default function SystemAdminPage() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: staff } = await supabase.from("staffs").select("id").eq("user_id", user?.id).single();
-
-      const { error } = await supabase
-        .from("system_announcements")
-        .insert({
+      const res = await fetch("/api/admin/system/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           title: announcementForm.title,
           content: announcementForm.content,
           priority: announcementForm.priority,
-          announcement_type: announcementForm.announcement_type,
-          start_date: announcementForm.start_date,
-          end_date: announcementForm.end_date || null,
           is_active: announcementForm.is_active,
-          created_by: staff?.id || null
-        });
+        }),
+      });
 
-      if (error) {
-        alert("공지사항 생성 실패: " + error.message);
+      const result = await res.json();
+      if (!res.ok) {
+        alert("공지사항 생성 실패: " + result.error);
         return;
       }
 
@@ -192,22 +190,21 @@ export default function SystemAdminPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from("system_announcements")
-        .update({
+      const res = await fetch("/api/admin/system/announcements", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editAnnouncementForm.id,
           title: editAnnouncementForm.title,
           content: editAnnouncementForm.content,
           priority: editAnnouncementForm.priority,
-          announcement_type: editAnnouncementForm.announcement_type,
-          start_date: editAnnouncementForm.start_date,
-          end_date: editAnnouncementForm.end_date || null,
           is_active: editAnnouncementForm.is_active,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", editAnnouncementForm.id);
+        }),
+      });
 
-      if (error) {
-        alert("공지사항 수정 실패: " + error.message);
+      const result = await res.json();
+      if (!res.ok) {
+        alert("공지사항 수정 실패: " + result.error);
         return;
       }
 
@@ -224,13 +221,13 @@ export default function SystemAdminPage() {
     if (!confirm(`'${title}' 공지사항을 삭제하시겠습니까?`)) return;
 
     try {
-      const { error } = await supabase
-        .from("system_announcements")
-        .delete()
-        .eq("id", id);
+      const res = await fetch(`/api/admin/system/announcements?id=${id}`, {
+        method: "DELETE",
+      });
 
-      if (error) {
-        alert("공지사항 삭제 실패: " + error.message);
+      const result = await res.json();
+      if (!res.ok) {
+        alert("공지사항 삭제 실패: " + result.error);
         return;
       }
 
@@ -244,13 +241,15 @@ export default function SystemAdminPage() {
   // 시스템 공지사항 활성화 토글
   const toggleAnnouncementActive = async (id: string, currentActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from("system_announcements")
-        .update({ is_active: !currentActive })
-        .eq("id", id);
+      const res = await fetch("/api/admin/system/announcements", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: !currentActive }),
+      });
 
-      if (error) {
-        alert("상태 변경 실패: " + error.message);
+      const result = await res.json();
+      if (!res.ok) {
+        alert("상태 변경 실패: " + result.error);
         return;
       }
 
@@ -273,14 +272,14 @@ export default function SystemAdminPage() {
 
       // 지점 목록이 없으면 가져오기
       if (!companyGyms[companyId]) {
-        const { data } = await supabase
-          .from("gyms")
-          .select("*")
-          .eq("company_id", companyId)
-          .order("created_at", { ascending: false });
-
-        if (data) {
-          setCompanyGyms(prev => ({ ...prev, [companyId]: data }));
+        try {
+          const response = await fetch(`/api/admin/system/gyms?company_id=${companyId}`);
+          const result = await response.json();
+          if (result.success) {
+            setCompanyGyms(prev => ({ ...prev, [companyId]: result.gyms }));
+          }
+        } catch (error) {
+          console.error("Error fetching gyms:", error);
         }
       }
     }
@@ -299,14 +298,14 @@ export default function SystemAdminPage() {
 
       // 직원 목록이 없으면 가져오기
       if (!gymStaffs[gymId]) {
-        const { data } = await supabase
-          .from("staffs")
-          .select("id, name, email, phone, job_title, role, employment_status")
-          .eq("gym_id", gymId)
-          .order("name", { ascending: true });
-
-        if (data) {
-          setGymStaffs(prev => ({ ...prev, [gymId]: data }));
+        try {
+          const response = await fetch(`/api/admin/system/staffs?gym_id=${gymId}`);
+          const result = await response.json();
+          if (result.success) {
+            setGymStaffs(prev => ({ ...prev, [gymId]: result.staffs }));
+          }
+        } catch (error) {
+          console.error("Error fetching staffs:", error);
         }
       }
     }
@@ -317,15 +316,21 @@ export default function SystemAdminPage() {
     const statusText = newStatus === 'active' ? '운영중' : newStatus === 'pending' ? '승인대기' : '이용정지';
     if (!confirm(`'${companyName}' 업체의 상태를 '${statusText}'로 변경하시겠습니까?`)) return;
 
-    const { error } = await supabase
-      .from("companies")
-      .update({ status: newStatus })
-      .eq("id", companyId);
+    try {
+      const response = await fetch("/api/admin/system/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, status: newStatus }),
+      });
+      const result = await response.json();
 
-    if (!error) {
-      alert(`상태가 '${statusText}'로 변경되었습니다.`);
-      fetchCompanies();
-    } else {
+      if (result.success) {
+        alert(`상태가 '${statusText}'로 변경되었습니다.`);
+        fetchCompanies();
+      } else {
+        alert("에러: " + result.error);
+      }
+    } catch (error: any) {
       alert("에러: " + error.message);
     }
   };
@@ -872,6 +877,13 @@ export default function SystemAdminPage() {
       </div>
 
       <div className="space-y-3">
+        {companies.length === 0 && (
+          <div className="bg-white rounded-lg p-8 text-center border border-gray-200">
+            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 font-medium">등록된 고객사가 없습니다</p>
+            <p className="text-sm text-gray-400 mt-1">새 고객사를 추가하거나 기존 데이터를 확인해주세요</p>
+          </div>
+        )}
         {companies.map((comp) => {
           const isCompanyExpanded = expandedCompanies.has(comp.id);
           const gyms = companyGyms[comp.id] || [];

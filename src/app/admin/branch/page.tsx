@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -120,7 +120,8 @@ export default function BranchManagementPage() {
     prevYear: { fcSales: 0, ptSales: 0, totalSales: 0, fcCount: 0, ptCount: 0 }
   });
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   // 필터 초기화 시 데이터 로드
   useEffect(() => {
@@ -245,17 +246,8 @@ export default function BranchManagementPage() {
         throw new Error("회사 정보를 찾을 수 없습니다.");
       }
 
-      // Get current user's staff info
-      const { data: { user } } = await supabase.auth.getUser();
+      // AuthContext의 user에서 staff id 사용
       if (!user) throw new Error("로그인 정보를 찾을 수 없습니다.");
-
-      const { data: me } = await supabase
-        .from("staffs")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!me) throw new Error("사용자 정보를 찾을 수 없습니다.");
 
       const announcementData = {
         company_id: selectedCompanyId,
@@ -266,7 +258,7 @@ export default function BranchManagementPage() {
         start_date: announcementForm.start_date,
         end_date: announcementForm.end_date || null,
         is_active: announcementForm.is_active,
-        author_id: me.id
+        author_id: user.id
       };
 
       if (editingAnnouncement) {

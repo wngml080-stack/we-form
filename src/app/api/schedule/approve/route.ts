@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "../../../../lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,21 +11,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "reportId와 approved(boolean)가 필요합니다." }, { status: 400 });
     }
 
-    const supabase = await createClient();
-
-    // 1) 관리자 권한 확인
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // Clerk에서 현재 사용자 정보 가져오기
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
+    const supabase = getSupabaseAdmin();
+
+    // 1) 관리자 권한 확인
     const { data: adminStaff, error: staffError } = await supabase
       .from("staffs")
       .select("id, role, gym_id, company_id, employment_status")
-      .eq("user_id", user.id)
+      .eq("clerk_user_id", userId)
       .single();
 
     if (staffError || !adminStaff) {
@@ -112,4 +111,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? "승인 처리 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
-

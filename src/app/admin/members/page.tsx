@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus, CreditCard, Upload, Eye, ArrowUpDown, Pencil } from "lucide-react";
+import { Search, UserPlus, CreditCard, Upload, Eye, ArrowUpDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 import { showSuccess, showError, showConfirm } from "@/lib/utils/error-handler";
@@ -112,6 +112,21 @@ function AdminMembersPageContent() {
   const [products, setProducts] = useState<MembershipProduct[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [selectedExistingProductId, setSelectedExistingProductId] = useState<string>("");
+
+  // 부가상품 추가 (신규/기존 회원 등록 시)
+  interface AddonItem {
+    addon_type: string;
+    custom_addon_name: string;
+    locker_number: string;
+    amount: string;
+    duration: string;
+    duration_type: "months" | "days";
+    start_date: string;
+    end_date: string;
+    method: string;
+  }
+  const [newMemberAddons, setNewMemberAddons] = useState<AddonItem[]>([]);
+  const [existingMemberAddons, setExistingMemberAddons] = useState<AddonItem[]>([]);
 
   // 폼 상태 (확장)
   const [createForm, setCreateForm] = useState({
@@ -237,7 +252,8 @@ function AdminMembersPageContent() {
   const [addonMemberSearch, setAddonMemberSearch] = useState(""); // 부가상품 회원 검색
   const [existingMemberSearch, setExistingMemberSearch] = useState(""); // 기존회원 매출등록 회원 검색
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   // 페이지네이션 훅 (Feature Flag로 활성화된 경우)
   // 디바운스된 검색어를 사용하여 불필요한 API 호출 방지
@@ -335,7 +351,6 @@ function AdminMembersPageContent() {
         member_memberships!left (
           id,
           name,
-          membership_type,
           total_sessions,
           used_sessions,
           start_date,
@@ -354,7 +369,7 @@ function AdminMembersPageContent() {
     const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
-      console.error("회원 조회 에러:", error);
+      console.error("회원 조회 에러:", error.message, error.code, error.details);
       return;
     }
 
@@ -604,18 +619,12 @@ function AdminMembersPageContent() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      console.log('📊 Excel 원본 데이터 샘플:', jsonData[0]); // 디버깅용
-      console.log('📊 Excel 컬럼명 목록:', Object.keys(jsonData[0] || {})); // 컬럼명 확인
-
       // Helper 함수: 키워드가 포함된 컬럼 찾기 (부분 문자열 매칭)
       const findColumn = (row: any, keywords: string[]): any => {
         const columns = Object.keys(row);
         for (const keyword of keywords) {
           const matchedColumn = columns.find(col => col.includes(keyword));
-          if (matchedColumn) {
-            console.log(`✅ 컬럼 매칭 성공: "${matchedColumn}" (키워드: "${keyword}")`);
-            return row[matchedColumn];
-          }
+          if (matchedColumn) return row[matchedColumn];
         }
         return null;
       };
@@ -624,18 +633,15 @@ function AdminMembersPageContent() {
       const findAllColumns = (row: any, keywords: string[]): string[] => {
         const columns = Object.keys(row);
         const matchedValues: string[] = [];
-
         for (const keyword of keywords) {
           const matchedColumns = columns.filter(col => col.includes(keyword));
           for (const col of matchedColumns) {
             const value = row[col];
             if (value && String(value).trim()) {
               matchedValues.push(String(value).trim());
-              console.log(`✅ 중복 컬럼 매칭: "${col}" = "${value}" (키워드: "${keyword}")`);
             }
           }
         }
-
         return matchedValues;
       };
 
@@ -665,17 +671,6 @@ function AdminMembersPageContent() {
         // 부가상품: "부가상품" 포함된 모든 컬럼 (배열)
         const additionalProducts = findAllColumns(row, ['부가상품']);
 
-        // 디버깅: 날짜 변환 확인
-        console.log('📋 행 데이터 변환:', {
-          회원명: findColumn(row, ['회원명', '이름']),
-          변환_생년월일: birthDate,
-          변환_시작일: startDate,
-          변환_종료일: endDate,
-          변환_회원권명_배열: membershipNames,
-          변환_수강권명_배열: courseNames,
-          변환_부가상품_배열: additionalProducts
-        });
-
         // 회원명, 연락처, 성별도 부분 매칭
         const name = findColumn(row, ['회원명', '이름', '성명']) || '';
         const phone = findColumn(row, ['연락처', '전화번호', '휴대폰', '폰번호', '전화']) || '';
@@ -695,8 +690,6 @@ function AdminMembersPageContent() {
           membership_end_date: endDate,
         };
       });
-
-      console.log('✅ 변환된 데이터 샘플:', mapped[0]); // 디버깅용
 
       setParsedExcelData(mapped);
       showSuccess(`${mapped.length}개의 회원 데이터를 불러왔습니다.`);
@@ -775,9 +768,7 @@ function AdminMembersPageContent() {
                 });
 
               if (membershipError) {
-                console.error('❌ 회원권 등록 실패:', row.name, membershipName, membershipError);
-              } else {
-                console.log('✅ 회원권 등록 성공:', row.name, membershipName);
+                console.error('회원권 등록 실패:', row.name, membershipName, membershipError);
               }
             }
           }
@@ -802,9 +793,7 @@ function AdminMembersPageContent() {
                 });
 
               if (courseError) {
-                console.error('❌ 수강권 등록 실패:', row.name, courseName, courseError);
-              } else {
-                console.log('✅ 수강권 등록 성공:', row.name, courseName);
+                console.error('수강권 등록 실패:', row.name, courseName, courseError);
               }
             }
           }
@@ -829,9 +818,7 @@ function AdminMembersPageContent() {
                 });
 
               if (productError) {
-                console.error('❌ 부가상품 등록 실패:', row.name, additionalProduct, productError);
-              } else {
-                console.log('✅ 부가상품 등록 성공:', row.name, additionalProduct);
+                console.error('부가상품 등록 실패:', row.name, additionalProduct, productError);
               }
             }
           }
@@ -857,6 +844,117 @@ function AdminMembersPageContent() {
       showError(error.message || '일괄 등록에 실패했습니다.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 부가상품 추가 헬퍼 함수
+  const createEmptyAddon = (): AddonItem => ({
+    addon_type: "",
+    custom_addon_name: "",
+    locker_number: "",
+    amount: "",
+    duration: "",
+    duration_type: "months",
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: "",
+    method: "card"
+  });
+
+  const addNewMemberAddon = () => {
+    setNewMemberAddons([...newMemberAddons, createEmptyAddon()]);
+  };
+
+  const removeNewMemberAddon = (index: number) => {
+    setNewMemberAddons(newMemberAddons.filter((_, i) => i !== index));
+  };
+
+  const updateNewMemberAddon = (index: number, field: keyof AddonItem, value: string) => {
+    const updated = [...newMemberAddons];
+    updated[index] = { ...updated[index], [field]: value };
+
+    // 기간 변경 시 종료일 자동 계산
+    if (field === "duration" || field === "duration_type" || field === "start_date") {
+      const addon = updated[index];
+      if (addon.duration && addon.start_date) {
+        const num = parseInt(addon.duration);
+        const startDate = new Date(addon.start_date);
+        const endDate = new Date(startDate);
+        if (addon.duration_type === "months") {
+          endDate.setMonth(endDate.getMonth() + num);
+          endDate.setDate(endDate.getDate() - 1);
+        } else {
+          endDate.setDate(endDate.getDate() + num - 1);
+        }
+        updated[index].end_date = endDate.toISOString().split('T')[0];
+      }
+    }
+    setNewMemberAddons(updated);
+  };
+
+  const addExistingMemberAddon = () => {
+    setExistingMemberAddons([...existingMemberAddons, createEmptyAddon()]);
+  };
+
+  const removeExistingMemberAddon = (index: number) => {
+    setExistingMemberAddons(existingMemberAddons.filter((_, i) => i !== index));
+  };
+
+  const updateExistingMemberAddon = (index: number, field: keyof AddonItem, value: string) => {
+    const updated = [...existingMemberAddons];
+    updated[index] = { ...updated[index], [field]: value };
+
+    // 기간 변경 시 종료일 자동 계산
+    if (field === "duration" || field === "duration_type" || field === "start_date") {
+      const addon = updated[index];
+      if (addon.duration && addon.start_date) {
+        const num = parseInt(addon.duration);
+        const startDate = new Date(addon.start_date);
+        const endDate = new Date(startDate);
+        if (addon.duration_type === "months") {
+          endDate.setMonth(endDate.getMonth() + num);
+          endDate.setDate(endDate.getDate() - 1);
+        } else {
+          endDate.setDate(endDate.getDate() + num - 1);
+        }
+        updated[index].end_date = endDate.toISOString().split('T')[0];
+      }
+    }
+    setExistingMemberAddons(updated);
+  };
+
+  // 부가상품 저장 함수
+  const saveAddonPayments = async (memberId: string, addons: AddonItem[], registeredAt: string) => {
+    for (const addon of addons) {
+      if (!addon.addon_type || !addon.amount) continue;
+
+      const addonName = addon.addon_type === "기타" ? addon.custom_addon_name : addon.addon_type;
+      const memoText = addon.locker_number ? `${addonName} (락커 ${addon.locker_number})` : addonName;
+
+      // 결제 기록 생성
+      await supabase.from("member_payments").insert({
+        company_id: companyId,
+        gym_id: gymId,
+        member_id: memberId,
+        amount: parseFloat(addon.amount),
+        total_amount: parseFloat(addon.amount),
+        method: addon.method,
+        membership_type: "부가상품",
+        registration_type: "부가상품",
+        memo: memoText,
+        paid_at: registeredAt
+      });
+
+      // 매출 로그 기록
+      await supabase.from("sales_logs").insert({
+        company_id: companyId,
+        gym_id: gymId,
+        staff_id: myStaffId,
+        type: "sale",
+        amount: parseFloat(addon.amount),
+        method: addon.method,
+        memo: `부가상품: ${memoText}`,
+        occurred_at: registeredAt
+      });
     }
   };
 
@@ -951,9 +1049,15 @@ function AdminMembersPageContent() {
         occurred_at: createForm.registered_at
       });
 
+      // 5. 부가상품 저장
+      if (newMemberAddons.length > 0) {
+        await saveAddonPayments(member.id, newMemberAddons, createForm.registered_at);
+      }
+
       showSuccess("회원이 등록되었습니다!");
       setIsCreateOpen(false);
       setSelectedProductId(""); // 상품 선택 초기화
+      setNewMemberAddons([]); // 부가상품 초기화
 
       // 폼 초기화
       setCreateForm({
@@ -1343,9 +1447,15 @@ function AdminMembersPageContent() {
         if (memberUpdateError) throw memberUpdateError;
       }
 
+      // 부가상품 저장
+      if (existingMemberAddons.length > 0) {
+        await saveAddonPayments(member.id, existingMemberAddons, existingSalesForm.start_date);
+      }
+
       showSuccess("매출이 등록되었습니다!");
       setIsExistingSalesOpen(false);
       setSelectedExistingProductId(""); // 상품 선택 초기화
+      setExistingMemberAddons([]); // 부가상품 초기화
 
       // 폼 초기화
       setExistingSalesForm({
@@ -1876,7 +1986,10 @@ function AdminMembersPageContent() {
       {/* 회원 등록 모달 */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => {
         setIsCreateOpen(open);
-        if (!open) setSelectedProductId(""); // 모달 닫을 때 상품 선택 초기화
+        if (!open) {
+          setSelectedProductId(""); // 모달 닫을 때 상품 선택 초기화
+          setNewMemberAddons([]); // 부가상품 초기화
+        }
       }}>
         <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -2127,6 +2240,144 @@ function AdminMembersPageContent() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* 부가상품 추가 섹션 */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="font-semibold text-sm text-gray-700">부가상품 추가 (선택)</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addNewMemberAddon}
+                  className="text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  부가상품 추가
+                </Button>
+              </div>
+
+              {newMemberAddons.map((addon, index) => (
+                <div key={index} className="border rounded-lg p-4 bg-gray-50 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">부가상품 #{index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeNewMemberAddon(index)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">상품 유형 *</Label>
+                      <Select
+                        value={addon.addon_type}
+                        onValueChange={(v) => updateNewMemberAddon(index, "addon_type", v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="선택" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="개인락커">개인락커</SelectItem>
+                          <SelectItem value="물품락커">물품락커</SelectItem>
+                          <SelectItem value="운동복">운동복</SelectItem>
+                          <SelectItem value="양말">양말</SelectItem>
+                          <SelectItem value="기타">기타</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {addon.addon_type === "기타" && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">상품명 *</Label>
+                        <Input
+                          value={addon.custom_addon_name}
+                          onChange={(e) => updateNewMemberAddon(index, "custom_addon_name", e.target.value)}
+                          placeholder="상품명"
+                          className="h-9"
+                        />
+                      </div>
+                    )}
+
+                    {(addon.addon_type === "개인락커" || addon.addon_type === "물품락커") && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">락커 번호</Label>
+                        <Input
+                          value={addon.locker_number}
+                          onChange={(e) => updateNewMemberAddon(index, "locker_number", e.target.value)}
+                          placeholder="예: 15"
+                          className="h-9"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">금액 *</Label>
+                      <Input
+                        type="number"
+                        value={addon.amount}
+                        onChange={(e) => updateNewMemberAddon(index, "amount", e.target.value)}
+                        placeholder="50000"
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">결제방법</Label>
+                      <Select
+                        value={addon.method}
+                        onValueChange={(v) => updateNewMemberAddon(index, "method", v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="card">카드</SelectItem>
+                          <SelectItem value="cash">현금</SelectItem>
+                          <SelectItem value="transfer">계좌이체</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">기간</Label>
+                      <div className="flex gap-1">
+                        <Input
+                          type="number"
+                          value={addon.duration}
+                          onChange={(e) => updateNewMemberAddon(index, "duration", e.target.value)}
+                          placeholder="숫자"
+                          className="h-9 flex-1"
+                        />
+                        <Select
+                          value={addon.duration_type}
+                          onValueChange={(v) => updateNewMemberAddon(index, "duration_type", v)}
+                        >
+                          <SelectTrigger className="h-9 w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="months">개월</SelectItem>
+                            <SelectItem value="days">일</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {newMemberAddons.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-2">
+                  락커, 운동복 등 부가상품을 함께 등록할 수 있습니다.
+                </p>
+              )}
             </div>
 
             {/* 메모 섹션 */}
@@ -2748,6 +2999,7 @@ function AdminMembersPageContent() {
         if (!open) {
           setSelectedExistingProductId(""); // 모달 닫을 때 상품 선택 초기화
           setExistingMemberSearch(""); // 모달 닫을 때 검색어 초기화
+          setExistingMemberAddons([]); // 부가상품 초기화
         }
       }}>
         <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -3066,6 +3318,144 @@ function AdminMembersPageContent() {
                   rows={3}
                 />
               </div>
+            </div>
+
+            {/* 부가상품 추가 섹션 */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="font-semibold text-sm text-gray-700">부가상품 추가 (선택)</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addExistingMemberAddon}
+                  className="text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  부가상품 추가
+                </Button>
+              </div>
+
+              {existingMemberAddons.map((addon, index) => (
+                <div key={index} className="border rounded-lg p-4 bg-gray-50 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">부가상품 #{index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeExistingMemberAddon(index)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">상품 유형 *</Label>
+                      <Select
+                        value={addon.addon_type}
+                        onValueChange={(v) => updateExistingMemberAddon(index, "addon_type", v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="선택" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="개인락커">개인락커</SelectItem>
+                          <SelectItem value="물품락커">물품락커</SelectItem>
+                          <SelectItem value="운동복">운동복</SelectItem>
+                          <SelectItem value="양말">양말</SelectItem>
+                          <SelectItem value="기타">기타</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {addon.addon_type === "기타" && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">상품명 *</Label>
+                        <Input
+                          value={addon.custom_addon_name}
+                          onChange={(e) => updateExistingMemberAddon(index, "custom_addon_name", e.target.value)}
+                          placeholder="상품명"
+                          className="h-9"
+                        />
+                      </div>
+                    )}
+
+                    {(addon.addon_type === "개인락커" || addon.addon_type === "물품락커") && (
+                      <div className="space-y-1">
+                        <Label className="text-xs">락커 번호</Label>
+                        <Input
+                          value={addon.locker_number}
+                          onChange={(e) => updateExistingMemberAddon(index, "locker_number", e.target.value)}
+                          placeholder="예: 15"
+                          className="h-9"
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">금액 *</Label>
+                      <Input
+                        type="number"
+                        value={addon.amount}
+                        onChange={(e) => updateExistingMemberAddon(index, "amount", e.target.value)}
+                        placeholder="50000"
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">결제방법</Label>
+                      <Select
+                        value={addon.method}
+                        onValueChange={(v) => updateExistingMemberAddon(index, "method", v)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="card">카드</SelectItem>
+                          <SelectItem value="cash">현금</SelectItem>
+                          <SelectItem value="transfer">계좌이체</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">기간</Label>
+                      <div className="flex gap-1">
+                        <Input
+                          type="number"
+                          value={addon.duration}
+                          onChange={(e) => updateExistingMemberAddon(index, "duration", e.target.value)}
+                          placeholder="숫자"
+                          className="h-9 flex-1"
+                        />
+                        <Select
+                          value={addon.duration_type}
+                          onValueChange={(v) => updateExistingMemberAddon(index, "duration_type", v)}
+                        >
+                          <SelectTrigger className="h-9 w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="months">개월</SelectItem>
+                            <SelectItem value="days">일</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {existingMemberAddons.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-2">
+                  락커, 운동복 등 부가상품을 함께 등록할 수 있습니다.
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>

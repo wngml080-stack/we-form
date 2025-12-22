@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ import { DailyStatsWidget } from "@/components/DailyStatsWidget";
 
 export default function StaffPage() {
   const router = useRouter();
+  const { user: authUser, isLoading: authLoading, isApproved, gymName: authGymName, companyName: authCompanyName } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   
   // 데이터 상태
@@ -56,6 +58,7 @@ export default function StaffPage() {
   const [myGymId, setMyGymId] = useState<string | null>(null);
   const [myGymName, setMyGymName] = useState<string | null>(null);
   const [myCompanyId, setMyCompanyId] = useState<string | null>(null);
+  const [myCompanyName, setMyCompanyName] = useState<string | null>(null);
   const [myWorkStartTime, setMyWorkStartTime] = useState<string | null>(null);
   const [myWorkEndTime, setMyWorkEndTime] = useState<string | null>(null);
 
@@ -104,21 +107,28 @@ export default function StaffPage() {
   const [editPersonalTitle, setEditPersonalTitle] = useState("");
   const [editSubType, setEditSubType] = useState("");
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
-  // 초기 로딩
+  // 초기 로딩 - AuthContext에서 사용자 정보 가져오기
   useEffect(() => {
     const fetchMyInfo = async () => {
+      // AuthContext 로딩 중이면 대기
+      if (authLoading) return;
+
+      // 로그인 안됨 또는 승인 안됨
+      if (!authUser || !isApproved) {
+        router.push("/sign-in");
+        return;
+      }
+
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          router.push("/login");
-          return;
-        }
+        // AuthContext의 user는 staffs 테이블의 정보
+        // 추가 정보(job_title)를 가져오기 위해 쿼리
         const { data: staff } = await supabase
           .from("staffs")
-          .select("id, gym_id, company_id, work_start_time, work_end_time, name, job_title, gyms(name)")
-          .eq("user_id", user.id)
+          .select("id, gym_id, company_id, work_start_time, work_end_time, name, job_title, gyms(name), companies(name)")
+          .eq("id", authUser.id)
           .single();
 
         if (staff) {
@@ -127,11 +137,13 @@ export default function StaffPage() {
           setMyJobTitle(staff.job_title);
           setMyGymId(staff.gym_id);
           // @ts-ignore
-          setMyGymName(staff.gyms?.name);
+          setMyGymName(staff.gyms?.name || authGymName);
           setMyCompanyId(staff.company_id);
+          // @ts-ignore
+          setMyCompanyName(staff.companies?.name || authCompanyName);
           setMyWorkStartTime(staff.work_start_time);
           setMyWorkEndTime(staff.work_end_time);
-          
+
           await Promise.all([
             fetchSchedules(staff.id),
             fetchMembers(staff.gym_id, staff.company_id)
@@ -144,7 +156,7 @@ export default function StaffPage() {
       }
     };
     fetchMyInfo();
-  }, []);
+  }, [authLoading, authUser, isApproved]);
 
   // 멤버 검색 필터링
   useEffect(() => {
@@ -750,19 +762,23 @@ export default function StaffPage() {
             <h1 className="text-xl font-black text-[#2F80ED] tracking-tighter">We:form</h1>
             {myStaffName && (
                 <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+                    <span className="font-medium text-gray-600">{myCompanyName}</span>
+                    <span className="w-px h-3 bg-gray-300"></span>
                     <span className="font-bold text-[#2F80ED]">{myGymName}</span>
                     <span className="w-px h-3 bg-gray-300"></span>
-                    <span className="font-medium text-gray-700">{myStaffName} {myJobTitle}</span>
+                    <span className="font-medium text-gray-700">{myStaffName}</span>
                 </div>
             )}
         </div>
         <div className="flex items-center gap-3">
             {/* 모바일에서만 보이는 간략 정보 */}
-            <div className="md:hidden text-xs font-bold text-gray-700">
-                {myStaffName}
+            <div className="md:hidden text-xs text-gray-500 flex items-center gap-1">
+                <span className="font-bold text-[#2F80ED]">{myGymName}</span>
+                <span>·</span>
+                <span className="font-medium text-gray-700">{myStaffName}</span>
             </div>
             <Button 
-                onClick={() => router.push('/login')} 
+                onClick={() => router.push('/sign-in')} 
                 variant="ghost" 
                 className="text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 h-8 px-2 rounded-lg"
             >
@@ -1174,7 +1190,7 @@ export default function StaffPage() {
                   : `${selectedEvent?.memberName}님 수업`}
               </h3>
               <p className="opacity-80 text-sm font-medium mt-1">
-                {selectedEvent?.timeLabel} ({selectedEvent?.duration}분) · {selectedEvent?.type}
+                {selectedEvent?.timeLabel} ({selectedEvent?.duration}분) · {selectedEvent?.type?.toLowerCase() === 'personal' ? '개인일정' : selectedEvent?.type}
               </p>
           </div>
 

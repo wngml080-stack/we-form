@@ -130,6 +130,13 @@ export default function AdminStaffPage() {
     if (updateData.gym_id === "none" || updateData.gym_id === "") {
         updateData.gym_id = null;
     }
+    // 빈 문자열은 time 타입에서 오류 발생하므로 null로 변환
+    if (updateData.work_start_time === "") {
+        updateData.work_start_time = null;
+    }
+    if (updateData.work_end_time === "") {
+        updateData.work_end_time = null;
+    }
 
     const { error } = await supabase.from("staffs").update(updateData).eq("id", editTarget.id);
     if (!error) {

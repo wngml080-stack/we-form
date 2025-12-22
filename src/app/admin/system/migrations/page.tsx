@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { ChevronLeft, Database, CheckCircle, XCircle, Clock, FileCode } from "lucide-react";
 import Link from "next/link";
 
@@ -37,37 +38,42 @@ const MIGRATIONS: MigrationInfo[] = [
 
 export default function MigrationsPage() {
   const router = useRouter();
+  const { user: authUser, isLoading: authLoading, isApproved } = useAuth();
   const [migrations, setMigrations] = useState<MigrationInfo[]>(MIGRATIONS);
   const [tables, setTables] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState("");
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   useEffect(() => {
     checkAccess();
-    fetchTableList();
-  }, []);
+  }, [authLoading, authUser, isApproved]);
+
+  useEffect(() => {
+    if (userRole === "system_admin") {
+      fetchTableList();
+    }
+  }, [userRole]);
 
   const checkAccess = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push("/login");
+    // AuthContext 로딩 중이면 대기
+    if (authLoading) return;
+
+    // 로그인 안됨 또는 승인 안됨
+    if (!authUser || !isApproved) {
+      router.push("/sign-in");
       return;
     }
 
-    const { data: me } = await supabase
-      .from("staffs")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (me?.role !== "system_admin") {
+    // AuthContext의 user.role 사용
+    if (authUser.role !== "system_admin") {
       router.push("/admin");
       return;
     }
 
-    setUserRole(me.role);
+    setUserRole(authUser.role);
   };
 
   const fetchTableList = async () => {
@@ -77,7 +83,6 @@ export default function MigrationsPage() {
 
       if (error) {
         // RPC가 없으면 기본 테이블 목록 사용
-        console.log("RPC not available, using default table check");
         await checkMigrationStatus();
       } else if (data) {
         setTables(data.map((t: any) => t.table_name));

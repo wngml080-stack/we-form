@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ type SalaryData = {
 
 export default function StaffSalaryPage() {
     const router = useRouter();
+    const { user: authUser, isLoading: authLoading, isApproved, gymName: authGymName } = useAuth();
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -53,31 +55,27 @@ export default function StaffSalaryPage() {
     const [myName, setMyName] = useState<string>("");
     const [gymName, setGymName] = useState<string>("");
 
-    const supabase = createSupabaseClient();
+    // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+    const supabase = useMemo(() => createSupabaseClient(), []);
 
     useEffect(() => {
         const init = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                router.push("/login");
+            // AuthContext 로딩 중이면 대기
+            if (authLoading) return;
+
+            // 로그인 안됨 또는 승인 안됨
+            if (!authUser || !isApproved) {
+                router.push("/sign-in");
                 return;
             }
 
-            const { data: staff } = await supabase
-                .from("staffs")
-                .select("id, name, gyms(name)")
-                .eq("user_id", user.id)
-                .single();
-
-            if (staff) {
-                setMyStaffId(staff.id);
-                setMyName(staff.name);
-                // @ts-ignore
-                setGymName(staff.gyms?.name || "");
-            }
+            // AuthContext의 user는 staffs 테이블의 정보
+            setMyStaffId(authUser.id);
+            setMyName(authUser.name);
+            setGymName(authGymName || "");
         };
         init();
-    }, []);
+    }, [authLoading, authUser, isApproved, authGymName]);
 
     useEffect(() => {
         if (myStaffId && selectedMonth) {

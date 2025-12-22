@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -96,7 +96,8 @@ function SalesPageContent() {
     count: 0
   });
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   // 필터 초기화 시 데이터 로드
   useEffect(() => {
@@ -127,10 +128,7 @@ function SalesPageContent() {
 
   // 회원권 유형 추가
   const handleAddMembershipType = async () => {
-    if (!newMembershipType.trim() || !selectedGymId || !selectedCompanyId) {
-      console.log("handleAddMembershipType: 조건 미충족", { newMembershipType, selectedGymId, selectedCompanyId });
-      return;
-    }
+    if (!newMembershipType.trim() || !selectedGymId || !selectedCompanyId) return;
     const { error } = await supabase.from("membership_types").insert({
       gym_id: selectedGymId,
       company_id: selectedCompanyId,
@@ -148,10 +146,7 @@ function SalesPageContent() {
 
   // 결제방법 추가
   const handleAddPaymentMethod = async () => {
-    if (!newPaymentMethod.name.trim() || !selectedGymId || !selectedCompanyId) {
-      console.log("handleAddPaymentMethod: 조건 미충족", { newPaymentMethod, selectedGymId, selectedCompanyId });
-      return;
-    }
+    if (!newPaymentMethod.name.trim() || !selectedGymId || !selectedCompanyId) return;
     const code = newPaymentMethod.code.trim() || newPaymentMethod.name.trim().toLowerCase();
     const { error } = await supabase.from("payment_methods").insert({
       gym_id: selectedGymId,
@@ -442,7 +437,7 @@ function SalesPageContent() {
               <SelectContent className="bg-white">
                 <SelectItem value="all">전체</SelectItem>
                 {allMembershipTypes.map((type: any) => (
-                  <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                  <SelectItem key={type.name} value={type.name}>{type.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -470,8 +465,8 @@ function SalesPageContent() {
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="all">전체</SelectItem>
-                {allPaymentMethods.map((method: any) => (
-                  <SelectItem key={method.id} value={method.code}>{method.name}</SelectItem>
+                {allPaymentMethods.map((method: any, index: number) => (
+                  <SelectItem key={method.code || index} value={method.code}>{method.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

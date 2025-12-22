@@ -1,36 +1,49 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
-import { createSupabaseClient } from "@/lib/supabase/client";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from "react";
 import { useAuth } from "./AuthContext";
+
+// 타입 정의
+interface GymData {
+  id: string;
+  name: string;
+}
+
+interface StaffData {
+  id: string;
+  name: string;
+  job_title?: string;
+  role?: string;
+}
+
+interface CompanyData {
+  id: string;
+  name: string;
+}
 
 interface FilterState {
   selectedCompanyId: string;
   selectedGymId: string;
-  gyms: { id: string; name: string }[];
+  selectedStaffId: string;
+  gyms: GymData[];
+  staffs: StaffData[];
 }
 
 interface AdminFilterContextType {
-  // 전역 필터 상태
   selectedCompanyId: string;
   selectedGymId: string;
-  gyms: { id: string; name: string }[];
-
-  // 회사 목록 (system_admin용)
-  companies: { id: string; name: string }[];
-
-  // 필터 설정 함수들
+  selectedStaffId: string;
+  gyms: GymData[];
+  staffs: StaffData[];
+  companies: CompanyData[];
   setCompany: (companyId: string) => void;
   setGym: (gymId: string) => void;
-
-  // 현재 선택된 지점명
+  setStaff: (staffId: string) => void;
   gymName: string;
   companyName: string;
-
-  // 초기화 완료 여부
+  staffName: string;
   isInitialized: boolean;
-
-  // 하위 호환성을 위해 기존 필터들도 유지 (모두 같은 값 반환)
+  // 하위 호환성
   dashboardFilter: FilterState;
   branchFilter: FilterState;
   staffFilter: FilterState;
@@ -48,20 +61,25 @@ interface AdminFilterContextType {
 const defaultFilter: FilterState = {
   selectedCompanyId: "",
   selectedGymId: "",
+  selectedStaffId: "",
   gyms: [],
+  staffs: [],
 };
 
 const AdminFilterContext = createContext<AdminFilterContextType>({
   selectedCompanyId: "",
   selectedGymId: "",
+  selectedStaffId: "",
   gyms: [],
+  staffs: [],
   companies: [],
   setCompany: () => {},
   setGym: () => {},
+  setStaff: () => {},
   gymName: "",
   companyName: "",
+  staffName: "",
   isInitialized: false,
-  // 하위 호환성
   dashboardFilter: defaultFilter,
   branchFilter: defaultFilter,
   staffFilter: defaultFilter,
@@ -77,60 +95,112 @@ const AdminFilterContext = createContext<AdminFilterContextType>({
 });
 
 export function AdminFilterProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading: authLoading, gyms: authGyms, companies: authCompanies } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
-  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [companies, setCompanies] = useState<CompanyData[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // 전역 필터 상태 (단일)
   const [globalFilter, setGlobalFilter] = useState<FilterState>(defaultFilter);
 
-  const supabase = createSupabaseClient();
+  // 캐시 (메모리 캐싱)
+  const gymsCache = useRef<Map<string, GymData[]>>(new Map());
+  const staffsCache = useRef<Map<string, StaffData[]>>(new Map());
 
-  // 특정 회사의 지점 목록 가져오기
-  const fetchGymsForCompany = useCallback(async (companyId: string): Promise<{ id: string; name: string }[]> => {
-    if (!companyId) return [];
-
-    const { data } = await supabase
-      .from("gyms")
-      .select("id, name")
-      .eq("company_id", companyId)
-      .order("name");
-
-    return data || [];
+  // 회사 목록 가져오기
+  const fetchCompanies = useCallback(async (): Promise<CompanyData[]> => {
+    try {
+      const response = await fetch("/api/admin/filter/companies");
+      const result = await response.json();
+      if (result.success) {
+        return result.companies || [];
+      }
+    } catch (error) {
+      console.error("Error fetching companies:", error);
+    }
+    return [];
   }, []);
 
-  // 초기화: AuthContext 데이터가 로드되면 필터 초기화
+  // 지점 목록 가져오기 (캐싱 적용)
+  const fetchGymsForCompany = useCallback(async (companyId: string): Promise<GymData[]> => {
+    if (!companyId) return [];
+
+    // 캐시 확인
+    const cached = gymsCache.current.get(companyId);
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(`/api/admin/filter/gyms?company_id=${companyId}`);
+      const result = await response.json();
+      if (result.success) {
+        const gyms = result.gyms || [];
+        gymsCache.current.set(companyId, gyms);
+        return gyms;
+      }
+    } catch (error) {
+      console.error("Error fetching gyms:", error);
+    }
+    return [];
+  }, []);
+
+  // 직원 목록 가져오기 (캐싱 적용)
+  const fetchStaffsForGym = useCallback(async (gymId: string): Promise<StaffData[]> => {
+    if (!gymId) return [];
+
+    // 캐시 확인
+    const cached = staffsCache.current.get(gymId);
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(`/api/admin/filter/staffs?gym_id=${gymId}`);
+      const result = await response.json();
+      if (result.success) {
+        const staffs = result.staffs || [];
+        staffsCache.current.set(gymId, staffs);
+        return staffs;
+      }
+    } catch (error) {
+      console.error("Error fetching staffs:", error);
+    }
+    return [];
+  }, []);
+
+  // 초기화
   useEffect(() => {
     if (authLoading || !user) return;
 
     const initializeFilter = async () => {
-      const userCompanyId = user.company_id;
-      const userGymId = user.gym_id;
+      const userCompanyId = user.company_id || "";
+      const userGymId = user.gym_id || "";
       const isSystemAdmin = user.role === "system_admin";
 
-      // 회사 목록 설정 (system_admin만)
-      if (isSystemAdmin && authCompanies.length > 0) {
-        setCompanies(authCompanies);
+      const [companiesList, gymsList] = await Promise.all([
+        isSystemAdmin ? fetchCompanies() : Promise.resolve([]),
+        userCompanyId ? fetchGymsForCompany(userCompanyId) : Promise.resolve([]),
+      ]);
+
+      if (isSystemAdmin) {
+        setCompanies(companiesList);
       }
 
-      // 기본 지점 목록 (사용자의 회사)
-      const defaultGyms = authGyms.length > 0 ? authGyms : await fetchGymsForCompany(userCompanyId);
-
-      // 기본 선택 지점 (사용자 지점 또는 첫 번째 지점)
-      const defaultGymId = userGymId || (defaultGyms.length > 0 ? defaultGyms[0].id : "");
+      const defaultGymId = userGymId || (gymsList.length > 0 ? gymsList[0].id : "");
 
       setGlobalFilter({
         selectedCompanyId: userCompanyId,
         selectedGymId: defaultGymId,
-        gyms: defaultGyms,
+        selectedStaffId: "",
+        gyms: gymsList,
+        staffs: [],
       });
-
       setIsInitialized(true);
+
+      // 직원 목록 백그라운드 로드
+      if (defaultGymId) {
+        const staffsList = await fetchStaffsForGym(defaultGymId);
+        setGlobalFilter((prev) => ({ ...prev, staffs: staffsList }));
+      }
     };
 
     initializeFilter();
-  }, [authLoading, user, authGyms, authCompanies, fetchGymsForCompany]);
+  }, [authLoading, user, fetchCompanies, fetchGymsForCompany, fetchStaffsForGym]);
 
   // 회사 변경
   const setCompany = useCallback(
@@ -139,39 +209,63 @@ export function AdminFilterProvider({ children }: { children: ReactNode }) {
 
       const newGyms = await fetchGymsForCompany(companyId);
       const newGymId = newGyms.length > 0 ? newGyms[0].id : "";
+      const newStaffs = newGymId ? await fetchStaffsForGym(newGymId) : [];
 
       setGlobalFilter({
         selectedCompanyId: companyId,
         selectedGymId: newGymId,
+        selectedStaffId: "",
         gyms: newGyms,
+        staffs: newStaffs,
       });
     },
-    [globalFilter.selectedCompanyId, fetchGymsForCompany]
+    [globalFilter.selectedCompanyId, fetchGymsForCompany, fetchStaffsForGym]
   );
 
   // 지점 변경
-  const setGym = useCallback((gymId: string) => {
-    setGlobalFilter((prev) => ({ ...prev, selectedGymId: gymId }));
+  const setGym = useCallback(
+    async (gymId: string) => {
+      if (!gymId || gymId === globalFilter.selectedGymId) return;
+
+      const newStaffs = await fetchStaffsForGym(gymId);
+
+      setGlobalFilter((prev) => ({
+        ...prev,
+        selectedGymId: gymId,
+        selectedStaffId: "",
+        staffs: newStaffs,
+      }));
+    },
+    [globalFilter.selectedGymId, fetchStaffsForGym]
+  );
+
+  // 직원 변경
+  const setStaff = useCallback((staffId: string) => {
+    setGlobalFilter((prev) => ({ ...prev, selectedStaffId: staffId }));
   }, []);
 
-  // 현재 선택된 지점명/회사명
+  // 현재 선택된 이름들
   const gymName = globalFilter.gyms.find((g) => g.id === globalFilter.selectedGymId)?.name || "";
   const companyName = companies.find((c) => c.id === globalFilter.selectedCompanyId)?.name || "";
+  const staffName = globalFilter.staffs.find((s) => s.id === globalFilter.selectedStaffId)?.name || "";
 
   return (
     <AdminFilterContext.Provider
       value={{
-        // 새로운 전역 필터
         selectedCompanyId: globalFilter.selectedCompanyId,
         selectedGymId: globalFilter.selectedGymId,
+        selectedStaffId: globalFilter.selectedStaffId,
         gyms: globalFilter.gyms,
+        staffs: globalFilter.staffs,
         companies,
         setCompany,
         setGym,
+        setStaff,
         gymName,
         companyName,
+        staffName,
         isInitialized,
-        // 하위 호환성: 모든 필터가 동일한 전역 필터를 참조
+        // 하위 호환성
         dashboardFilter: globalFilter,
         branchFilter: globalFilter,
         staffFilter: globalFilter,

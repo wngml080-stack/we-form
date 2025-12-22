@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +64,7 @@ interface Member {
 
 export default function AdminAttendancePage() {
   const router = useRouter();
+  const { user: authUser, isLoading: authLoading, isApproved, gymName: authGymName } = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [statuses, setStatuses] = useState<AttendanceStatus[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -85,43 +87,39 @@ export default function AdminAttendancePage() {
     memo: "",
   });
 
-  const supabase = createSupabaseClient();
+  // Supabase 클라이언트 한 번만 생성 (메모이제이션)
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
   useEffect(() => {
     const init = async () => {
+      // AuthContext 로딩 중이면 대기
+      if (authLoading) return;
+
+      // 로그인 안됨 또는 승인 안됨
+      if (!authUser || !isApproved) {
+        router.push("/sign-in");
+        return;
+      }
+
       try {
-        // 1. 로그인 체크
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return router.push("/login");
+        // AuthContext에서 직원 정보 사용
+        setGymName(authGymName || "지점");
+        const userGymId = authUser.gym_id || "";
+        setGymId(userGymId);
 
-        // 2. 내 정보 가져오기
-        const { data: me, error: meError } = await supabase
-          .from("staffs")
-          .select("id, gym_id, role, gyms(name)")
-          .eq("user_id", user.id)
-          .single();
+        if (!userGymId) return;
 
-        if (meError || !me) {
-          console.error("직원 정보 로딩 실패:", meError);
-          alert("직원 정보를 찾을 수 없습니다.");
-          return;
-        }
-
-        // @ts-ignore
-        setGymName(me.gyms?.name || "지점");
-        setGymId(me.gym_id);
-
-        // 3. 출석 상태 코드 가져오기
+        // 출석 상태 코드 가져오기
         await fetchStatuses();
 
-        // 4. 스케줄 목록 가져오기
-        await fetchSchedules(me.gym_id);
+        // 스케줄 목록 가져오기
+        await fetchSchedules(userGymId);
 
-        // 5. 회원 목록 가져오기
-        await fetchMembers(me.gym_id);
+        // 회원 목록 가져오기
+        await fetchMembers(userGymId);
 
-        // 6. 출석 기록 가져오기
-        await fetchRecords(me.gym_id);
+        // 출석 기록 가져오기
+        await fetchRecords(userGymId);
 
       } catch (error) {
         console.error("초기화 에러:", error);
@@ -131,7 +129,7 @@ export default function AdminAttendancePage() {
     };
 
     init();
-  }, []);
+  }, [authLoading, authUser, isApproved, authGymName]);
 
   // 출석 상태 코드 조회
   const fetchStatuses = async () => {

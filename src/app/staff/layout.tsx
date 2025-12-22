@@ -11,8 +11,8 @@ export default function StaffLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
-      <div className="mx-auto max-w-md min-h-screen bg-white shadow-2xl overflow-hidden relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-white pb-20 md:pb-0">
+      <div className="mx-auto max-w-md min-h-screen bg-white shadow-[0_0_60px_rgba(0,0,0,0.08),0_0_120px_rgba(79,70,229,0.05)] overflow-hidden relative">
         {children}
       </div>
     </div>

@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
  * 로그인 페이지로 리다이렉트합니다.
  */
 export default function Home() {
-  redirect("/login");
+  redirect("/sign-in");
 }

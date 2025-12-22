@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
-import { createClient } from "../../../../lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 type YearMonth = `${number}-${"01"|"02"|"03"|"04"|"05"|"06"|"07"|"08"|"09"|"10"|"11"|"12"}`;
 
@@ -37,21 +38,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "yearMonth가 필요합니다. (예: 2025-01)" }, { status: 400 });
     }
 
-    const supabase = await createClient();
-
-    // 1) 현재 사용자 정보 조회
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // Clerk에서 현재 사용자 정보 가져오기
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
+    const supabase = getSupabaseAdmin();
+
+    // 1) 현재 사용자의 직원 정보 조회 (Clerk ID로)
     const { data: staff, error: staffError } = await supabase
       .from("staffs")
       .select("id, gym_id, company_id, role, employment_status")
-      .eq("user_id", user.id)
+      .eq("clerk_user_id", userId)
       .single();
 
     if (staffError || !staff) {
@@ -98,7 +97,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (reportError || !report) {
-      return NextResponse.json({ error: "보고서 생성 중 오류가 발생했습니다." }, { status: 500 });
+      console.error("보고서 생성 에러:", reportError);
+      return NextResponse.json({ error: `보고서 생성 중 오류: ${reportError?.message || "알 수 없는 오류"}` }, { status: 500 });
     }
 
     // 5) 해당 월 스케줄에 report_id 설정 및 잠금
@@ -111,7 +111,8 @@ export async function POST(req: NextRequest) {
       .lt("start_time", end);
 
     if (updateSchedulesError) {
-      return NextResponse.json({ error: "스케줄 잠금 중 오류가 발생했습니다." }, { status: 500 });
+      console.error("스케줄 잠금 에러:", updateSchedulesError);
+      return NextResponse.json({ error: `스케줄 잠금 중 오류: ${updateSchedulesError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({

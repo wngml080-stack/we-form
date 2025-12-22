@@ -1,5 +1,6 @@
-import { createClient } from "../../../../../lib/supabase/server";
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 // 출석 기록 수정
 export async function PATCH(
@@ -7,7 +8,25 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    // Clerk 인증 확인
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    // 사용자 권한 확인
+    const { data: staff } = await supabase
+      .from("staffs")
+      .select("id, role, gym_id")
+      .eq("clerk_user_id", userId)
+      .single();
+
+    if (!staff) {
+      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
+    }
+
     const body = await request.json();
     const { status_code, memo } = body;
 
@@ -45,7 +64,24 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    // Clerk 인증 확인
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    // 사용자 권한 확인
+    const { data: staff } = await supabase
+      .from("staffs")
+      .select("id, role, gym_id")
+      .eq("clerk_user_id", userId)
+      .single();
+
+    if (!staff) {
+      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
+    }
 
     // Next.js 16: params는 Promise
     const { id } = await params;

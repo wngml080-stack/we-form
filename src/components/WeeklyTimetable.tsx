@@ -169,7 +169,7 @@ export default function WeeklyTimetable({
 
   const getScheduleColor = (schedule: Schedule) => {
     // 0. 개인 일정은 항상 바이올렛 (상태와 관계없이 최우선)
-    if (schedule.type === '개인') return 'bg-purple-200 border-purple-300 text-purple-900'; // 개인일정: 파스텔 바이올렛
+    if (schedule.type === '개인' || schedule.type?.toLowerCase() === 'personal') return 'bg-purple-200 border-purple-300 text-purple-900'; // 개인일정: 파스텔 바이올렛
 
     // 1. 출석 상태별 색상
     if (schedule.status === 'completed') return 'bg-emerald-200 border-emerald-300 text-emerald-900'; // 출석완료: 파스텔 에메랄드
@@ -358,6 +358,10 @@ export default function WeeklyTimetable({
                                     return `OT ${schedule.session_number}회차`;
                                   }
                                   return 'OT';
+                                }
+                                // Personal → "개인일정"
+                                if (scheduleType === 'personal' || schedule.type === '개인') {
+                                  return '개인일정';
                                 }
                                 return schedule.type;
                               })()}

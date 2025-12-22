@@ -1,72 +1,95 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest, isAdmin, canAccessCompany, canAccessGym } from "@/lib/api/auth";
 
+/**
+ * 직원 등록 API (Clerk 방식)
+ * - staffs 테이블에만 직원 정보 등록
+ * - 직원이 Clerk로 로그인하면 이메일로 매칭되어 clerk_user_id 자동 연결
+ */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    // 👇 phone, joined_at, company_id 추가됨!
-    const { email, password, name, job_title, gym_id, phone, joined_at, company_id } = body;
-
-    console.log("🚀 직원 생성 요청:", { email, name, gym_id, company_id, phone });
-
-    // 1. 마스터키 확인
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    if (!serviceRoleKey) {
-      throw new Error("서버에 마스터키(SERVICE_ROLE_KEY)가 없습니다.");
+    // 인증 확인
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff || !isAdmin(staff.role)) {
+      return NextResponse.json(
+        { error: "관리자 권한이 필요합니다." },
+        { status: 403 }
+      );
     }
 
-    // 2. 관리자 권한으로 Supabase 접속
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    const body = await request.json();
+    const { email, name, job_title, gym_id, phone, joined_at, company_id } = body;
 
-    // 3. 유저 생성 (이메일 인증 자동 완료 처리)
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name },
-    });
+    if (!email || !name) {
+      return NextResponse.json(
+        { error: "이메일과 이름은 필수입니다." },
+        { status: 400 }
+      );
+    }
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error("유저 생성 실패");
+    // 회사/지점 권한 확인
+    const targetCompanyId = company_id || staff.company_id;
+    const targetGymId = gym_id || staff.gym_id;
 
-    console.log("✅ Auth 유저 생성 완료 ID:", authData.user.id);
+    if (!canAccessCompany(staff, targetCompanyId)) {
+      return NextResponse.json(
+        { error: "해당 회사에 대한 권한이 없습니다." },
+        { status: 403 }
+      );
+    }
 
-    // 4. staffs 테이블에 정보 입력
+    // 지점이 지정된 경우 지점 권한도 확인
+    if (targetGymId && staff.role !== "system_admin" && staff.role !== "company_admin") {
+      if (!canAccessGym(staff, targetGymId)) {
+        return NextResponse.json(
+          { error: "해당 지점에 대한 권한이 없습니다." },
+          { status: 403 }
+        );
+      }
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // 이메일 중복 확인
+    const { data: existingStaff } = await supabaseAdmin
+      .from("staffs")
+      .select("id")
+      .eq("email", email)
+      .single();
+
+    if (existingStaff) {
+      return NextResponse.json(
+        { error: "이미 등록된 이메일입니다." },
+        { status: 400 }
+      );
+    }
+
+    // staffs 테이블에 직원 정보 등록 (Clerk 로그인 시 clerk_user_id 자동 연결)
     const { error: dbError } = await supabaseAdmin
       .from("staffs")
       .insert({
-        user_id: authData.user.id,
-        company_id: company_id, // 👈 company_id 추가
-        gym_id: gym_id,
+        company_id: targetCompanyId,
+        gym_id: targetGymId,
         name: name,
         email: email,
         job_title: job_title,
         role: "staff",
         employment_status: "재직",
-        // 👇 여기가 핵심! 추가된 필드 저장
         phone: phone,
-        joined_at: joined_at || new Date().toISOString().split('T')[0], // 없으면 오늘 날짜
+        joined_at: joined_at || new Date().toISOString().split('T')[0],
       });
 
-    if (dbError) {
-      console.error("❌ DB 저장 실패, 유저 생성 취소:", dbError.message);
-      // DB 실패 시 Auth 유저도 같이 삭제 (롤백)
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      throw dbError;
-    }
+    if (dbError) throw dbError;
 
-    console.log("✅ DB 입력 완료");
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: "직원이 등록되었습니다. 해당 이메일로 Clerk 로그인 시 자동 연결됩니다."
+    });
 
   } catch (error: any) {
-    console.error("❌ 직원 생성 에러:", error.message);
+    console.error("[API] Error creating staff:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

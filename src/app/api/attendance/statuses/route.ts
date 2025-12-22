@@ -1,10 +1,10 @@
-import { createClient } from "../../../../lib/supabase/server";
 import { NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
-// 출석 상태 코드 조회
+// 출석 상태 코드 조회 (공개 API - 인증 불필요)
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
       .from("attendance_statuses")

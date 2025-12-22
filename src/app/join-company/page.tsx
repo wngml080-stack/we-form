@@ -36,7 +36,7 @@ export default function JoinCompanyPage() {
       if (!res.ok) throw new Error(result.error);
 
       alert("가입 신청이 완료되었습니다!\n시스템 관리자 승인 후 이용 가능합니다.");
-      router.push("/login");
+      router.push("/sign-in");
 
     } catch (error: any) {
       setErrorMsg(error.message);
@@ -105,7 +105,7 @@ export default function JoinCompanyPage() {
             </Button>
             
             <div className="text-center text-sm text-gray-500 mt-4">
-                이미 계정을 보유하신 경우 <span className="text-[#2F80ED] cursor-pointer hover:underline font-bold" onClick={() => router.push('/login')}>로그인</span> 화면으로 이동해주세요.
+                이미 계정을 보유하신 경우 <span className="text-[#2F80ED] cursor-pointer hover:underline font-bold" onClick={() => router.push('/sign-in')}>로그인</span> 화면으로 이동해주세요.
             </div>
           </form>
         </CardContent>

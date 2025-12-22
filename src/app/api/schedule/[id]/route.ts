@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "../../../../lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,22 +10,19 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "스케줄 ID가 필요합니다." }, { status: 400 });
     }
 
-    const supabase = await createClient();
-
-    // 1) 사용자 확인
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // Clerk에서 현재 사용자 정보 가져오기
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
+
+    const supabase = getSupabaseAdmin();
 
     // 2) staff 정보
     const { data: staff, error: staffError } = await supabase
       .from("staffs")
       .select("id, role, gym_id, employment_status")
-      .eq("user_id", user.id)
+      .eq("clerk_user_id", userId)
       .single();
 
     if (staffError || !staff) {
@@ -81,4 +79,3 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: error?.message ?? "삭제 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
-
