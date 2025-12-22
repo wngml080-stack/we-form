@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,7 +31,7 @@ const DEFAULT_PAYMENT_METHODS = [
   { name: "계좌이체", code: "transfer", color: "bg-purple-100 text-purple-700" },
 ];
 
-export default function SalesPage() {
+function SalesPageContent() {
   const { isLoading: authLoading } = useAuth();
   const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
   const searchParams = useSearchParams();
@@ -1134,5 +1134,13 @@ export default function SalesPage() {
       </Dialog>
 
     </div>
+  );
+}
+
+export default function SalesPage() {
+  return (
+    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
+      <SalesPageContent />
+    </Suspense>
   );
 }

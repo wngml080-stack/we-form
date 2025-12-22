@@ -1075,7 +1075,7 @@ function AdminMembersPageContent() {
 
       showSuccess("회원권 정보가 수정되었습니다!");
       setIsMembershipEditOpen(false);
-      await fetchMembers();
+      await fetchMembers(selectedGymId, selectedCompanyId, myRole, myStaffId || "");
     } catch (error: any) {
       showError(`회원권 수정 실패: ${error.message}`);
     } finally {
