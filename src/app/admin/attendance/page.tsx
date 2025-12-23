@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
@@ -217,7 +218,7 @@ export default function AdminAttendancePage() {
     e.preventDefault();
 
     if (!newRecord.schedule_id || !newRecord.member_id) {
-      alert("스케줄과 회원을 선택해주세요.");
+      toast.warning("스케줄과 회원을 선택해주세요.");
       return;
     }
 
@@ -234,7 +235,7 @@ export default function AdminAttendancePage() {
       const result = await response.json();
 
       if (response.ok) {
-        alert("출석 기록이 등록되었습니다.");
+        toast.success("출석 기록이 등록되었습니다.");
         setIsDialogOpen(false);
         setNewRecord({
           schedule_id: "",
@@ -248,7 +249,7 @@ export default function AdminAttendancePage() {
       }
     } catch (error: any) {
       console.error("출석 기록 생성 실패:", error);
-      alert(`출석 기록 등록 실패: ${error.message}`);
+      toast.error(`출석 기록 등록 실패: ${error.message}`);
     }
   };
 
@@ -264,14 +265,14 @@ export default function AdminAttendancePage() {
       const result = await response.json();
 
       if (response.ok) {
-        alert("출석 상태가 변경되었습니다.");
+        toast.success("출석 상태가 변경되었습니다.");
         fetchRecords(gymId);
       } else {
         throw new Error(result.error);
       }
     } catch (error: any) {
       console.error("출석 상태 변경 실패:", error);
-      alert(`출석 상태 변경 실패: ${error.message}`);
+      toast.error(`출석 상태 변경 실패: ${error.message}`);
     }
   };
 
@@ -285,7 +286,7 @@ export default function AdminAttendancePage() {
       });
 
       if (response.ok) {
-        alert("출석 기록이 삭제되었습니다.");
+        toast.success("출석 기록이 삭제되었습니다.");
         fetchRecords(gymId);
       } else {
         const result = await response.json();
@@ -293,7 +294,7 @@ export default function AdminAttendancePage() {
       }
     } catch (error: any) {
       console.error("출석 기록 삭제 실패:", error);
-      alert(`출석 기록 삭제 실패: ${error.message}`);
+      toast.error(`출석 기록 삭제 실패: ${error.message}`);
     }
   };
 

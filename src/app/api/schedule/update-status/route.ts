@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
 
 export async function POST(request: Request) {
   try {
-    // Clerk 인증 확인
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    // 통합 인증
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff) {
+      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
     }
 
     const body = await request.json();
@@ -19,17 +20,6 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    // 현재 사용자 정보 확인
-    const { data: staff, error: staffError } = await supabase
-      .from("staffs")
-      .select("id, gym_id, role")
-      .eq("clerk_user_id", userId)
-      .single();
-
-    if (staffError || !staff) {
-      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
-    }
-
     // 1. 스케줄 정보 조회 (member_id 확인)
     const { data: schedule, error: scheduleError } = await supabase
       .from("schedules")
@@ -38,12 +28,20 @@ export async function POST(request: Request) {
       .single();
 
     if (scheduleError || !schedule) {
-      throw new Error("스케줄을 찾을 수 없습니다.");
+      return NextResponse.json({ error: "스케줄을 찾을 수 없습니다." }, { status: 404 });
     }
 
-    // 권한 체크: 본인 스케줄이거나 관리자여야 함
-    const isAdmin = ["system_admin", "company_admin", "admin"].includes(staff.role);
-    if (!isAdmin && schedule.staff_id !== staff.id) {
+    // 권한 체크: 본인 스케줄이거나 관리자(해당 지점 접근 권한 필요)여야 함
+    const hasAdminRole = isAdmin(staff.role);
+    const isOwner = schedule.staff_id === staff.id;
+
+    if (hasAdminRole) {
+      // 관리자: 지점 접근 권한 확인
+      if (!canAccessGym(staff, schedule.gym_id)) {
+        return NextResponse.json({ error: "이 지점 스케줄에 대한 권한이 없습니다." }, { status: 403 });
+      }
+    } else if (!isOwner) {
+      // 일반 직원: 본인 스케줄만 수정 가능
       return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
     }
 

@@ -1,28 +1,18 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
 
 // 출석 기록 조회
 export async function GET(request: Request) {
   try {
-    // Clerk 인증 확인
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-    }
-
-    const supabase = getSupabaseAdmin();
-
-    // 사용자 권한 확인
-    const { data: staff } = await supabase
-      .from("staffs")
-      .select("id, role, gym_id, company_id")
-      .eq("clerk_user_id", userId)
-      .single();
-
+    // 통합 인증
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
     if (!staff) {
       return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
     }
+
+    const supabase = getSupabaseAdmin();
 
     const { searchParams } = new URL(request.url);
     const scheduleId = searchParams.get("schedule_id");
@@ -50,6 +40,10 @@ export async function GET(request: Request) {
     } else if (staff.role === "company_admin") {
       // 회사 관리자: 자신의 회사 소속 지점만
       if (gymId) {
+        // 요청된 지점에 대한 권한 확인
+        if (!canAccessGym(staff, gymId)) {
+          return NextResponse.json({ error: "해당 지점에 대한 접근 권한이 없습니다." }, { status: 403 });
+        }
         query = query.eq("gym_id", gymId);
       } else {
         // gym_id 없으면 자신 회사의 모든 지점 조회
@@ -96,31 +90,28 @@ export async function GET(request: Request) {
 // 출석 기록 생성
 export async function POST(request: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    // 통합 인증
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff) {
+      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
     }
 
     const supabase = getSupabaseAdmin();
     const body = await request.json();
     const { gym_id, schedule_id, member_id, status_code, memo } = body;
 
-    // 현재 로그인한 직원 정보 조회
-    const { data: staff } = await supabase
-      .from("staffs")
-      .select("id, gym_id")
-      .eq("clerk_user_id", userId)
-      .single();
-
-    if (!staff) {
-      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 404 });
+    // 지점 권한 확인 (gym_id가 지정된 경우)
+    const targetGymId = gym_id || staff.gym_id;
+    if (!canAccessGym(staff, targetGymId)) {
+      return NextResponse.json({ error: "해당 지점에 대한 접근 권한이 없습니다." }, { status: 403 });
     }
 
     // 출석 기록 생성
     const { data, error } = await supabase
       .from("attendances")
       .insert({
-        gym_id: gym_id || staff.gym_id,
+        gym_id: targetGymId,
         schedule_id,
         staff_id: staff.id,
         member_id,

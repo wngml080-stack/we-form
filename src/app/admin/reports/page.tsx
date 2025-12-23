@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
@@ -149,9 +150,9 @@ export default function AdminReportsPage() {
       .eq("id", selectedReport.id);
 
     if (error) {
-      alert("처리 중 오류가 발생했습니다: " + error.message);
+      toast.error("처리 중 오류가 발생했습니다: " + error.message);
     } else {
-      alert(action === "approved" ? "승인되었습니다." : "반려되었습니다.");
+      toast.success(action === "approved" ? "승인되었습니다." : "반려되었습니다.");
       setIsReviewOpen(false);
 
       // Refetch reports

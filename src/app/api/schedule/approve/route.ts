@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest, isAdmin, canAccessGym, canAccessCompany } from "@/lib/api/auth";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,30 +11,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "reportId와 approved(boolean)가 필요합니다." }, { status: 400 });
     }
 
-    // Clerk에서 현재 사용자 정보 가져오기
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    // 통합 인증
+    const { staff: adminStaff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!adminStaff) {
+      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
     }
 
     const supabase = getSupabaseAdmin();
 
-    // 1) 관리자 권한 확인
-    const { data: adminStaff, error: staffError } = await supabase
+    // 퇴사 상태 확인
+    const { data: staffDetail } = await supabase
       .from("staffs")
-      .select("id, role, gym_id, company_id, employment_status")
-      .eq("clerk_user_id", userId)
+      .select("employment_status")
+      .eq("id", adminStaff.id)
       .single();
 
-    if (staffError || !adminStaff) {
-      return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
-    }
-    if (adminStaff.employment_status === "퇴사") {
+    if (staffDetail?.employment_status === "퇴사") {
       return NextResponse.json({ error: "퇴사한 계정은 사용할 수 없습니다." }, { status: 403 });
     }
 
-    const adminRoles = ["system_admin", "company_admin", "admin"];
-    if (!adminRoles.includes(adminStaff.role)) {
+    // 관리자 권한 확인
+    if (!isAdmin(adminStaff.role)) {
       return NextResponse.json({ error: "승인 권한이 없습니다." }, { status: 403 });
     }
 
@@ -49,11 +47,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "보고서를 찾을 수 없습니다." }, { status: 404 });
     }
 
-    // 3) 권한 체크: company_admin은 회사 일치, admin은 지점 일치, system_admin은 통과
-    if (adminStaff.role === "company_admin" && adminStaff.company_id !== report.company_id) {
+    // 3) 권한 체크: canAccessCompany/canAccessGym 사용
+    if (!canAccessCompany(adminStaff, report.company_id)) {
       return NextResponse.json({ error: "이 회사 보고서에 대한 승인 권한이 없습니다." }, { status: 403 });
     }
-    if (adminStaff.role === "admin" && adminStaff.gym_id !== report.gym_id) {
+    if (!canAccessGym(adminStaff, report.gym_id)) {
       return NextResponse.json({ error: "이 지점 보고서에 대한 승인 권한이 없습니다." }, { status: 403 });
     }
 

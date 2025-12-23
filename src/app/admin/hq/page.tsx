@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
+import { toast } from "@/lib/toast";
 
 // 카테고리 목록 정의
 const CATEGORY_OPTIONS = ["헬스", "PT", "필라테스", "골프", "GX", "요가"];
@@ -244,7 +245,7 @@ export default function HQPage() {
   };
 
   const handleAssign = async (staffId: string) => {
-    if (!selectedGym || !selectedRole) return alert("지점과 권한을 선택해주세요.");
+    if (!selectedGym || !selectedRole) return toast.warning("지점과 권한을 선택해주세요.");
     if (!confirm("발령 보내시겠습니까?")) return;
 
     try {
@@ -260,13 +261,13 @@ export default function HQPage() {
       const result = await response.json();
 
       if (result.success) {
-        alert("발령 완료!");
+        toast.success("발령 완료!");
         fetchData(companyId || selectedCompanyId);
       } else {
-        alert(result.error);
+        toast.error(result.error);
       }
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     }
   };
 
@@ -310,7 +311,7 @@ export default function HQPage() {
 
   const handleSaveEvent = async () => {
     if (!eventForm.title.trim()) {
-      return alert("행사 제목을 입력해주세요.");
+      return toast.warning("행사 제목을 입력해주세요.");
     }
 
     setIsLoading(true);
@@ -347,12 +348,12 @@ export default function HQPage() {
 
       if (!result.success) throw new Error(result.error);
 
-      alert(editingEvent ? "회사 일정 & 행사가 수정되었습니다." : "회사 일정 & 행사가 등록되었습니다.");
+      toast.success(editingEvent ? "회사 일정 & 행사가 수정되었습니다." : "회사 일정 & 행사가 등록되었습니다.");
 
       setIsEventModalOpen(false);
       fetchData(targetCompanyId);
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -369,11 +370,11 @@ export default function HQPage() {
 
       if (!result.success) throw new Error(result.error);
 
-      alert("회사 일정 & 행사가 삭제되었습니다.");
+      toast.success("회사 일정 & 행사가 삭제되었습니다.");
       const targetCompanyId = companyId || selectedCompanyId;
       fetchData(targetCompanyId);
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     }
   };
 
@@ -394,7 +395,7 @@ export default function HQPage() {
       const targetCompanyId = companyId || selectedCompanyId;
       fetchData(targetCompanyId);
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     }
   };
 
@@ -411,7 +412,7 @@ export default function HQPage() {
 
   const handleCreateBranch = async () => {
     // 필수값 체크 강화
-    if (!formData.gymName || !formData.managerId) return alert("필수 정보(지점명, 지점장)를 입력해주세요.");
+    if (!formData.gymName || !formData.managerId) return toast.warning("필수 정보(지점명, 지점장)를 입력해주세요.");
 
     setIsLoading(true);
     try {
@@ -426,9 +427,9 @@ export default function HQPage() {
         });
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || "지점 생성 실패");
-        alert("생성 완료!");
+        toast.success("생성 완료!");
         setIsCreateOpen(false); setFormData(initialForm); fetchData(targetCompanyId);
-    } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
+    } catch (e: any) { toast.error(e.message); } finally { setIsLoading(false); }
   };
 
   const handleUpdateGym = async () => {
@@ -445,9 +446,9 @@ export default function HQPage() {
             })
         });
         if (!res.ok) throw new Error("실패");
-        alert("수정 완료!");
+        toast.success("수정 완료!");
         setIsEditOpen(false); setEditTargetId(null); setFormData(initialForm); fetchData(companyId || selectedCompanyId);
-    } catch (e: any) { alert(e.message); } finally { setIsLoading(false); }
+    } catch (e: any) { toast.error(e.message); } finally { setIsLoading(false); }
   };
 
   const openEditModal = (gym: any) => {
@@ -475,7 +476,7 @@ export default function HQPage() {
       if (!result.success) throw new Error(result.error);
       fetchData(companyId || selectedCompanyId);
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     }
   };
 
@@ -506,11 +507,11 @@ export default function HQPage() {
       const result = await response.json();
 
       if (!result.success) throw new Error(result.error);
-      alert("직원 정보가 수정되었습니다.");
+      toast.success("직원 정보가 수정되었습니다.");
       setIsStaffEditOpen(false);
       fetchData(companyId || selectedCompanyId);
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     } finally {
       setIsLoading(false);
     }
@@ -544,7 +545,7 @@ export default function HQPage() {
 
       if (!res.ok) throw new Error("BEP 업데이트 실패");
 
-      alert("BEP가 업데이트되었습니다!");
+      toast.success("BEP가 업데이트되었습니다!");
       setIsEditingBep(false);
       fetchData(companyId || selectedCompanyId);
 
@@ -555,7 +556,7 @@ export default function HQPage() {
         pt_bep: bepForm.pt_bep
       });
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     }
   };
 

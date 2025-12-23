@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,7 +36,7 @@ export default function AdminStaffPage() {
   });
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", email: "", password: "", phone: "", job_title: "트레이너", joined_at: "" });
+  const [createForm, setCreateForm] = useState({ name: "", email: "", phone: "", job_title: "트레이너", joined_at: "" });
   const [isCreating, setIsCreating] = useState(false);
 
   const supabase = createSupabaseClient();
@@ -101,7 +102,7 @@ export default function AdminStaffPage() {
   const handleApprove = async (staffId: string) => {
     if (!confirm("이 직원의 가입을 승인하시겠습니까?")) return;
     const { error } = await supabase.from("staffs").update({ employment_status: "재직", role: "staff" }).eq("id", staffId);
-    if (!error) { alert("승인되었습니다."); fetchStaffs(selectedGymId, selectedCompanyId); }
+    if (!error) { toast.success("승인되었습니다."); fetchStaffs(selectedGymId, selectedCompanyId); }
   };
 
   // 수정 모달 열기
@@ -140,17 +141,17 @@ export default function AdminStaffPage() {
 
     const { error } = await supabase.from("staffs").update(updateData).eq("id", editTarget.id);
     if (!error) {
-        alert("정보가 수정되었습니다.");
+        toast.success("정보가 수정되었습니다.");
         setIsEditOpen(false);
         fetchStaffs(selectedGymId, selectedCompanyId);
     } else {
-        alert("실패: " + error.message);
+        toast.error("실패: " + error.message);
     }
   };
 
-  // 신규 등록 실행
+  // 신규 등록 실행 (Clerk 방식: staffs 테이블에만 등록, 직원이 Clerk 로그인 시 자동 연결)
   const handleCreateStaff = async () => {
-    if (!createForm.name || !createForm.email || !createForm.password) return alert("필수 정보를 입력해주세요.");
+    if (!createForm.name || !createForm.email) { toast.warning("이름과 이메일은 필수입니다."); return; }
 
     setIsCreating(true);
     try {
@@ -160,12 +161,13 @@ export default function AdminStaffPage() {
             // gym_id를 null로 설정하여 발령 대기 상태로 생성
             body: JSON.stringify({ ...createForm, gym_id: null, company_id: selectedCompanyId })
         });
-        if (!res.ok) throw new Error("등록 실패");
-        alert("직원이 등록되었습니다. 본사관리에서 발령을 진행해주세요.");
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "등록 실패");
+        toast.success("직원이 등록되었습니다. 해당 이메일로 로그인하면 자동으로 연결됩니다.");
         setIsCreateOpen(false);
-        setCreateForm({ name: "", email: "", password: "", phone: "", job_title: "트레이너", joined_at: "" });
+        setCreateForm({ name: "", email: "", phone: "", job_title: "트레이너", joined_at: "" });
         fetchStaffs(selectedGymId, selectedCompanyId);
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { toast.error(e.message); }
     finally { setIsCreating(false); }
   };
 
@@ -378,11 +380,8 @@ export default function AdminStaffPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-700">이메일 <span className="text-red-500">*</span></Label>
-              <Input value={createForm.email} onChange={(e) => setCreateForm({...createForm, email: e.target.value})}/>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700">비밀번호 <span className="text-red-500">*</span></Label>
-              <Input type="password" value={createForm.password} onChange={(e) => setCreateForm({...createForm, password: e.target.value})}/>
+              <Input value={createForm.email} onChange={(e) => setCreateForm({...createForm, email: e.target.value})} placeholder="직원이 로그인할 이메일"/>
+              <p className="text-xs text-gray-500">※ 직원이 이 이메일로 로그인하면 자동으로 연결됩니다</p>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-700">입사일</Label>

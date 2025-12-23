@@ -1,10 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest } from "@/lib/api/auth";
 
 export async function POST(request: Request) {
   try {
+    // 인증 확인 - system_admin만 마이그레이션 실행 가능
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff) {
+      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    }
+    if (staff.role !== "system_admin") {
+      return NextResponse.json({ error: "시스템 관리자 권한이 필요합니다." }, { status: 403 });
+    }
+
     const body = await request.json();
     const { filename } = body;
 
@@ -12,10 +23,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '마이그레이션 파일명을 제공해주세요.' }, { status: 400 });
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // 파일명 검증 (path traversal 방지)
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      return NextResponse.json({ error: '잘못된 파일명입니다.' }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdmin();
 
     // Read the migration file
     const migrationPath = join(process.cwd(), 'supabase', 'migrations', filename);

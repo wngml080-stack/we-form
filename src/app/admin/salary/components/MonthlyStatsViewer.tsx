@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -114,7 +115,7 @@ export default function MonthlyStatsViewer() {
       setStaffStats(stats);
     } catch (error) {
       console.error("월별 실적 조회 실패:", error);
-      alert("월별 실적을 불러오는 중 오류가 발생했습니다.");
+      toast.error("월별 실적을 불러오는 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -122,7 +123,7 @@ export default function MonthlyStatsViewer() {
 
   const handleExcelDownload = () => {
     if (staffStats.length === 0) {
-      alert("다운로드할 데이터가 없습니다.");
+      toast.warning("다운로드할 데이터가 없습니다.");
       return;
     }
 

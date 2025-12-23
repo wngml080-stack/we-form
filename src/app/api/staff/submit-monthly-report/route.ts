@@ -1,18 +1,28 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest } from "@/lib/api/auth";
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // 인증 확인
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff) {
+      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    }
+
+    const supabase = getSupabaseAdmin();
 
     const body = await request.json();
-    const { staff_id, gym_id, company_id, year_month, stats, staff_memo } = body;
+    const { year_month, stats, staff_memo } = body;
+
+    // 인증된 사용자 정보 사용 (body에서 받지 않음 - 보안)
+    const staff_id = staff.id;
+    const gym_id = staff.gym_id;
+    const company_id = staff.company_id;
 
     // Validate required fields
-    if (!staff_id || !gym_id || !company_id || !year_month || !stats) {
+    if (!year_month || !stats) {
       return NextResponse.json(
         { error: "필수 필드가 누락되었습니다." },
         { status: 400 }

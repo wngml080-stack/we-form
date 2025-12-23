@@ -1,11 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest } from "@/lib/api/auth";
 
 export async function GET() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  // 인증 확인 - system_admin만 접근 가능
+  const { staff, error: authError } = await authenticateRequest();
+  if (authError) return authError;
+  if (!staff) {
+    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  }
+  if (staff.role !== "system_admin") {
+    return NextResponse.json({ error: "시스템 관리자 권한이 필요합니다." }, { status: 403 });
+  }
+
+  const supabase = getSupabaseAdmin();
 
   const sql = `
     -- 1. 급여 구성요소 (Components)
@@ -86,11 +94,7 @@ export async function GET() {
     $$;
   `;
 
-  const { error } = await supabase.rpc('exec_sql', { query: sql }); 
-  // 주의: exec_sql 함수가 없으면 실패할 수 있음. 일반적인 REST API로는 DDL 실행 불가.
-  // 따라서 postgres-js 같은 라이브러리를 쓰거나, Supabase 대시보드에서 실행해야 함.
-  // 하지만 여기서는 DDL 실행을 위해 Supabase SQL Editor를 사용하도록 안내하는 것이 가장 안전함.
-  
+  // DDL은 일반 REST API로 실행 불가 - Supabase 대시보드에서 수동 실행 필요
   return NextResponse.json({ message: "Please run the SQL in Supabase Dashboard SQL Editor manually for security reasons.", sql });
 }
 

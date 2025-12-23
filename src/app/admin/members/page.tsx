@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
@@ -128,6 +129,23 @@ function AdminMembersPageContent() {
   const [newMemberAddons, setNewMemberAddons] = useState<AddonItem[]>([]);
   const [existingMemberAddons, setExistingMemberAddons] = useState<AddonItem[]>([]);
 
+  // 회원권 중복 등록 (신규 회원 등록 시)
+  interface MembershipItem {
+    id: string;
+    product_id: string;
+    membership_type: string;
+    membership_name: string;
+    registered_at: string;
+    start_date: string;
+    end_date: string;
+    amount: string;
+    total_sessions: string;
+    days_per_session: string; // PT/PPT/GPT용: 1회당 유효일수
+    duration_months: string; // 기타 회원권용: 개월수
+    payment_method: string;
+  }
+  const [newMemberMemberships, setNewMemberMemberships] = useState<MembershipItem[]>([]);
+
   // 폼 상태 (확장)
   const [createForm, setCreateForm] = useState({
     // 필수 정보
@@ -140,6 +158,10 @@ function AdminMembersPageContent() {
     membership_type: "PT", // 회원권 유형
     total_sessions: "30",
     membership_amount: "",
+    start_date: new Date().toISOString().split('T')[0], // 시작날짜
+    end_date: "", // 종료일 (자동 계산)
+    days_per_session: "7", // PT/PPT/GPT용: 1회당 유효일수 (기본 7일)
+    duration_months: "", // 기타 회원권용: 개월수
 
     // 결제 정보
     payment_method: "card", // 결제방법: card, cash, transfer
@@ -445,20 +467,20 @@ function AdminMembersPageContent() {
   const handleSimpleMemberCreate = async () => {
     // 필수 항목 검증
     if (!simpleMemberForm.name || !simpleMemberForm.phone) {
-      alert("필수 항목을 모두 입력해주세요.\n(회원명, 연락처)");
+      toast.warning("필수 항목을 모두 입력해주세요. (회원명, 연락처)");
       return;
     }
 
     // 회원권 선택 시 시작일/종료일 필수
     if (simpleMemberForm.membership_product_id) {
       if (!simpleMemberForm.membership_start_date || !simpleMemberForm.membership_end_date) {
-        alert("회원권 시작일과 종료일을 입력해주세요.");
+        toast.warning("회원권 시작일과 종료일을 입력해주세요.");
         return;
       }
     }
 
     if (!gymId || !companyId) {
-      alert("지점 정보를 찾을 수 없습니다.");
+      toast.error("지점 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -703,12 +725,12 @@ function AdminMembersPageContent() {
   // Excel 데이터 일괄 등록
   const handleBulkImport = async () => {
     if (!parsedExcelData || parsedExcelData.length === 0) {
-      alert('가져올 데이터가 없습니다.');
+      toast.warning('가져올 데이터가 없습니다.');
       return;
     }
 
     if (!gymId || !companyId) {
-      alert('지점 정보를 찾을 수 없습니다.');
+      toast.error('지점 정보를 찾을 수 없습니다.');
       return;
     }
 
@@ -847,6 +869,77 @@ function AdminMembersPageContent() {
     }
   };
 
+  // PT/PPT/GPT 타입인지 확인하는 헬퍼 함수
+  const isPTType = (type: string) => ["PT", "PPT", "GPT"].includes(type);
+
+  // 종료일 자동 계산 함수
+  const calculateEndDate = (startDate: string, membershipType: string, totalSessions: string, daysPerSession: string, durationMonths: string): string => {
+    if (!startDate) return "";
+
+    const start = new Date(startDate);
+
+    if (isPTType(membershipType)) {
+      // PT/PPT/GPT: 시작일 + (총세션 * 1회당 유효일수)
+      const sessions = parseInt(totalSessions) || 0;
+      const days = parseInt(daysPerSession) || 7;
+      const totalDays = sessions * days;
+      const end = new Date(start);
+      end.setDate(end.getDate() + totalDays - 1);
+      return end.toISOString().split('T')[0];
+    } else {
+      // 기타 회원권: 시작일 + 개월수
+      const months = parseInt(durationMonths) || 0;
+      if (months <= 0) return "";
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + months);
+      end.setDate(end.getDate() - 1);
+      return end.toISOString().split('T')[0];
+    }
+  };
+
+  // 회원권 중복 등록 헬퍼 함수
+  const createEmptyMembership = (): MembershipItem => ({
+    id: crypto.randomUUID(),
+    product_id: "",
+    membership_type: "PT",
+    membership_name: "",
+    registered_at: new Date().toISOString().split('T')[0],
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: "",
+    amount: "",
+    total_sessions: "",
+    days_per_session: "7",
+    duration_months: "",
+    payment_method: "card"
+  });
+
+  const addNewMemberMembership = () => {
+    setNewMemberMemberships([...newMemberMemberships, createEmptyMembership()]);
+  };
+
+  const removeNewMemberMembership = (index: number) => {
+    setNewMemberMemberships(newMemberMemberships.filter((_, i) => i !== index));
+  };
+
+  const updateNewMemberMembership = (index: number, field: keyof MembershipItem, value: string) => {
+    const updated = [...newMemberMemberships];
+    updated[index] = { ...updated[index], [field]: value };
+
+    // 종료일 자동 계산
+    const m = updated[index];
+    if (field === "start_date" || field === "total_sessions" || field === "days_per_session" || field === "duration_months" || field === "membership_type") {
+      updated[index].end_date = calculateEndDate(
+        m.start_date,
+        m.membership_type,
+        m.total_sessions,
+        m.days_per_session,
+        m.duration_months
+      );
+    }
+
+    setNewMemberMemberships(updated);
+  };
+
   // 부가상품 추가 헬퍼 함수
   const createEmptyAddon = (): AddonItem => ({
     addon_type: "",
@@ -959,16 +1052,22 @@ function AdminMembersPageContent() {
   };
 
   const handleCreateMember = async () => {
-    // 필수 항목 검증
-    if (!createForm.name || !createForm.phone || !createForm.registered_at ||
-        !createForm.membership_amount || !createForm.total_sessions ||
-        !createForm.trainer_id) {
-      alert("필수 항목을 모두 입력해주세요.\n(회원명, 연락처, 등록날짜, 등록금액, 등록세션, 담당트레이너)");
+    // 필수 항목 검증 (회원명, 연락처, 회원권 정보만 필수)
+    if (!createForm.name || !createForm.phone) {
+      toast.warning("필수 항목을 모두 입력해주세요. (회원명, 연락처)");
       return;
     }
 
+    // 기본 회원권이 있는 경우에만 등록날짜와 금액 검증
+    if (selectedProductId || createForm.membership_amount) {
+      if (!createForm.registered_at || !createForm.membership_amount) {
+        toast.warning("회원권 등록 시 등록날짜와 등록금액을 입력해주세요.");
+        return;
+      }
+    }
+
     if (!gymId || !companyId) {
-      alert("지점 정보를 찾을 수 없습니다.");
+      toast.error("지점 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -985,7 +1084,7 @@ function AdminMembersPageContent() {
           birth_date: createForm.birth_date || null,
           gender: createForm.gender || null,
           registered_by: createForm.registered_by || myStaffId,
-          trainer_id: createForm.trainer_id,
+          trainer_id: createForm.trainer_id || null,
           exercise_goal: createForm.exercise_goal || null,
           weight: createForm.weight ? parseFloat(createForm.weight) : null,
           body_fat_mass: createForm.body_fat_mass ? parseFloat(createForm.body_fat_mass) : null,
@@ -999,57 +1098,114 @@ function AdminMembersPageContent() {
 
       if (memberError) throw memberError;
 
-      // 2. 회원권 등록
-      const { data: membership, error: membershipError } = await supabase
-        .from("member_memberships")
-        .insert({
+      // 2. 기본 회원권 등록 (회원권이 있는 경우에만)
+      if (selectedProductId || createForm.membership_amount) {
+        const { data: membership, error: membershipError } = await supabase
+          .from("member_memberships")
+          .insert({
+            gym_id: gymId,
+            member_id: member.id,
+            name: createForm.membership_name,
+            membership_type: createForm.membership_type,
+            total_sessions: parseInt(createForm.total_sessions) || 0,
+            used_sessions: 0,
+            start_date: createForm.start_date || createForm.registered_at,
+            end_date: createForm.end_date || null,
+            status: "active"
+          })
+          .select()
+          .single();
+
+        if (membershipError) throw membershipError;
+
+        // 3. 결제 정보 등록
+        const amount = parseFloat(createForm.membership_amount);
+        const { error: paymentError } = await supabase
+          .from("member_payments")
+          .insert({
+            company_id: companyId,
+            gym_id: gymId,
+            member_id: member.id,
+            membership_id: membership.id,
+            amount: amount,
+            total_amount: amount,
+            method: createForm.payment_method,
+            membership_type: createForm.membership_type,
+            registration_type: "신규",
+            memo: `${createForm.membership_name} 신규 등록`,
+            paid_at: createForm.registered_at
+          });
+
+        if (paymentError) throw paymentError;
+
+        // 4. 매출 로그에 기록
+        await supabase.from("sales_logs").insert({
+          company_id: companyId,
           gym_id: gymId,
-          member_id: member.id,
-          name: createForm.membership_name,
-          total_sessions: parseInt(createForm.total_sessions),
-          used_sessions: 0,
-          start_date: createForm.registered_at,
-          end_date: null,
-          status: "active"
-        })
-        .select()
-        .single();
+          staff_id: myStaffId,
+          type: "sale",
+          amount: amount,
+          method: createForm.payment_method,
+          memo: `${createForm.name} - ${createForm.membership_name} 신규 등록`,
+          occurred_at: createForm.registered_at
+        });
+      }
 
-      if (membershipError) throw membershipError;
+      // 5. 추가 회원권 등록 (중복 회원권)
+      for (const additionalMembership of newMemberMemberships) {
+        if (!additionalMembership.product_id || !additionalMembership.amount) continue;
 
-      // 3. 결제 정보 등록
-      const amount = parseFloat(createForm.membership_amount);
-      const { error: paymentError } = await supabase
-        .from("member_payments")
-        .insert({
+        const { data: addMembership, error: addMembershipError } = await supabase
+          .from("member_memberships")
+          .insert({
+            gym_id: gymId,
+            member_id: member.id,
+            name: additionalMembership.membership_name,
+            membership_type: additionalMembership.membership_type,
+            total_sessions: parseInt(additionalMembership.total_sessions) || 0,
+            used_sessions: 0,
+            start_date: additionalMembership.start_date || additionalMembership.registered_at,
+            end_date: additionalMembership.end_date || null,
+            status: "active"
+          })
+          .select()
+          .single();
+
+        if (addMembershipError) {
+          console.error("추가 회원권 등록 실패:", addMembershipError);
+          continue;
+        }
+
+        // 추가 회원권 결제 정보
+        const addAmount = parseFloat(additionalMembership.amount);
+        await supabase.from("member_payments").insert({
           company_id: companyId,
           gym_id: gymId,
           member_id: member.id,
-          membership_id: membership.id,
-          amount: amount,
-          total_amount: amount,
-          method: createForm.payment_method,
-          membership_type: createForm.membership_type,
+          membership_id: addMembership.id,
+          amount: addAmount,
+          total_amount: addAmount,
+          method: additionalMembership.payment_method,
+          membership_type: additionalMembership.membership_type,
           registration_type: "신규",
-          memo: `${createForm.membership_name} 신규 등록`,
-          paid_at: createForm.registered_at
+          memo: `${additionalMembership.membership_name} 신규 등록 (추가)`,
+          paid_at: additionalMembership.registered_at
         });
 
-      if (paymentError) throw paymentError;
+        // 추가 회원권 매출 로그
+        await supabase.from("sales_logs").insert({
+          company_id: companyId,
+          gym_id: gymId,
+          staff_id: myStaffId,
+          type: "sale",
+          amount: addAmount,
+          method: additionalMembership.payment_method,
+          memo: `${createForm.name} - ${additionalMembership.membership_name} 신규 등록 (추가)`,
+          occurred_at: additionalMembership.registered_at
+        });
+      }
 
-      // 4. 매출 로그에 기록
-      await supabase.from("sales_logs").insert({
-        company_id: companyId,
-        gym_id: gymId,
-        staff_id: myStaffId,
-        type: "sale",
-        amount: amount,
-        method: createForm.payment_method,
-        memo: `${createForm.name} - ${createForm.membership_name} 신규 등록`,
-        occurred_at: createForm.registered_at
-      });
-
-      // 5. 부가상품 저장
+      // 6. 부가상품 저장
       if (newMemberAddons.length > 0) {
         await saveAddonPayments(member.id, newMemberAddons, createForm.registered_at);
       }
@@ -1058,6 +1214,7 @@ function AdminMembersPageContent() {
       setIsCreateOpen(false);
       setSelectedProductId(""); // 상품 선택 초기화
       setNewMemberAddons([]); // 부가상품 초기화
+      setNewMemberMemberships([]); // 추가 회원권 초기화
 
       // 폼 초기화
       setCreateForm({
@@ -1068,6 +1225,10 @@ function AdminMembersPageContent() {
         membership_type: "PT",
         total_sessions: "30",
         membership_amount: "",
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: "",
+        days_per_session: "7",
+        duration_months: "",
         payment_method: "card",
         registered_by: myStaffId || "",
         trainer_id: myStaffId || "",
@@ -1282,7 +1443,7 @@ function AdminMembersPageContent() {
   const handleUpdateMembership = async () => {
     if (!selectedMember || !selectedGymId || !selectedCompanyId) return;
     if (!membershipForm.name || !membershipForm.total_sessions) {
-      alert("회원권 이름과 횟수는 필수입니다.");
+      toast.warning("회원권 이름과 횟수는 필수입니다.");
       return;
     }
 
@@ -1322,12 +1483,12 @@ function AdminMembersPageContent() {
 
   const handleExistingSales = async () => {
     if (!existingSalesForm.member_id || !existingSalesForm.registration_type) {
-      alert("회원과 등록 타입을 선택해주세요.");
+      toast.warning("회원과 등록 타입을 선택해주세요.");
       return;
     }
 
     if (!gymId || !companyId) {
-      alert("지점 정보를 찾을 수 없습니다.");
+      toast.error("지점 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -1342,7 +1503,7 @@ function AdminMembersPageContent() {
         // 리뉴: 기존 회원권 갱신 (횟수 추가, 기간 연장)
         const activeMembership = member.activeMembership;
         if (!activeMembership) {
-          alert("활성 회원권이 없습니다. 부가상품으로 등록해주세요.");
+          toast.warning("활성 회원권이 없습니다. 부가상품으로 등록해주세요.");
           return;
         }
 
@@ -1369,7 +1530,7 @@ function AdminMembersPageContent() {
         // 기간변경: 만료일만 수정
         const activeMembership = member.activeMembership;
         if (!activeMembership) {
-          alert("활성 회원권이 없습니다.");
+          toast.warning("활성 회원권이 없습니다.");
           return;
         }
 
@@ -1502,17 +1663,17 @@ function AdminMembersPageContent() {
   // 부가상품 매출 등록
   const handleAddonSales = async () => {
     if (!addonSalesForm.member_id || !addonSalesForm.addon_type) {
-      alert("회원과 부가상품 유형을 선택해주세요.");
+      toast.warning("회원과 부가상품 유형을 선택해주세요.");
       return;
     }
 
     if (!addonSalesForm.amount) {
-      alert("금액을 입력해주세요.");
+      toast.warning("금액을 입력해주세요.");
       return;
     }
 
     if (!gymId || !companyId) {
-      alert("지점 정보를 찾을 수 없습니다.");
+      toast.error("지점 정보를 찾을 수 없습니다.");
       return;
     }
 
@@ -1653,7 +1814,7 @@ function AdminMembersPageContent() {
       }
     } catch (error: any) {
       console.error("상태 변경 실패:", error);
-      alert("상태 변경 중 오류가 발생했습니다.");
+      toast.error("상태 변경 중 오류가 발생했습니다.");
     }
   };
 
@@ -1989,6 +2150,7 @@ function AdminMembersPageContent() {
         if (!open) {
           setSelectedProductId(""); // 모달 닫을 때 상품 선택 초기화
           setNewMemberAddons([]); // 부가상품 초기화
+          setNewMemberMemberships([]); // 추가 회원권 초기화
         }
       }}>
         <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1998,7 +2160,7 @@ function AdminMembersPageContent() {
           </DialogHeader>
           <div className="grid gap-6 py-4">
 
-            {/* 필수 정보 섹션 */}
+            {/* 1. 필수 정보 섹션 */}
             <div className="space-y-4">
               <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">필수 정보</h3>
 
@@ -2021,160 +2183,7 @@ function AdminMembersPageContent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">등록날짜 <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="date"
-                    value={createForm.registered_at}
-                    onChange={(e) => setCreateForm({...createForm, registered_at: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">등록금액 (원) <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="number"
-                    value={createForm.membership_amount}
-                    onChange={(e) => setCreateForm({...createForm, membership_amount: e.target.value})}
-                    placeholder="1000000"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">등록세션 (회) <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="number"
-                    value={createForm.total_sessions}
-                    onChange={(e) => setCreateForm({...createForm, total_sessions: e.target.value})}
-                    placeholder="30"
-                  />
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">회원권 유형 <span className="text-red-500">*</span></Label>
-                  <Select value={createForm.membership_type} onValueChange={(v) => setCreateForm({...createForm, membership_type: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="헬스">헬스</SelectItem>
-                      <SelectItem value="필라테스">필라테스</SelectItem>
-                      <SelectItem value="PT">PT</SelectItem>
-                      <SelectItem value="PPT">PPT</SelectItem>
-                      <SelectItem value="GPT">GPT</SelectItem>
-                      <SelectItem value="골프">골프</SelectItem>
-                      <SelectItem value="GX">GX</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">결제방법 <span className="text-red-500">*</span></Label>
-                  <Select value={createForm.payment_method} onValueChange={(v) => setCreateForm({...createForm, payment_method: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="card">카드</SelectItem>
-                      <SelectItem value="cash">현금</SelectItem>
-                      <SelectItem value="transfer">계좌이체</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[#0F4C5C]">회원권명 <span className="text-red-500">*</span></Label>
-                <Select
-                  value={selectedProductId}
-                  onValueChange={(productId) => {
-                    const product = products.find(p => p.id === productId);
-                    if (product) {
-                      setSelectedProductId(productId);
-                      setCreateForm({
-                        ...createForm,
-                        membership_name: product.name,
-                        total_sessions: product.default_sessions?.toString() || "0",
-                        membership_amount: product.default_price.toString()
-                      });
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="상품을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white max-h-[200px]">
-                    {products.length === 0 ? (
-                      <div className="p-4 text-sm text-gray-500 text-center">
-                        등록된 상품이 없습니다.<br />
-                        상품 관리 탭에서 먼저 상품을 등록해주세요.
-                      </div>
-                    ) : (
-                      products.map(product => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name} - {product.default_sessions || 0}회 / {product.default_price.toLocaleString()}원
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-
-                {/* 선택된 상품 정보 표시 */}
-                {selectedProductId && (
-                  <div className="bg-blue-50 p-3 rounded text-sm">
-                    <div className="text-blue-900 font-medium mb-1">선택한 상품 정보</div>
-                    <div className="text-blue-700">
-                      기본 횟수: {createForm.total_sessions}회 / 기본 가격: {parseInt(createForm.membership_amount).toLocaleString()}원
-                    </div>
-                    <div className="text-xs text-blue-600 mt-1">
-                      * 필요시 횟수와 금액을 수정할 수 있습니다.
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 담당자 정보 섹션 */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">담당자 정보</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">등록자 <span className="text-red-500">*</span></Label>
-                  <Select
-                    value={createForm.registered_by}
-                    onValueChange={(v) => setCreateForm({...createForm, registered_by: v})}
-                  >
-                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                    <SelectContent className="bg-white max-h-[200px]">
-                      {staffList.map(staff => (
-                        <SelectItem key={staff.id} value={staff.id}>
-                          {staff.name} ({staff.job_title})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">담당트레이너 <span className="text-red-500">*</span></Label>
-                  <Select
-                    value={createForm.trainer_id}
-                    onValueChange={(v) => setCreateForm({...createForm, trainer_id: v})}
-                  >
-                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                    <SelectContent className="bg-white max-h-[200px]">
-                      {staffList.map(staff => (
-                        <SelectItem key={staff.id} value={staff.id}>
-                          {staff.name} ({staff.job_title})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* 기본 정보 섹션 */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">기본 정보 (선택)</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[#0F4C5C]">생년월일</Label>
                   <Input
@@ -2193,56 +2202,451 @@ function AdminMembersPageContent() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">운동목적</Label>
-                  <Input
-                    value={createForm.exercise_goal}
-                    onChange={(e) => setCreateForm({...createForm, exercise_goal: e.target.value})}
-                    placeholder="다이어트, 근력강화 등"
-                  />
-                </div>
               </div>
             </div>
 
-            {/* 인바디 정보 섹션 */}
+            {/* 2. 회원권 섹션 (중복 등록 가능) */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">인바디 정보 (선택)</h3>
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="font-semibold text-sm text-gray-700">회원권</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addNewMemberMembership}
+                  className="text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  회원권 추가
+                </Button>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">몸무게 (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={createForm.weight}
-                    onChange={(e) => setCreateForm({...createForm, weight: e.target.value})}
-                    placeholder="70.5"
-                  />
+              {/* 기본 회원권 (항상 표시) */}
+              <div className="border rounded-lg p-4 bg-blue-50/50 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-blue-700">기본 회원권</span>
                 </div>
+
                 <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">체지방량 (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={createForm.body_fat_mass}
-                    onChange={(e) => setCreateForm({...createForm, body_fat_mass: e.target.value})}
-                    placeholder="15.2"
-                  />
+                  <Label className="text-xs">회원권명 <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={selectedProductId}
+                    onValueChange={(productId) => {
+                      const product = products.find(p => p.id === productId);
+                      if (product) {
+                        setSelectedProductId(productId);
+                        setCreateForm({
+                          ...createForm,
+                          membership_name: product.name,
+                          membership_type: product.membership_type || "PT",
+                          total_sessions: product.default_sessions?.toString() || "0",
+                          membership_amount: product.default_price.toString()
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="상품을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white max-h-[200px]">
+                      {products.length === 0 ? (
+                        <div className="p-4 text-sm text-gray-500 text-center">
+                          등록된 상품이 없습니다.<br />
+                          상품 관리 탭에서 먼저 상품을 등록해주세요.
+                        </div>
+                      ) : (
+                        products.map(product => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} - {product.default_sessions || 0}회 / {product.default_price.toLocaleString()}원
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">골격근량 (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={createForm.skeletal_muscle_mass}
-                    onChange={(e) => setCreateForm({...createForm, skeletal_muscle_mass: e.target.value})}
-                    placeholder="32.1"
-                  />
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">회원권 유형</Label>
+                    <Select
+                      value={createForm.membership_type}
+                      onValueChange={(v) => {
+                        const newEndDate = calculateEndDate(
+                          createForm.start_date,
+                          v,
+                          createForm.total_sessions,
+                          createForm.days_per_session,
+                          createForm.duration_months
+                        );
+                        setCreateForm({...createForm, membership_type: v, end_date: newEndDate});
+                      }}
+                    >
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="헬스">헬스</SelectItem>
+                        <SelectItem value="필라테스">필라테스</SelectItem>
+                        <SelectItem value="PT">PT</SelectItem>
+                        <SelectItem value="PPT">PPT</SelectItem>
+                        <SelectItem value="GPT">GPT</SelectItem>
+                        <SelectItem value="골프">골프</SelectItem>
+                        <SelectItem value="GX">GX</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">등록날짜</Label>
+                    <Input
+                      type="date"
+                      value={createForm.registered_at}
+                      onChange={(e) => setCreateForm({...createForm, registered_at: e.target.value})}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">등록금액 (원) <span className="text-red-500">*</span></Label>
+                    <Input
+                      type="number"
+                      value={createForm.membership_amount}
+                      onChange={(e) => setCreateForm({...createForm, membership_amount: e.target.value})}
+                      placeholder="1000000"
+                      className="h-9"
+                    />
+                  </div>
+                </div>
+
+                {/* PT/PPT/GPT 타입: 세션, 1회당 유효일수 */}
+                {isPTType(createForm.membership_type) ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">등록세션 (회) <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="number"
+                        value={createForm.total_sessions}
+                        onChange={(e) => {
+                          const newEndDate = calculateEndDate(
+                            createForm.start_date,
+                            createForm.membership_type,
+                            e.target.value,
+                            createForm.days_per_session,
+                            createForm.duration_months
+                          );
+                          setCreateForm({...createForm, total_sessions: e.target.value, end_date: newEndDate});
+                        }}
+                        placeholder="30"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">1회당 유효일수</Label>
+                      <Input
+                        type="number"
+                        value={createForm.days_per_session}
+                        onChange={(e) => {
+                          const newEndDate = calculateEndDate(
+                            createForm.start_date,
+                            createForm.membership_type,
+                            createForm.total_sessions,
+                            e.target.value,
+                            createForm.duration_months
+                          );
+                          setCreateForm({...createForm, days_per_session: e.target.value, end_date: newEndDate});
+                        }}
+                        placeholder="7"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">시작날짜 <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="date"
+                        value={createForm.start_date}
+                        onChange={(e) => {
+                          const newEndDate = calculateEndDate(
+                            e.target.value,
+                            createForm.membership_type,
+                            createForm.total_sessions,
+                            createForm.days_per_session,
+                            createForm.duration_months
+                          );
+                          setCreateForm({...createForm, start_date: e.target.value, end_date: newEndDate});
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">종료일 (자동계산)</Label>
+                      <Input
+                        type="date"
+                        value={createForm.end_date}
+                        readOnly
+                        className="h-9 bg-gray-100"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  /* 기타 회원권: 개월수 기반 */
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">개월수 <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="number"
+                        value={createForm.duration_months}
+                        onChange={(e) => {
+                          const newEndDate = calculateEndDate(
+                            createForm.start_date,
+                            createForm.membership_type,
+                            createForm.total_sessions,
+                            createForm.days_per_session,
+                            e.target.value
+                          );
+                          setCreateForm({...createForm, duration_months: e.target.value, end_date: newEndDate});
+                        }}
+                        placeholder="3"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">시작날짜 <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="date"
+                        value={createForm.start_date}
+                        onChange={(e) => {
+                          const newEndDate = calculateEndDate(
+                            e.target.value,
+                            createForm.membership_type,
+                            createForm.total_sessions,
+                            createForm.days_per_session,
+                            createForm.duration_months
+                          );
+                          setCreateForm({...createForm, start_date: e.target.value, end_date: newEndDate});
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">종료일 (자동계산)</Label>
+                      <Input
+                        type="date"
+                        value={createForm.end_date}
+                        readOnly
+                        className="h-9 bg-gray-100"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">세션 (선택)</Label>
+                      <Input
+                        type="number"
+                        value={createForm.total_sessions}
+                        onChange={(e) => setCreateForm({...createForm, total_sessions: e.target.value})}
+                        placeholder="횟수 제한 시 입력"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <Label className="text-xs">결제방법</Label>
+                  <Select value={createForm.payment_method} onValueChange={(v) => setCreateForm({...createForm, payment_method: v})}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="card">카드</SelectItem>
+                      <SelectItem value="cash">현금</SelectItem>
+                      <SelectItem value="transfer">계좌이체</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+
+              {/* 추가 회원권 (중복 등록) */}
+              {newMemberMemberships.map((membership, index) => (
+                <div key={membership.id} className="border rounded-lg p-4 bg-gray-50 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">추가 회원권 #{index + 1}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeNewMemberMembership(index)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">회원권명 <span className="text-red-500">*</span></Label>
+                    <Select
+                      value={membership.product_id}
+                      onValueChange={(productId) => {
+                        const product = products.find(p => p.id === productId);
+                        if (product) {
+                          updateNewMemberMembership(index, "product_id", productId);
+                          updateNewMemberMembership(index, "membership_name", product.name);
+                          updateNewMemberMembership(index, "membership_type", product.membership_type || "PT");
+                          updateNewMemberMembership(index, "total_sessions", product.default_sessions?.toString() || "0");
+                          updateNewMemberMembership(index, "amount", product.default_price.toString());
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="상품을 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white max-h-[200px]">
+                        {products.map(product => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name} - {product.default_sessions || 0}회 / {product.default_price.toLocaleString()}원
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">회원권 유형</Label>
+                      <Select
+                        value={membership.membership_type}
+                        onValueChange={(v) => updateNewMemberMembership(index, "membership_type", v)}
+                      >
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="헬스">헬스</SelectItem>
+                          <SelectItem value="필라테스">필라테스</SelectItem>
+                          <SelectItem value="PT">PT</SelectItem>
+                          <SelectItem value="PPT">PPT</SelectItem>
+                          <SelectItem value="GPT">GPT</SelectItem>
+                          <SelectItem value="골프">골프</SelectItem>
+                          <SelectItem value="GX">GX</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">등록날짜</Label>
+                      <Input
+                        type="date"
+                        value={membership.registered_at}
+                        onChange={(e) => updateNewMemberMembership(index, "registered_at", e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">등록금액 (원) <span className="text-red-500">*</span></Label>
+                      <Input
+                        type="number"
+                        value={membership.amount}
+                        onChange={(e) => updateNewMemberMembership(index, "amount", e.target.value)}
+                        placeholder="1000000"
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+
+                  {/* PT/PPT/GPT 타입: 세션, 1회당 유효일수 */}
+                  {isPTType(membership.membership_type) ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">등록세션 (회) <span className="text-red-500">*</span></Label>
+                        <Input
+                          type="number"
+                          value={membership.total_sessions}
+                          onChange={(e) => updateNewMemberMembership(index, "total_sessions", e.target.value)}
+                          placeholder="30"
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">1회당 유효일수</Label>
+                        <Input
+                          type="number"
+                          value={membership.days_per_session}
+                          onChange={(e) => updateNewMemberMembership(index, "days_per_session", e.target.value)}
+                          placeholder="7"
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">시작날짜 <span className="text-red-500">*</span></Label>
+                        <Input
+                          type="date"
+                          value={membership.start_date}
+                          onChange={(e) => updateNewMemberMembership(index, "start_date", e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">종료일 (자동계산)</Label>
+                        <Input
+                          type="date"
+                          value={membership.end_date}
+                          readOnly
+                          className="h-9 bg-gray-100"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    /* 기타 회원권: 개월수 기반 */
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">개월수 <span className="text-red-500">*</span></Label>
+                        <Input
+                          type="number"
+                          value={membership.duration_months}
+                          onChange={(e) => updateNewMemberMembership(index, "duration_months", e.target.value)}
+                          placeholder="3"
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">시작날짜 <span className="text-red-500">*</span></Label>
+                        <Input
+                          type="date"
+                          value={membership.start_date}
+                          onChange={(e) => updateNewMemberMembership(index, "start_date", e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">종료일 (자동계산)</Label>
+                        <Input
+                          type="date"
+                          value={membership.end_date}
+                          readOnly
+                          className="h-9 bg-gray-100"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">세션 (선택)</Label>
+                        <Input
+                          type="number"
+                          value={membership.total_sessions}
+                          onChange={(e) => updateNewMemberMembership(index, "total_sessions", e.target.value)}
+                          placeholder="횟수 제한 시 입력"
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <Label className="text-xs">결제방법</Label>
+                    <Select
+                      value={membership.payment_method}
+                      onValueChange={(v) => updateNewMemberMembership(index, "payment_method", v)}
+                    >
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="card">카드</SelectItem>
+                        <SelectItem value="cash">현금</SelectItem>
+                        <SelectItem value="transfer">계좌이체</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* 부가상품 추가 섹션 */}
+            {/* 3. 부가상품 추가 섹션 */}
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b pb-2">
                 <h3 className="font-semibold text-sm text-gray-700">부가상품 추가 (선택)</h3>
@@ -2380,7 +2784,93 @@ function AdminMembersPageContent() {
               )}
             </div>
 
-            {/* 메모 섹션 */}
+            {/* 4. 담당자 정보 섹션 */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">담당자 정보</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">등록자</Label>
+                  <Select
+                    value={createForm.registered_by}
+                    onValueChange={(v) => setCreateForm({...createForm, registered_by: v})}
+                  >
+                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                    <SelectContent className="bg-white max-h-[200px]">
+                      {staffList.map(staff => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          {staff.name} ({staff.job_title})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">담당트레이너</Label>
+                  <Select
+                    value={createForm.trainer_id}
+                    onValueChange={(v) => setCreateForm({...createForm, trainer_id: v})}
+                  >
+                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
+                    <SelectContent className="bg-white max-h-[200px]">
+                      {staffList.map(staff => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          {staff.name} ({staff.job_title})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. 인바디 정보 섹션 (선택) */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">인바디 정보 (선택)</h3>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">몸무게 (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={createForm.weight}
+                    onChange={(e) => setCreateForm({...createForm, weight: e.target.value})}
+                    placeholder="70.5"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">체지방량 (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={createForm.body_fat_mass}
+                    onChange={(e) => setCreateForm({...createForm, body_fat_mass: e.target.value})}
+                    placeholder="15.2"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">골격근량 (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={createForm.skeletal_muscle_mass}
+                    onChange={(e) => setCreateForm({...createForm, skeletal_muscle_mass: e.target.value})}
+                    placeholder="32.1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[#0F4C5C]">운동목적</Label>
+                  <Input
+                    value={createForm.exercise_goal}
+                    onChange={(e) => setCreateForm({...createForm, exercise_goal: e.target.value})}
+                    placeholder="다이어트, 근력강화 등"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 6. 메모 섹션 */}
             <div className="space-y-4">
               <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">메모</h3>
 
@@ -2761,8 +3251,8 @@ function AdminMembersPageContent() {
                   if (product) {
                     setSelectedProductId(productId);
 
-                    // PT/PPT 타입인 경우 총 유효일수 계산
-                    const isPTType = product.membership_type === 'PT' || product.membership_type === 'PPT';
+                    // PT/PPT/GPT 타입인 경우 총 유효일수 계산
+                    const isPTType = product.membership_type === 'PT' || product.membership_type === 'PPT' || product.membership_type === 'GPT';
                     let calculatedEndDate = "";
 
                     if (isPTType && product.default_sessions && product.days_per_session) {

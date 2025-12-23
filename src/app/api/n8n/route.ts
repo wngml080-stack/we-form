@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
+import { authenticateRequest } from "@/lib/api/auth";
 
 export async function POST(request: Request) {
   try {
+    // 인증 확인
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
+    if (!staff) {
+      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    }
+
     const body = await request.json();
     const n8nUrl = process.env.N8N_WEBHOOK_URL;
 

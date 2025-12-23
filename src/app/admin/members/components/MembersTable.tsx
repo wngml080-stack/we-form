@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import React, { useMemo } from "react";
 import {
   useReactTable,
@@ -159,10 +160,10 @@ export function MembersTable({
                       const memberIds = selectedRows.map(row => row.id);
                       await onBulkStatusChange(memberIds, e.target.value);
                       setRowSelection({});
-                      alert("상태가 변경되었습니다.");
+                      toast.success("상태가 변경되었습니다.");
                     } catch (error) {
                       console.error("상태 변경 실패:", error);
-                      alert("상태 변경 중 오류가 발생했습니다.");
+                      toast.error("상태 변경 중 오류가 발생했습니다.");
                     }
                   }
                   e.target.value = "";
@@ -189,10 +190,10 @@ export function MembersTable({
                       const memberIds = selectedRows.map(row => row.id);
                       await onBulkTrainerAssign(memberIds, e.target.value);
                       setRowSelection({});
-                      alert("트레이너가 할당되었습니다.");
+                      toast.success("트레이너가 할당되었습니다.");
                     } catch (error) {
                       console.error("트레이너 할당 실패:", error);
-                      alert("트레이너 할당 중 오류가 발생했습니다.");
+                      toast.error("트레이너 할당 중 오류가 발생했습니다.");
                     }
                   }
                   e.target.value = "";
@@ -215,7 +216,7 @@ export function MembersTable({
                   // 성공 메시지는 브라우저 다운로드로 대체
                 } catch (error) {
                   console.error("Excel 내보내기 실패:", error);
-                  alert("Excel 파일 생성 중 오류가 발생했습니다.");
+                  toast.error("Excel 파일 생성 중 오류가 발생했습니다.");
                 }
               }}
               className="px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
@@ -237,7 +238,7 @@ export function MembersTable({
 
                     if (confirmText !== "모든내용삭제동의") {
                       if (confirmText !== null) {
-                        alert("입력한 텍스트가 일치하지 않습니다. 삭제가 취소되었습니다.");
+                        toast.warning("입력한 텍스트가 일치하지 않습니다. 삭제가 취소되었습니다.");
                       }
                       return;
                     }
@@ -252,10 +253,10 @@ export function MembersTable({
                   try {
                     await onBulkDelete(memberIds);
                     setRowSelection({});
-                    alert("선택된 회원이 삭제되었습니다.");
+                    toast.success("선택된 회원이 삭제되었습니다.");
                   } catch (error) {
                     console.error("회원 삭제 실패:", error);
-                    alert("회원 삭제 중 오류가 발생했습니다.");
+                    toast.error("회원 삭제 중 오류가 발생했습니다.");
                   }
                 }}
                 className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700"

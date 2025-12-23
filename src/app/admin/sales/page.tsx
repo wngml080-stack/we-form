@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
@@ -137,7 +138,7 @@ function SalesPageContent() {
     });
     if (error) {
       console.error("회원권 유형 추가 에러:", error);
-      alert(`추가 실패: ${error.message}`);
+      toast.error(`추가 실패: ${error.message}`);
     } else {
       setNewMembershipType("");
       fetchCustomOptions(selectedGymId);
@@ -157,7 +158,7 @@ function SalesPageContent() {
     });
     if (error) {
       console.error("결제방법 추가 에러:", error);
-      alert(`추가 실패: ${error.message}`);
+      toast.error(`추가 실패: ${error.message}`);
     } else {
       setNewPaymentMethod({ name: "", code: "" });
       fetchCustomOptions(selectedGymId);
@@ -207,7 +208,7 @@ function SalesPageContent() {
     if (!row) return;
 
     if (!row.amount || parseFloat(row.amount) <= 0) {
-      alert("금액을 입력해주세요.");
+      toast.warning("금액을 입력해주세요.");
       return;
     }
 
@@ -237,7 +238,7 @@ function SalesPageContent() {
 
     if (error) {
       console.error("저장 에러:", error);
-      alert(`저장 실패: ${error.message}`);
+      toast.error(`저장 실패: ${error.message}`);
     } else {
       // 저장된 행 제거하고 데이터 새로고침
       setNewRows(prev => prev.filter(r => r.id !== rowId));
@@ -264,7 +265,7 @@ function SalesPageContent() {
     if (field === "amount") {
       updateValue = parseFloat(editValue.replace(/[^0-9.-]/g, ""));
       if (isNaN(updateValue)) {
-        alert("올바른 금액을 입력해주세요.");
+        toast.warning("올바른 금액을 입력해주세요.");
         return;
       }
     }
@@ -276,7 +277,7 @@ function SalesPageContent() {
 
     if (error) {
       console.error("수정 에러:", error);
-      alert(`수정 실패: ${error.message}`);
+      toast.error(`수정 실패: ${error.message}`);
     } else {
       // 로컬 상태 업데이트
       setPayments(prev => prev.map(p =>

@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -185,11 +186,11 @@ export default function SalaryAssignmentManager() {
 
             setIsModalOpen(false);
             if (selectedGymId && selectedCompanyId) fetchData(selectedGymId, selectedCompanyId);
-            alert("저장되었습니다.");
+            toast.success("저장되었습니다.");
         } catch (error: unknown) {
             console.error("상세 에러:", error);
             const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
-            alert(`저장 실패: ${errorMessage}`);
+            toast.error(`저장 실패: ${errorMessage}`);
         }
     };
 

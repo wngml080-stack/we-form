@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import React, { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import {
@@ -47,7 +48,7 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
           hint: error?.hint,
           full: JSON.stringify(error)
         });
-        alert(`상품 목록을 불러오는데 실패했습니다.\n에러: ${error?.message || '알 수 없는 오류'}`);
+        toast.error(`상품 목록을 불러오는데 실패했습니다: ${error?.message || '알 수 없는 오류'}`);
         return;
       }
 
@@ -58,7 +59,7 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
         stack: error?.stack,
         full: JSON.stringify(error)
       });
-      alert(`상품 목록을 불러오는데 실패했습니다.\n에러: ${error?.message || '알 수 없는 오류'}`);
+      toast.error(`상품 목록을 불러오는데 실패했습니다: ${error?.message || '알 수 없는 오류'}`);
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +75,12 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
   // 상품 등록
   const handleCreate = async (formData: ProductFormData) => {
     try {
-      const isPTType = formData.membership_type === 'PT' || formData.membership_type === 'PPT';
+      const isPTType = formData.membership_type === 'PT' || formData.membership_type === 'PPT' || formData.membership_type === 'GPT';
+
+      // 새 상품은 마지막 순서로 자동 설정
+      const maxOrder = products.length > 0
+        ? Math.max(...products.map(p => p.display_order))
+        : 0;
 
       const insertData: ProductInsertData = {
         gym_id: gymId,
@@ -95,12 +101,17 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
           : null,
         description: formData.description.trim() || null,
         is_active: formData.is_active,
-        display_order: parseInt(formData.display_order) || 0,
+        display_order: maxOrder + 1,
       };
 
-      const { error } = await supabase
+      console.log("상품 등록 시도:", insertData);
+
+      const { data, error, status, statusText } = await supabase
         .from("membership_products")
-        .insert(insertData);
+        .insert(insertData)
+        .select();
+
+      console.log("상품 등록 응답:", { data, error, status, statusText });
 
       if (error) {
         console.error("상품 등록 실패:", {
@@ -108,19 +119,27 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
           code: error?.code,
           details: error?.details,
           hint: error?.hint,
-          full: JSON.stringify(error)
+          status,
+          statusText,
+          full: JSON.stringify(error, null, 2)
         });
 
         // 중복 상품명 에러 처리
         if (error.code === "23505") {
-          alert("이미 동일한 이름의 상품이 존재합니다.");
+          toast.error("이미 동일한 이름의 상품이 존재합니다.");
           throw error;
         }
-        alert(`상품 등록에 실패했습니다.\n에러: ${error?.message || '알 수 없는 오류'}`);
+        toast.error(`상품 등록에 실패했습니다: ${error?.message || '알 수 없는 오류'}`);
         throw error;
       }
 
-      alert("상품이 등록되었습니다.");
+      if (!data || data.length === 0) {
+        console.error("상품이 생성되지 않음 - RLS 정책 확인 필요");
+        toast.error("상품 등록 권한이 없습니다. 관리자에게 문의하세요.");
+        throw new Error("Insert returned no data - possible RLS issue");
+      }
+
+      toast.success("상품이 등록되었습니다.");
       await fetchProducts();
     } catch (error: any) {
       console.error("상품 등록 오류:", {
@@ -137,7 +156,7 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
     if (!editingProduct) return;
 
     try {
-      const isPTType = formData.membership_type === 'PT' || formData.membership_type === 'PPT';
+      const isPTType = formData.membership_type === 'PT' || formData.membership_type === 'PPT' || formData.membership_type === 'GPT';
 
       const updateData: ProductUpdateData = {
         name: formData.name.trim(),
@@ -157,7 +176,7 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
           : null,
         description: formData.description.trim() || null,
         is_active: formData.is_active,
-        display_order: parseInt(formData.display_order) || 0,
+        // display_order는 리스트에서 화살표로만 변경 (수정 시 유지)
       };
 
       const { error } = await supabase
@@ -177,14 +196,14 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
 
         // 중복 상품명 에러 처리
         if (error.code === "23505") {
-          alert("이미 동일한 이름의 상품이 존재합니다.");
+          toast.error("이미 동일한 이름의 상품이 존재합니다.");
           throw error;
         }
-        alert(`상품 수정에 실패했습니다.\n에러: ${error?.message || '알 수 없는 오류'}`);
+        toast.error(`상품 수정에 실패했습니다: ${error?.message || '알 수 없는 오류'}`);
         throw error;
       }
 
-      alert("상품이 수정되었습니다.");
+      toast.success("상품이 수정되었습니다.");
       await fetchProducts();
       setEditingProduct(null);
     } catch (error: any) {
@@ -214,15 +233,81 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
 
       if (error) {
         console.error("상품 삭제 실패:", error);
-        alert("상품 삭제에 실패했습니다.");
+        toast.error("상품 삭제에 실패했습니다.");
         return;
       }
 
-      alert("상품이 삭제되었습니다.");
+      toast.success("상품이 삭제되었습니다.");
       await fetchProducts();
     } catch (error) {
       console.error("상품 삭제 오류:", error);
-      alert("상품 삭제에 실패했습니다.");
+      toast.error("상품 삭제에 실패했습니다.");
+    }
+  };
+
+  // 순서 위로 이동
+  const handleMoveUp = async (product: MembershipProduct, index: number) => {
+    if (index === 0) return;
+
+    try {
+      const prevProduct = products[index - 1];
+      const currentOrder = product.display_order;
+      const prevOrder = prevProduct.display_order;
+
+      // 두 상품의 display_order를 서로 바꿈
+      const { error: error1 } = await supabase
+        .from("membership_products")
+        .update({ display_order: prevOrder })
+        .eq("id", product.id)
+        .eq("gym_id", gymId);
+
+      if (error1) throw error1;
+
+      const { error: error2 } = await supabase
+        .from("membership_products")
+        .update({ display_order: currentOrder })
+        .eq("id", prevProduct.id)
+        .eq("gym_id", gymId);
+
+      if (error2) throw error2;
+
+      await fetchProducts();
+    } catch (error) {
+      console.error("순서 변경 실패:", error);
+      toast.error("순서 변경에 실패했습니다.");
+    }
+  };
+
+  // 순서 아래로 이동
+  const handleMoveDown = async (product: MembershipProduct, index: number) => {
+    if (index === products.length - 1) return;
+
+    try {
+      const nextProduct = products[index + 1];
+      const currentOrder = product.display_order;
+      const nextOrder = nextProduct.display_order;
+
+      // 두 상품의 display_order를 서로 바꿈
+      const { error: error1 } = await supabase
+        .from("membership_products")
+        .update({ display_order: nextOrder })
+        .eq("id", product.id)
+        .eq("gym_id", gymId);
+
+      if (error1) throw error1;
+
+      const { error: error2 } = await supabase
+        .from("membership_products")
+        .update({ display_order: currentOrder })
+        .eq("id", nextProduct.id)
+        .eq("gym_id", gymId);
+
+      if (error2) throw error2;
+
+      await fetchProducts();
+    } catch (error) {
+      console.error("순서 변경 실패:", error);
+      toast.error("순서 변경에 실패했습니다.");
     }
   };
 
@@ -246,14 +331,14 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
 
       if (error) {
         console.error("상태 변경 실패:", error);
-        alert("상태 변경에 실패했습니다.");
+        toast.error("상태 변경에 실패했습니다.");
         return;
       }
 
       await fetchProducts();
     } catch (error) {
       console.error("상태 변경 오류:", error);
-      alert("상태 변경에 실패했습니다.");
+      toast.error("상태 변경에 실패했습니다.");
     }
   };
 
@@ -306,6 +391,8 @@ export function ProductsTab({ gymId }: ProductsTabProps) {
         onEdit={openEditModal}
         onDelete={handleDelete}
         onToggleActive={handleToggleActive}
+        onMoveUp={handleMoveUp}
+        onMoveDown={handleMoveDown}
         isLoading={isLoading}
       />
 

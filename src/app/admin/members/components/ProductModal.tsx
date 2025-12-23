@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import React, { useEffect, useState } from "react";
 import {
   MembershipProduct,
@@ -43,9 +44,9 @@ export function ProductModal({
   const [formData, setFormData] = useState<ProductFormData>(INITIAL_PRODUCT_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // PT/PPT 타입인지 확인하는 헬퍼 함수
+  // PT/PPT/GPT 타입인지 확인하는 헬퍼 함수
   const isPTType = (type: MembershipType | '') => {
-    return type === 'PT' || type === 'PPT';
+    return type === 'PT' || type === 'PPT' || type === 'GPT';
   };
 
   // PT/PPT의 총 유효일수 계산
@@ -84,18 +85,18 @@ export function ProductModal({
   // 폼 유효성 검증
   const validateForm = (): boolean => {
     if (!formData.name.trim()) {
-      alert("상품명을 입력해주세요.");
+      toast.warning("상품명을 입력해주세요.");
       return false;
     }
 
     if (!formData.membership_type) {
-      alert("회원권 유형을 선택해주세요.");
+      toast.warning("회원권 유형을 선택해주세요.");
       return false;
     }
 
     const price = parseFloat(formData.default_price);
     if (!formData.default_price || isNaN(price) || price < 0) {
-      alert("기본 가격은 0 이상의 숫자를 입력해주세요.");
+      toast.warning("기본 가격은 0 이상의 숫자를 입력해주세요.");
       return false;
     }
 
@@ -103,13 +104,13 @@ export function ProductModal({
     if (isPTType(formData.membership_type)) {
       const sessions = parseInt(formData.default_sessions);
       if (!formData.default_sessions || isNaN(sessions) || sessions <= 0) {
-        alert("기본 횟수는 1 이상의 숫자를 입력해주세요.");
+        toast.warning("기본 횟수는 1 이상의 숫자를 입력해주세요.");
         return false;
       }
 
       const daysPerSession = parseInt(formData.days_per_session);
       if (!formData.days_per_session || isNaN(daysPerSession) || daysPerSession <= 0) {
-        alert("1회당 며칠은 1 이상의 숫자를 입력해주세요.");
+        toast.warning("1회당 며칠은 1 이상의 숫자를 입력해주세요.");
         return false;
       }
     }
@@ -118,7 +119,7 @@ export function ProductModal({
       if (formData.validity_months) {
         const months = parseInt(formData.validity_months);
         if (isNaN(months) || months <= 0) {
-          alert("유효기간은 1 이상의 숫자를 입력해주세요.");
+          toast.warning("유효기간은 1 이상의 숫자를 입력해주세요.");
           return false;
         }
       }
@@ -140,7 +141,7 @@ export function ProductModal({
       onClose();
     } catch (error) {
       console.error("상품 저장 실패:", error);
-      alert("상품 저장 중 오류가 발생했습니다.");
+      toast.error("상품 저장 중 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
     }
@@ -304,43 +305,23 @@ export function ProductModal({
             </div>
           )}
 
-          {/* 기본 가격 & 표시 순서 (2열) */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="default_price">
-                기본 가격 (원) <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="default_price"
-                type="number"
-                min="0"
-                step="1000"
-                value={formData.default_price}
-                onChange={(e) =>
-                  setFormData({ ...formData, default_price: e.target.value })
-                }
-                placeholder="300000"
-                disabled={isSubmitting}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="display_order">표시 순서</Label>
-              <Input
-                id="display_order"
-                type="number"
-                min="0"
-                value={formData.display_order}
-                onChange={(e) =>
-                  setFormData({ ...formData, display_order: e.target.value })
-                }
-                placeholder="0"
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-gray-500">
-                낮은 숫자가 먼저 표시됩니다
-              </p>
-            </div>
+          {/* 기본 가격 */}
+          <div className="space-y-2">
+            <Label htmlFor="default_price">
+              기본 가격 (원) <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="default_price"
+              type="number"
+              min="0"
+              step="1000"
+              value={formData.default_price}
+              onChange={(e) =>
+                setFormData({ ...formData, default_price: e.target.value })
+              }
+              placeholder="300000"
+              disabled={isSubmitting}
+            />
           </div>
 
           {/* 설명 */}

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "@/lib/toast";
 
 export default function AdminDashboardPage() {
   const { user, isLoading: authLoading, gymName: authGymName } = useAuth();
@@ -384,7 +385,7 @@ export default function AdminDashboardPage() {
   // 신규회원 등록
   const handleNewMemberRegistration = async () => {
     if (!newMemberForm.name || !newMemberForm.phone || !newMemberForm.amount) {
-      alert("이름, 연락처, 금액은 필수입니다.");
+      toast.warning("이름, 연락처, 금액은 필수입니다.");
       return;
     }
     setIsSaving(true);
@@ -402,17 +403,17 @@ export default function AdminDashboardPage() {
       });
       const result = await response.json();
       if (result.success) {
-        alert("신규 회원이 등록되었습니다!");
+        toast.success("신규 회원이 등록되었습니다!");
         setIsNewMemberModalOpen(false);
         setNewMemberForm({ name: "", phone: "", membership_type: "PT", membership_name: "", sessions: "", amount: "", payment_method: "card", memo: "" });
         fetchRecentLogs(selectedGymId, selectedCompanyId);
         fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
       } else {
-        alert(result.error || "등록에 실패했습니다.");
+        toast.error(result.error || "등록에 실패했습니다.");
       }
     } catch (error) {
       console.error("신규회원 등록 에러:", error);
-      alert("등록 중 오류가 발생했습니다.");
+      toast.error("등록 중 오류가 발생했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -421,7 +422,7 @@ export default function AdminDashboardPage() {
   // 기존회원 등록 (회원권 추가)
   const handleExistingMemberRegistration = async () => {
     if (!existingMemberForm.member_id || !existingMemberForm.amount) {
-      alert("회원 선택과 금액은 필수입니다.");
+      toast.warning("회원 선택과 금액은 필수입니다.");
       return;
     }
     setIsSaving(true);
@@ -439,7 +440,7 @@ export default function AdminDashboardPage() {
       });
       const result = await response.json();
       if (result.success) {
-        alert("회원권이 등록되었습니다!");
+        toast.success("회원권이 등록되었습니다!");
         setIsExistingMemberModalOpen(false);
         setExistingMemberForm({ member_id: "", member_name: "", membership_type: "PT", membership_name: "", sessions: "", amount: "", payment_method: "card", memo: "" });
         setMemberSearchQuery("");
@@ -447,11 +448,11 @@ export default function AdminDashboardPage() {
         fetchRecentLogs(selectedGymId, selectedCompanyId);
         fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
       } else {
-        alert(result.error || "등록에 실패했습니다.");
+        toast.error(result.error || "등록에 실패했습니다.");
       }
     } catch (error) {
       console.error("기존회원 등록 에러:", error);
-      alert("등록 중 오류가 발생했습니다.");
+      toast.error("등록 중 오류가 발생했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -460,7 +461,7 @@ export default function AdminDashboardPage() {
   // 부가상품 등록
   const handleAddonRegistration = async () => {
     if (!addonForm.customer_name || !addonForm.product_name || !addonForm.amount) {
-      alert("고객명, 상품명, 금액은 필수입니다.");
+      toast.warning("고객명, 상품명, 금액은 필수입니다.");
       return;
     }
     setIsSaving(true);
@@ -478,17 +479,17 @@ export default function AdminDashboardPage() {
       });
       const result = await response.json();
       if (result.success) {
-        alert("부가상품이 등록되었습니다!");
+        toast.success("부가상품이 등록되었습니다!");
         setIsAddonModalOpen(false);
         setAddonForm({ customer_name: "", customer_phone: "", product_name: "", amount: "", payment_method: "card", memo: "" });
         fetchRecentLogs(selectedGymId, selectedCompanyId);
         fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
       } else {
-        alert(result.error || "등록에 실패했습니다.");
+        toast.error(result.error || "등록에 실패했습니다.");
       }
     } catch (error) {
       console.error("부가상품 등록 에러:", error);
-      alert("등록 중 오류가 발생했습니다.");
+      toast.error("등록 중 오류가 발생했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -651,9 +652,9 @@ export default function AdminDashboardPage() {
 
       {/* 2. Quick Actions (아이콘 메뉴) */}
       <div className="flex gap-6 md:gap-8 overflow-x-auto pb-2 scrollbar-hide">
-        <QuickActionButton icon={UserPlus} label="신규회원 등록" onClick={() => setIsNewMemberModalOpen(true)} color="bg-blue-100 text-blue-600" />
-        <QuickActionButton icon={Users} label="기존회원 등록" onClick={() => setIsExistingMemberModalOpen(true)} color="bg-indigo-100 text-indigo-600" />
-        <QuickActionButton icon={Package} label="회원이외 부가등록" onClick={() => setIsAddonModalOpen(true)} color="bg-green-100 text-green-600" />
+        <QuickAction icon={UserPlus} label="신규회원 등록" href="/admin/members?type=new" color="bg-blue-100 text-blue-600" />
+        <QuickAction icon={Users} label="기존회원 등록" href="/admin/members?type=existing" color="bg-indigo-100 text-indigo-600" />
+        <QuickAction icon={Package} label="매출 등록" href="/admin/sales" color="bg-green-100 text-green-600" />
         <QuickAction icon={Calendar} label="스케줄 관리" href="/admin/schedule" color="bg-purple-100 text-purple-600" />
         <QuickAction icon={CheckCircle2} label="출석 체크" href="/admin/attendance" color="bg-orange-100 text-orange-600" />
       </div>
@@ -673,7 +674,7 @@ export default function AdminDashboardPage() {
         <button
           onClick={() => {
             // TODO: Google Calendar 연동 페이지로 이동 또는 모달 열기
-            alert("Google Calendar 연동 기능은 곧 출시됩니다!");
+            toast.info("Google Calendar 연동 기능은 곧 출시됩니다!");
           }}
           className="relative z-10 px-6 py-3 bg-white text-[#0a192f] rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors shadow-md whitespace-nowrap"
         >
@@ -745,6 +746,7 @@ export default function AdminDashboardPage() {
                 subValue={`총 ${stats.totalMembers ?? 0}명 중`}
                 iconBg="bg-blue-50"
                 iconColor="text-blue-600"
+                href="/admin/members"
               />
               <StatRow
                 icon={UserCheck}
@@ -753,6 +755,7 @@ export default function AdminDashboardPage() {
                 subValue={`${(stats.totalPTMembers ?? 0) > 0 ? (((stats.activePTMembers ?? 0)/(stats.totalPTMembers ?? 1))*100).toFixed(0) : 0}% 활성`}
                 iconBg="bg-emerald-50"
                 iconColor="text-emerald-600"
+                href="/admin/members?status=active"
               />
               <StatRow
                 icon={Ghost}
@@ -761,13 +764,14 @@ export default function AdminDashboardPage() {
                 subValue={(stats.ghostMembers ?? 0) > 0 ? "관리 필요" : "없음"}
                 iconBg={(stats.ghostMembers ?? 0) > 0 ? "bg-red-50" : "bg-gray-50"}
                 iconColor={(stats.ghostMembers ?? 0) > 0 ? "text-red-500" : "text-gray-400"}
+                href="/admin/members?filter=ghost"
               />
 
               {/* 매출 현황 - 스와이프 또는 평균 통계 */}
               {statsViewMode === 'monthly' ? (
                 <div className="relative">
-                  <div className="flex items-center justify-between group cursor-pointer">
-                    <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between group">
+                    <Link href="/admin/sales" className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity">
                       <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <DollarSign className="w-5 h-5 text-purple-600" />
                       </div>
@@ -775,7 +779,7 @@ export default function AdminDashboardPage() {
                         <div className="text-xs text-gray-400 font-medium mb-0.5">{getMonthLabel(centerStatsMonthOffset)} 매출</div>
                         <div className="text-lg font-bold text-gray-900">{formatCurrency(getSalesForMonth(centerStatsMonthOffset))}</div>
                       </div>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setCenterStatsMonthOffset(prev => prev - 1)}
@@ -806,7 +810,7 @@ export default function AdminDashboardPage() {
                   )}
                 </div>
               ) : (
-                <div className="flex items-center justify-between group">
+                <Link href="/admin/sales" className="flex items-center justify-between group cursor-pointer hover:bg-gray-50 rounded-xl p-2 -m-2 transition-colors">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
                       <BarChart3 className="w-5 h-5 text-purple-600" />
@@ -816,12 +820,13 @@ export default function AdminDashboardPage() {
                       <div className="text-lg font-bold text-gray-900">{formatCurrency(calculateStatistics()?.value || 0)}</div>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex items-center gap-2">
                     <div className="text-xs font-medium text-purple-500 bg-purple-50 px-2 py-1 rounded-md">
                       평균 통계
                     </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
                   </div>
-                </div>
+                </Link>
               )}
             </div>
           </div>
@@ -902,7 +907,11 @@ export default function AdminDashboardPage() {
               </div>
             ) : (
               todaySchedules.map((schedule) => (
-                <div key={schedule.id} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-blue-50/50 border border-transparent hover:border-blue-100 transition-all group cursor-pointer">
+                <Link
+                  key={schedule.id}
+                  href={`/admin/schedule?date=${new Date().toISOString().split('T')[0]}&highlight=${schedule.id}`}
+                  className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-blue-50/50 border border-transparent hover:border-blue-100 transition-all group cursor-pointer"
+                >
                   <div className="flex flex-col items-center min-w-[50px]">
                     <span className="text-xs font-bold text-[#2F80ED] bg-blue-100 px-2 py-1 rounded-md mb-1">
                       {schedule.type}
@@ -920,7 +929,8 @@ export default function AdminDashboardPage() {
                       {schedule.staffs?.name} 강사
                     </div>
                   </div>
-                </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                </Link>
               ))
             )}
           </div>
@@ -1099,7 +1109,11 @@ export default function AdminDashboardPage() {
               };
 
               return (
-                <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors">
+                <Link
+                  key={log.id}
+                  href={log.member_id ? `/admin/members?member=${log.member_id}` : `/admin/sales`}
+                  className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors group cursor-pointer"
+                >
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-bold ${typeInfo.color}`}>
                       {typeInfo.label}
@@ -1113,15 +1127,18 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-gray-900 text-sm">{formatCurrency(log.amount)}</div>
-                    <div className="text-xs text-gray-400">
-                      {new Date(log.created_at).toLocaleString('ko-KR', {
-                        month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="font-bold text-gray-900 text-sm">{formatCurrency(log.amount)}</div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(log.created_at).toLocaleString('ko-KR', {
+                          month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </div>
                     </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
                   </div>
-                </div>
+                </Link>
               );
             })
           )}
@@ -1680,9 +1697,9 @@ function QuickActionButton({ icon: Icon, label, onClick, color }: { icon: any, l
   );
 }
 
-function StatRow({ icon: Icon, label, value, subValue, iconBg, iconColor }: any) {
-  return (
-    <div className="flex items-center justify-between group cursor-pointer">
+function StatRow({ icon: Icon, label, value, subValue, iconBg, iconColor, href, onClick }: any) {
+  const content = (
+    <div className="flex items-center justify-between group cursor-pointer hover:bg-gray-50 rounded-xl p-2 -m-2 transition-colors">
       <div className="flex items-center gap-4">
         <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
           <Icon className={`w-5 h-5 ${iconColor}`} />
@@ -1692,11 +1709,22 @@ function StatRow({ icon: Icon, label, value, subValue, iconBg, iconColor }: any)
           <div className="text-lg font-bold text-gray-900">{value}</div>
         </div>
       </div>
-      <div className="text-right">
+      <div className="text-right flex items-center gap-2">
         <div className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-md">
            {subValue}
         </div>
+        {(href || onClick) && (
+          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+        )}
       </div>
     </div>
   );
+
+  if (href) {
+    return <Link href={href}>{content}</Link>;
+  }
+  if (onClick) {
+    return <button onClick={onClick} className="w-full text-left">{content}</button>;
+  }
+  return content;
 }

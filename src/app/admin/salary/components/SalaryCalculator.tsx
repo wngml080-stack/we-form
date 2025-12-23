@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -156,11 +157,11 @@ export default function SalaryCalculator() {
                 .upsert(updates, { onConflict: 'staff_id, year_month' });
 
             if (error) throw error;
-            alert("매출 데이터가 저장되었습니다.");
+            toast.success("매출 데이터가 저장되었습니다.");
         } catch (e: unknown) {
             console.error(e);
             const errorMessage = e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.";
-            alert("매출 저장 실패: " + errorMessage);
+            toast.error("매출 저장 실패: " + errorMessage);
         }
     };
 
@@ -190,11 +191,11 @@ export default function SalaryCalculator() {
 
             setIsSaved(true);
             setLastUpdated(new Date().toLocaleString());
-            alert("급여 정산 내역이 확정(저장)되었습니다.");
+            toast.success("급여 정산 내역이 확정(저장)되었습니다.");
         } catch (e: unknown) {
             console.error(e);
             const errorMessage = e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.";
-            alert("저장 실패: " + errorMessage);
+            toast.error("저장 실패: " + errorMessage);
         }
     };
 
@@ -350,7 +351,7 @@ export default function SalaryCalculator() {
 
         } catch (error) {
             console.error(error);
-            alert("계산 중 오류가 발생했습니다.");
+            toast.error("계산 중 오류가 발생했습니다.");
         } finally {
             setIsLoading(false);
         }

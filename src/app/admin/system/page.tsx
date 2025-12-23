@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, Building, Phone, User, Pencil, ChevronRight, ChevronDown, MapPin, Plus, Trash2, Dumbbell, Ruler, Calendar, Building2, Users, Bell, Megaphone, AlertTriangle, Info, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/lib/toast";
 
 export default function SystemAdminPage() {
   const router = useRouter();
@@ -128,7 +129,7 @@ export default function SystemAdminPage() {
   // 시스템 공지사항 생성
   const handleCreateAnnouncement = async () => {
     if (!announcementForm.title || !announcementForm.content) {
-      alert("제목과 내용을 입력해주세요.");
+      toast.warning("제목과 내용을 입력해주세요.");
       return;
     }
 
@@ -146,11 +147,11 @@ export default function SystemAdminPage() {
 
       const result = await res.json();
       if (!res.ok) {
-        alert("공지사항 생성 실패: " + result.error);
+        toast.error("공지사항 생성 실패: " + result.error);
         return;
       }
 
-      alert("시스템 공지사항이 생성되었습니다!");
+      toast.success("시스템 공지사항이 생성되었습니다!");
       setIsCreateAnnouncementOpen(false);
       setAnnouncementForm({
         title: "",
@@ -163,7 +164,7 @@ export default function SystemAdminPage() {
       });
       fetchSystemAnnouncements();
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -185,7 +186,7 @@ export default function SystemAdminPage() {
   // 시스템 공지사항 수정
   const handleUpdateAnnouncement = async () => {
     if (!editAnnouncementForm.title || !editAnnouncementForm.content) {
-      alert("제목과 내용을 입력해주세요.");
+      toast.warning("제목과 내용을 입력해주세요.");
       return;
     }
 
@@ -204,15 +205,15 @@ export default function SystemAdminPage() {
 
       const result = await res.json();
       if (!res.ok) {
-        alert("공지사항 수정 실패: " + result.error);
+        toast.error("공지사항 수정 실패: " + result.error);
         return;
       }
 
-      alert("시스템 공지사항이 수정되었습니다!");
+      toast.success("시스템 공지사항이 수정되었습니다!");
       setIsEditAnnouncementOpen(false);
       fetchSystemAnnouncements();
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -227,14 +228,14 @@ export default function SystemAdminPage() {
 
       const result = await res.json();
       if (!res.ok) {
-        alert("공지사항 삭제 실패: " + result.error);
+        toast.error("공지사항 삭제 실패: " + result.error);
         return;
       }
 
-      alert("공지사항이 삭제되었습니다.");
+      toast.success("공지사항이 삭제되었습니다.");
       fetchSystemAnnouncements();
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -249,13 +250,13 @@ export default function SystemAdminPage() {
 
       const result = await res.json();
       if (!res.ok) {
-        alert("상태 변경 실패: " + result.error);
+        toast.error("상태 변경 실패: " + result.error);
         return;
       }
 
       fetchSystemAnnouncements();
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -325,13 +326,13 @@ export default function SystemAdminPage() {
       const result = await response.json();
 
       if (result.success) {
-        alert(`상태가 '${statusText}'로 변경되었습니다.`);
+        toast.success(`상태가 '${statusText}'로 변경되었습니다.`);
         fetchCompanies();
       } else {
-        alert("에러: " + result.error);
+        toast.error("에러: " + result.error);
       }
     } catch (error: any) {
-      alert("에러: " + error.message);
+      toast.error("에러: " + error.message);
     }
   };
 
@@ -360,14 +361,14 @@ export default function SystemAdminPage() {
         const result = await res.json();
 
         if (res.ok) {
-            alert("수정 완료!");
+            toast.success("수정 완료!");
             setIsEditOpen(false);
             fetchCompanies();
         } else {
-            alert("수정 실패: " + result.error);
+            toast.error("수정 실패: " + result.error);
         }
     } catch (error: any) {
-        alert("오류 발생: " + error.message);
+        toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -392,7 +393,7 @@ export default function SystemAdminPage() {
   // 지점 생성
   const handleCreateGym = async () => {
     if (!gymForm.name) {
-      alert("지점명을 입력해주세요.");
+      toast.warning("지점명을 입력해주세요.");
       return;
     }
 
@@ -413,11 +414,11 @@ export default function SystemAdminPage() {
         .single();
 
       if (error) {
-        alert("지점 생성 실패: " + error.message);
+        toast.error("지점 생성 실패: " + error.message);
         return;
       }
 
-      alert("지점이 생성되었습니다!");
+      toast.success("지점이 생성되었습니다!");
       setIsCreateGymOpen(false);
 
       // 해당 회사의 지점 목록 새로고침
@@ -431,7 +432,7 @@ export default function SystemAdminPage() {
         setCompanyGyms(prev => ({ ...prev, [selectedCompanyId]: gymsData }));
       }
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -455,7 +456,7 @@ export default function SystemAdminPage() {
   // 지점 수정 저장
   const handleUpdateGym = async () => {
     if (!editGymForm.name) {
-      alert("지점명을 입력해주세요.");
+      toast.warning("지점명을 입력해주세요.");
       return;
     }
 
@@ -473,11 +474,11 @@ export default function SystemAdminPage() {
         .eq("id", editGymForm.id);
 
       if (error) {
-        alert("지점 수정 실패: " + error.message);
+        toast.error("지점 수정 실패: " + error.message);
         return;
       }
 
-      alert("지점이 수정되었습니다!");
+      toast.success("지점이 수정되었습니다!");
       setIsEditGymOpen(false);
 
       // 해당 회사의 지점 목록 새로고침
@@ -491,7 +492,7 @@ export default function SystemAdminPage() {
         setCompanyGyms(prev => ({ ...prev, [selectedCompanyId]: gymsData }));
       }
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -507,11 +508,11 @@ export default function SystemAdminPage() {
         .eq("id", gymId);
 
       if (error) {
-        alert("지점 삭제 실패: " + error.message);
+        toast.error("지점 삭제 실패: " + error.message);
         return;
       }
 
-      alert("지점이 삭제되었습니다.");
+      toast.success("지점이 삭제되었습니다.");
 
       // 해당 회사의 지점 목록 새로고침
       const { data: gymsData } = await supabase
@@ -524,7 +525,7 @@ export default function SystemAdminPage() {
         setCompanyGyms(prev => ({ ...prev, [companyId]: gymsData }));
       }
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -558,7 +559,7 @@ export default function SystemAdminPage() {
   // 직원 정보 수정
   const handleUpdateStaff = async () => {
     if (!editStaffForm.name) {
-      alert("이름을 입력해주세요.");
+      toast.warning("이름을 입력해주세요.");
       return;
     }
 
@@ -576,11 +577,11 @@ export default function SystemAdminPage() {
         .eq("id", editStaffForm.id);
 
       if (error) {
-        alert("직원 정보 수정 실패: " + error.message);
+        toast.error("직원 정보 수정 실패: " + error.message);
         return;
       }
 
-      alert("직원 정보가 수정되었습니다!");
+      toast.success("직원 정보가 수정되었습니다!");
       setIsEditStaffOpen(false);
 
       // 해당 지점의 직원 목록 새로고침
@@ -596,7 +597,7 @@ export default function SystemAdminPage() {
         }
       }
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -612,11 +613,11 @@ export default function SystemAdminPage() {
         .eq("id", staffId);
 
       if (error) {
-        alert("직원 삭제 실패: " + error.message);
+        toast.error("직원 삭제 실패: " + error.message);
         return;
       }
 
-      alert("직원이 삭제되었습니다.");
+      toast.success("직원이 삭제되었습니다.");
 
       // 해당 지점의 직원 목록 새로고침
       const { data: staffsData } = await supabase
@@ -629,7 +630,7 @@ export default function SystemAdminPage() {
         setGymStaffs(prev => ({ ...prev, [gymId]: staffsData }));
       }
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 
@@ -642,7 +643,7 @@ export default function SystemAdminPage() {
   // 고객사 생성
   const handleCreateCompany = async () => {
     if (!createCompanyForm.name || !createCompanyForm.representative_name) {
-      alert("회사명과 대표자명을 입력해주세요.");
+      toast.warning("회사명과 대표자명을 입력해주세요.");
       return;
     }
 
@@ -656,14 +657,14 @@ export default function SystemAdminPage() {
       const result = await res.json();
 
       if (res.ok) {
-        alert("고객사가 생성되었습니다!");
+        toast.success("고객사가 생성되었습니다!");
         setIsCreateCompanyOpen(false);
         fetchCompanies();
       } else {
-        alert("생성 실패: " + result.error);
+        toast.error("생성 실패: " + result.error);
       }
     } catch (error: any) {
-      alert("오류 발생: " + error.message);
+      toast.error("오류 발생: " + error.message);
     }
   };
 

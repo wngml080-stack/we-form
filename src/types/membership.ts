@@ -8,6 +8,7 @@ export type MembershipType =
   | '필라테스'
   | 'PT'
   | 'PPT'
+  | 'GPT'
   | 'GX'
   | '골프'
   | '하이록스'
@@ -78,6 +79,7 @@ export const MEMBERSHIP_TYPE_OPTIONS: { value: MembershipType; label: string }[]
   { value: '필라테스', label: '필라테스' },
   { value: 'PT', label: 'PT (Personal Training)' },
   { value: 'PPT', label: 'PPT (Pilates Personal Training)' },
+  { value: 'GPT', label: 'GPT (Group Personal Training)' },
   { value: 'GX', label: 'GX (Group Exercise)' },
   { value: '골프', label: '골프' },
   { value: '하이록스', label: '하이록스' },

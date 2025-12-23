@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "@/lib/toast";
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Plus, UserPlus, Calendar as CalendarIcon, LogOut, CheckCircle2, AlertCircle, DollarSign } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus, Calendar as CalendarIcon, LogOut, CheckCircle2, AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -112,22 +113,23 @@ export default function StaffPage() {
 
   // 초기 로딩 - AuthContext에서 사용자 정보 가져오기
   useEffect(() => {
+    // AuthContext 로딩 중이면 대기
+    if (authLoading) return;
+
+    // 로그인 안됨 또는 승인 안됨
+    if (!authUser || !isApproved) {
+      setIsLoading(false);
+      router.push("/sign-in");
+      return;
+    }
+
     const fetchMyInfo = async () => {
-      // AuthContext 로딩 중이면 대기
-      if (authLoading) return;
-
-      // 로그인 안됨 또는 승인 안됨
-      if (!authUser || !isApproved) {
-        router.push("/sign-in");
-        return;
-      }
-
       try {
         // AuthContext의 user는 staffs 테이블의 정보
         // 추가 정보(job_title)를 가져오기 위해 쿼리
         const { data: staff } = await supabase
           .from("staffs")
-          .select("id, gym_id, company_id, work_start_time, work_end_time, name, job_title, gyms(name), companies(name)")
+          .select("id, gym_id, company_id, work_start_time, work_end_time, name, job_title, gyms(name)")
           .eq("id", authUser.id)
           .single();
 
@@ -139,8 +141,7 @@ export default function StaffPage() {
           // @ts-ignore
           setMyGymName(staff.gyms?.name || authGymName);
           setMyCompanyId(staff.company_id);
-          // @ts-ignore
-          setMyCompanyName(staff.companies?.name || authCompanyName);
+          setMyCompanyName(authCompanyName || "");
           setMyWorkStartTime(staff.work_start_time);
           setMyWorkEndTime(staff.work_end_time);
 
@@ -155,8 +156,10 @@ export default function StaffPage() {
         setIsLoading(false);
       }
     };
+
     fetchMyInfo();
-  }, [authLoading, authUser, isApproved]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, authUser, isApproved, authGymName, authCompanyName]);
 
   // 멤버 검색 필터링
   useEffect(() => {
@@ -359,9 +362,9 @@ export default function StaffPage() {
       .single();
 
     if (error) {
-      alert("회원 생성 실패: " + error.message);
+      toast.error("회원 생성 실패: " + error.message);
     } else {
-      alert("회원이 생성되었습니다.");
+      toast.success("회원이 생성되었습니다.");
       setIsAddMemberModalOpen(false);
       setNewMemberData({ name: "", phone: "", memo: "" });
       fetchMembers(myGymId, myCompanyId);
@@ -377,7 +380,7 @@ export default function StaffPage() {
 
   const handleAddClass = async () => {
     if (isMonthLocked) {
-      alert("제출(승인 대기/승인)된 달은 수정이 불가합니다.");
+      toast.warning("제출(승인 대기/승인)된 달은 수정이 불가합니다.");
       return;
     }
     if (!newMemberName || !myStaffId || !myGymId) return;
@@ -407,7 +410,7 @@ export default function StaffPage() {
     });
 
     if (error) {
-      alert("등록 실패!");
+      toast.error("등록 실패!");
       console.error(error);
     } else {
       setIsAddModalOpen(false);
@@ -491,7 +494,7 @@ export default function StaffPage() {
       if (myGymId && myCompanyId) fetchMembers(myGymId, myCompanyId);
     } catch (error: any) {
       console.error(error);
-      alert("상태 변경 실패: " + error.message);
+      toast.error("상태 변경 실패: " + error.message);
     }
   };
 
@@ -513,14 +516,14 @@ export default function StaffPage() {
       fetchSchedules(myStaffId);
     } catch (error: any) {
       console.error(error);
-      alert("분류 변경 실패: " + error.message);
+      toast.error("분류 변경 실패: " + error.message);
     }
   };
 
   const handleDeleteSchedule = async () => {
     if (!selectedEvent || !myStaffId) return;
     if (selectedEvent.is_locked || isMonthLocked) {
-      alert("제출/승인된 스케줄은 삭제할 수 없습니다.");
+      toast.warning("제출/승인된 스케줄은 삭제할 수 없습니다.");
       return;
     }
     if (!confirm("정말 이 스케줄을 삭제하시겠습니까?")) return;
@@ -535,14 +538,14 @@ export default function StaffPage() {
       fetchSchedules(myStaffId);
       if (myGymId && myCompanyId) fetchMembers(myGymId, myCompanyId);
     } catch (error: any) {
-      alert("삭제 실패: " + error.message);
+      toast.error("삭제 실패: " + error.message);
     }
   };
 
   const handleEditClass = async () => {
     if (!selectedEvent || !myStaffId || !myGymId) return;
     if (selectedEvent.is_locked || isMonthLocked) {
-      alert("제출/승인된 스케줄은 수정할 수 없습니다.");
+      toast.warning("제출/승인된 스케줄은 수정할 수 없습니다.");
       return;
     }
 
@@ -550,7 +553,7 @@ export default function StaffPage() {
 
     // 개인일정: 제목 필수
     if (isPersonalSchedule && !editPersonalTitle?.trim()) {
-      alert("일정 제목을 입력해주세요.");
+      toast.warning("일정 제목을 입력해주세요.");
       return;
     }
 
@@ -587,7 +590,7 @@ export default function StaffPage() {
       .eq("id", selectedEvent.id)
       .eq("staff_id", myStaffId);
 
-    if (error) alert("수정 실패!");
+    if (error) toast.error("수정 실패!");
     else {
       setIsEditModalOpen(false);
       setSelectedEvent(null);
@@ -619,7 +622,7 @@ export default function StaffPage() {
 
   const handleTimeSlotClick = (date: Date, time: string) => {
     if (isMonthLocked) {
-        alert("제출(승인 대기/승인)된 달은 수정이 불가합니다.");
+        toast.warning("제출(승인 대기/승인)된 달은 수정이 불가합니다.");
         return;
     }
     const dateStr = date.toISOString().split('T')[0];
@@ -728,14 +731,14 @@ export default function StaffPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "제출에 실패했습니다.");
 
-      alert(json.message || "제출되었습니다.");
+      toast.success(json.message || "제출되었습니다.");
       setSubmissionStatus("submitted");
       setCurrentReportId(json.report?.id ?? null);
       setSubmittedAt(json.report?.submitted_at ?? null);
       setIsMonthApproved(false);
       fetchSchedules(myStaffId);
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
@@ -746,7 +749,7 @@ export default function StaffPage() {
     }
   }, [selectedDate, myStaffId]);
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2F80ED]"></div>
@@ -811,7 +814,7 @@ export default function StaffPage() {
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-center gap-3">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-3 h-full">
-                    <Button 
+                    <Button
                         onClick={() => setIsAddMemberModalOpen(true)}
                         className="h-auto flex flex-col items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-[#2F80ED] border-0 rounded-xl py-4"
                         variant="outline"
@@ -819,7 +822,7 @@ export default function StaffPage() {
                         <UserPlus className="w-6 h-6" />
                         <span className="text-xs font-bold">회원 등록</span>
                     </Button>
-                    <Button 
+                    <Button
                         onClick={() => {
                             setSelectedDate(todayStr);
                             setStartTime("09:00");
@@ -830,14 +833,6 @@ export default function StaffPage() {
                     >
                         <Plus className="w-6 h-6" />
                         <span className="text-xs font-bold">수업 추가</span>
-                    </Button>
-                    <Button 
-                        onClick={() => router.push("/staff/salary")}
-                        className="h-auto flex flex-col items-center justify-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-0 rounded-xl py-4 col-span-2"
-                        variant="outline"
-                    >
-                        <DollarSign className="w-6 h-6" />
-                        <span className="text-xs font-bold">급여 명세서 조회</span>
                     </Button>
                 </div>
             </div>

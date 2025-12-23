@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
 
 // 출석 기록 수정
 export async function PATCH(
@@ -8,30 +8,37 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Clerk 인증 확인
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-    }
-
-    const supabase = getSupabaseAdmin();
-
-    // 사용자 권한 확인
-    const { data: staff } = await supabase
-      .from("staffs")
-      .select("id, role, gym_id")
-      .eq("clerk_user_id", userId)
-      .single();
-
+    // 통합 인증
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
     if (!staff) {
       return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
     }
 
+    const supabase = getSupabaseAdmin();
+    const { id } = await params;
+
+    // 해당 기록 조회
+    const { data: existingRecord } = await supabase
+      .from("attendances")
+      .select("id, gym_id, staff_id")
+      .eq("id", id)
+      .single();
+
+    if (!existingRecord) {
+      return NextResponse.json({ error: "출석 기록을 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    // 권한 확인: 관리자이거나 자신의 기록만 수정 가능
+    const isOwner = existingRecord.staff_id === staff.id;
+    const hasAdminAccess = isAdmin(staff.role) && canAccessGym(staff, existingRecord.gym_id);
+
+    if (!isOwner && !hasAdminAccess) {
+      return NextResponse.json({ error: "이 기록을 수정할 권한이 없습니다." }, { status: 403 });
+    }
+
     const body = await request.json();
     const { status_code, memo } = body;
-
-    // Next.js 16: params는 Promise
-    const { id } = await params;
 
     const { data, error } = await supabase
       .from("attendances")
@@ -60,31 +67,38 @@ export async function PATCH(
 
 // 출석 기록 삭제
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Clerk 인증 확인
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-    }
-
-    const supabase = getSupabaseAdmin();
-
-    // 사용자 권한 확인
-    const { data: staff } = await supabase
-      .from("staffs")
-      .select("id, role, gym_id")
-      .eq("clerk_user_id", userId)
-      .single();
-
+    // 통합 인증
+    const { staff, error: authError } = await authenticateRequest();
+    if (authError) return authError;
     if (!staff) {
       return NextResponse.json({ error: "직원 정보를 찾을 수 없습니다." }, { status: 403 });
     }
 
-    // Next.js 16: params는 Promise
+    const supabase = getSupabaseAdmin();
     const { id } = await params;
+
+    // 해당 기록 조회
+    const { data: existingRecord } = await supabase
+      .from("attendances")
+      .select("id, gym_id, staff_id")
+      .eq("id", id)
+      .single();
+
+    if (!existingRecord) {
+      return NextResponse.json({ error: "출석 기록을 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    // 권한 확인: 관리자이거나 자신의 기록만 삭제 가능
+    const isOwner = existingRecord.staff_id === staff.id;
+    const hasAdminAccess = isAdmin(staff.role) && canAccessGym(staff, existingRecord.gym_id);
+
+    if (!isOwner && !hasAdminAccess) {
+      return NextResponse.json({ error: "이 기록을 삭제할 권한이 없습니다." }, { status: 403 });
+    }
 
     const { error } = await supabase
       .from("attendances")

@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
@@ -1137,7 +1138,7 @@ export default function AdminSchedulePage() {
   // 엑셀 다운로드
   const handleExcelDownload = () => {
     if (schedules.length === 0) {
-      alert("다운로드할 스케줄이 없습니다.");
+      toast.warning("다운로드할 스케줄이 없습니다.");
       return;
     }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect, useMemo } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -237,7 +238,8 @@ export default function BranchManagementPage() {
   // Save announcement (create or update)
   const handleSaveAnnouncement = async () => {
     if (!announcementForm.title.trim() || !announcementForm.content.trim()) {
-      return alert("제목과 내용을 입력해주세요.");
+      toast.warning("제목과 내용을 입력해주세요.");
+      return;
     }
 
     setIsLoading(true);
@@ -269,7 +271,7 @@ export default function BranchManagementPage() {
           .eq("id", editingAnnouncement.id);
 
         if (error) throw error;
-        alert("지점 공지사항이 수정되었습니다.");
+        toast.success("지점 공지사항이 수정되었습니다.");
       } else {
         // Create new announcement
         const { error } = await supabase
@@ -277,13 +279,13 @@ export default function BranchManagementPage() {
           .insert(announcementData);
 
         if (error) throw error;
-        alert("지점 공지사항이 등록되었습니다.");
+        toast.success("지점 공지사항이 등록되었습니다.");
       }
 
       setIsAnnouncementModalOpen(false);
       await fetchAnnouncements(selectedCompanyId, selectedGymId);
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     } finally {
       setIsLoading(false);
     }
@@ -301,7 +303,7 @@ export default function BranchManagementPage() {
 
       await fetchAnnouncements(selectedCompanyId, selectedGymId);
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     }
   };
 
@@ -317,10 +319,10 @@ export default function BranchManagementPage() {
 
       if (error) throw error;
 
-      alert("지점 공지사항이 삭제되었습니다.");
+      toast.success("지점 공지사항이 삭제되었습니다.");
       await fetchAnnouncements(selectedCompanyId, selectedGymId);
     } catch (error: any) {
-      alert("오류: " + error.message);
+      toast.error("오류: " + error.message);
     }
   };
 

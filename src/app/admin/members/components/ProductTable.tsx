@@ -4,13 +4,15 @@ import React from "react";
 import { MembershipProduct } from "@/types/membership";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 
 interface ProductTableProps {
   products: MembershipProduct[];
   onEdit: (product: MembershipProduct) => void;
   onDelete: (product: MembershipProduct) => void;
   onToggleActive: (product: MembershipProduct) => void;
+  onMoveUp?: (product: MembershipProduct, index: number) => void;
+  onMoveDown?: (product: MembershipProduct, index: number) => void;
   isLoading?: boolean;
 }
 
@@ -19,6 +21,8 @@ export function ProductTable({
   onEdit,
   onDelete,
   onToggleActive,
+  onMoveUp,
+  onMoveDown,
   isLoading = false,
 }: ProductTableProps) {
   // 로딩 상태
@@ -28,6 +32,7 @@ export function ProductTable({
         <table className="w-full text-sm text-left min-w-[900px]">
           <thead className="bg-gray-50 border-b">
             <tr>
+              <th className="px-3 py-3 whitespace-nowrap w-16 text-center">순서</th>
               <th className="px-4 py-3 whitespace-nowrap">상품명</th>
               <th className="px-4 py-3 whitespace-nowrap">회원권 유형</th>
               <th className="px-4 py-3 whitespace-nowrap">기본 횟수</th>
@@ -39,7 +44,7 @@ export function ProductTable({
           </thead>
           <tbody>
             <tr>
-              <td colSpan={7} className="text-center py-20 text-gray-400">
+              <td colSpan={8} className="text-center py-20 text-gray-400">
                 로딩 중...
               </td>
             </tr>
@@ -56,6 +61,7 @@ export function ProductTable({
         <table className="w-full text-sm text-left min-w-[800px]">
           <thead className="bg-gray-50 border-b">
             <tr>
+              <th className="px-3 py-3 whitespace-nowrap w-16 text-center">순서</th>
               <th className="px-4 py-3 whitespace-nowrap">상품명</th>
               <th className="px-4 py-3 whitespace-nowrap">회원권 유형</th>
               <th className="px-4 py-3 whitespace-nowrap">기본 횟수</th>
@@ -67,7 +73,7 @@ export function ProductTable({
           </thead>
           <tbody>
             <tr>
-              <td colSpan={7} className="text-center py-20 text-gray-400">
+              <td colSpan={8} className="text-center py-20 text-gray-400">
                 등록된 상품이 없습니다.
               </td>
             </tr>
@@ -83,6 +89,7 @@ export function ProductTable({
       <table className="w-full text-sm text-left min-w-[800px]">
         <thead className="bg-gray-50 border-b">
           <tr>
+            <th className="px-3 py-3 whitespace-nowrap w-16 text-center">순서</th>
             <th className="px-4 py-3 whitespace-nowrap">상품명</th>
             <th className="px-4 py-3 whitespace-nowrap">회원권 유형</th>
             <th className="px-4 py-3 whitespace-nowrap">기본 횟수</th>
@@ -93,8 +100,38 @@ export function ProductTable({
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
+          {products.map((product, index) => (
             <tr key={product.id} className="border-b hover:bg-gray-50">
+              {/* 순서 변경 버튼 */}
+              <td className="px-3 py-3">
+                <div className="flex flex-col items-center gap-0.5">
+                  <button
+                    onClick={() => onMoveUp?.(product, index)}
+                    disabled={index === 0}
+                    className={`p-0.5 rounded transition-colors ${
+                      index === 0
+                        ? "text-gray-200 cursor-not-allowed"
+                        : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                    }`}
+                    title="위로 이동"
+                  >
+                    <ChevronUp className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => onMoveDown?.(product, index)}
+                    disabled={index === products.length - 1}
+                    className={`p-0.5 rounded transition-colors ${
+                      index === products.length - 1
+                        ? "text-gray-200 cursor-not-allowed"
+                        : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                    }`}
+                    title="아래로 이동"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+                </div>
+              </td>
+
               {/* 상품명 */}
               <td className="px-4 py-3">
                 <div>
@@ -119,8 +156,8 @@ export function ProductTable({
                 {product.default_sessions ? (
                   <>
                     <div>{product.default_sessions}회</div>
-                    {/* PT/PPT의 경우 1회당 며칠 정보 표시 */}
-                    {(product.membership_type === 'PT' || product.membership_type === 'PPT') && product.days_per_session && (
+                    {/* PT/PPT/GPT의 경우 1회당 며칠 정보 표시 */}
+                    {(product.membership_type === 'PT' || product.membership_type === 'PPT' || product.membership_type === 'GPT') && product.days_per_session && (
                       <div className="text-xs text-gray-500">
                         ({product.days_per_session}일/회)
                       </div>
@@ -133,8 +170,8 @@ export function ProductTable({
 
               {/* 유효기간 */}
               <td className="px-4 py-3 text-gray-700">
-                {(product.membership_type === 'PT' || product.membership_type === 'PPT') ? (
-                  // PT/PPT: 총 유효일수 표시
+                {(product.membership_type === 'PT' || product.membership_type === 'PPT' || product.membership_type === 'GPT') ? (
+                  // PT/PPT/GPT: 총 유효일수 표시
                   product.default_sessions && product.days_per_session ? (
                     <div>
                       {product.default_sessions * product.days_per_session}일

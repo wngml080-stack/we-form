@@ -1,3 +1,4 @@
+import { toast } from "@/lib/toast";
 import { UserPlus, Calendar, DollarSign, CheckCircle, MoreHorizontal } from "lucide-react";
 
 interface QuickActionProps {
@@ -23,13 +24,13 @@ export function QuickActions({ onRegisterMember, onManageSchedule }: QuickAction
       label: "매출 등록",
       icon: DollarSign,
       color: "bg-green-100 text-green-600",
-      onClick: () => alert("준비 중인 기능입니다."),
+      onClick: () => toast.info("준비 중인 기능입니다."),
     },
     {
       label: "출석 체크",
       icon: CheckCircle,
       color: "bg-orange-100 text-orange-600",
-      onClick: () => alert("스케줄을 선택하여 출석 체크를 진행해주세요."),
+      onClick: () => toast.info("스케줄을 선택하여 출석 체크를 진행해주세요."),
     },
     {
       label: "추가 메뉴",

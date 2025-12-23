@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "@/lib/toast";
 import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -106,7 +107,7 @@ export default function SalaryTemplateManager() {
                 console.error("Supabase Select Error:", error);
                 // 테이블이 존재하지 않는 경우 (42P01) 등에 대한 처리 가능
                 if (error.code === '42P01') {
-                    alert("급여 관련 테이블이 아직 생성되지 않은 것 같습니다. 관리자에게 문의하거나 SQL 마이그레이션을 실행해주세요.");
+                    toast.error("급여 관련 테이블이 아직 생성되지 않은 것 같습니다. 관리자에게 문의하거나 SQL 마이그레이션을 실행해주세요.");
                 }
                 throw error;
             }
@@ -181,7 +182,7 @@ export default function SalaryTemplateManager() {
     const handleSave = async () => {
         try {
             if (!selectedGymId) {
-                alert("지점을 선택해주세요.");
+                toast.warning("지점을 선택해주세요.");
                 return;
             }
 
@@ -257,12 +258,12 @@ export default function SalaryTemplateManager() {
 
             setIsModalOpen(false);
             if (selectedGymId) fetchTemplates(selectedGymId);
-            alert("저장되었습니다.");
+            toast.success("저장되었습니다.");
 
         } catch (error: unknown) {
             console.error("상세 에러:", error);
             const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.";
-            alert(`저장 실패: ${errorMessage}`);
+            toast.error(`저장 실패: ${errorMessage}`);
         }
     };
 
