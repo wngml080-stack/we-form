@@ -36,9 +36,20 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Supabase URL에서 호스트 추출
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+
   return (
     <ClerkProvider localization={koKR}>
       <html lang="ko" className={`${outfit.variable} ${pretendard.variable}`}>
+        <head>
+          {/* Preconnect hints - 외부 서비스 연결 시간 단축 */}
+          <link rel="preconnect" href="https://clerk.weform.co.kr" />
+          <link rel="preconnect" href="https://api.clerk.com" />
+          {supabaseUrl && <link rel="preconnect" href={supabaseUrl} />}
+          <link rel="dns-prefetch" href="https://clerk.weform.co.kr" />
+          <link rel="dns-prefetch" href="https://api.clerk.com" />
+        </head>
         <body className="font-sans antialiased">
           {children}
           <Toaster />
