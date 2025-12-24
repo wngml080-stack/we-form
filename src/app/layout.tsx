@@ -16,14 +16,15 @@ const outfit = Outfit({
   variable: "--font-outfit",
 });
 
-// Pretendard 가변 폰트 (Variable Font) - 단일 파일로 모든 굵기 지원
-// 파일 크기: ~700KB (개별 파일 4개 합계 3.1MB 대비 77% 절감)
+// Pretendard 가변 폰트 (Variable Font)
+// 파일 크기: ~2MB (한글 전체 포함)
 const pretendard = localFont({
   src: "../fonts/PretendardVariable.woff2",
   display: "swap",
   weight: "100 900", // 가변 폰트: 100~900 모든 굵기 지원
   variable: "--font-pretendard",
   fallback: ["-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "sans-serif"],
+  preload: true, // 폰트 사전 로드
 });
 
 export const metadata: Metadata = {
