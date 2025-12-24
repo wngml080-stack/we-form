@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import * as XLSX from "xlsx";
 import { calculateMonthlyStats, getScheduleTypeLabel } from "@/lib/schedule-utils";
 
 interface StaffStats {
@@ -121,11 +120,14 @@ export default function MonthlyStatsViewer() {
     }
   };
 
-  const handleExcelDownload = () => {
+  const handleExcelDownload = async () => {
     if (staffStats.length === 0) {
       toast.warning("다운로드할 데이터가 없습니다.");
       return;
     }
+
+    // 동적 import - 사용자가 내보내기 클릭 시에만 로드
+    const XLSX = await import("xlsx");
 
     const excelData = staffStats.map((stat) => ({
       "직원명": stat.staff_name,

@@ -15,7 +15,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, Download, Calendar } from "lucide-react";
-import * as XLSX from "xlsx";
 
 type SalaryDetail = {
     rule_name: string;
@@ -111,8 +110,11 @@ export default function StaffSalaryPage() {
         }
     };
 
-    const handleDownloadExcel = () => {
+    const handleDownloadExcel = async () => {
         if (!salaryData) return;
+
+        // 동적 import - 사용자가 내보내기 클릭 시에만 로드
+        const XLSX = await import("xlsx");
 
         const wb = XLSX.utils.book_new();
         const wsData = [

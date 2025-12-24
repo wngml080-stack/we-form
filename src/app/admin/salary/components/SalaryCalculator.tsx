@@ -24,7 +24,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { calculateMonthlyStats } from "@/lib/schedule-utils";
-import * as XLSX from "xlsx";
 import { Calculator, Download, Save } from "lucide-react";
 
 // 타입 정의
@@ -357,8 +356,11 @@ export default function SalaryCalculator() {
         }
     };
 
-    const handleDownloadExcel = () => {
+    const handleDownloadExcel = async () => {
         if (results.length === 0) return;
+
+        // 동적 import - 사용자가 내보내기 클릭 시에만 로드
+        const XLSX = await import("xlsx");
 
         const wb = XLSX.utils.book_new();
         const wsData = [

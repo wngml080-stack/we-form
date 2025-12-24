@@ -1,0 +1,8 @@
+# 모던 브라우저만 지원 - 불필요한 폴리필 제거
+Chrome >= 90
+Firefox >= 90
+Safari >= 14
+Edge >= 90
+not dead
+not IE 11
+not op_mini all

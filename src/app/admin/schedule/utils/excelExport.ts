@@ -1,13 +1,16 @@
 // 스케줄 엑셀 내보내기 유틸리티
+// xlsx 패키지를 동적 import하여 초기 번들 크기 최적화
 
-import * as XLSX from "xlsx";
 import { toast } from "@/lib/toast";
 
-export function exportSchedulesToExcel(schedules: any[]) {
+export async function exportSchedulesToExcel(schedules: any[]) {
   if (schedules.length === 0) {
     toast.warning("다운로드할 스케줄이 없습니다.");
     return;
   }
+
+  // 동적 import - 사용자가 내보내기 클릭 시에만 로드
+  const XLSX = await import("xlsx");
 
   const excelData = schedules.map((schedule) => ({
     "날짜": new Date(schedule.start_time).toLocaleDateString('ko-KR'),

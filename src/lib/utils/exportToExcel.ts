@@ -1,13 +1,15 @@
-import * as XLSX from "xlsx";
 import { Member } from "@/app/admin/members/components/columns";
 
 /**
  * 회원 데이터를 Excel 파일로 내보내기
+ * xlsx 패키지를 동적 import하여 초기 번들 크기 최적화
  *
  * @param members - 내보낼 회원 데이터 배열
  * @param filename - 저장할 파일명 (기본값: "회원_목록_YYYYMMDD.xlsx")
  */
-export function exportMembersToExcel(members: Member[], filename?: string) {
+export async function exportMembersToExcel(members: Member[], filename?: string) {
+  // 동적 import - 사용자가 내보내기 클릭 시에만 로드
+  const XLSX = await import("xlsx");
   // 파일명 생성 (날짜 포함)
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
@@ -64,7 +66,7 @@ export function exportMembersToExcel(members: Member[], filename?: string) {
 /**
  * 선택된 회원 목록을 Excel로 내보내기 (간편 함수)
  */
-export function exportSelectedMembers(members: Member[]) {
+export async function exportSelectedMembers(members: Member[]) {
   const count = members.length;
   const filename = `선택된_회원_${count}명_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.xlsx`;
   exportMembersToExcel(members, filename);
