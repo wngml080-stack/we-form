@@ -329,6 +329,24 @@ export function useMemberOperations({
     }
   };
 
+  // 회원권 삭제
+  const handleDeleteMembership = async (membershipId: string) => {
+    try {
+      const { error } = await supabase
+        .from("member_memberships")
+        .delete()
+        .eq("id", membershipId);
+
+      if (error) throw error;
+
+      showSuccess("회원권이 삭제되었습니다.");
+      refreshData();
+    } catch (error: any) {
+      showError(error, "회원권 삭제");
+      throw error;
+    }
+  };
+
   return {
     saveAddonPayments,
     handleEditMembership,
@@ -337,7 +355,8 @@ export function useMemberOperations({
     handleBulkStatusChange,
     handleBulkTrainerAssign,
     handleStatusChange,
-    handleBulkDelete
+    handleBulkDelete,
+    handleDeleteMembership
   };
 }
 

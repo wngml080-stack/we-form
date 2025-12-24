@@ -4,12 +4,15 @@ import { WebhookEvent } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function POST(req: Request) {
+  const supabaseAdmin = getSupabaseAdmin();
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
 
   if (!WEBHOOK_SECRET) {
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
 
   // 유저 생성/로그인 시
   if (eventType === "user.created" || eventType === "session.created") {
-    const { id, email_addresses, first_name, last_name, image_url } = evt.data as any;
+    const { id, email_addresses } = evt.data as any;
     const email = email_addresses?.[0]?.email_address;
 
     if (!email) {

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+
+export const dynamic = 'force-dynamic';
 import { koKR } from "@clerk/localizations";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
