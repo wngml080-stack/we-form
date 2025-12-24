@@ -45,7 +45,7 @@ export function StaffManagement({
         </div>
         <div className="p-6">
           {filteredStaffs.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
+            <div className="text-center py-12 text-gray-500">
               <p className="text-sm">등록된 직원이 없습니다.</p>
             </div>
           ) : (
@@ -112,7 +112,7 @@ export function StaffManagement({
         </div>
         <div className="p-6">
           {recentActivities.length === 0 && pendingStaffs.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
+            <div className="text-center py-12 text-gray-500">
               <p className="text-sm">최근 활동이 없습니다.</p>
             </div>
           ) : (

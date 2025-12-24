@@ -84,7 +84,7 @@ export default function CompanyDetailPage() {
               </tr>
             ))}
             {staffs.length === 0 && (
-                <tr><td colSpan={5} className="text-center py-10 text-gray-400">소속된 직원이 없습니다.</td></tr>
+                <tr><td colSpan={5} className="text-center py-10 text-gray-500">소속된 직원이 없습니다.</td></tr>
             )}
           </tbody>
         </table>

@@ -175,7 +175,7 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
       cell: ({ row }) => {
         const member = row.original;
         if (!member.activeMembership?.start_date) {
-          return <span className="text-gray-400">-</span>;
+          return <span className="text-gray-500">-</span>;
         }
         return <span className="text-gray-600">{member.activeMembership.start_date}</span>;
       },
@@ -200,7 +200,7 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
       cell: ({ row }) => {
         const member = row.original;
         if (!member.activeMembership?.end_date) {
-          return <span className="text-gray-400">-</span>;
+          return <span className="text-gray-500">-</span>;
         }
         return <span className="text-gray-600">{member.activeMembership.end_date}</span>;
       },
@@ -214,7 +214,7 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
       cell: ({ row }) => {
         const member = row.original;
         if (!member.activeMembership) {
-          return <span className="text-gray-400">-</span>;
+          return <span className="text-gray-500">-</span>;
         }
 
         const remaining = member.activeMembership.total_sessions - member.activeMembership.used_sessions;

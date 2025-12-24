@@ -199,7 +199,7 @@ export default function AdminReportsPage() {
       <div className="grid gap-4">
         {reports.length === 0 ? (
           <Card className="bg-white rounded-2xl shadow-sm border border-gray-100">
-            <CardContent className="py-12 text-center text-gray-400">
+            <CardContent className="py-12 text-center text-gray-500">
               제출된 보고서가 없습니다.
             </CardContent>
           </Card>

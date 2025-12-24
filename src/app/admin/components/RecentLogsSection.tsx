@@ -33,7 +33,7 @@ export function RecentLogsSection({ logs, formatCurrency }: RecentLogsSectionPro
       </div>
       <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
         {logs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+          <div className="flex flex-col items-center justify-center py-8 text-gray-500">
             <Clock className="w-8 h-8 mb-2 opacity-20" />
             <p className="text-sm">최근 등록 기록이 없습니다.</p>
           </div>

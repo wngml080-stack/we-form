@@ -79,7 +79,7 @@ export function PaymentsTable({
 
             {!isLoading && filteredPayments.length === 0 && newRows.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-center py-20 text-gray-400">
+                <td colSpan={9} className="text-center py-20 text-gray-500">
                   선택한 기간에 결제 내역이 없습니다.
                 </td>
               </tr>

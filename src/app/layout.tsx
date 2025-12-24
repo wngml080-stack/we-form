@@ -1,30 +1,27 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Outfit } from "next/font/google";
-import localFont from "next/font/local";
+import { Outfit, Noto_Sans_KR } from "next/font/google";
 
 export const dynamic = 'force-dynamic';
 import { koKR } from "@clerk/localizations";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
-// Outfit 폰트 (포인트/헤딩용) - next/font로 최적화
+// Outfit 폰트 (포인트/헤딩용) - 필수 가중치만 로드
 const outfit = Outfit({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  weight: ["600", "700"], // 헤딩에 필요한 가중치만
   display: "swap",
   variable: "--font-outfit",
 });
 
-// Pretendard 가변 폰트 (Variable Font)
-// 파일 크기: ~2MB (한글 전체 포함)
-const pretendard = localFont({
-  src: "../fonts/PretendardVariable.woff2",
+// Noto Sans KR (본문용) - 필수 가중치만 로드
+const notoSansKR = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["400", "700"], // 본문(400)과 강조(700)만
   display: "swap",
-  weight: "100 900", // 가변 폰트: 100~900 모든 굵기 지원
   variable: "--font-pretendard",
   fallback: ["-apple-system", "BlinkMacSystemFont", "system-ui", "Roboto", "sans-serif"],
-  preload: true, // 폰트 사전 로드
 });
 
 export const metadata: Metadata = {
@@ -37,19 +34,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Supabase URL에서 호스트 추출
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-
   return (
     <ClerkProvider localization={koKR}>
-      <html lang="ko" className={`${outfit.variable} ${pretendard.variable}`}>
+      <html lang="ko" className={`${outfit.variable} ${notoSansKR.variable}`}>
         <head>
-          {/* Preconnect hints - 외부 서비스 연결 시간 단축 */}
-          <link rel="preconnect" href="https://clerk.weform.co.kr" />
-          <link rel="preconnect" href="https://api.clerk.com" />
-          {supabaseUrl && <link rel="preconnect" href={supabaseUrl} />}
-          <link rel="dns-prefetch" href="https://clerk.weform.co.kr" />
-          <link rel="dns-prefetch" href="https://api.clerk.com" />
+          {/* Google Fonts preconnect - next/font가 사용 */}
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         </head>
         <body className="font-sans antialiased">
           {children}

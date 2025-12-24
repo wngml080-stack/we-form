@@ -91,7 +91,7 @@ export function MembersTable({
           </thead>
           <tbody>
             <tr>
-              <td colSpan={9} className="text-center py-20 text-gray-400">
+              <td colSpan={9} className="text-center py-20 text-gray-500">
                 로딩 중...
               </td>
             </tr>
@@ -123,7 +123,7 @@ export function MembersTable({
           </thead>
           <tbody>
             <tr>
-              <td colSpan={9} className="text-center py-20 text-gray-400">
+              <td colSpan={9} className="text-center py-20 text-gray-500">
                 {message}
               </td>
             </tr>

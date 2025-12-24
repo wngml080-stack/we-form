@@ -33,7 +33,7 @@ export function CompanyList({
       <div className="bg-white rounded-lg p-8 text-center border border-gray-200">
         <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
         <p className="text-gray-500 font-medium">등록된 고객사가 없습니다</p>
-        <p className="text-sm text-gray-400 mt-1">새 고객사를 추가하거나 기존 데이터를 확인해주세요</p>
+        <p className="text-sm text-gray-500 mt-1">새 고객사를 추가하거나 기존 데이터를 확인해주세요</p>
       </div>
     );
   }
@@ -118,7 +118,7 @@ export function CompanyList({
                 </div>
 
                 {gyms.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400">등록된 지점이 없습니다.</div>
+                  <div className="p-8 text-center text-gray-500">등록된 지점이 없습니다.</div>
                 ) : (
                   <div className="divide-y">
                     {gyms.map((gym) => {
@@ -168,7 +168,7 @@ export function CompanyList({
                           {isGymExpanded && (
                             <div className="bg-white border-t">
                               {staffs.length === 0 ? (
-                                <div className="p-6 pl-20 text-center text-gray-400 text-sm">등록된 직원이 없습니다.</div>
+                                <div className="p-6 pl-20 text-center text-gray-500 text-sm">등록된 직원이 없습니다.</div>
                               ) : (
                                 <div className="divide-y">
                                   {staffs.map((staff) => {

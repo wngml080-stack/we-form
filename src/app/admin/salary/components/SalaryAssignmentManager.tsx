@@ -258,7 +258,7 @@ export default function SalaryAssignmentManager() {
                             </tr>
                         ))}
                         {staffs.length === 0 && (
-                            <tr><td colSpan={4} className="p-6 text-center text-gray-400">직원 데이터가 없습니다.</td></tr>
+                            <tr><td colSpan={4} className="p-6 text-center text-gray-500">직원 데이터가 없습니다.</td></tr>
                         )}
                     </tbody>
                 </table>

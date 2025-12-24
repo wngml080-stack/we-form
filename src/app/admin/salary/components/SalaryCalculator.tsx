@@ -480,7 +480,7 @@ export default function SalaryCalculator() {
                             </TableRow>
                         ) : results.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-gray-400">
+                                <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                                     '급여 계산 실행' 버튼을 눌러주세요.
                                 </TableCell>
                             </TableRow>

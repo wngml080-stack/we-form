@@ -303,7 +303,7 @@ export default function SalaryTemplateManager() {
                                     </div>
                                 ))}
                                 {(!template.items || template.items.length === 0) && (
-                                    <div className="text-xs text-gray-400 text-center py-2">설정된 규칙이 없습니다.</div>
+                                    <div className="text-xs text-gray-500 text-center py-2">설정된 규칙이 없습니다.</div>
                                 )}
                             </div>
                         </CardContent>

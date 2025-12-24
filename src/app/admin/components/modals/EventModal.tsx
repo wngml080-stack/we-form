@@ -44,7 +44,7 @@ export function EventModal({ isOpen, onOpenChange, selectedDate, companyEvents }
         </DialogHeader>
         <div className="space-y-3 py-4">
           {dayEvents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Calendar className="w-12 h-12 mb-3 opacity-20" />
               <p className="text-sm">이 날짜에 등록된 행사가 없습니다.</p>
             </div>

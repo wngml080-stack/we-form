@@ -23,7 +23,7 @@ export function TodaySchedulesCard({ schedules, getStatusColor }: TodaySchedules
 
       <div className="flex-1 overflow-auto space-y-3 custom-scrollbar pr-2">
         {schedules.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+          <div className="flex flex-col items-center justify-center h-48 text-gray-500">
             <Calendar className="w-10 h-10 mb-2 opacity-20" />
             <p>오늘 담당하신 수업이 없습니다.</p>
           </div>

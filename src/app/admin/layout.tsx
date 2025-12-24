@@ -190,7 +190,7 @@ function AdminLayoutContent({
             {/* 회사 선택 (system_admin만 선택 가능, 다른 역할은 표시만) */}
             {userRole === "system_admin" && companies.length > 0 ? (
               <Select value={selectedCompanyId} onValueChange={setCompany}>
-                <SelectTrigger className="w-full h-10 text-xs font-semibold bg-gradient-to-br from-primary to-indigo-600 text-white border-0 rounded-xl shadow-[0_4px_12px_rgba(79,70,229,0.35)]">
+                <SelectTrigger aria-label="회사 선택" className="w-full h-10 text-xs font-semibold bg-gradient-to-br from-primary to-indigo-600 text-white border-0 rounded-xl shadow-[0_4px_12px_rgba(79,70,229,0.35)]">
                   <Building2 className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="회사 선택" />
                 </SelectTrigger>
@@ -210,7 +210,7 @@ function AdminLayoutContent({
 
             {/* 지점 선택 */}
             <Select value={selectedGymId} onValueChange={setGym}>
-              <SelectTrigger className="w-full h-10 text-xs font-medium bg-white border-2 border-slate-200 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] hover:border-primary/50 transition-colors">
+              <SelectTrigger aria-label="지점 선택" className="w-full h-10 text-xs font-medium bg-white border-2 border-slate-200 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] hover:border-primary/50 transition-colors">
                 <Building2 className="w-4 h-4 mr-2 text-slate-500" />
                 <SelectValue placeholder="지점 선택" />
               </SelectTrigger>
@@ -225,7 +225,7 @@ function AdminLayoutContent({
 
             {/* 직원 선택 */}
             <Select value={selectedStaffId || "all"} onValueChange={(val) => setStaff(val === "all" ? "" : val)}>
-              <SelectTrigger className="w-full h-10 text-xs font-medium bg-white border-2 border-slate-200 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] hover:border-primary/50 transition-colors">
+              <SelectTrigger aria-label="직원 선택" className="w-full h-10 text-xs font-medium bg-white border-2 border-slate-200 rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] hover:border-primary/50 transition-colors">
                 <Users className="w-4 h-4 mr-2 text-slate-500" />
                 <SelectValue placeholder="전체 직원" />
               </SelectTrigger>
@@ -281,7 +281,7 @@ function AdminLayoutContent({
             {menuItems.branch.length > 0 && userRole !== "staff" && (
               <>
                 <div className="pt-4 pb-2 px-4">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">지점 운영</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">지점 운영</p>
                 </div>
                 {menuItems.branch.map((item) => {
                   const isActive = pathname === item.href;
@@ -336,7 +336,7 @@ function AdminLayoutContent({
             {(userRole === "company_admin" || userRole === "system_admin") && (
               <>
                 <div className="pt-4 pb-2 px-4">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">관리자 설정</p>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">관리자 설정</p>
                 </div>
 
                 {/* 본사 관리 */}

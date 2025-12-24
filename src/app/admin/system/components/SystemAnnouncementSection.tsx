@@ -53,7 +53,7 @@ export function SystemAnnouncementSection({
               <Bell className="w-8 h-8 text-gray-400" />
             </div>
             <p className="text-gray-500 font-medium">등록된 시스템 공지사항이 없습니다</p>
-            <p className="text-sm text-gray-400 mt-1">새 공지사항을 추가하여 전체 사용자에게 알림을 보내세요</p>
+            <p className="text-sm text-gray-500 mt-1">새 공지사항을 추가하여 전체 사용자에게 알림을 보내세요</p>
           </div>
         ) : (
           announcements.map((announcement) => {

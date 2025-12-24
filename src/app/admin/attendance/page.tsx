@@ -495,7 +495,7 @@ export default function AdminAttendancePage() {
               {records.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
+                    <div className="flex flex-col items-center justify-center text-gray-500">
                       <Calendar className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="text-lg font-medium">출석 기록이 없습니다.</p>
                       <p className="text-sm mt-1">새로운 출석 기록을 등록해주세요.</p>

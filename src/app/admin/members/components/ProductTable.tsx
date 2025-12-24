@@ -44,7 +44,7 @@ export function ProductTable({
           </thead>
           <tbody>
             <tr>
-              <td colSpan={8} className="text-center py-20 text-gray-400">
+              <td colSpan={8} className="text-center py-20 text-gray-500">
                 로딩 중...
               </td>
             </tr>
@@ -73,7 +73,7 @@ export function ProductTable({
           </thead>
           <tbody>
             <tr>
-              <td colSpan={8} className="text-center py-20 text-gray-400">
+              <td colSpan={8} className="text-center py-20 text-gray-500">
                 등록된 상품이 없습니다.
               </td>
             </tr>
@@ -164,7 +164,7 @@ export function ProductTable({
                     )}
                   </>
                 ) : (
-                  <div className="text-gray-400">-</div>
+                  <div className="text-gray-500">-</div>
                 )}
               </td>
 
@@ -177,14 +177,14 @@ export function ProductTable({
                       {product.default_sessions * product.days_per_session}일
                     </div>
                   ) : (
-                    <div className="text-gray-400">-</div>
+                    <div className="text-gray-500">-</div>
                   )
                 ) : (
                   // 기타 타입: 개월 표시
                   product.validity_months ? (
                     <div>{product.validity_months}개월</div>
                   ) : (
-                    <div className="text-gray-400">-</div>
+                    <div className="text-gray-500">-</div>
                   )
                 )}
               </td>

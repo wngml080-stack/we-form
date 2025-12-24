@@ -69,7 +69,7 @@ export function MembersLegacyTable({
         <tbody>
           {isLoading ? (
             <tr>
-              <td colSpan={11} className="text-center py-20 text-gray-400">
+              <td colSpan={11} className="text-center py-20 text-gray-500">
                 로딩 중...
               </td>
             </tr>
@@ -126,7 +126,7 @@ export function MembersLegacyTable({
               })}
               {members.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-center py-20 text-gray-400">
+                  <td colSpan={11} className="text-center py-20 text-gray-500">
                     {searchQuery || statusFilter !== "all"
                       ? "검색 결과가 없습니다."
                       : "등록된 회원이 없습니다."}

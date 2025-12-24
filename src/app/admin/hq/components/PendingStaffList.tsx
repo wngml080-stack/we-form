@@ -38,7 +38,7 @@ export function PendingStaffList({
       </div>
       <div className="p-6 space-y-3">
         {pendingStaffs.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-gray-500">
             <p className="text-sm">대기 인원 없음</p>
           </div>
         ) : (

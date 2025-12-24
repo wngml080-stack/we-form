@@ -3,7 +3,7 @@
 export function StaffSelectionPrompt() {
   return (
     <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 text-center">
-      <div className="text-gray-400 mb-4">
+      <div className="text-gray-500 mb-4">
         <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"

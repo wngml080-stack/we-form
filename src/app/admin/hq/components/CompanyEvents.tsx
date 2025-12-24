@@ -59,7 +59,7 @@ export function CompanyEvents({
       </div>
       <div className="p-6 space-y-3 max-h-[500px] overflow-y-auto">
         {companyEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-400">
+          <div className="flex flex-col items-center justify-center h-32 text-gray-500">
             <Calendar className="w-10 h-10 mb-2 opacity-20" />
             <p className="text-sm">등록된 회사 일정 & 행사가 없습니다.</p>
           </div>

@@ -181,7 +181,7 @@ export function MonthlyStatsSection({
                   })
               ) : (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                  <td colSpan={8} className="text-center py-8 text-gray-500">
                     이번 달 스케줄이 없습니다
                   </td>
                 </tr>

@@ -262,7 +262,7 @@ export default function AdminStaffPage() {
               ))}
               {activeStaffs.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-20 text-gray-400">
+                  <td colSpan={7} className="text-center py-20 text-gray-500">
                     등록된 직원이 없습니다.
                   </td>
                 </tr>
