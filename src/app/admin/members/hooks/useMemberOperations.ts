@@ -113,7 +113,8 @@ export function useMemberOperations({
         membership_type: "부가상품",
         registration_type: "부가상품",
         memo: memoText,
-        paid_at: registeredAt
+        paid_at: registeredAt,
+        created_by: myStaffId
       });
 
       // 매출 로그 기록
@@ -246,7 +247,8 @@ export function useMemberOperations({
           payment_method: membershipForm.method || "card",
           memo: membershipForm.name,
           registered_at: membershipForm.start_date || new Date().toISOString().split('T')[0],
-          membership_type: products.find(p => p.id === selectedProductId)?.membership_type || "기타"
+          membership_type: products.find(p => p.id === selectedProductId)?.membership_type || "기타",
+          created_by: myStaffId
         });
       }
 

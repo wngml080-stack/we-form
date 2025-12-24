@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, Suspense } from "react";
+import dynamicImport from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -9,7 +10,12 @@ import { SalesHeader } from "./components/SalesHeader";
 import { SalesFilters } from "./components/SalesFilters";
 import { SalesStats } from "./components/SalesStats";
 import { PaymentsTable } from "./components/PaymentsTable";
-import { SalesSettingsModal } from "./components/modals/SalesSettingsModal";
+
+// Dynamic imports for modals
+const SalesSettingsModal = dynamicImport(
+  () => import("./components/modals/SalesSettingsModal").then(mod => ({ default: mod.SalesSettingsModal })),
+  { ssr: false }
+);
 
 function SalesPageContent() {
   const { isLoading: authLoading } = useAuth();

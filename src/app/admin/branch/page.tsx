@@ -1,14 +1,32 @@
 "use client";
 
+import dynamicImport from "next/dynamic";
 import { Users, DollarSign, Calendar, Target, Award, BarChart3 } from "lucide-react";
 import { useBranchData } from "./hooks/useBranchData";
 import { StatCard, BEPCard, QuickLinkCard } from "./components/StatCards";
 import { AnnouncementCalendar } from "./components/AnnouncementCalendar";
-import { AnnouncementModal } from "./components/modals/AnnouncementModal";
-import { DateAnnouncementsModal } from "./components/modals/DateAnnouncementsModal";
-import { FcSalesModal } from "./components/modals/FcSalesModal";
-import { PtSalesModal } from "./components/modals/PtSalesModal";
-import { TotalSalesModal } from "./components/modals/TotalSalesModal";
+
+// Dynamic imports for modals (코드 스플리팅으로 초기 로드 성능 개선)
+const AnnouncementModal = dynamicImport(
+  () => import("./components/modals/AnnouncementModal").then(mod => ({ default: mod.AnnouncementModal })),
+  { ssr: false }
+);
+const DateAnnouncementsModal = dynamicImport(
+  () => import("./components/modals/DateAnnouncementsModal").then(mod => ({ default: mod.DateAnnouncementsModal })),
+  { ssr: false }
+);
+const FcSalesModal = dynamicImport(
+  () => import("./components/modals/FcSalesModal").then(mod => ({ default: mod.FcSalesModal })),
+  { ssr: false }
+);
+const PtSalesModal = dynamicImport(
+  () => import("./components/modals/PtSalesModal").then(mod => ({ default: mod.PtSalesModal })),
+  { ssr: false }
+);
+const TotalSalesModal = dynamicImport(
+  () => import("./components/modals/TotalSalesModal").then(mod => ({ default: mod.TotalSalesModal })),
+  { ssr: false }
+);
 
 export default function BranchManagementPage() {
   const {

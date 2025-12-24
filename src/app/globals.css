@@ -1,73 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 /* ========================================
    폰트 시스템: Pretendard (본문) + Outfit (포인트)
+   - next/font로 최적화되어 렌더링 차단 없음
+   - layout.tsx에서 CSS 변수로 주입됨:
+     --font-pretendard, --font-outfit
    ======================================== */
-
-/* Pretendard 폰트 (본문용) */
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Thin.woff') format('woff');
-  font-weight: 100;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraLight.woff') format('woff');
-  font-weight: 200;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Light.woff') format('woff');
-  font-weight: 300;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Regular.woff') format('woff');
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Medium.woff') format('woff');
-  font-weight: 500;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-SemiBold.woff') format('woff');
-  font-weight: 600;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Bold.woff') format('woff');
-  font-weight: 700;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-ExtraBold.woff') format('woff');
-  font-weight: 800;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Pretendard';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/noonfonts_2107@1.1/Pretendard-Black.woff') format('woff');
-  font-weight: 900;
-  font-display: swap;
-}
 
 /* ========================================
    CSS 변수 시스템 - 통일된 색상 팔레트
@@ -216,10 +154,10 @@
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-point: hsl(var(--point));
 
-  /* 폰트 패밀리 */
-  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
-  --font-heading: 'Outfit', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-display: 'Outfit', 'Pretendard', sans-serif;
+  /* 폰트 패밀리 - next/font 변수 사용 (렌더링 차단 없음) */
+  --font-sans: var(--font-pretendard), -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-heading: var(--font-outfit), var(--font-pretendard), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-pretendard), sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', monospace;
 }
 

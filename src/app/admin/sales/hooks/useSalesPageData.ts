@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "@/lib/toast";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 // 기본 회원권 유형 (고정)
 export const DEFAULT_MEMBERSHIP_TYPES = [
@@ -70,6 +71,7 @@ export function useSalesPageData({
   selectedCompanyId,
   filterInitialized
 }: UseSalesPageDataProps) {
+  const { user } = useAuth();
   const supabase = useMemo(() => createSupabaseClient(), []);
 
   const [payments, setPayments] = useState<any[]>([]);
@@ -305,7 +307,8 @@ export function useSalesPageData({
       memo: memoDetails || null,
       paid_at: row.paid_at || new Date().toISOString(),
       installment_count: 1,
-      installment_current: 1
+      installment_current: 1,
+      created_by: user?.id || null
     });
 
     if (error) {

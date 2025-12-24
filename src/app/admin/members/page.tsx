@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import dynamicImport from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Pagination } from "@/components/ui/pagination";
@@ -10,17 +11,46 @@ import { MembersHeader } from "./components/MembersHeader";
 import { MembersFilters } from "./components/MembersFilters";
 import { MembersStats } from "./components/MembersStats";
 import { MembersLegacyTable } from "./components/MembersLegacyTable";
-import { SimpleMemberCreateModal } from "./components/modals/SimpleMemberCreateModal";
-import { AddonSalesModal } from "./components/modals/AddonSalesModal";
-import { ExcelImportModal } from "./components/modals/ExcelImportModal";
-import { ExistingSalesModal } from "./components/modals/ExistingSalesModal";
-import { NewMemberCreateModal } from "./components/modals/NewMemberCreateModal";
-import { MemberDetailModal } from "./components/modals/MemberDetailModal";
-import { MemberEditModal } from "./components/modals/MemberEditModal";
-import { MembershipEditModal } from "./components/modals/MembershipEditModal";
-import { AddMembershipModal } from "./components/modals/AddMembershipModal";
 import { useMembersPageData } from "./hooks/useMembersPageData";
 import { useMemberOperations } from "./hooks/useMemberOperations";
+
+// Dynamic imports for modals (코드 스플리팅으로 초기 로드 성능 개선)
+const SimpleMemberCreateModal = dynamicImport(
+  () => import("./components/modals/SimpleMemberCreateModal").then(mod => ({ default: mod.SimpleMemberCreateModal })),
+  { ssr: false }
+);
+const AddonSalesModal = dynamicImport(
+  () => import("./components/modals/AddonSalesModal").then(mod => ({ default: mod.AddonSalesModal })),
+  { ssr: false }
+);
+const ExcelImportModal = dynamicImport(
+  () => import("./components/modals/ExcelImportModal").then(mod => ({ default: mod.ExcelImportModal })),
+  { ssr: false }
+);
+const ExistingSalesModal = dynamicImport(
+  () => import("./components/modals/ExistingSalesModal").then(mod => ({ default: mod.ExistingSalesModal })),
+  { ssr: false }
+);
+const NewMemberCreateModal = dynamicImport(
+  () => import("./components/modals/NewMemberCreateModal").then(mod => ({ default: mod.NewMemberCreateModal })),
+  { ssr: false }
+);
+const MemberDetailModal = dynamicImport(
+  () => import("./components/modals/MemberDetailModal").then(mod => ({ default: mod.MemberDetailModal })),
+  { ssr: false }
+);
+const MemberEditModal = dynamicImport(
+  () => import("./components/modals/MemberEditModal").then(mod => ({ default: mod.MemberEditModal })),
+  { ssr: false }
+);
+const MembershipEditModal = dynamicImport(
+  () => import("./components/modals/MembershipEditModal").then(mod => ({ default: mod.MembershipEditModal })),
+  { ssr: false }
+);
+const AddMembershipModal = dynamicImport(
+  () => import("./components/modals/AddMembershipModal").then(mod => ({ default: mod.AddMembershipModal })),
+  { ssr: false }
+);
 
 export const dynamic = 'force-dynamic';
 

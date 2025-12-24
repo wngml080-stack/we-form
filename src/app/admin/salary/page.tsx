@@ -1,11 +1,26 @@
 "use client";
 
+import dynamicImport from "next/dynamic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
-import SalaryTemplateManager from "@/app/admin/salary/components/SalaryTemplateManager";
-import SalaryAssignmentManager from "@/app/admin/salary/components/SalaryAssignmentManager";
-import MonthlyStatsViewer from "@/app/admin/salary/components/MonthlyStatsViewer";
-import SalaryCalculator from "@/app/admin/salary/components/SalaryCalculator";
+
+// Dynamic imports for heavy tab components (코드 스플리팅으로 초기 로드 성능 개선)
+const SalaryTemplateManager = dynamicImport(
+  () => import("@/app/admin/salary/components/SalaryTemplateManager"),
+  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
+);
+const SalaryAssignmentManager = dynamicImport(
+  () => import("@/app/admin/salary/components/SalaryAssignmentManager"),
+  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
+);
+const MonthlyStatsViewer = dynamicImport(
+  () => import("@/app/admin/salary/components/MonthlyStatsViewer"),
+  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
+);
+const SalaryCalculator = dynamicImport(
+  () => import("@/app/admin/salary/components/SalaryCalculator"),
+  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
+);
 
 export default function AdminSalaryPage() {
   const { branchFilter } = useAdminFilter();

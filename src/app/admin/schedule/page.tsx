@@ -1,13 +1,11 @@
 "use client";
 
+import dynamicImport from "next/dynamic";
 import WeeklyTimetable from "@/components/WeeklyTimetable";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
 import { classifyScheduleType } from "@/lib/schedule-utils";
 import { DailyStatsWidget } from "@/components/DailyStatsWidget";
 import { MonthlySubmissionBanner } from "@/components/MonthlySubmissionBanner";
-import { CreateScheduleModal } from "./components/modals/CreateScheduleModal";
-import { EditScheduleModal } from "./components/modals/EditScheduleModal";
-import { QuickStatusModal } from "./components/modals/QuickStatusModal";
 import { MonthlyStatsSection } from "./components/MonthlyStatsSection";
 import { ScheduleHeader } from "./components/ScheduleHeader";
 import { ScheduleControls } from "./components/ScheduleControls";
@@ -15,6 +13,20 @@ import { StaffSelectionPrompt } from "./components/StaffSelectionPrompt";
 import { useSchedulePageData } from "./hooks/useSchedulePageData";
 import { useScheduleOperations } from "./hooks/useScheduleOperations";
 import { exportSchedulesToExcel } from "./utils/excelExport";
+
+// Dynamic imports for modals (코드 스플리팅으로 초기 로드 성능 개선)
+const CreateScheduleModal = dynamicImport(
+  () => import("./components/modals/CreateScheduleModal").then(mod => ({ default: mod.CreateScheduleModal })),
+  { ssr: false }
+);
+const EditScheduleModal = dynamicImport(
+  () => import("./components/modals/EditScheduleModal").then(mod => ({ default: mod.EditScheduleModal })),
+  { ssr: false }
+);
+const QuickStatusModal = dynamicImport(
+  () => import("./components/modals/QuickStatusModal").then(mod => ({ default: mod.QuickStatusModal })),
+  { ssr: false }
+);
 
 export default function AdminSchedulePage() {
   const pageData = useSchedulePageData();

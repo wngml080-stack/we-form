@@ -405,7 +405,7 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     try {
       const { data: payments, error } = await supabase
         .from("member_payments")
-        .select(`id, amount, method, memo, created_at, member_memberships (name, membership_type)`)
+        .select(`id, amount, method, memo, created_at, member_memberships (name, membership_type), staffs:created_by (name)`)
         .eq("member_id", member.id)
         .order("created_at", { ascending: false });
       setMemberPaymentHistory(error ? [] : payments || []);

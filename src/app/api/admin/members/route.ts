@@ -205,7 +205,8 @@ export async function POST(request: NextRequest) {
             membership_type: addMembership.membership_type,
             registration_type: "신규",
             memo: `${addMembership.membership_name} 신규 등록 (추가)`,
-            paid_at: addMembership.registered_at || created_at
+            paid_at: addMembership.registered_at || created_at,
+            created_by: staff.id
           });
 
           // 추가 회원권 매출 로그 등록
@@ -241,7 +242,8 @@ export async function POST(request: NextRequest) {
           method: addon.payment_method || "card",
           registration_type: "부가상품",
           memo: addon.memo || "부가상품 구매",
-          paid_at: addon.occurred_at || created_at
+          paid_at: addon.occurred_at || created_at,
+          created_by: staff.id
         });
 
         // 부가상품 매출 로그 등록

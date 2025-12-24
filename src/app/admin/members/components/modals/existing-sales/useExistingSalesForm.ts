@@ -232,6 +232,7 @@ export function useExistingSalesForm({
         registration_type: "부가상품",
         memo: memoText,
         paid_at: registeredAt,
+        created_by: myStaffId,
       });
 
       await supabase.from("sales_logs").insert({
@@ -398,6 +399,7 @@ export function useExistingSalesForm({
         visit_route: formData.visit_route || null,
         memo: formData.memo || null,
         paid_at: formData.start_date,
+        created_by: myStaffId,
       });
 
       if (paymentError) throw paymentError;

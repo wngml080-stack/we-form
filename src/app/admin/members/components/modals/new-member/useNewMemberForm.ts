@@ -251,6 +251,7 @@ export function useNewMemberForm({
         registration_type: "부가상품",
         memo: memoText,
         paid_at: registeredAt,
+        created_by: myStaffId,
       });
 
       await supabase.from("sales_logs").insert({
@@ -455,6 +456,7 @@ export function useNewMemberForm({
           registration_type: "신규",
           memo: `${additionalMembership.membership_name} 신규 등록 (추가)`,
           paid_at: additionalMembership.registered_at,
+          created_by: myStaffId,
         });
 
         await supabase.from("sales_logs").insert({
