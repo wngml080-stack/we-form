@@ -190,8 +190,7 @@ export async function POST(request: Request) {
           amount: parseFloat(amount),
           total_amount: parseFloat(amount),
           method: payment_method,
-          membership_type: "부가상품",
-          registration_type: "부가",
+          registration_type: "부가상품",
           memo: `${product_name} - ${customer_name}${memo ? ` (${memo})` : ""}`,
           paid_at: now
         });

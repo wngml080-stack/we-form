@@ -14,6 +14,7 @@ export type MembershipType =
   | '하이록스'
   | '러닝'
   | '크로스핏'
+  | '부가상품'
   | '기타';
 
 // 회원권 상품 (DB 테이블)
@@ -85,6 +86,7 @@ export const MEMBERSHIP_TYPE_OPTIONS: { value: MembershipType; label: string }[]
   { value: '하이록스', label: '하이록스' },
   { value: '러닝', label: '러닝' },
   { value: '크로스핏', label: '크로스핏' },
+  { value: '부가상품', label: '부가상품 (락커/운동복 등)' },
   { value: '기타', label: '기타' },
 ];
 

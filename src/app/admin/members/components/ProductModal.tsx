@@ -49,6 +49,11 @@ export function ProductModal({
     return type === 'PT' || type === 'PPT' || type === 'GPT';
   };
 
+  // 부가상품 타입인지 확인하는 헬퍼 함수
+  const isAddonType = (type: MembershipType | '') => {
+    return type === '부가상품';
+  };
+
   // PT/PPT의 총 유효일수 계산
   const calculateTotalDays = () => {
     if (!isPTType(formData.membership_type)) return null;
@@ -264,8 +269,8 @@ export function ProductModal({
             </>
           )}
 
-          {/* 기타 타입: 횟수 & 유효기간 (개월) - 둘 다 선택사항 */}
-          {!isPTType(formData.membership_type) && formData.membership_type && (
+          {/* 기타 타입: 횟수 & 유효기간 (개월) - 둘 다 선택사항 (부가상품 제외) */}
+          {!isPTType(formData.membership_type) && !isAddonType(formData.membership_type) && formData.membership_type && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="default_sessions_other">기본 횟수 (선택)</Label>
@@ -305,10 +310,22 @@ export function ProductModal({
             </div>
           )}
 
+          {/* 부가상품 타입: 안내 메시지 */}
+          {isAddonType(formData.membership_type) && (
+            <div className="bg-orange-50 p-3 rounded-md">
+              <p className="text-sm text-orange-900">
+                <strong>부가상품</strong>은 락커, 운동복, 수건 등의 상품입니다.
+              </p>
+              <p className="text-xs text-orange-700 mt-1">
+                상품명과 월 가격을 입력해주세요.
+              </p>
+            </div>
+          )}
+
           {/* 기본 가격 */}
           <div className="space-y-2">
             <Label htmlFor="default_price">
-              기본 가격 (원) <span className="text-red-500">*</span>
+              기본 가격 {isAddonType(formData.membership_type) ? "(원/월)" : "(원)"} <span className="text-red-500">*</span>
             </Label>
             <Input
               id="default_price"

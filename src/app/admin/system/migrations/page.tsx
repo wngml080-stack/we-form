@@ -34,6 +34,7 @@ const MIGRATIONS: MigrationInfo[] = [
   { name: "20251218010000_add_announcements_and_events", date: "2025-12-18", description: "공지사항 및 행사", status: "unknown" },
   { name: "20251218100001_cleanup_unused_tables", date: "2025-12-18", description: "미사용 테이블 정리", status: "unknown" },
   { name: "20251219000000_add_salary_settings", date: "2025-12-19", description: "급여 설정 테이블", status: "unknown" },
+  { name: "015_add_gpt_membership_type", date: "2025-12-23", description: "GPT 회원권 유형 추가", status: "unknown" },
 ];
 
 export default function MigrationsPage() {

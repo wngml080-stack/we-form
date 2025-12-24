@@ -23,6 +23,10 @@ import { MembersTable } from "./components/MembersTable";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ProductsTab } from "./components/ProductsTab";
 import { MembershipProduct } from "@/types/membership";
+import { SimpleMemberCreateModal } from "./components/modals/SimpleMemberCreateModal";
+import { AddonSalesModal } from "./components/modals/AddonSalesModal";
+import { ExcelImportModal } from "./components/modals/ExcelImportModal";
+import { ExistingSalesModal } from "./components/modals/ExistingSalesModal";
 
 // 동적 렌더링 강제 (useSearchParams 사용)
 export const dynamic = 'force-dynamic';
@@ -128,6 +132,7 @@ function AdminMembersPageContent() {
   }
   const [newMemberAddons, setNewMemberAddons] = useState<AddonItem[]>([]);
   const [existingMemberAddons, setExistingMemberAddons] = useState<AddonItem[]>([]);
+  const [membershipModalAddons, setMembershipModalAddons] = useState<AddonItem[]>([]); // 회원권 추가 모달용 부가상품
 
   // 회원권 중복 등록 (신규 회원 등록 시)
   interface MembershipItem {
@@ -1015,6 +1020,38 @@ function AdminMembersPageContent() {
     setExistingMemberAddons(updated);
   };
 
+  // 회원권 모달용 부가상품 관리 함수
+  const addMembershipModalAddon = () => {
+    setMembershipModalAddons([...membershipModalAddons, createEmptyAddon()]);
+  };
+
+  const removeMembershipModalAddon = (index: number) => {
+    setMembershipModalAddons(membershipModalAddons.filter((_, i) => i !== index));
+  };
+
+  const updateMembershipModalAddon = (index: number, field: keyof AddonItem, value: string) => {
+    const updated = [...membershipModalAddons];
+    updated[index] = { ...updated[index], [field]: value };
+
+    // 기간 변경 시 종료일 자동 계산
+    if (field === "duration" || field === "duration_type" || field === "start_date") {
+      const addon = updated[index];
+      if (addon.duration && addon.start_date) {
+        const num = parseInt(addon.duration);
+        const startDate = new Date(addon.start_date);
+        const endDate = new Date(startDate);
+        if (addon.duration_type === "months") {
+          endDate.setMonth(endDate.getMonth() + num);
+          endDate.setDate(endDate.getDate() - 1);
+        } else {
+          endDate.setDate(endDate.getDate() + num - 1);
+        }
+        updated[index].end_date = endDate.toISOString().split('T')[0];
+      }
+    }
+    setMembershipModalAddons(updated);
+  };
+
   // 부가상품 저장 함수
   const saveAddonPayments = async (memberId: string, addons: AddonItem[], registeredAt: string) => {
     for (const addon of addons) {
@@ -1465,8 +1502,29 @@ function AdminMembersPageContent() {
 
       if (membershipError) throw membershipError;
 
+      // 결제 기록 생성 (회원권)
+      if (membershipForm.amount && parseFloat(membershipForm.amount) > 0) {
+        await supabase.from("member_payments").insert({
+          company_id: selectedCompanyId,
+          gym_id: selectedGymId,
+          member_id: selectedMember.id,
+          amount: parseFloat(membershipForm.amount),
+          registration_type: "회원권추가",
+          payment_method: membershipForm.method || "card",
+          memo: membershipForm.name,
+          registered_at: membershipForm.start_date || new Date().toISOString().split('T')[0],
+          membership_type: products.find(p => p.id === selectedProductId)?.membership_type || "기타"
+        });
+      }
+
+      // 부가상품 저장
+      if (membershipModalAddons.length > 0) {
+        await saveAddonPayments(selectedMember.id, membershipModalAddons, membershipForm.start_date || new Date().toISOString().split('T')[0]);
+      }
+
       showSuccess("회원권이 등록되었습니다!");
       setIsMembershipOpen(false);
+      setMembershipModalAddons([]); // 부가상품 초기화
 
       // 데이터 새로고침
       if (usePagination) {
@@ -3234,428 +3292,64 @@ function AdminMembersPageContent() {
       </Dialog>
 
       {/* 회원권 등록 모달 */}
-      <Dialog open={isMembershipOpen} onOpenChange={setIsMembershipOpen}>
-        <DialogContent className="bg-white">
-          <DialogHeader>
-            <DialogTitle>회원권 등록 - {selectedMember?.name}</DialogTitle>
-            <DialogDescription className="sr-only">회원권을 등록합니다</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {/* 상품 선택 */}
-            <div className="space-y-2">
-              <Label>상품 선택 <span className="text-red-500">*</span></Label>
-              <Select
-                value={selectedProductId}
-                onValueChange={(productId) => {
-                  const product = products.find(p => p.id === productId);
-                  if (product) {
-                    setSelectedProductId(productId);
-
-                    // PT/PPT/GPT 타입인 경우 총 유효일수 계산
-                    const isPTType = product.membership_type === 'PT' || product.membership_type === 'PPT' || product.membership_type === 'GPT';
-                    let calculatedEndDate = "";
-
-                    if (isPTType && product.default_sessions && product.days_per_session) {
-                      const totalDays = product.default_sessions * product.days_per_session;
-                      const startDate = new Date(membershipForm.start_date);
-                      const endDate = new Date(startDate);
-                      endDate.setDate(startDate.getDate() + totalDays);
-                      calculatedEndDate = endDate.toISOString().split('T')[0];
-                    } else if (product.validity_months) {
-                      // 기타 타입: 유효기간(개월) 사용
-                      const startDate = new Date(membershipForm.start_date);
-                      const endDate = new Date(startDate);
-                      endDate.setMonth(startDate.getMonth() + product.validity_months);
-                      calculatedEndDate = endDate.toISOString().split('T')[0];
-                    }
-
-                    setMembershipForm({
-                      ...membershipForm,
-                      name: product.name,
-                      total_sessions: product.default_sessions?.toString() || "",
-                      amount: product.default_price.toString(),
-                      end_date: calculatedEndDate
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="상품을 선택하세요" />
-                </SelectTrigger>
-                <SelectContent className="bg-white max-h-[300px]">
-                  {products.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500 text-center">
-                      등록된 상품이 없습니다.<br />
-                      상품 관리 탭에서 먼저 상품을 등록해주세요.
-                    </div>
-                  ) : (
-                    products.filter(p => p.is_active).map(product => (
-                      <SelectItem key={product.id} value={product.id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{product.name}</span>
-                          <span className="text-xs text-gray-500">
-                            {product.default_sessions ? `${product.default_sessions}회` : "무제한"} /
-                            {product.default_price.toLocaleString()}원
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 선택된 상품 정보 표시 */}
-            {selectedProductId && (
-              <div className="bg-blue-50 p-3 rounded-md text-sm">
-                <div className="text-blue-900 font-medium mb-1">선택한 상품 정보</div>
-                <div className="text-blue-700">
-                  회원권명: {membershipForm.name} /
-                  횟수: {membershipForm.total_sessions || "무제한"}회 /
-                  금액: {parseInt(membershipForm.amount || "0").toLocaleString()}원
-                </div>
-                <div className="text-xs text-blue-600 mt-1">
-                  * 필요시 아래에서 횟수와 금액을 수정할 수 있습니다.
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>총 횟수 <span className="text-red-500">*</span></Label>
-                <Input
-                  type="number"
-                  value={membershipForm.total_sessions}
-                  onChange={(e) => setMembershipForm({...membershipForm, total_sessions: e.target.value})}
-                  placeholder="30"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>결제 금액 (원)</Label>
-                <Input
-                  type="number"
-                  value={membershipForm.amount}
-                  onChange={(e) => setMembershipForm({...membershipForm, amount: e.target.value})}
-                  placeholder="1000000"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>시작일</Label>
-                <Input
-                  type="date"
-                  value={membershipForm.start_date}
-                  onChange={(e) => setMembershipForm({...membershipForm, start_date: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>종료일</Label>
-                <Input
-                  type="date"
-                  value={membershipForm.end_date}
-                  onChange={(e) => setMembershipForm({...membershipForm, end_date: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>결제 방법</Label>
-              <Select value={membershipForm.method} onValueChange={(v) => setMembershipForm({...membershipForm, method: v})}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="card">카드</SelectItem>
-                  <SelectItem value="cash">현금</SelectItem>
-                  <SelectItem value="transfer">계좌이체</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 회원 정보 섹션 */}
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">회원 정보</h3>
-              <div className="grid gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>이름</Label>
-                    <Input
-                      value={membershipForm.member_name}
-                      onChange={(e) => setMembershipForm({...membershipForm, member_name: e.target.value})}
-                      placeholder="이름"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>전화번호</Label>
-                    <Input
-                      value={membershipForm.member_phone}
-                      onChange={(e) => setMembershipForm({...membershipForm, member_phone: formatPhoneNumberOnChange(e.target.value)})}
-                      placeholder="010-0000-0000"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>생년월일</Label>
-                    <Input
-                      type="date"
-                      value={membershipForm.birth_date}
-                      onChange={(e) => setMembershipForm({...membershipForm, birth_date: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>성별</Label>
-                    <Select value={membershipForm.gender} onValueChange={(v) => setMembershipForm({...membershipForm, gender: v})}>
-                      <SelectTrigger><SelectValue placeholder="성별 선택" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="male">남성</SelectItem>
-                        <SelectItem value="female">여성</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>운동 목표</Label>
-                  <Input
-                    value={membershipForm.exercise_goal}
-                    onChange={(e) => setMembershipForm({...membershipForm, exercise_goal: e.target.value})}
-                    placeholder="예: 다이어트, 근력 향상"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>체중 (kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={membershipForm.weight}
-                      onChange={(e) => setMembershipForm({...membershipForm, weight: e.target.value})}
-                      placeholder="70.0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>체지방량 (kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={membershipForm.body_fat_mass}
-                      onChange={(e) => setMembershipForm({...membershipForm, body_fat_mass: e.target.value})}
-                      placeholder="15.0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>골격근량 (kg)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={membershipForm.skeletal_muscle_mass}
-                      onChange={(e) => setMembershipForm({...membershipForm, skeletal_muscle_mass: e.target.value})}
-                      placeholder="30.0"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>담당 트레이너</Label>
-                  <Select value={membershipForm.trainer_id} onValueChange={(v) => setMembershipForm({...membershipForm, trainer_id: v})}>
-                    <SelectTrigger><SelectValue placeholder="트레이너 선택 (선택사항)" /></SelectTrigger>
-                    <SelectContent className="bg-white">
-                      {staffList.map((t: any) => (
-                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>메모</Label>
-                  <Textarea
-                    value={membershipForm.memo}
-                    onChange={(e) => setMembershipForm({...membershipForm, memo: e.target.value})}
-                    placeholder="메모를 입력하세요"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsMembershipOpen(false)}>취소</Button>
-            <Button onClick={handleUpdateMembership} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
-              {isLoading ? "등록 중..." : "등록하기"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 기존회원 매출등록 모달 */}
-      <Dialog open={isExistingSalesOpen} onOpenChange={(open) => {
-        setIsExistingSalesOpen(open);
+      <Dialog open={isMembershipOpen} onOpenChange={(open) => {
+        setIsMembershipOpen(open);
         if (!open) {
-          setSelectedExistingProductId(""); // 모달 닫을 때 상품 선택 초기화
-          setExistingMemberSearch(""); // 모달 닫을 때 검색어 초기화
-          setExistingMemberAddons([]); // 부가상품 초기화
+          setMembershipModalAddons([]); // 모달 닫을 때 초기화
         }
       }}>
-        <DialogContent className="bg-white max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-white max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>기존회원 매출등록</DialogTitle>
-            <DialogDescription className="sr-only">기존 회원의 매출을 등록합니다</DialogDescription>
+            <DialogTitle>회원권 추가 - {selectedMember?.name}</DialogTitle>
+            <DialogDescription className="sr-only">회원권을 추가합니다</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
-
-            {/* 회원 선택 */}
+          <div className="grid gap-4 py-4">
+            {/* 1. 회원권 섹션 */}
             <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">회원 선택</h3>
-              <div className="space-y-2">
-                <Label className="text-[#0F4C5C]">회원 <span className="text-red-500">*</span></Label>
-                <Input
-                  value={existingMemberSearch}
-                  onChange={(e) => setExistingMemberSearch(e.target.value)}
-                  placeholder="회원 이름 또는 전화번호 검색..."
-                  className="mb-2"
-                />
-                <Select
-                  value={existingSalesForm.member_id}
-                  onValueChange={(v) => {
-                    const selectedMember = members.find(m => m.id === v);
-                    if (selectedMember) {
-                      setSelectedMember(selectedMember);
-                      setExistingSalesForm({
-                        ...existingSalesForm,
-                        member_id: v,
-                        member_name: selectedMember.name || "",
-                        member_phone: selectedMember.phone || "",
-                        birth_date: selectedMember.birth_date || "",
-                        gender: selectedMember.gender || "",
-                        exercise_goal: selectedMember.exercise_goal || "",
-                        weight: selectedMember.weight?.toString() || "",
-                        body_fat_mass: selectedMember.body_fat_mass?.toString() || "",
-                        skeletal_muscle_mass: selectedMember.skeletal_muscle_mass?.toString() || "",
-                        trainer_id: selectedMember.trainer_id || ""
-                      });
-                    } else {
-                      setExistingSalesForm({
-                        ...existingSalesForm,
-                        member_id: v
-                      });
-                    }
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="회원 선택" /></SelectTrigger>
-                  <SelectContent className="bg-white max-h-[200px]">
-                    {members
-                      .filter(member => {
-                        if (!existingMemberSearch.trim()) return true;
-                        const searchLower = existingMemberSearch.toLowerCase();
-                        return (
-                          member.name?.toLowerCase().includes(searchLower) ||
-                          member.phone?.includes(existingMemberSearch)
-                        );
-                      })
-                      .map(member => (
-                        <SelectItem key={member.id} value={member.id}>
-                          {member.name} ({member.phone})
-                          {member.activeMembership && ` - ${member.activeMembership.name}`}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 등록 타입 선택 */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">등록 타입</h3>
-              <div className="space-y-2">
-                <Label className="text-[#0F4C5C]">등록 타입 <span className="text-red-500">*</span></Label>
-                <Select
-                  value={existingSalesForm.registration_type}
-                  onValueChange={(v) => setExistingSalesForm({...existingSalesForm, registration_type: v})}
-                >
-                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="리뉴">리뉴 (회원권 갱신)</SelectItem>
-                    <SelectItem value="기간변경">기간변경</SelectItem>
-                    <SelectItem value="부가상품">부가상품 (새 회원권 추가)</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="font-semibold text-sm text-gray-700">회원권</h3>
               </div>
 
-              {/* 선택된 회원의 현재 회원권 정보 표시 */}
-              {selectedMember && selectedMember.activeMembership && (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="text-sm font-semibold text-blue-900 mb-2">현재 활성 회원권</div>
-                  <div className="text-sm text-blue-700 space-y-1">
-                    <div>• 회원권: {selectedMember.activeMembership.name}</div>
-                    <div>• 잔여횟수: {selectedMember.activeMembership.total_sessions - selectedMember.activeMembership.used_sessions} / {selectedMember.activeMembership.total_sessions}회</div>
-                    {selectedMember.activeMembership.end_date && (
-                      <div>• 만료일: {new Date(selectedMember.activeMembership.end_date).toLocaleDateString('ko-KR')}</div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* 리뉴: 추가 횟수 입력 */}
-            {existingSalesForm.registration_type === "리뉴" && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">리뉴 정보</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[#0F4C5C]">추가 횟수 (회) <span className="text-red-500">*</span></Label>
-                    <Input
-                      type="number"
-                      value={existingSalesForm.additional_sessions}
-                      onChange={(e) => setExistingSalesForm({...existingSalesForm, additional_sessions: e.target.value})}
-                      placeholder="30"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[#0F4C5C]">연장 만료일</Label>
-                    <Input
-                      type="date"
-                      value={existingSalesForm.end_date}
-                      onChange={(e) => setExistingSalesForm({...existingSalesForm, end_date: e.target.value})}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 기간변경: 만료일만 입력 */}
-            {existingSalesForm.registration_type === "기간변경" && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">기간 정보</h3>
+              <div className="border rounded-lg p-4 bg-blue-50/50 space-y-3">
+                {/* 상품 선택 */}
                 <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">새 만료일 <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="date"
-                    value={existingSalesForm.end_date}
-                    onChange={(e) => setExistingSalesForm({...existingSalesForm, end_date: e.target.value})}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 부가상품: 새 회원권 정보 입력 */}
-            {existingSalesForm.registration_type === "부가상품" && (
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">부가상품 정보</h3>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">회원권명 <span className="text-red-500">*</span></Label>
+                  <Label className="text-xs">회원권명 <span className="text-red-500">*</span></Label>
                   <Select
-                    value={selectedExistingProductId}
+                    value={selectedProductId}
                     onValueChange={(productId) => {
                       const product = products.find(p => p.id === productId);
                       if (product) {
-                        setSelectedExistingProductId(productId);
-                        setExistingSalesForm({
-                          ...existingSalesForm,
-                          membership_name: product.name,
-                          total_sessions: product.default_sessions?.toString() || "0",
+                        setSelectedProductId(productId);
+
+                        // PT/PPT/GPT 타입인 경우 총 유효일수 계산
+                        const isPTTypeProduct = product.membership_type === 'PT' || product.membership_type === 'PPT' || product.membership_type === 'GPT';
+                        let calculatedEndDate = "";
+
+                        if (isPTTypeProduct && product.default_sessions && product.days_per_session) {
+                          const totalDays = product.default_sessions * product.days_per_session;
+                          const startDate = new Date(membershipForm.start_date);
+                          const endDate = new Date(startDate);
+                          endDate.setDate(startDate.getDate() + totalDays);
+                          calculatedEndDate = endDate.toISOString().split('T')[0];
+                        } else if (product.validity_months) {
+                          // 기타 타입: 유효기간(개월) 사용
+                          const startDate = new Date(membershipForm.start_date);
+                          const endDate = new Date(startDate);
+                          endDate.setMonth(startDate.getMonth() + product.validity_months);
+                          calculatedEndDate = endDate.toISOString().split('T')[0];
+                        }
+
+                        setMembershipForm({
+                          ...membershipForm,
+                          name: product.name,
+                          total_sessions: product.default_sessions?.toString() || "",
                           amount: product.default_price.toString(),
-                          total_amount: product.default_price.toString()
+                          end_date: calculatedEndDate
                         });
                       }
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9">
                       <SelectValue placeholder="상품을 선택하세요" />
                     </SelectTrigger>
                     <SelectContent className="bg-white max-h-[200px]">
@@ -3673,144 +3367,66 @@ function AdminMembersPageContent() {
                       )}
                     </SelectContent>
                   </Select>
-
-                  {/* 선택된 상품 정보 표시 */}
-                  {selectedExistingProductId && (
-                    <div className="bg-blue-50 p-3 rounded text-sm">
-                      <div className="text-blue-900 font-medium mb-1">선택한 상품 정보</div>
-                      <div className="text-blue-700">
-                        기본 횟수: {existingSalesForm.total_sessions}회 / 기본 가격: {parseInt(existingSalesForm.amount).toLocaleString()}원
-                      </div>
-                      <div className="text-xs text-blue-600 mt-1">
-                        * 필요시 횟수와 금액을 수정할 수 있습니다.
-                      </div>
-                    </div>
-                  )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[#0F4C5C]">총 횟수 (회) <span className="text-red-500">*</span></Label>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">총 횟수</Label>
                     <Input
                       type="number"
-                      value={existingSalesForm.total_sessions}
-                      onChange={(e) => setExistingSalesForm({...existingSalesForm, total_sessions: e.target.value})}
+                      value={membershipForm.total_sessions}
+                      onChange={(e) => setMembershipForm({...membershipForm, total_sessions: e.target.value})}
                       placeholder="30"
+                      className="h-9"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[#0F4C5C]">시작일</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">판매금액 (원) <span className="text-red-500">*</span></Label>
+                    <Input
+                      type="number"
+                      value={membershipForm.amount}
+                      onChange={(e) => setMembershipForm({...membershipForm, amount: e.target.value})}
+                      placeholder="1000000"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">결제방법</Label>
+                    <Select value={membershipForm.method} onValueChange={(v) => setMembershipForm({...membershipForm, method: v})}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="card">카드</SelectItem>
+                        <SelectItem value="cash">현금</SelectItem>
+                        <SelectItem value="transfer">계좌이체</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">시작일</Label>
                     <Input
                       type="date"
-                      value={existingSalesForm.start_date}
-                      onChange={(e) => setExistingSalesForm({...existingSalesForm, start_date: e.target.value})}
+                      value={membershipForm.start_date}
+                      onChange={(e) => setMembershipForm({...membershipForm, start_date: e.target.value})}
+                      className="h-9"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[#0F4C5C]">만료일</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs">종료일</Label>
                     <Input
                       type="date"
-                      value={existingSalesForm.end_date}
-                      onChange={(e) => setExistingSalesForm({...existingSalesForm, end_date: e.target.value})}
+                      value={membershipForm.end_date}
+                      onChange={(e) => setMembershipForm({...membershipForm, end_date: e.target.value})}
+                      className="h-9"
                     />
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* 결제 정보 */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">결제 정보</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">회원권 유형 <span className="text-red-500">*</span></Label>
-                  <Select value={existingSalesForm.membership_type} onValueChange={(v) => setExistingSalesForm({...existingSalesForm, membership_type: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="헬스">헬스</SelectItem>
-                      <SelectItem value="필라테스">필라테스</SelectItem>
-                      <SelectItem value="PT">PT</SelectItem>
-                      <SelectItem value="PPT">PPT</SelectItem>
-                      <SelectItem value="GPT">GPT</SelectItem>
-                      <SelectItem value="골프">골프</SelectItem>
-                      <SelectItem value="GX">GX</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">결제 방법 <span className="text-red-500">*</span></Label>
-                  <Select value={existingSalesForm.method} onValueChange={(v) => setExistingSalesForm({...existingSalesForm, method: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="card">카드</SelectItem>
-                      <SelectItem value="cash">현금</SelectItem>
-                      <SelectItem value="transfer">계좌이체</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">이번 결제 금액 (원) <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="number"
-                    value={existingSalesForm.amount}
-                    onChange={(e) => setExistingSalesForm({...existingSalesForm, amount: e.target.value})}
-                    placeholder="1000000"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">전체 금액 (원)</Label>
-                  <Input
-                    type="number"
-                    value={existingSalesForm.total_amount}
-                    onChange={(e) => setExistingSalesForm({...existingSalesForm, total_amount: e.target.value})}
-                    placeholder="분할 시 전체 금액"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">분할 횟수</Label>
-                  <Input
-                    type="number"
-                    value={existingSalesForm.installment_count}
-                    onChange={(e) => setExistingSalesForm({...existingSalesForm, installment_count: e.target.value})}
-                    placeholder="1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">현재 회차</Label>
-                  <Input
-                    type="number"
-                    value={existingSalesForm.installment_current}
-                    onChange={(e) => setExistingSalesForm({...existingSalesForm, installment_current: e.target.value})}
-                    placeholder="1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">방문루트</Label>
-                  <Input
-                    value={existingSalesForm.visit_route}
-                    onChange={(e) => setExistingSalesForm({...existingSalesForm, visit_route: e.target.value})}
-                    placeholder="지인추천, 온라인 등"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[#0F4C5C]">메모</Label>
-                <Textarea
-                  value={existingSalesForm.memo}
-                  onChange={(e) => setExistingSalesForm({...existingSalesForm, memo: e.target.value})}
-                  placeholder="특이사항이나 메모를 입력하세요"
-                  rows={3}
-                />
               </div>
             </div>
 
-            {/* 부가상품 추가 섹션 */}
+            {/* 2. 부가상품 추가 섹션 */}
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b pb-2">
                 <h3 className="font-semibold text-sm text-gray-700">부가상품 추가 (선택)</h3>
@@ -3818,7 +3434,7 @@ function AdminMembersPageContent() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={addExistingMemberAddon}
+                  onClick={addMembershipModalAddon}
                   className="text-xs"
                 >
                   <Plus className="w-3 h-3 mr-1" />
@@ -3826,7 +3442,7 @@ function AdminMembersPageContent() {
                 </Button>
               </div>
 
-              {existingMemberAddons.map((addon, index) => (
+              {membershipModalAddons.map((addon, index) => (
                 <div key={index} className="border rounded-lg p-4 bg-gray-50 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-700">부가상품 #{index + 1}</span>
@@ -3834,7 +3450,7 @@ function AdminMembersPageContent() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeExistingMemberAddon(index)}
+                      onClick={() => removeMembershipModalAddon(index)}
                       className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -3846,7 +3462,7 @@ function AdminMembersPageContent() {
                       <Label className="text-xs">상품 유형 *</Label>
                       <Select
                         value={addon.addon_type}
-                        onValueChange={(v) => updateExistingMemberAddon(index, "addon_type", v)}
+                        onValueChange={(v) => updateMembershipModalAddon(index, "addon_type", v)}
                       >
                         <SelectTrigger className="h-9">
                           <SelectValue placeholder="선택" />
@@ -3866,7 +3482,7 @@ function AdminMembersPageContent() {
                         <Label className="text-xs">상품명 *</Label>
                         <Input
                           value={addon.custom_addon_name}
-                          onChange={(e) => updateExistingMemberAddon(index, "custom_addon_name", e.target.value)}
+                          onChange={(e) => updateMembershipModalAddon(index, "custom_addon_name", e.target.value)}
                           placeholder="상품명"
                           className="h-9"
                         />
@@ -3878,7 +3494,7 @@ function AdminMembersPageContent() {
                         <Label className="text-xs">락커 번호</Label>
                         <Input
                           value={addon.locker_number}
-                          onChange={(e) => updateExistingMemberAddon(index, "locker_number", e.target.value)}
+                          onChange={(e) => updateMembershipModalAddon(index, "locker_number", e.target.value)}
                           placeholder="예: 15"
                           className="h-9"
                         />
@@ -3890,7 +3506,7 @@ function AdminMembersPageContent() {
                       <Input
                         type="number"
                         value={addon.amount}
-                        onChange={(e) => updateExistingMemberAddon(index, "amount", e.target.value)}
+                        onChange={(e) => updateMembershipModalAddon(index, "amount", e.target.value)}
                         placeholder="50000"
                         className="h-9"
                       />
@@ -3900,7 +3516,7 @@ function AdminMembersPageContent() {
                       <Label className="text-xs">결제방법</Label>
                       <Select
                         value={addon.method}
-                        onValueChange={(v) => updateExistingMemberAddon(index, "method", v)}
+                        onValueChange={(v) => updateMembershipModalAddon(index, "method", v)}
                       >
                         <SelectTrigger className="h-9">
                           <SelectValue />
@@ -3914,18 +3530,28 @@ function AdminMembersPageContent() {
                     </div>
 
                     <div className="space-y-1">
+                      <Label className="text-xs">시작일</Label>
+                      <Input
+                        type="date"
+                        value={addon.start_date}
+                        onChange={(e) => updateMembershipModalAddon(index, "start_date", e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
                       <Label className="text-xs">기간</Label>
                       <div className="flex gap-1">
                         <Input
                           type="number"
                           value={addon.duration}
-                          onChange={(e) => updateExistingMemberAddon(index, "duration", e.target.value)}
+                          onChange={(e) => updateMembershipModalAddon(index, "duration", e.target.value)}
                           placeholder="숫자"
                           className="h-9 flex-1"
                         />
                         <Select
                           value={addon.duration_type}
-                          onValueChange={(v) => updateExistingMemberAddon(index, "duration_type", v)}
+                          onValueChange={(v) => updateMembershipModalAddon(index, "duration_type", v)}
                         >
                           <SelectTrigger className="h-9 w-20">
                             <SelectValue />
@@ -3937,11 +3563,21 @@ function AdminMembersPageContent() {
                         </Select>
                       </div>
                     </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs">종료일 (자동계산)</Label>
+                      <Input
+                        type="date"
+                        value={addon.end_date}
+                        readOnly
+                        className="h-9 bg-gray-100"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
 
-              {existingMemberAddons.length === 0 && (
+              {membershipModalAddons.length === 0 && (
                 <p className="text-xs text-gray-400 text-center py-2">
                   락커, 운동복 등 부가상품을 함께 등록할 수 있습니다.
                 </p>
@@ -3949,583 +3585,79 @@ function AdminMembersPageContent() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleExistingSales} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
+            <Button variant="outline" onClick={() => setIsMembershipOpen(false)}>취소</Button>
+            <Button onClick={handleUpdateMembership} className="bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold" disabled={isLoading}>
               {isLoading ? "등록 중..." : "등록하기"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+      {/* 기존회원 매출등록 모달 */}
+      <ExistingSalesModal
+        isOpen={isExistingSalesOpen}
+        onClose={() => {
+          setIsExistingSalesOpen(false);
+          setSelectedExistingProductId("");
+          setExistingMemberSearch("");
+          setExistingMemberAddons([]);
+        }}
+        members={members}
+        products={products}
+        gymId={gymId || ""}
+        companyId={companyId || ""}
+        myStaffId={myStaffId}
+        onSuccess={() => {
+          if (gymId && companyId && myRole && myStaffId) {
+            fetchMembers(gymId, companyId, myRole, myStaffId);
+          }
+        }}
+      />
+
 
       {/* 부가상품 매출등록 모달 */}
-      <Dialog open={isAddonSalesOpen} onOpenChange={(open) => {
-        setIsAddonSalesOpen(open);
-        if (!open) setAddonMemberSearch(""); // 모달 닫힐 때 검색어 초기화
-      }}>
-        <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>부가상품 매출등록</DialogTitle>
-            <DialogDescription className="text-gray-500">기존 회원에게 부가상품을 판매합니다</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {/* 회원 선택 */}
-            <div className="space-y-2">
-              <Label>회원 선택 <span className="text-red-500">*</span></Label>
-              <Input
-                value={addonMemberSearch}
-                onChange={(e) => setAddonMemberSearch(e.target.value)}
-                placeholder="회원 이름 또는 전화번호 검색..."
-                className="mb-2"
-              />
-              <Select
-                value={addonSalesForm.member_id}
-                onValueChange={(v) => setAddonSalesForm({...addonSalesForm, member_id: v})}
-              >
-                <SelectTrigger><SelectValue placeholder="회원을 선택하세요" /></SelectTrigger>
-                <SelectContent className="bg-white max-h-[200px]">
-                  {members
-                    .filter(member => {
-                      if (!addonMemberSearch.trim()) return true;
-                      const searchLower = addonMemberSearch.toLowerCase();
-                      return (
-                        member.name?.toLowerCase().includes(searchLower) ||
-                        member.phone?.includes(addonMemberSearch)
-                      );
-                    })
-                    .map(member => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.phone})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <AddonSalesModal
+        isOpen={isAddonSalesOpen}
+        onClose={() => setIsAddonSalesOpen(false)}
+        members={members}
+        gymId={gymId || ""}
+        companyId={companyId || ""}
+        onSuccess={() => {
+          if (gymId && companyId && myRole && myStaffId) {
+            fetchMembers(gymId, companyId, myRole, myStaffId);
+          }
+        }}
+      />
 
-            {/* 부가상품 유형 */}
-            <div className="space-y-2">
-              <Label>부가상품 유형 <span className="text-red-500">*</span></Label>
-              <Select
-                value={addonSalesForm.addon_type}
-                onValueChange={(v) => setAddonSalesForm({...addonSalesForm, addon_type: v, custom_addon_name: "", locker_number: ""})}
-              >
-                <SelectTrigger><SelectValue placeholder="유형 선택" /></SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="개인락커">개인락커</SelectItem>
-                  <SelectItem value="물품락커">물품락커</SelectItem>
-                  <SelectItem value="운동복">운동복</SelectItem>
-                  <SelectItem value="양말">양말</SelectItem>
-                  <SelectItem value="기타">기타</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 락커 번호 (락커 선택 시) */}
-            {(addonSalesForm.addon_type === "개인락커" || addonSalesForm.addon_type === "물품락커") && (
-              <div className="space-y-2">
-                <Label>락커 번호</Label>
-                <Input
-                  value={addonSalesForm.locker_number}
-                  onChange={(e) => setAddonSalesForm({...addonSalesForm, locker_number: e.target.value})}
-                  placeholder="예: 15"
-                />
-              </div>
-            )}
-
-            {/* 기타 선택 시 직접 입력 */}
-            {addonSalesForm.addon_type === "기타" && (
-              <div className="space-y-2">
-                <Label>상품명 직접 입력 <span className="text-red-500">*</span></Label>
-                <Input
-                  value={addonSalesForm.custom_addon_name}
-                  onChange={(e) => setAddonSalesForm({...addonSalesForm, custom_addon_name: e.target.value})}
-                  placeholder="상품명을 입력하세요"
-                />
-              </div>
-            )}
-
-            {/* 금액 */}
-            <div className="space-y-2">
-              <Label>금액 <span className="text-red-500">*</span></Label>
-              <Input
-                type="number"
-                value={addonSalesForm.amount}
-                onChange={(e) => setAddonSalesForm({...addonSalesForm, amount: e.target.value})}
-                placeholder="50000"
-              />
-            </div>
-
-            {/* 결제방법 */}
-            <div className="space-y-2">
-              <Label>결제방법</Label>
-              <Select
-                value={addonSalesForm.method}
-                onValueChange={(v) => setAddonSalesForm({...addonSalesForm, method: v})}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="card">카드</SelectItem>
-                  <SelectItem value="cash">현금</SelectItem>
-                  <SelectItem value="transfer">계좌이체</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 기간 (개월 또는 일) */}
-            <div className="space-y-2">
-              <Label>기간</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={addonSalesForm.duration}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    let newEndDate = "";
-                    if (value && addonSalesForm.start_date) {
-                      const num = parseInt(value);
-                      const startDate = new Date(addonSalesForm.start_date);
-                      const endDate = new Date(startDate);
-                      if (addonSalesForm.duration_type === "months") {
-                        endDate.setMonth(endDate.getMonth() + num);
-                        endDate.setDate(endDate.getDate() - 1);
-                      } else {
-                        endDate.setDate(endDate.getDate() + num - 1);
-                      }
-                      newEndDate = endDate.toISOString().split('T')[0];
-                    }
-                    setAddonSalesForm({...addonSalesForm, duration: value, end_date: newEndDate});
-                  }}
-                  placeholder="숫자 입력"
-                  className="flex-1"
-                />
-                <Select
-                  value={addonSalesForm.duration_type}
-                  onValueChange={(v: "months" | "days") => {
-                    // 타입 변경 시 종료일 재계산
-                    let newEndDate = "";
-                    if (addonSalesForm.duration && addonSalesForm.start_date) {
-                      const num = parseInt(addonSalesForm.duration);
-                      const startDate = new Date(addonSalesForm.start_date);
-                      const endDate = new Date(startDate);
-                      if (v === "months") {
-                        endDate.setMonth(endDate.getMonth() + num);
-                        endDate.setDate(endDate.getDate() - 1);
-                      } else {
-                        endDate.setDate(endDate.getDate() + num - 1);
-                      }
-                      newEndDate = endDate.toISOString().split('T')[0];
-                    }
-                    setAddonSalesForm({...addonSalesForm, duration_type: v, end_date: newEndDate});
-                  }}
-                >
-                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="months">개월</SelectItem>
-                    <SelectItem value="days">일</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 결제일 */}
-            <div className="space-y-2">
-              <Label>결제일</Label>
-              <Input
-                type="date"
-                value={addonSalesForm.payment_date}
-                onChange={(e) => setAddonSalesForm({...addonSalesForm, payment_date: e.target.value})}
-              />
-            </div>
-
-            {/* 시작일 / 종료일 */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>시작일</Label>
-                <Input
-                  type="date"
-                  value={addonSalesForm.start_date}
-                  onChange={(e) => {
-                    // 시작일 변경 시 종료일도 재계산
-                    const newStartDate = e.target.value;
-                    let newEndDate = addonSalesForm.end_date;
-                    if (addonSalesForm.duration && newStartDate) {
-                      const num = parseInt(addonSalesForm.duration);
-                      const startDate = new Date(newStartDate);
-                      const endDate = new Date(startDate);
-                      if (addonSalesForm.duration_type === "months") {
-                        endDate.setMonth(endDate.getMonth() + num);
-                        endDate.setDate(endDate.getDate() - 1);
-                      } else {
-                        endDate.setDate(endDate.getDate() + num - 1);
-                      }
-                      newEndDate = endDate.toISOString().split('T')[0];
-                    }
-                    setAddonSalesForm({...addonSalesForm, start_date: newStartDate, end_date: newEndDate});
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>종료일</Label>
-                <Input
-                  type="date"
-                  value={addonSalesForm.end_date}
-                  onChange={(e) => setAddonSalesForm({...addonSalesForm, end_date: e.target.value})}
-                />
-              </div>
-            </div>
-
-            {/* 메모 */}
-            <div className="space-y-2">
-              <Label>메모</Label>
-              <Input
-                value={addonSalesForm.memo}
-                onChange={(e) => setAddonSalesForm({...addonSalesForm, memo: e.target.value})}
-                placeholder="추가 메모"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddonSalesOpen(false)}>취소</Button>
-            <Button onClick={handleAddonSales} className="bg-purple-600 hover:bg-purple-700 text-white" disabled={isLoading}>
-              {isLoading ? "등록 중..." : "등록하기"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* 간단한 회원 등록 모달 (매출 없이) */}
-      <Dialog open={isSimpleMemberCreateOpen} onOpenChange={setIsSimpleMemberCreateOpen}>
-        <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>수기회원등록</DialogTitle>
-            <DialogDescription className="sr-only">회원 정보를 등록합니다</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-4">
-
-            {/* 필수 정보 */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">필수 정보</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">회원명 <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={simpleMemberForm.name}
-                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, name: e.target.value})}
-                    placeholder="홍길동"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">연락처 <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={simpleMemberForm.phone}
-                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, phone: formatPhoneNumberOnChange(e.target.value)})}
-                    placeholder="010-0000-0000"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[#0F4C5C]">담당 트레이너</Label>
-                <Select
-                  value={simpleMemberForm.trainer_id}
-                  onValueChange={(v) => setSimpleMemberForm({...simpleMemberForm, trainer_id: v})}
-                >
-                  <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                  <SelectContent className="bg-white max-h-[200px]">
-                    {staffList.map(staff => (
-                      <SelectItem key={staff.id} value={staff.id}>
-                        {staff.name} ({staff.job_title})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 기본 정보 (선택) */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">기본 정보 (선택)</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">생년월일</Label>
-                  <Input
-                    type="date"
-                    value={simpleMemberForm.birth_date}
-                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, birth_date: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">성별</Label>
-                  <Select value={simpleMemberForm.gender} onValueChange={(v) => setSimpleMemberForm({...simpleMemberForm, gender: v})}>
-                    <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="male">남성</SelectItem>
-                      <SelectItem value="female">여성</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[#0F4C5C]">운동 목표</Label>
-                <Input
-                  value={simpleMemberForm.exercise_goal}
-                  onChange={(e) => setSimpleMemberForm({...simpleMemberForm, exercise_goal: e.target.value})}
-                  placeholder="체중 감량, 근력 강화 등"
-                />
-              </div>
-            </div>
-
-            {/* 인바디 정보 (선택) */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">인바디 정보 (선택)</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">체중 (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={simpleMemberForm.weight}
-                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, weight: e.target.value})}
-                    placeholder="70.0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">체지방량 (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={simpleMemberForm.body_fat_mass}
-                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, body_fat_mass: e.target.value})}
-                    placeholder="15.0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#0F4C5C]">골격근량 (kg)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={simpleMemberForm.skeletal_muscle_mass}
-                    onChange={(e) => setSimpleMemberForm({...simpleMemberForm, skeletal_muscle_mass: e.target.value})}
-                    placeholder="30.0"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 회원권 정보 (선택) */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">회원권 정보 (선택)</h3>
-
-              <div className="space-y-2">
-                <Label className="text-[#0F4C5C]">상품 선택</Label>
-                <Select
-                  value={selectedSimpleProductId || "none"}
-                  onValueChange={(productId) => {
-                    if (productId === "none") {
-                      setSelectedSimpleProductId("");
-                      setSimpleMemberForm({
-                        ...simpleMemberForm,
-                        membership_product_id: "",
-                        membership_start_date: "",
-                        membership_end_date: ""
-                      });
-                    } else {
-                      const product = products.find(p => p.id === productId);
-                      if (product) {
-                        setSelectedSimpleProductId(productId);
-                        setSimpleMemberForm({
-                          ...simpleMemberForm,
-                          membership_product_id: productId
-                        });
-                      }
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="회원권을 선택하세요 (선택사항)" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white max-h-[200px]">
-                    <SelectItem value="none">선택 안 함</SelectItem>
-                    {products.filter(p => p.is_active).map(product => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name} ({product.membership_type})
-                        {product.default_sessions && ` - ${product.default_sessions}회`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedSimpleProductId && (
-                <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-[#0F4C5C]">시작일 <span className="text-red-500">*</span></Label>
-                      <Input
-                        type="date"
-                        value={simpleMemberForm.membership_start_date}
-                        onChange={(e) => setSimpleMemberForm({...simpleMemberForm, membership_start_date: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[#0F4C5C]">종료일 <span className="text-red-500">*</span></Label>
-                      <Input
-                        type="date"
-                        value={simpleMemberForm.membership_end_date}
-                        onChange={(e) => setSimpleMemberForm({...simpleMemberForm, membership_end_date: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  {/* 선택된 상품 정보 표시 */}
-                  {(() => {
-                    const selectedProduct = products.find(p => p.id === selectedSimpleProductId);
-                    return selectedProduct ? (
-                      <div className="bg-blue-50 p-3 rounded-md">
-                        <div className="text-sm text-blue-900 font-medium mb-1">선택한 회원권 정보</div>
-                        <div className="text-sm text-blue-700">
-                          회원권 유형: {selectedProduct.membership_type}
-                          {selectedProduct.default_sessions && ` | 기본 횟수: ${selectedProduct.default_sessions}회`}
-                          {selectedProduct.validity_months && ` | 유효기간: ${selectedProduct.validity_months}개월`}
-                        </div>
-                        <div className="text-xs text-blue-600 mt-1">
-                          * 회원권은 등록 후 회원 상세 정보에서 확인할 수 있습니다.
-                        </div>
-                      </div>
-                    ) : null;
-                  })()}
-                </>
-              )}
-            </div>
-
-            {/* 메모 */}
-            <div className="space-y-2">
-              <Label className="text-[#0F4C5C]">메모</Label>
-              <Textarea
-                value={simpleMemberForm.memo}
-                onChange={(e) => setSimpleMemberForm({...simpleMemberForm, memo: e.target.value})}
-                placeholder="추가 메모사항이 있으면 입력하세요"
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSimpleMemberCreateOpen(false)} disabled={isLoading}>
-              취소
-            </Button>
-            <Button onClick={handleSimpleMemberCreate} className="bg-green-600 hover:bg-green-700 text-white font-semibold" disabled={isLoading}>
-              {isLoading ? "등록 중..." : "등록하기"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SimpleMemberCreateModal
+        isOpen={isSimpleMemberCreateOpen}
+        onClose={() => setIsSimpleMemberCreateOpen(false)}
+        products={products}
+        staffList={staffList}
+        gymId={gymId || ""}
+        companyId={companyId || ""}
+        onSuccess={() => {
+          if (gymId && companyId && myRole && myStaffId) {
+            fetchMembers(gymId, companyId, myRole, myStaffId);
+          }
+        }}
+      />
 
       {/* Excel 가져오기 모달 */}
-      <Dialog open={isExcelImportOpen} onOpenChange={setIsExcelImportOpen}>
-        <DialogContent className="bg-white max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Excel 회원 데이터 가져오기</DialogTitle>
-            <DialogDescription className="sr-only">Excel 파일에서 회원 데이터를 가져옵니다</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {/* 안내 메시지 */}
-            <div className="bg-blue-50 p-4 rounded-md">
-              <h4 className="font-semibold text-blue-900 mb-2">Excel 파일 형식 안내</h4>
-              <p className="text-sm text-blue-700 mb-2">다음 컬럼명을 사용하여 Excel 파일을 준비해주세요:</p>
-              <div className="text-sm text-blue-800">
-                <ul className="list-disc list-inside space-y-1">
-                  <li><strong>회원명</strong> (필수)</li>
-                  <li><strong>연락처</strong> (필수)</li>
-                  <li><strong>생년월일</strong> (선택, 예: 1990-01-01)</li>
-                  <li><strong>성별</strong> (선택, "남성" 또는 "여성")</li>
-                  <li><strong>회원권이름</strong> (선택)</li>
-                  <li><strong>시작일</strong> (선택, 예: 2024-01-01)</li>
-                  <li><strong>종료일</strong> (선택, 예: 2024-12-31)</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* 파일 업로드 */}
-            <div className="space-y-2">
-              <Label className="text-[#0F4C5C]">Excel 파일 선택</Label>
-              <input
-                type="file"
-                accept=".xlsx, .xls"
-                onChange={handleExcelFileChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {excelFile && (
-                <p className="text-sm text-gray-600">선택된 파일: {excelFile.name}</p>
-              )}
-            </div>
-
-            {/* 미리보기 테이블 */}
-            {parsedExcelData.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-semibold text-gray-900">데이터 미리보기 ({parsedExcelData.length}명)</h4>
-                <div className="border rounded-md overflow-x-auto max-h-[400px] overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b sticky top-0">
-                      <tr>
-                        <th className="px-3 py-2 text-left">회원명</th>
-                        <th className="px-3 py-2 text-left">연락처</th>
-                        <th className="px-3 py-2 text-left">생년월일</th>
-                        <th className="px-3 py-2 text-left">성별</th>
-                        <th className="px-3 py-2 text-left">회원권</th>
-                        <th className="px-3 py-2 text-left">시작일</th>
-                        <th className="px-3 py-2 text-left">종료일</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parsedExcelData.map((row, idx) => (
-                        <tr key={idx} className="border-b hover:bg-gray-50">
-                          <td className="px-3 py-2">{row.name || '-'}</td>
-                          <td className="px-3 py-2">{row.phone || '-'}</td>
-                          <td className="px-3 py-2">{row.birth_date || '-'}</td>
-                          <td className="px-3 py-2">
-                            {row.gender === 'male' ? '남성' : row.gender === 'female' ? '여성' : '-'}
-                          </td>
-                          <td className="px-3 py-2">{row.membership_name || '-'}</td>
-                          <td className="px-3 py-2">{row.membership_start_date || '-'}</td>
-                          <td className="px-3 py-2">{row.membership_end_date || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-gray-500">
-                  * 회원명과 연락처가 없는 행은 등록되지 않습니다.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsExcelImportOpen(false);
-                setExcelFile(null);
-                setParsedExcelData([]);
-              }}
-              disabled={isLoading}
-            >
-              취소
-            </Button>
-            <Button
-              onClick={handleBulkImport}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
-              disabled={isLoading || parsedExcelData.length === 0}
-            >
-              {isLoading ? "등록 중..." : `${parsedExcelData.length}명 일괄 등록`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ExcelImportModal
+        isOpen={isExcelImportOpen}
+        onClose={() => setIsExcelImportOpen(false)}
+        gymId={gymId || ""}
+        companyId={companyId || ""}
+        onSuccess={() => {
+          if (gymId && companyId && myRole && myStaffId) {
+            fetchMembers(gymId, companyId, myRole, myStaffId);
+          }
+        }}
+      />
     </div>
   );
 }

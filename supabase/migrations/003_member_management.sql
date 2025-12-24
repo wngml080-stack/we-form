@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS membership_products (
   -- 상품 정보
   name VARCHAR(100) NOT NULL,
   membership_type TEXT NOT NULL
-    CHECK (membership_type IN ('헬스', '필라테스', 'PT', 'PPT', 'GX', '골프', '하이록스', '러닝', '크로스핏', '기타')),
+    CHECK (membership_type IN ('헬스', '필라테스', 'PT', 'PPT', 'GPT', 'GX', '골프', '하이록스', '러닝', '크로스핏', '기타')),
 
   -- 기본값
   default_sessions INTEGER CHECK (default_sessions IS NULL OR default_sessions > 0),
