@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Plus } from "lucide-react";
 import { MonthlySubmissionBanner } from "@/components/MonthlySubmissionBanner";
 import { DailyStatsWidget } from "@/components/DailyStatsWidget";
@@ -12,11 +13,11 @@ import { StaffHeader } from "./components/StaffHeader";
 import { WelcomeSection } from "./components/WelcomeSection";
 import { SchedulerSection } from "./components/SchedulerSection";
 
-// Modals
-import { AddClassModal } from "./components/modals/AddClassModal";
-import { AddMemberModal } from "./components/modals/AddMemberModal";
-import { StatusChangeModal } from "./components/modals/StatusChangeModal";
-import { EditClassModal } from "./components/modals/EditClassModal";
+// Modals - 동적 import (사용자 액션 시에만 로드)
+const AddClassModal = dynamic(() => import("./components/modals/AddClassModal").then(mod => ({ default: mod.AddClassModal })), { ssr: false });
+const AddMemberModal = dynamic(() => import("./components/modals/AddMemberModal").then(mod => ({ default: mod.AddMemberModal })), { ssr: false });
+const StatusChangeModal = dynamic(() => import("./components/modals/StatusChangeModal").then(mod => ({ default: mod.StatusChangeModal })), { ssr: false });
+const EditClassModal = dynamic(() => import("./components/modals/EditClassModal").then(mod => ({ default: mod.EditClassModal })), { ssr: false });
 
 export default function StaffPage() {
   const {

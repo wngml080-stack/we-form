@@ -1,25 +1,29 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 // Custom Hook
 import { useAdminDashboardData } from "../hooks/useAdminDashboardData";
 
-// Components
+// Components - 필수 컴포넌트만 정적 import
 import { SystemAnnouncementBanner } from "./SystemAnnouncementBanner";
 import { QuickActions } from "./QuickActions";
 import { BannerWidget } from "./BannerWidget";
-import { PTStatsCard } from "./PTStatsCard";
-import { BranchAnnouncementsCard } from "./BranchAnnouncementsCard";
-import { TodaySchedulesCard } from "./TodaySchedulesCard";
-import { CompanyEventsCalendar } from "./CompanyEventsCalendar";
-import { RecentLogsSection } from "./RecentLogsSection";
 
-// Modals
-import { EventModal } from "./modals/EventModal";
-import { SystemAnnouncementModal } from "./modals/SystemAnnouncementModal";
-import { BranchAnnouncementModal } from "./modals/BranchAnnouncementModal";
-import { NewMemberModal } from "./modals/NewMemberModal";
-import { ExistingMemberModal } from "./modals/ExistingMemberModal";
-import { AddonModal } from "./modals/AddonModal";
+// Components - 지연 로드 가능한 컴포넌트 (로딩 후 표시)
+const PTStatsCard = dynamic(() => import("./PTStatsCard").then(mod => ({ default: mod.PTStatsCard })), { ssr: false });
+const BranchAnnouncementsCard = dynamic(() => import("./BranchAnnouncementsCard").then(mod => ({ default: mod.BranchAnnouncementsCard })), { ssr: false });
+const TodaySchedulesCard = dynamic(() => import("./TodaySchedulesCard").then(mod => ({ default: mod.TodaySchedulesCard })), { ssr: false });
+const CompanyEventsCalendar = dynamic(() => import("./CompanyEventsCalendar").then(mod => ({ default: mod.CompanyEventsCalendar })), { ssr: false });
+const RecentLogsSection = dynamic(() => import("./RecentLogsSection").then(mod => ({ default: mod.RecentLogsSection })), { ssr: false });
+
+// Modals - 동적 import (사용자 액션 시에만 로드)
+const EventModal = dynamic(() => import("./modals/EventModal").then(mod => ({ default: mod.EventModal })), { ssr: false });
+const SystemAnnouncementModal = dynamic(() => import("./modals/SystemAnnouncementModal").then(mod => ({ default: mod.SystemAnnouncementModal })), { ssr: false });
+const BranchAnnouncementModal = dynamic(() => import("./modals/BranchAnnouncementModal").then(mod => ({ default: mod.BranchAnnouncementModal })), { ssr: false });
+const NewMemberModal = dynamic(() => import("./modals/NewMemberModal").then(mod => ({ default: mod.NewMemberModal })), { ssr: false });
+const ExistingMemberModal = dynamic(() => import("./modals/ExistingMemberModal").then(mod => ({ default: mod.ExistingMemberModal })), { ssr: false });
+const AddonModal = dynamic(() => import("./modals/AddonModal").then(mod => ({ default: mod.AddonModal })), { ssr: false });
 
 interface AdminDashboardContentProps {
   // 서버에서 미리 가져온 사용자 이름 (LCP 최적화)
