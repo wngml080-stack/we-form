@@ -1,7 +1,7 @@
 # 0. Collaboration Guidelines (협업 수칙)
 #
 # - Critical Preservation:
-#   기존에 구현된 핵심 기능(인증, 지점 관리, 스케줄러 등)을 삭제하거나 변경할 때는
+#   기존에 구현된 핵심 기능(로그인, 지점 관리, 스케줄러 등)을 삭제하거나 변경할 때는
 #   반드시 사용자에게 사이드 이펙트(부작용)를 경고하고 동의를 구할 것.
 # - Proactive Suggestion:
 #   사용자의 요청보다 더 효율적이거나 안전한 아키텍처(보안, 확장성 고려)가 있다면 즉시 제안할 것.
@@ -12,11 +12,11 @@
 #   에러 발생 시, 막연한 추측보다 로그(console.log)를 추가하여
 #   원인을 파악하는 코드를 먼저 제안할 것.
 #
-# (아래부터는 프로젝트 규칙)
+# (아래부터는 기존 프로젝트 규칙)
 
 # Project: We:form (Sports Center ERP SaaS)
 
-Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 **ERP SaaS** 프로젝트이다.
+Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 **ERP SaaS** 프로젝트이다.  
 회원 관리, 강사 스케줄, 급여 정산, 외부 연동(n8n, 구글 시트 등)을 **한 곳에서** 관리하는 것이 핵심 목표다.
 
 ---
@@ -41,19 +41,14 @@ Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 *
 
 ## 2. Tech Stack (기술 스택)
 
-- **Framework**: Next.js 16+ (App Router)
+- **Framework**: Next.js 14+ (App Router)
 - **Language**: TypeScript
 - **Database**: Supabase (PostgreSQL)
-- **Auth**: Clerk (Google/Apple OAuth 지원)
-  - Webhook: `/api/webhooks/clerk` (사용자 동기화)
-- **State Management**:
-  - React Context (AuthContext, AdminFilterContext)
-  - SWR (데이터 페칭 일부)
+- **Auth**: Supabase Auth
+- **State**: TanStack Query (React Query) – 서버 상태 관리에 사용
 - **Scheduler**: FullCalendar (React)
   - Plugins: `dayGrid`, `timeGrid`, `interaction`, `list`
 - **UI Components**: Shadcn UI (Button, Card, Input, Label, Dialog 등)
-- **Data Table**: @tanstack/react-table
-- **Export**: xlsx (엑셀 내보내기)
 
 ---
 
@@ -64,71 +59,37 @@ Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 *
 - 모든 주요 도메인 테이블에는 **반드시 `gym_id` 컬럼이 있어야 한다.**
 - 모든 DB 조회/수정 쿼리에는 `where gym_id = ?` 필터가 들어가야 한다.
 - RLS 정책에서도 `gym_id` + `staffs` 테이블을 통해 권한을 강제한다.
-- 회사 단위 데이터는 `company_id`로 필터링한다.
 
 ### 3-2. 라우팅 규칙
 
-#### 인증/온보딩 라우트
-- `/sign-in` : Clerk 로그인 페이지
-- `/sign-up` : Clerk 회원가입 페이지
-- `/onboarding/*` : 신규 가입 후 온보딩 플로우
-  - `/onboarding/company` : 회사 정보 입력
-  - `/onboarding/staff` : 직원 정보 입력
-  - `/onboarding/pending` : 승인 대기 페이지
+- `/login` : 진입점(로그인 페이지)
+- `/staff/*` : 강사용 모바일 뷰
+  - 예: `/staff` (오늘의 스케줄 리스트), 향후 `/staff/profile`, `/staff/history` 등
+- `/admin/*` : 관리자용 데스크톱 대시보드
+  - 예: `/admin` (운영 현황 대시보드), `/admin/payroll`, `/admin/settings` 등
 
-#### 관리자 라우트 (`/admin/*`)
-- `/admin` : 대시보드 (통계, 일정, 공지사항)
-- `/admin/schedule` : 스케줄 관리 (FullCalendar)
-- `/admin/members` : 회원 관리
-- `/admin/staff` : 직원 관리
-- `/admin/attendance` : 출석 현황
-- `/admin/sales` : 매출 관리 (addon sales)
-- `/admin/salary` : 급여 관리
-- `/admin/branch` : 지점 관리
-- `/admin/hq` : 본사 관리 (company_admin, system_admin 전용)
-- `/admin/reports` : 스케줄 승인 보고서
-- `/admin/system` : 시스템 설정 (system_admin 전용)
-  - `/admin/system/[id]` : 회사 상세 관리
-  - `/admin/system/migrations` : 데이터 마이그레이션
-
-#### 직원 라우트 (`/staff/*`)
-- `/staff` : 직원 대시보드 (위젯 모음, 모바일 최적화)
-- `/staff/salary` : 급여 명세서 조회
-
-### 3-3. 역할(Role) 체계
-
-| Role | 설명 | 접근 범위 |
-|------|------|----------|
-| `system_admin` | 전체 시스템 관리자 | 모든 회사/지점 접근 |
-| `company_admin` | 회사 본사 관리자 | 소속 회사의 모든 지점 |
-| `admin` | 지점 관리자 | 소속 지점만 |
-| `staff` | 일반 직원/강사 | 본인 데이터만 |
-
-### 3-4. 급여 & 스케줄 관련 핵심 정책
+### 3-3. 급여 & 스케줄 관련 핵심 정책
 
 - **스케줄 수정 권한**
   - Staff(강사)는 **"현재 달(Current Month)"에 속한 자신의 스케줄만** 생성/수정할 수 있다.
   - 과거 달(지난 달 포함)의 스케줄 수정은 **Admin 승인/수정만 허용**한다.
-- **스케줄 상태(Status) 코드**
+- **상태(Status) 코드**
   - `completed` (녹색)       : 출석 완료
   - `no_show_deducted` (빨강): 노쇼(공제 대상)
   - `no_show` (회색)         : 단순 노쇼
   - `service` (파랑)         : 서비스 / 무료 수업
-- **월간 스케줄 리포트**
-  - `monthly_schedule_reports` 테이블로 월별 제출/승인 상태 관리
-  - 상태: `draft` → `submitted` → `approved` / `rejected`
+- **상태 설정/매핑**
+  - 상태 코드는 **테이블(`attendance_statuses`) + 설정 테이블(`salary_settings`)** 로 관리한다.
+  - 프론트엔드에 상태 로직을 하드코딩하지 말고, **DB 설정을 읽어서** 의미/색상/급여 규칙을 반영한다.
 
-### 3-5. DB 스키마 규칙
+### 3-4. DB 스키마 규칙
 
 - `staffs` 테이블:
   - `job_title` (직책), `employment_status` (`'재직'`, `'퇴사'`, `'가입대기'` 등), `phone`, `joined_at`, `email` 컬럼을 **반드시 관리**한다.
-  - `clerk_id` : Clerk 사용자 ID 연동
   - 신규 기능 추가 시 이 필드들을 기준으로 권한/승인/필터링 로직을 설계한다.
 - `gyms` 테이블:
   - `status` 컬럼으로 센터 승인 상태를 관리한다. (`'active'`, `'pending'` 등)
-  - `bep` (손익분기점) 컬럼으로 목표 매출 관리
-- `companies` 테이블:
-  - `status` 컬럼으로 회사 승인 상태 관리 (`'active'`, `'pending'`, `'suspended'`)
+  - 로그인/접근 제어 시 이 값을 함께 확인한다.
 
 ---
 
@@ -141,113 +102,44 @@ Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 *
 - **비즈니스 로직 하드코딩 금지**:
   - 급여 규칙, 상태 매핑, 권한 로직 등은 **DB의 설정 테이블**(예: `salary_settings`, `attendance_statuses`)로 관리한다.
 - **명시적 타입 사용**:
-  - TypeScript에서 `any` 사용은 최소화하고, 도메인 타입을 정의해 사용한다.
-  - 타입 정의 위치: `src/types/` 폴더
-    - `common.ts` : 공통 타입 (AppError, ApiResponse, StaffRole 등)
-    - `database.ts` : DB 타입 (Staff, Company, Gym, Member 등)
-    - `membership.ts` : 회원권 타입
-    - `salary.ts` : 급여 시스템 타입
+  - TypeScript에서 `any` 사용은 최소화하고, 도메인 타입(`ScheduleStatus`, `StaffRole` 등)을 정의해 사용한다.
 - **UX 친절성**:
   - 에러 메시지는 **한국어**로, 사용자가 이해하기 쉬운 문장으로 안내한다.
   - 로딩/저장 중 상태(스피너, "저장 중..." 텍스트 등)를 명확히 표시한다.
 
 ### 4-1. 보안 규칙
 
-- 인증 시:
-  - Clerk 미들웨어(`src/middleware.ts`)로 보호된 라우트 관리
-  - `staffs.employment_status === '퇴사'` 이면 접근 제한
-  - `gyms.status === 'pending'` 인 센터 소속 직원은 "가입 승인 대기" 안내
+- 로그인 시:
+  - `staffs.employment_status === '퇴사'` 이면 즉시 로그아웃 처리하고, 이용 제한 안내 메시지를 보여준다.
+  - `gyms.status === 'pending'` 인 센터 소속 직원도 로그인 직후 세션을 종료하고, "가입 승인 대기" 안내를 보여준다.
 - 직원 생성/가입 관련 API:
   - `SUPABASE_SERVICE_ROLE_KEY` (Service Role)로 생성한 **서버 전용 Supabase 클라이언트**만 사용한다.
   - 클라이언트(브라우저)에서는 절대 Service Role 키를 사용하지 않는다.
 
-### 4-2. Supabase 클라이언트 사용 규칙
-
-- **클라이언트 사이드**: `src/lib/supabase/client.ts`의 싱글톤 인스턴스 사용
-- **서버 사이드 (API Route)**: `src/lib/supabase/server.ts` 사용
-- **Admin 작업 (서버 전용)**: `src/lib/supabase/admin.ts` 사용
-
 ---
 
-## 5. Context & State Management
-
-### 5-1. AuthContext (`src/contexts/AuthContext.tsx`)
-
-로그인한 사용자 정보 및 권한 관리:
-- `user`: UserData (ID, 이름, 이메일, 역할, 회사, 지점)
-- `isApproved`: 승인 여부
-- `companyName`, `gymName`: 소속 정보
-- `gyms`, `companies`: 드롭다운 데이터
-- `refetch`: 데이터 새로고침
-- 캐싱: 5분 TTL
-
-### 5-2. AdminFilterContext (`src/contexts/AdminFilterContext.tsx`)
-
-관리자 페이지 필터 상태 관리:
-- `selectedCompanyId`, `selectedGymId`, `selectedStaffId`
-- `setCompany`, `setGym`, `setStaff`: 필터 변경 함수
-- `gyms`, `staffs`, `companies`: 필터 옵션
-- 메모리 캐시로 성능 최적화
-
----
-
-## 6. API Structure
-
-### 6-1. 인증/온보딩 API (`/api/auth/*`, `/api/onboarding/*`)
-- `POST /api/auth/find-company` : 회사 찾기
-- `POST /api/auth/signup` : 회원가입
-- `POST /api/onboarding/company` : 회사 온보딩
-- `POST /api/onboarding/staff` : 직원 온보딩
-
-### 6-2. 관리자 API (`/api/admin/*`)
-- `/api/admin/dashboard/stats` : 대시보드 통계
-- `/api/admin/filter/*` : 드롭다운 필터 데이터
-- `/api/admin/members` : 회원 CRUD
-- `/api/admin/staffs` : 직원 조회/필터
-- `/api/admin/create-staff` : 직원 생성
-- `/api/admin/create-branch` : 지점 생성
-- `/api/admin/update-branch` : 지점 수정
-- `/api/admin/hq/*` : 본사 관리 API
-- `/api/admin/schedule/*` : 스케줄 관리 API
-- `/api/admin/system/*` : 시스템 관리 API (system_admin 전용)
-
-### 6-3. 스케줄/출석 API
-- `/api/schedule/[id]` : 스케줄 CRUD
-- `/api/schedule/submit` : 스케줄 제출
-- `/api/schedule/approve` : 스케줄 승인
-- `/api/attendance/records` : 출석 기록
-
-### 6-4. 급여 API
-- `/api/salary` : 급여 조회/생성
-- `/api/salary/[id]` : 급여 상세
-
-### 6-5. Webhook API
-- `/api/webhooks/clerk` : Clerk 사용자 동기화
-
----
-
-## 7. AI 사용 정책 (Cursor / AI Agent Guideline)
+## 5. AI 사용 정책 (Cursor / AI Agent Guideline)
 
 - 사용자의 **역할/권한 규칙(강사/관리자)** 을 항상 존중하는 방향으로 제안할 것.
-- Supabase, Shadcn, FullCalendar, Clerk 등 **공식 가이드**와 최대한 일치하게 설정/예제를 구성할 것.
+- Supabase, Shadcn, FullCalendar 등 **공식 가이드**와 최대한 일치하게 설정/예제를 구성할 것.
 - 사용자에게 `pnpm run dev` 같은 서버 실행 명령은 **직접 실행하도록 안내만** 하고, 도구로는 실행하지 않는다.
 - 한국어를 기본 응답 언어로 사용하고, 비개발자도 이해할 수 있게 **쉬운 설명**을 우선한다.
 
 ---
 
-## 8. n8n & FullCalendar 연동 규칙
+## 6. n8n & FullCalendar 연동 규칙
 
-### 8-1. n8n 연동 규칙
+### 6-1. n8n 연동 규칙
 
-- 클라이언트(브라우저)에서 n8n으로 직접 요청하지 않는다.
+- 클라이언트(브라우저)에서 n8n으로 직접 요청하지 않는다.  
   CORS 및 보안 문제 방지를 위해 반드시 `src/app/api/n8n/route.ts` 를 경유하는 **Proxy 패턴**으로 통신한다.
 - n8n Webhook 주소는 코드에 하드코딩하지 않고, `.env.local` 의 `N8N_WEBHOOK_URL` 환경 변수를 사용한다.
 - n8n 연동 실패 시:
   - 콘솔에만 로그를 남기고, 사용자 UX는 최대한 방해하지 않는다(특히 강사 앱에서 수업 등록 시).
 
-### 8-2. FullCalendar 규칙
+### 6-2. FullCalendar 규칙
 
-- **한국어 설정 필수**:
+- **한국어 설정 필수**:  
   - `koLocale` 을 사용해 캘린더 언어를 한국어로 설정한다.
 - **번역/자동 번역 오류 방지**:
   - FullCalendar 최상위 컨테이너에 `notranslate` 클래스를 부여해, 브라우저/번역 플러그인의 오작동을 방지한다.
@@ -255,61 +147,9 @@ Sports center(헬스장/필라테스/센터 등) 운영 전반을 관리하는 *
   - 기본 뷰는 항상 `listWeek` 로 설정한다 (주간 리스트 뷰).
   - 우측 하단에 **FAB(Floating Action Button)** 을 두고, 이를 통해 수업/일정 추가 모달을 연다.
 - **데이터 포맷 규칙**:
-  - 외부 전송(n8n, 구글 시트 등) 시 강사명/지점명 등 식별자는
-    `지점명_이름` 형태로 가공해서 전송한다. (예: `강남_김코치`, `판교_이트레이너`)
-  - 상태(status) 코드는 DB에서 관리하는 코드값을 그대로 사용한다.
+  - 외부 전송(n8n, 구글 시트 등) 시 강사명/지점명 등 식별자는  
+    `지점명_이름` 형태로 가공해서 전송한다. (예: `강남_김코치`, `판교_이트레이너`) — 강사명 전송 시 이 포맷을 반드시 유지한다.
+  - 상태(status) 코드는 DB에서 관리하는 코드값(`completed`, `no_show_deducted` 등)을 그대로 사용하고,  
+    n8n/시트 쪽에서 이 코드에 맞춰 후처리하도록 설계한다.
 
----
 
-## 9. 환경 변수
-
-필수 환경 변수 (`.env.local`):
-```
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-
-# Clerk
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-CLERK_SECRET_KEY=
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-CLERK_WEBHOOK_SECRET=
-
-# n8n (선택)
-N8N_WEBHOOK_URL=
-```
-
----
-
-## 10. 파일 구조 요약
-
-```
-src/
-├── app/
-│   ├── admin/           # 관리자 페이지
-│   ├── staff/           # 직원 페이지 (모바일)
-│   ├── sign-in/         # Clerk 로그인
-│   ├── sign-up/         # Clerk 회원가입
-│   ├── onboarding/      # 온보딩 플로우
-│   ├── api/             # API 라우트
-│   └── ...
-├── components/
-│   ├── ui/              # Shadcn UI 컴포넌트
-│   └── ...              # 도메인 컴포넌트
-├── contexts/
-│   ├── AuthContext.tsx
-│   └── AdminFilterContext.tsx
-├── lib/
-│   ├── supabase/        # Supabase 클라이언트
-│   ├── api/             # API 헬퍼
-│   ├── hooks/           # 커스텀 훅
-│   └── utils/           # 유틸리티
-├── types/
-│   ├── common.ts
-│   ├── database.ts
-│   ├── membership.ts
-│   └── salary.ts
-└── middleware.ts        # Clerk 인증 미들웨어
-```
