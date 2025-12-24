@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-icons",
       "date-fns",
     ],
+    // Critical CSS 인라인 - 렌더 차단 CSS 제거
+    optimizeCss: true,
   },
 };
 
