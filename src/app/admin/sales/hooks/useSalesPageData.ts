@@ -97,10 +97,10 @@ export function useSalesPageData({
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  // 필터
+  // 필터 - 기본값: 최근 3개월 (회원 등록 시 매출이 바로 보이도록)
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
-    return formatDate(new Date(date.getFullYear(), date.getMonth(), 1));
+    return formatDate(new Date(date.getFullYear(), date.getMonth() - 2, 1));
   });
   const [endDate, setEndDate] = useState(() => {
     const date = new Date();
@@ -109,7 +109,7 @@ export function useSalesPageData({
   const [methodFilter, setMethodFilter] = useState("all");
   const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState("all");
-  const [quickSelect, setQuickSelect] = useState<string>("month");
+  const [quickSelect, setQuickSelect] = useState<string>("3months");
 
   // 통계
   const [stats, setStats] = useState<Stats>({
@@ -168,29 +168,27 @@ export function useSalesPageData({
   }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
 
   const fetchPayments = async (targetGymId: string, targetCompanyId: string) => {
-    let query = supabase
-      .from("member_payments")
-      .select(`*, members (name, phone), member_memberships (name)`)
-      .eq("gym_id", targetGymId)
-      .eq("company_id", targetCompanyId);
+    try {
+      // API를 통해 매출 조회 (RLS 우회)
+      const params = new URLSearchParams({
+        gym_id: targetGymId,
+        company_id: targetCompanyId,
+      });
+      if (startDate) params.append("start_date", startDate);
+      if (endDate) params.append("end_date", endDate);
 
-    if (startDate) {
-      query = query.gte("paid_at", startDate);
-    }
-    if (endDate) {
-      const endDateTime = new Date(endDate);
-      endDateTime.setHours(23, 59, 59, 999);
-      query = query.lte("paid_at", endDateTime.toISOString());
-    }
+      const response = await fetch(`/api/admin/sales?${params.toString()}`);
+      const result = await response.json();
 
-    const { data, error } = await query.order("paid_at", { ascending: true });
+      if (!response.ok) {
+        console.error("결제 내역 조회 에러:", result.error);
+        return;
+      }
 
-    if (error) {
+      setPayments(result.payments || []);
+    } catch (error) {
       console.error("결제 내역 조회 에러:", error);
-      return;
     }
-
-    setPayments(data || []);
   };
 
   const fetchCustomOptions = async (targetGymId: string) => {
@@ -396,6 +394,12 @@ export function useSalesPageData({
         const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
         setStartDate(formatDate(monthStart));
         setEndDate(formatDate(monthEnd));
+        break;
+      case "3months":
+        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        setStartDate(formatDate(threeMonthsAgo));
+        setEndDate(formatDate(currentMonthEnd));
         break;
     }
     setQuickSelect(type);

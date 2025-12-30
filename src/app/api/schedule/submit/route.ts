@@ -17,15 +17,62 @@ function parseYearMonth(yearMonth: string): { start: string; end: string } {
   };
 }
 
-function calculateStats(schedules: { status?: string | null; schedule_type?: string | null }[]) {
-  const stats: Record<string, number> = {};
+function calculateStats(schedules: { status?: string | null; schedule_type?: string | null; type?: string | null }[]) {
+  const stats: Record<string, number> = {
+    // PT 통계
+    pt_total_count: 0,
+    pt_inside_count: 0,
+    pt_outside_count: 0,
+    pt_weekend_count: 0,
+    pt_holiday_count: 0,
+    // OT 통계
+    ot_total_count: 0,
+    ot_inside_count: 0,
+    ot_outside_count: 0,
+    ot_weekend_count: 0,
+    ot_holiday_count: 0,
+    // 상태별 통계
+    status_completed: 0,
+    status_no_show: 0,
+    status_no_show_deducted: 0,
+    status_cancelled: 0,
+    status_service: 0,
+    status_reserved: 0,
+    // 전체
+    total: 0,
+  };
+
   for (const s of schedules) {
-    const statusKey = s.status ?? "unknown_status";
-    const typeKey = s.schedule_type ?? "unknown_type";
-    stats[`status_${statusKey}`] = (stats[`status_${statusKey}`] ?? 0) + 1;
-    stats[`type_${typeKey}`] = (stats[`type_${typeKey}`] ?? 0) + 1;
-    stats.total = (stats.total ?? 0) + 1;
+    const scheduleType = s.schedule_type ?? "inside";
+    const classType = (s.type ?? "").toUpperCase();
+    const status = s.status ?? "reserved";
+
+    stats.total += 1;
+
+    // 상태별 카운트
+    const statusKey = `status_${status}`;
+    if (statusKey in stats) {
+      stats[statusKey] += 1;
+    }
+
+    // PT 통계
+    if (classType === "PT") {
+      stats.pt_total_count += 1;
+      if (scheduleType === "inside") stats.pt_inside_count += 1;
+      else if (scheduleType === "outside") stats.pt_outside_count += 1;
+      else if (scheduleType === "weekend") stats.pt_weekend_count += 1;
+      else if (scheduleType === "holiday") stats.pt_holiday_count += 1;
+    }
+    // OT 통계
+    else if (classType === "OT") {
+      stats.ot_total_count += 1;
+      if (scheduleType === "inside") stats.ot_inside_count += 1;
+      else if (scheduleType === "outside") stats.ot_outside_count += 1;
+      else if (scheduleType === "weekend") stats.ot_weekend_count += 1;
+      else if (scheduleType === "holiday") stats.ot_holiday_count += 1;
+    }
   }
+
   return stats;
 }
 
@@ -64,7 +111,7 @@ export async function POST(req: NextRequest) {
     // 월간 스케줄 가져와서 통계 계산
     const { data: schedules, error: schedulesError } = await supabase
       .from("schedules")
-      .select("id, status, schedule_type")
+      .select("id, status, schedule_type, type")
       .eq("gym_id", staff.gym_id)
       .eq("staff_id", staff.id)
       .gte("start_time", start)

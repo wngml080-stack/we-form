@@ -119,18 +119,11 @@ export function useSchedulePageData() {
   // 선택된 트레이너에 따라 회원 필터링
   const filteredMembers = useMemo(() => {
     if (selectedStaffId === "all") return members;
-    const filtered = members.filter((member: any) => member.trainer_id === selectedStaffId);
-    console.log("[Schedule] 회원 필터링:", {
-      selectedStaffId,
-      totalMembers: members.length,
-      membersWithTrainer: members.filter((m: any) => m.trainer_id).map((m: any) => ({ name: m.name, trainer_id: m.trainer_id })),
-      filteredCount: filtered.length
-    });
-    return filtered;
+    return members.filter((member: any) => member.trainer_id === selectedStaffId);
   }, [members, selectedStaffId]);
 
-  // 스케줄 조회 함수
-  const fetchSchedules = async (gymId: string, staffIdFilter: string) => {
+  // 스케줄 조회 함수 (memberships를 파라미터로 받아 클로저 문제 해결)
+  const fetchSchedules = async (gymId: string, staffIdFilter: string, memberships?: Record<string, any[]>) => {
     const current = new Date(selectedDate);
     const startDate = new Date(current.getFullYear(), current.getMonth() - 2, 1);
     const endDate = new Date(current.getFullYear(), current.getMonth() + 3, 0);
@@ -148,10 +141,10 @@ export function useSchedulePageData() {
 
     const { data, error } = await query;
 
-    if (error) {
-      console.error("스케줄 조회 실패:", error);
-    } else {
-      const enrichedSchedules = enrichSchedules(data || [], memberMemberships);
+    if (!error) {
+      // memberships 파라미터가 있으면 사용, 없으면 현재 state 사용
+      const membershipsToUse = memberships || memberMemberships;
+      const enrichedSchedules = enrichSchedules(data || [], membershipsToUse);
       setSchedules(enrichedSchedules);
       setMonthlyStats(calcStats(enrichedSchedules, selectedDate));
     }
@@ -167,10 +160,7 @@ export function useSchedulePageData() {
       .eq("year_month", yearMonth)
       .maybeSingle();
 
-    if (error) {
-      console.error("내 보고서 조회 실패:", error);
-      return;
-    }
+    if (error) return;
 
     if (data) {
       setMySubmissionStatus(data.status as any);
@@ -206,35 +196,26 @@ export function useSchedulePageData() {
           ]);
 
           if (memberResult.data) setMembers(memberResult.data);
+          let grouped: Record<string, any[]> = {};
           if (membershipResult.data) {
             const myMemberIds = memberResult.data?.map(m => m.id) || [];
             const filteredMemberships = membershipResult.data.filter(m => myMemberIds.includes(m.member_id));
-            const grouped = filteredMemberships.reduce((acc: Record<string, any[]>, m) => {
+            grouped = filteredMemberships.reduce((acc: Record<string, any[]>, m) => {
               if (!acc[m.member_id]) acc[m.member_id] = [];
               acc[m.member_id].push(m);
               return acc;
             }, {});
             setMemberMemberships(grouped);
           }
+          // 회원권 데이터를 파라미터로 전달하여 클로저 문제 해결
+          fetchSchedules(selectedGymId, staffIdFilter, grouped);
+          return; // 아래 fetchSchedules 호출 방지
         } else {
           // API를 사용하여 RLS를 우회한 회원 조회 (회원권 정보 포함)
           const [memberApiRes, staffResult] = await Promise.all([
             fetch(`/api/admin/members?gym_id=${selectedGymId}&status=all`).then(res => res.json()),
             supabase.from("staffs").select("id, name, work_start_time, work_end_time").eq("gym_id", selectedGymId).order("name", { ascending: true }),
           ]);
-
-          console.log("[Schedule] 회원 조회 결과:", {
-            selectedGymId,
-            userGymId: user.gym_id,
-            gyms: gyms.map(g => ({ id: g.id, name: g.name })),
-            memberCount: memberApiRes.members?.length,
-            members: memberApiRes.members?.map((m: any) => ({
-              id: m.id,
-              name: m.name,
-              trainer_id: m.trainer_id,
-              memberships: m.member_memberships?.length || 0
-            }))
-          });
 
           // API 결과에서 회원 목록과 회원권 정보 추출
           if (memberApiRes.members) {
@@ -253,27 +234,17 @@ export function useSchedulePageData() {
               }
             });
 
-            console.log("[Schedule] 회원권 데이터 추출:", {
-              totalMembers: memberApiRes.members.length,
-              membersWithMemberships: Object.keys(grouped).length,
-              membershipDetails: memberApiRes.members.slice(0, 5).map((m: any) => ({
-                name: m.name,
-                memberships: m.member_memberships?.map((ms: any) => ({
-                  name: ms.name,
-                  status: ms.status,
-                  total: ms.total_sessions
-                })) || []
-              }))
-            });
-
             setMemberMemberships(grouped);
+            // 회원권 데이터를 파라미터로 전달하여 클로저 문제 해결
+            if (staffResult.data) setStaffs(staffResult.data);
+            fetchSchedules(selectedGymId, staffIdFilter, grouped);
+          } else {
+            if (staffResult.data) setStaffs(staffResult.data);
+            fetchSchedules(selectedGymId, staffIdFilter);
           }
-          if (staffResult.data) setStaffs(staffResult.data);
         }
-
-        fetchSchedules(selectedGymId, staffIdFilter);
-      } catch (error) {
-        console.error("초기화 에러:", error);
+      } catch {
+        // 초기화 실패
       } finally {
         setIsLoading(false);
       }
@@ -296,12 +267,12 @@ export function useSchedulePageData() {
     }
   }, [schedules, selectedDate]);
 
-  // 날짜 변경 시 스케줄 다시 불러오기
+  // 날짜/트레이너 변경 시 스케줄 다시 불러오기
   useEffect(() => {
     if (selectedGymId && selectedStaffId) {
-      fetchSchedules(selectedGymId, selectedStaffId);
+      fetchSchedules(selectedGymId, selectedStaffId, memberMemberships);
     }
-  }, [selectedDate, selectedGymId, selectedStaffId]);
+  }, [selectedDate, selectedGymId, selectedStaffId, memberMemberships]);
 
   // 내 스케줄 제출
   const handleSubmitMonth = async () => {

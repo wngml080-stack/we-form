@@ -138,8 +138,8 @@ export function useStaffPageData() {
             fetchMembers(staff.gym_id, staff.company_id)
           ]);
         }
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // 초기화 실패
       } finally {
         setIsLoading(false);
       }
@@ -192,10 +192,7 @@ export function useStaffPageData() {
       .eq("status", "active")
       .order("name");
 
-    if (error) {
-      console.error("회원 조회 에러:", error);
-      return;
-    }
+    if (error) return;
 
     const membersWithMemberships = (data || []).map((member: any) => {
       const memberships = member.member_memberships || [];
@@ -215,9 +212,7 @@ export function useStaffPageData() {
       .select("*")
       .eq("staff_id", staffId);
 
-    if (error) {
-      console.error("스케줄 로딩 실패:", error);
-    } else {
+    if (!error) {
       const enrichedSchedules = enrichSchedulesWithSessionInfo(data || []);
       setSchedules(enrichedSchedules);
       calculateMonthlyStats(enrichedSchedules);
@@ -314,10 +309,7 @@ export function useStaffPageData() {
       .eq("year_month", yearMonth)
       .maybeSingle();
 
-    if (error) {
-      console.error("보고서 조회 실패:", error);
-      return;
-    }
+    if (error) return;
 
     if (data) {
       setSubmissionStatus(data.status as any);
@@ -369,10 +361,6 @@ export function useStaffPageData() {
   };
 
   const handleAddClass = async () => {
-    if (isMonthLocked) {
-      toast.warning("제출(승인 대기/승인)된 달은 수정이 불가합니다.");
-      return;
-    }
     if (!newMemberName || !myStaffId || !myGymId) return;
 
     const startDateTime = new Date(`${selectedDate}T${startTime}:00`);
@@ -381,55 +369,34 @@ export function useStaffPageData() {
 
     const scheduleType = classifyScheduleType(startDateTime, myWorkStartTime, myWorkEndTime);
 
-    const { error } = await supabase.from("schedules").insert({
-      gym_id: myGymId,
-      staff_id: myStaffId,
-      member_id: selectedMemberId,
-      member_name: newMemberName,
-      type: newClassType,
-      status: "reserved",
-      start_time: startDateTime.toISOString(),
-      end_time: endDateTime.toISOString(),
-      title: `${newMemberName} (${newClassType})`,
-      schedule_type: scheduleType,
-      counted_for_salary: true,
-    });
+    try {
+      // API 호출로 통합 (잠금 검증 + 회원권 차감 포함)
+      const res = await fetch("/api/schedule/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gym_id: myGymId,
+          member_id: selectedMemberId,
+          member_name: newMemberName,
+          type: newClassType,
+          start_time: startDateTime.toISOString(),
+          end_time: endDateTime.toISOString(),
+          title: `${newMemberName} (${newClassType})`,
+          schedule_type: scheduleType,
+        }),
+      });
 
-    if (error) {
-      toast.error("등록 실패!");
-      console.error(error);
-    } else {
-      // 선차감: 예약 생성 시 회원권 1회 차감 (PT/OT만)
-      if (selectedMemberId && (newClassType === "PT" || newClassType === "OT")) {
-        const typeFilter = newClassType === "PT"
-          ? "name.ilike.%PT%,name.ilike.%피티%"
-          : "name.ilike.%OT%,name.ilike.%오티%";
-
-        const { data: membership } = await supabase
-          .from("member_memberships")
-          .select("id, used_sessions, total_sessions")
-          .eq("member_id", selectedMemberId)
-          .eq("gym_id", myGymId)
-          .eq("status", "active")
-          .or(typeFilter)
-          .order("end_date", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (membership && membership.used_sessions < membership.total_sessions) {
-          await supabase
-            .from("member_memberships")
-            .update({ used_sessions: membership.used_sessions + 1 })
-            .eq("id", membership.id);
-        }
-      }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "등록에 실패했습니다.");
 
       setIsAddModalOpen(false);
       setNewMemberName("");
       setSelectedMemberId(null);
       setMemberSearchQuery("");
       fetchSchedules(myStaffId);
+      if (myGymId && myCompanyId) fetchMembers(myGymId, myCompanyId);
 
+      // n8n 웹훅 호출
       fetch("/api/n8n", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -437,7 +404,9 @@ export function useStaffPageData() {
           date: selectedDate, time: startTime, member_name: newMemberName,
           type: newClassType, status: "reserved", staff_id: myStaffId,
         }),
-      }).catch(e => console.error(e));
+      }).catch(() => {});
+    } catch (error: any) {
+      toast.error(error.message || "등록 실패!");
     }
   };
 
@@ -445,56 +414,24 @@ export function useStaffPageData() {
     if (!selectedEvent || !myStaffId) return;
 
     try {
-      const { data: schedule, error: scheduleError } = await supabase
-        .from("schedules")
-        .select("id, member_id, status")
-        .eq("id", selectedEvent.id)
-        .single();
+      // API 호출로 통합 (회원권 처리 + 출석부 기록 포함)
+      const res = await fetch("/api/schedule/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduleId: selectedEvent.id,
+          newStatus
+        }),
+      });
 
-      if (scheduleError) throw scheduleError;
-
-      const oldStatus = schedule?.status || "reserved";
-
-      const { error: updateError } = await supabase
-        .from("schedules")
-        .update({ status: newStatus })
-        .eq("id", selectedEvent.id)
-        .eq("staff_id", myStaffId);
-
-      if (updateError) throw updateError;
-
-      const shouldDeduct = (status: string) => status === "completed" || status === "no_show_deducted";
-      const wasDeducted = shouldDeduct(oldStatus);
-      const willDeduct = shouldDeduct(newStatus);
-
-      if (schedule?.member_id && wasDeducted !== willDeduct) {
-        const { data: membership } = await supabase
-          .from("member_memberships")
-          .select("id, used_sessions")
-          .eq("member_id", schedule.member_id)
-          .eq("status", "active")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (membership) {
-          let newUsedSessions = membership.used_sessions;
-          if (willDeduct && !wasDeducted) newUsedSessions += 1;
-          else if (!willDeduct && wasDeducted) newUsedSessions = Math.max(0, newUsedSessions - 1);
-
-          await supabase
-            .from("member_memberships")
-            .update({ used_sessions: newUsedSessions })
-            .eq("id", membership.id);
-        }
-      }
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "상태 변경에 실패했습니다.");
 
       setIsStatusModalOpen(false);
       setSelectedEvent(null);
       fetchSchedules(myStaffId);
       if (myGymId && myCompanyId) fetchMembers(myGymId, myCompanyId);
     } catch (error: any) {
-      console.error(error);
       toast.error("상태 변경 실패: " + error.message);
     }
   };
@@ -515,7 +452,6 @@ export function useStaffPageData() {
       setSelectedEvent(null);
       fetchSchedules(myStaffId);
     } catch (error: any) {
-      console.error(error);
       toast.error("분류 변경 실패: " + error.message);
     }
   };

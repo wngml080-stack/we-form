@@ -95,6 +95,7 @@ export function useAdminDashboardData() {
   const [isExistingMemberModalOpen, setIsExistingMemberModalOpen] = useState(false);
   const [isAddonModalOpen, setIsAddonModalOpen] = useState(false);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
+  const [recentLogsSummary, setRecentLogsSummary] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // 폼 상태
@@ -104,6 +105,8 @@ export function useAdminDashboardData() {
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [addonForm, setAddonForm] = useState<AddonForm>(initialAddonForm);
   const [products, setProducts] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
 
   // Supabase 클라이언트
   const supabase = useMemo(() => createSupabaseClient(), []);
@@ -132,6 +135,53 @@ export function useAdminDashboardData() {
     }
   };
 
+  // 스태프 목록 조회
+  const fetchStaffList = async (gymId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("staffs")
+        .select("id, name, job_title")
+        .eq("gym_id", gymId)
+        .order("name", { ascending: true });
+      if (!error && data) {
+        setStaffList(data);
+      }
+    } catch (error) {
+      console.error("스태프 목록 조회 에러:", error);
+    }
+  };
+
+  // 회원 목록 조회 (ExistingSalesModal에서 필요한 필드 포함)
+  const fetchMembers = async (gymId: string, companyId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("members")
+        .select(`
+          id, name, phone, birth_date, gender, exercise_goal,
+          weight, body_fat_mass, skeletal_muscle_mass, trainer_id,
+          member_memberships (
+            id, name, membership_type, total_sessions, used_sessions,
+            start_date, end_date, status
+          )
+        `)
+        .eq("gym_id", gymId)
+        .eq("company_id", companyId)
+        .order("name", { ascending: true });
+      if (!error && data) {
+        // 활성 회원권만 필터링
+        const membersWithActiveMemberships = data.map(member => ({
+          ...member,
+          member_memberships: member.member_memberships?.filter(
+            (m: any) => m.status === 'active'
+          ) || []
+        }));
+        setMembers(membersWithActiveMemberships);
+      }
+    } catch (error) {
+      console.error("회원 목록 조회 에러:", error);
+    }
+  };
+
   useEffect(() => {
     if (authLoading || !filterInitialized) return;
     if (!user) {
@@ -142,6 +192,8 @@ export function useAdminDashboardData() {
     if (selectedGymId && selectedCompanyId) {
       fetchDashboardData(selectedGymId, selectedCompanyId, user.id);
       fetchProducts(selectedGymId);
+      fetchStaffList(selectedGymId);
+      fetchMembers(selectedGymId, selectedCompanyId);
     }
     setIsLoading(false);
   }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
@@ -291,11 +343,15 @@ export function useAdminDashboardData() {
 
   const fetchRecentLogs = async (gymId: string, companyId: string) => {
     try {
-      const response = await fetch(`/api/admin/schedule/logs?gym_id=${gymId}&company_id=${companyId}&limit=10`);
+      // today_only=true로 당일 매출만 조회
+      const response = await fetch(`/api/admin/schedule/logs?gym_id=${gymId}&company_id=${companyId}&today_only=true`);
       const data = await response.json();
-      if (data.success) setRecentLogs(data.logs || []);
-    } catch (error) {
-      console.error("등록 로그 조회 에러:", error);
+      if (data.success) {
+        setRecentLogs(data.logs || []);
+        setRecentLogsSummary(data.summary || null);
+      }
+    } catch {
+      // 조회 실패 시 빈 배열 유지
     }
   };
 
@@ -512,6 +568,14 @@ export function useAdminDashboardData() {
     return colors[status] || "bg-gray-300";
   };
 
+  // 대시보드 새로고침 (모달 성공 후 호출용)
+  const refreshDashboard = () => {
+    if (selectedGymId && selectedCompanyId && myStaffId) {
+      fetchRecentLogs(selectedGymId, selectedCompanyId);
+      fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+    }
+  };
+
   return {
     // 사용자 정보
     userName, gymName, userRole,
@@ -520,7 +584,7 @@ export function useAdminDashboardData() {
     isLoading,
 
     // 통계 데이터
-    stats, todaySchedules, announcements, companyEvents, systemAnnouncements, recentLogs,
+    stats, todaySchedules, announcements, companyEvents, systemAnnouncements, recentLogs, recentLogsSummary,
 
     // 달력
     currentMonth, setCurrentMonth, selectedDate, setSelectedDate,
@@ -556,8 +620,22 @@ export function useAdminDashboardData() {
     // 상품
     products,
 
+    // 스태프 목록
+    staffList,
+
+    // 회원 목록
+    members,
+
+    // 지점/회사 정보
+    selectedGymId,
+    selectedCompanyId,
+    myStaffId,
+
     // 저장 상태
     isSaving,
+
+    // 대시보드 새로고침
+    refreshDashboard,
 
     // 유틸리티
     formatCurrency, getSalesForMonth, getMonthLabel, calculateStatistics, getStatusColor

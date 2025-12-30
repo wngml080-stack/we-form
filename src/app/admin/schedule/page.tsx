@@ -159,6 +159,31 @@ export default function AdminSchedulePage() {
       const { error } = await supabase.from("schedules").insert(scheduleData);
       if (error) throw error;
 
+      // 선차감: 예약 생성 시 회원권 1회 차감 (PT/OT만)
+      if (!createForm.isPersonal && createForm.member_id && (createForm.type === "PT" || createForm.type === "OT")) {
+        const typeFilter = createForm.type === "PT"
+          ? "name.ilike.%PT%,name.ilike.%피티%"
+          : "name.ilike.%OT%,name.ilike.%오티%";
+
+        const { data: membership } = await supabase
+          .from("member_memberships")
+          .select("id, used_sessions, total_sessions")
+          .eq("member_id", createForm.member_id)
+          .eq("gym_id", selectedGymId)
+          .eq("status", "active")
+          .or(typeFilter)
+          .order("end_date", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (membership && membership.used_sessions < membership.total_sessions) {
+          await supabase
+            .from("member_memberships")
+            .update({ used_sessions: membership.used_sessions + 1 })
+            .eq("id", membership.id);
+        }
+      }
+
       setIsCreateModalOpen(false);
       setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "" });
       setSelectedMemberMembership(null);

@@ -20,16 +20,18 @@ export async function POST(request: Request) {
 
     const supabase = getSupabaseAdmin();
 
-    // 1. 스케줄 정보 조회 (member_id 확인)
+    // 1. 스케줄 정보 조회 (member_id, 현재 status 확인)
     const { data: schedule, error: scheduleError } = await supabase
       .from("schedules")
-      .select("id, gym_id, staff_id, member_id, member_name, type")
+      .select("id, gym_id, staff_id, member_id, member_name, type, status")
       .eq("id", scheduleId)
       .single();
 
     if (scheduleError || !schedule) {
       return NextResponse.json({ error: "스케줄을 찾을 수 없습니다." }, { status: 404 });
     }
+
+    const oldStatus = schedule.status || "reserved";
 
     // 권한 체크: 본인 스케줄이거나 관리자(해당 지점 접근 권한 필요)여야 함
     const hasAdminRole = isAdmin(staff.role);
@@ -55,14 +57,18 @@ export async function POST(request: Request) {
 
     // 3. 회원권 횟수 처리
     // 선차감 시스템: 예약 시 차감, 노쇼/취소/서비스 시 환불
-    // - reserved: 예약 생성 시 차감 (스케줄 생성 API에서 처리)
+    // - reserved: 예약 생성 시 차감 (스케줄 생성에서 처리)
     // - completed, no_show_deducted: 변동 없음 (이미 예약 시 차감됨)
     // - no_show, cancelled, service: 1회 환불 (used_sessions - 1)
+    // - no_show/cancelled/service → 다른 상태: 재차감 (used_sessions + 1)
 
     let membershipInfo = "회원권 없음";
     const refundStatuses = ["no_show", "cancelled", "service"];
+    const wasRefunded = refundStatuses.includes(oldStatus);
+    const willRefund = refundStatuses.includes(newStatus);
 
-    if (refundStatuses.includes(newStatus) && schedule.member_id) {
+    // 상태 변경에 따른 회원권 처리가 필요한 경우
+    if (schedule.member_id && wasRefunded !== willRefund) {
       // 스케줄 타입에 맞는 회원권 조회
       const scheduleType = schedule.type?.toLowerCase() || "";
 
@@ -85,15 +91,26 @@ export async function POST(request: Request) {
         .limit(1)
         .maybeSingle();
 
-      if (membership && membership.used_sessions > 0) {
-        // 횟수 환불 (used_sessions - 1)
-        await supabase
-          .from("member_memberships")
-          .update({ used_sessions: membership.used_sessions - 1 })
-          .eq("id", membership.id);
+      if (membership) {
+        if (!wasRefunded && willRefund && membership.used_sessions > 0) {
+          // 환불: used_sessions - 1
+          await supabase
+            .from("member_memberships")
+            .update({ used_sessions: membership.used_sessions - 1 })
+            .eq("id", membership.id);
 
-        membershipInfo = `${membership.name} (1회 환불)`;
-        console.log(`✅ 회원권 환불: ${membership.name}, ${membership.used_sessions} → ${membership.used_sessions - 1}`);
+          membershipInfo = `${membership.name} (1회 환불)`;
+          console.log(`✅ 회원권 환불: ${membership.name}, ${membership.used_sessions} → ${membership.used_sessions - 1}`);
+        } else if (wasRefunded && !willRefund && membership.used_sessions < membership.total_sessions) {
+          // 재차감: used_sessions + 1
+          await supabase
+            .from("member_memberships")
+            .update({ used_sessions: membership.used_sessions + 1 })
+            .eq("id", membership.id);
+
+          membershipInfo = `${membership.name} (1회 재차감)`;
+          console.log(`✅ 회원권 재차감: ${membership.name}, ${membership.used_sessions} → ${membership.used_sessions + 1}`);
+        }
       }
     }
 

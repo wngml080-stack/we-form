@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, Calendar, User, Building, FileText } from "lucide-react";
+import { CheckCircle, XCircle, Calendar, User, Building, FileText, ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 interface MonthlyReport {
   id: string;
@@ -51,6 +51,11 @@ export default function AdminReportsPage() {
   const [adminMemo, setAdminMemo] = useState("");
   const [showAllGyms, setShowAllGyms] = useState(false); // 전체 보기 토글
 
+  // 카드 확장 상태
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
+  const [expandedSchedules, setExpandedSchedules] = useState<any[]>([]);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
+
   // Supabase 클라이언트 한 번만 생성 (메모이제이션)
   const supabase = useMemo(() => createSupabaseClient(), []);
 
@@ -78,61 +83,56 @@ export default function AdminReportsPage() {
     setIsLoading(true);
 
     try {
-      // 1. 보고서 조회 - role에 따라 다른 필터링
-      let query = supabase
-        .from("monthly_schedule_reports")
-        .select("*")
-        .order("submitted_at", { ascending: false });
+      // API를 통해 보고서 조회 (RLS 우회)
+      const params = new URLSearchParams();
 
-      // admin: 선택된 지점만
-      // company_admin: 전체 보기 가능 (showAllGyms) 또는 선택된 지점
-      // system_admin: 전체 보기 가능 (showAllGyms) 또는 선택된 지점
-      if (userRole === "admin") {
-        // admin은 자기 지점만
-        query = query.eq("gym_id", selectedGymId);
-      } else if (!showAllGyms && selectedGymId) {
-        // company_admin, system_admin: 전체 보기가 아닐 때만 지점 필터
-        query = query.eq("gym_id", selectedGymId);
+      // showAllGyms가 아니면 선택된 지점 필터
+      if (!showAllGyms && selectedGymId) {
+        params.append("gym_id", selectedGymId);
+      } else if (showAllGyms) {
+        // 전체 보기: all_gyms 파라미터 전달
+        params.append("all_gyms", "true");
+      } else if (selectedGymId) {
+        params.append("gym_id", selectedGymId);
       }
-      // showAllGyms가 true면 전체 (RLS가 role에 맞게 필터링)
 
-      const { data: reportsData, error: reportsError } = await query;
+      const response = await fetch(`/api/admin/schedule/reports?${params.toString()}`);
+      const result = await response.json();
 
-      if (reportsError) {
-        console.error("Error fetching reports:", reportsError);
-        if (reportsError.code !== 'PGRST116') {
-          showError(`보고서 조회 실패: ${reportsError.message}`, "데이터 조회");
+      if (!response.ok) {
+        if (result.error !== 'PGRST116') {
+          showError(`보고서 조회 실패: ${result.error}`, "데이터 조회");
         }
-        return;
-      }
-
-      if (!reportsData || reportsData.length === 0) {
         setReports([]);
         return;
       }
 
-      // 2. 관련된 staff, gym 정보 별도 조회
-      const staffIds = [...new Set(reportsData.map(r => r.staff_id).filter(Boolean))];
-      const gymIds = [...new Set(reportsData.map(r => r.gym_id).filter(Boolean))];
+      const reportsData = result.reports || [];
 
-      const [staffsResult, gymsResult] = await Promise.all([
-        supabase.from("staffs").select("id, name, email").in("id", staffIds),
-        supabase.from("gyms").select("id, name").in("id", gymIds)
-      ]);
+      if (reportsData.length === 0) {
+        setReports([]);
+        return;
+      }
 
-      // 3. 매핑
-      const staffMap = new Map(staffsResult.data?.map(s => [s.id, s]) || []);
-      const gymMap = new Map(gymsResult.data?.map(g => [g.id, g]) || []);
+      // 관련된 staff, gym 정보 별도 조회 (API에서 staff 정보는 포함됨)
+      const gymIds = [...new Set(reportsData.map((r: any) => r.gym_id).filter(Boolean))];
 
-      const reportsWithRelations = reportsData.map(report => ({
+      const { data: gymsData } = await supabase
+        .from("gyms")
+        .select("id, name")
+        .in("id", gymIds);
+
+      const gymMap = new Map(gymsData?.map(g => [g.id, g]) || []);
+
+      const reportsWithRelations = reportsData.map((report: any) => ({
         ...report,
-        staffs: staffMap.get(report.staff_id) || { name: "-", email: "-" },
+        staffs: report.staffs || { name: "-", email: "-" },
         gyms: gymMap.get(report.gym_id) || { name: "-" },
       }));
 
       setReports(reportsWithRelations as MonthlyReport[]);
-    } catch (err) {
-      console.error("Unexpected error:", err);
+    } catch {
+      // 네트워크 오류 등 예외 상황
     } finally {
       setIsLoading(false);
     }
@@ -144,6 +144,49 @@ export default function AdminReportsPage() {
     setIsReviewOpen(true);
   };
 
+  // 카드 확장 토글
+  const toggleExpand = async (reportId: string) => {
+    if (expandedReportId === reportId) {
+      // 접기
+      setExpandedReportId(null);
+      setExpandedSchedules([]);
+      return;
+    }
+
+    // 펼치기 - API로 스케줄 조회
+    setExpandedReportId(reportId);
+    setIsLoadingSchedules(true);
+    setExpandedSchedules([]);
+
+    try {
+      const response = await fetch(`/api/admin/schedule/reports/${reportId}/schedules`);
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setExpandedSchedules(result.schedules || []);
+      } else {
+        toast.error(result.error || "스케줄 조회 실패");
+      }
+    } catch {
+      toast.error("스케줄 조회 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoadingSchedules(false);
+    }
+  };
+
+  const getScheduleStatusBadge = (status: string) => {
+    const statusMap: Record<string, { label: string; className: string }> = {
+      completed: { label: "완료", className: "bg-emerald-100 text-emerald-700" },
+      reserved: { label: "예약", className: "bg-blue-100 text-blue-700" },
+      no_show: { label: "노쇼", className: "bg-gray-100 text-gray-700" },
+      no_show_deducted: { label: "노쇼(차감)", className: "bg-red-100 text-red-700" },
+      cancelled: { label: "취소", className: "bg-orange-100 text-orange-700" },
+      service: { label: "서비스", className: "bg-sky-100 text-sky-700" },
+    };
+    const info = statusMap[status] || { label: status, className: "bg-gray-100 text-gray-600" };
+    return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${info.className}`}>{info.label}</span>;
+  };
+
   const handleReview = async (action: "approved" | "rejected") => {
     if (!selectedReport || !user) return;
 
@@ -153,25 +196,29 @@ export default function AdminReportsPage() {
 
     if (!confirm(confirmMsg)) return;
 
-    const { error } = await supabase
-      .from("monthly_schedule_reports")
-      .update({
-        status: action,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user.id,
-        admin_memo: adminMemo,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", selectedReport.id);
+    try {
+      const response = await fetch("/api/schedule/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: selectedReport.id,
+          approved: action === "approved",
+          adminMemo: adminMemo,
+          unlockOnReject: true,
+        }),
+      });
 
-    if (error) {
-      toast.error("처리 중 오류가 발생했습니다: " + error.message);
-    } else {
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "처리 중 오류가 발생했습니다.");
+      }
+
       toast.success(action === "approved" ? "승인되었습니다." : "반려되었습니다.");
       setIsReviewOpen(false);
-
-      // Refetch reports
       fetchReports();
+    } catch (error: any) {
+      toast.error(error.message || "처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -308,6 +355,84 @@ export default function AdminReportsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* 상세 스케줄 보기 토글 버튼 */}
+                <button
+                  onClick={() => toggleExpand(report.id)}
+                  className="w-full mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-[#2F80ED] transition-colors"
+                >
+                  {expandedReportId === report.id ? (
+                    <>
+                      <ChevronUp className="w-4 h-4" />
+                      스케줄 상세 접기
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" />
+                      스케줄 상세 보기
+                    </>
+                  )}
+                </button>
+
+                {/* 확장된 스케줄 목록 */}
+                {expandedReportId === report.id && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    {isLoadingSchedules ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-6 h-6 border-3 border-blue-200 border-t-[#2F80ED] rounded-full animate-spin"></div>
+                      </div>
+                    ) : expandedSchedules.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        등록된 스케줄이 없습니다.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-100">
+                              <th className="py-2 px-3 text-left font-semibold text-gray-600">날짜</th>
+                              <th className="py-2 px-3 text-left font-semibold text-gray-600">시간</th>
+                              <th className="py-2 px-3 text-left font-semibold text-gray-600">타입</th>
+                              <th className="py-2 px-3 text-left font-semibold text-gray-600">회원</th>
+                              <th className="py-2 px-3 text-left font-semibold text-gray-600">상태</th>
+                              <th className="py-2 px-3 text-left font-semibold text-gray-600">구분</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {expandedSchedules.map((schedule: any, idx: number) => (
+                              <tr key={schedule.id || idx} className="border-b border-gray-50 hover:bg-gray-50">
+                                <td className="py-2.5 px-3 text-gray-700">{schedule.date}</td>
+                                <td className="py-2.5 px-3 text-gray-600">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                    {schedule.time}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    schedule.type === "PT" ? "bg-blue-100 text-blue-700" :
+                                    schedule.type === "OT" ? "bg-purple-100 text-purple-700" :
+                                    "bg-gray-100 text-gray-700"
+                                  }`}>
+                                    {schedule.type}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 font-medium text-gray-800">{schedule.member_name}</td>
+                                <td className="py-2.5 px-3">{getScheduleStatusBadge(schedule.status)}</td>
+                                <td className="py-2.5 px-3 text-gray-600">
+                                  {schedule.schedule_type === "inside" ? "근무내" :
+                                   schedule.schedule_type === "outside" ? "근무외" :
+                                   schedule.schedule_type === "weekend" ? "주말" :
+                                   schedule.schedule_type === "holiday" ? "공휴일" : "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))

@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { toast } from "@/lib/toast";
-import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,7 +144,6 @@ export function AddonSalesModal({
   companyId,
   onSuccess,
 }: AddonSalesModalProps) {
-  const supabase = createSupabaseClient();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<AddonSalesFormData>(INITIAL_FORM_DATA);
   const [memberSearch, setMemberSearch] = useState("");
@@ -278,25 +276,28 @@ export function AddonSalesModal({
       }
 
       const amount = parseFloat(formData.amount);
+      const memoText = `${addonName}${periodInfo}${formData.memo ? ` - ${formData.memo}` : ""}`;
 
-      const { error: paymentError } = await supabase
-        .from("member_payments")
-        .insert({
+      // API를 통해 부가상품 매출 등록 (RLS 우회)
+      const response = await fetch("/api/admin/addon-sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           company_id: companyId,
           gym_id: gymId,
           member_id: member.id,
           amount: amount,
-          total_amount: amount,
           method: formData.method,
-          membership_type: "부가상품",
-          registration_type: "부가상품",
-          memo: `${addonName}${periodInfo}${formData.memo ? ` - ${formData.memo}` : ""}`,
-          paid_at: formData.payment_date || formData.start_date,
+          memo: memoText,
           start_date: formData.start_date || null,
           end_date: formData.end_date || null,
-        });
+        }),
+      });
 
-      if (paymentError) throw paymentError;
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "부가상품 매출 등록에 실패했습니다.");
+      }
 
       showSuccess("부가상품 매출이 등록되었습니다!");
       resetForm();

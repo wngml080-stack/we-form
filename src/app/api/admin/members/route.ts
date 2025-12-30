@@ -110,6 +110,11 @@ export async function POST(request: NextRequest) {
     // 3. 결제 정보 등록 (있는 경우)
     let paymentData = null;
     if (payment && newMember) {
+      // payment_date를 ISO timestamp로 변환 (timestamptz 필드에 맞게)
+      const paymentDateTime = payment.payment_date
+        ? new Date(payment.payment_date).toISOString()
+        : new Date().toISOString();
+
       const { data: newPayment, error: paymentError } = await supabase
         .from("member_payments")
         .insert({
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
           membership_type: payment.membership_type,
           membership_name: payment.membership_name,
           registration_type: payment.registration_type || "신규",
-          paid_at: payment.payment_date,
+          paid_at: paymentDateTime,
           amount: parseFloat(payment.amount),
           total_amount: parseFloat(payment.total_amount || payment.amount),
           total_sessions: payment.total_sessions || null,
@@ -143,6 +148,11 @@ export async function POST(request: NextRequest) {
 
     // 4. 매출 로그 등록 (있는 경우)
     if (sales_log && newMember) {
+      // occurred_at을 ISO timestamp로 변환
+      const occurredAt = sales_log.occurred_at || sales_log.log_date
+        ? new Date(sales_log.occurred_at || sales_log.log_date).toISOString()
+        : new Date().toISOString();
+
       const { error: salesError } = await supabase
         .from("sales_logs")
         .insert({
@@ -154,7 +164,7 @@ export async function POST(request: NextRequest) {
           amount: parseFloat(sales_log.amount),
           method: sales_log.method || "card",
           memo: sales_log.memo || null,
-          occurred_at: sales_log.occurred_at || sales_log.log_date || new Date().toISOString().split('T')[0]
+          occurred_at: occurredAt
         });
 
       if (salesError) {
@@ -194,6 +204,11 @@ export async function POST(request: NextRequest) {
         // 추가 회원권 결제 정보 등록
         if (addMembership.amount) {
           const addAmount = parseFloat(addMembership.amount);
+          // 날짜를 ISO timestamp로 변환
+          const addPaymentDate = addMembership.registered_at || created_at
+            ? new Date(addMembership.registered_at || created_at).toISOString()
+            : new Date().toISOString();
+
           await supabase.from("member_payments").insert({
             company_id,
             gym_id,
@@ -205,7 +220,7 @@ export async function POST(request: NextRequest) {
             membership_type: addMembership.membership_type,
             registration_type: "신규",
             memo: `${addMembership.membership_name} 신규 등록 (추가)`,
-            paid_at: addMembership.registered_at || created_at,
+            paid_at: addPaymentDate,
             created_by: staff.id
           });
 
@@ -219,7 +234,7 @@ export async function POST(request: NextRequest) {
             amount: addAmount,
             method: addMembership.payment_method || "card",
             memo: `${name} - ${addMembership.membership_name} 신규 등록 (추가)`,
-            occurred_at: addMembership.registered_at || created_at
+            occurred_at: addPaymentDate
           });
         }
       }
@@ -231,6 +246,10 @@ export async function POST(request: NextRequest) {
         if (!addon.amount) continue;
 
         const addonAmount = parseFloat(addon.amount);
+        // 날짜를 ISO timestamp로 변환
+        const addonPaymentDate = addon.occurred_at || created_at
+          ? new Date(addon.occurred_at || created_at).toISOString()
+          : new Date().toISOString();
 
         // 부가상품 결제 정보 등록
         await supabase.from("member_payments").insert({
@@ -243,7 +262,7 @@ export async function POST(request: NextRequest) {
           membership_type: "부가상품",
           registration_type: "부가상품",
           memo: addon.memo || "부가상품 구매",
-          paid_at: addon.occurred_at || created_at,
+          paid_at: addonPaymentDate,
           start_date: addon.start_date || null,
           end_date: addon.end_date || null,
           created_by: staff.id
@@ -259,7 +278,7 @@ export async function POST(request: NextRequest) {
           amount: addonAmount,
           method: addon.payment_method || "card",
           memo: `부가상품: ${addon.memo || '부가상품'}`,
-          occurred_at: addon.occurred_at || created_at
+          occurred_at: addonPaymentDate
         });
       }
     }

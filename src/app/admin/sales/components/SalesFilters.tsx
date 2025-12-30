@@ -100,6 +100,7 @@ export function SalesFilters({
               { key: "yesterday", label: "어제" },
               { key: "week", label: "7일" },
               { key: "month", label: "이번달" },
+              { key: "3months", label: "3개월" },
             ].map(({ key, label }) => (
               <Button
                 key={key}

@@ -21,9 +21,11 @@ const RecentLogsSection = dynamic(() => import("./RecentLogsSection").then(mod =
 const EventModal = dynamic(() => import("./modals/EventModal").then(mod => ({ default: mod.EventModal })), { ssr: false });
 const SystemAnnouncementModal = dynamic(() => import("./modals/SystemAnnouncementModal").then(mod => ({ default: mod.SystemAnnouncementModal })), { ssr: false });
 const BranchAnnouncementModal = dynamic(() => import("./modals/BranchAnnouncementModal").then(mod => ({ default: mod.BranchAnnouncementModal })), { ssr: false });
-const NewMemberModal = dynamic(() => import("./modals/NewMemberModal").then(mod => ({ default: mod.NewMemberModal })), { ssr: false });
-const ExistingMemberModal = dynamic(() => import("./modals/ExistingMemberModal").then(mod => ({ default: mod.ExistingMemberModal })), { ssr: false });
-const AddonModal = dynamic(() => import("./modals/AddonModal").then(mod => ({ default: mod.AddonModal })), { ssr: false });
+
+// 회원관리 모달 - 회원관리 페이지와 동일한 모달 사용
+const NewMemberCreateModal = dynamic(() => import("../members/components/modals/NewMemberCreateModal").then(mod => ({ default: mod.NewMemberCreateModal })), { ssr: false });
+const ExistingSalesModal = dynamic(() => import("../members/components/modals/ExistingSalesModal").then(mod => ({ default: mod.ExistingSalesModal })), { ssr: false });
+const AddonSalesModal = dynamic(() => import("../members/components/modals/AddonSalesModal").then(mod => ({ default: mod.AddonSalesModal })), { ssr: false });
 
 interface AdminDashboardContentProps {
   // 서버에서 미리 가져온 사용자 이름 (LCP 최적화)
@@ -39,7 +41,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     isLoading,
 
     // 통계 데이터
-    stats, todaySchedules, announcements, companyEvents, systemAnnouncements, recentLogs,
+    stats, todaySchedules, announcements, companyEvents, systemAnnouncements, recentLogs, recentLogsSummary,
 
     // 달력
     currentMonth, setCurrentMonth, selectedDate, setSelectedDate,
@@ -75,8 +77,22 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     // 상품
     products,
 
+    // 스태프 목록
+    staffList,
+
+    // 회원 목록
+    members,
+
+    // 지점/회사 정보
+    selectedGymId,
+    selectedCompanyId,
+    myStaffId,
+
     // 저장 상태
     isSaving,
+
+    // 대시보드 새로고침
+    refreshDashboard,
 
     // 유틸리티
     formatCurrency, getSalesForMonth, getMonthLabel, calculateStatistics, getStatusColor
@@ -141,7 +157,11 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
         ) : (
           <>
             {/* Quick Actions */}
-            <QuickActions />
+            <QuickActions
+              onNewMemberClick={() => setIsNewMemberModalOpen(true)}
+              onExistingMemberClick={() => setIsExistingMemberModalOpen(true)}
+              onAddonClick={() => setIsAddonModalOpen(true)}
+            />
 
             {/* Banner Widget */}
             <BannerWidget />
@@ -192,7 +212,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
             </div>
 
             {/* Recent Logs */}
-            <RecentLogsSection logs={recentLogs} formatCurrency={formatCurrency} />
+            <RecentLogsSection logs={recentLogs} summary={recentLogsSummary} formatCurrency={formatCurrency} />
           </>
         )}
       </div>
@@ -217,39 +237,50 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
         announcement={selectedBranchAnnouncement}
       />
 
-      <NewMemberModal
-        isOpen={isNewMemberModalOpen}
-        onOpenChange={setIsNewMemberModalOpen}
-        form={newMemberForm}
-        setForm={setNewMemberForm}
-        products={products}
-        onSubmit={handleNewMemberRegistration}
-        isSaving={isSaving}
-      />
+      {/* 회원관리 모달 - 회원관리 페이지와 동일 */}
+      {selectedGymId && selectedCompanyId && (
+        <>
+          <NewMemberCreateModal
+            isOpen={isNewMemberModalOpen}
+            onClose={() => setIsNewMemberModalOpen(false)}
+            products={products}
+            staffList={staffList}
+            gymId={selectedGymId}
+            companyId={selectedCompanyId}
+            myStaffId={myStaffId}
+            onSuccess={() => {
+              setIsNewMemberModalOpen(false);
+              refreshDashboard();
+            }}
+          />
 
-      <ExistingMemberModal
-        isOpen={isExistingMemberModalOpen}
-        onOpenChange={setIsExistingMemberModalOpen}
-        form={existingMemberForm}
-        setForm={setExistingMemberForm}
-        products={products}
-        memberSearchQuery={memberSearchQuery}
-        setMemberSearchQuery={setMemberSearchQuery}
-        memberSearchResults={memberSearchResults}
-        setMemberSearchResults={setMemberSearchResults}
-        searchMembers={searchMembers}
-        onSubmit={handleExistingMemberRegistration}
-        isSaving={isSaving}
-      />
+          <ExistingSalesModal
+            isOpen={isExistingMemberModalOpen}
+            onClose={() => setIsExistingMemberModalOpen(false)}
+            members={members}
+            gymId={selectedGymId}
+            companyId={selectedCompanyId}
+            products={products}
+            myStaffId={myStaffId}
+            onSuccess={() => {
+              setIsExistingMemberModalOpen(false);
+              refreshDashboard();
+            }}
+          />
 
-      <AddonModal
-        isOpen={isAddonModalOpen}
-        onOpenChange={setIsAddonModalOpen}
-        form={addonForm}
-        setForm={setAddonForm}
-        onSubmit={handleAddonRegistration}
-        isSaving={isSaving}
-      />
+          <AddonSalesModal
+            isOpen={isAddonModalOpen}
+            onClose={() => setIsAddonModalOpen(false)}
+            members={members}
+            gymId={selectedGymId}
+            companyId={selectedCompanyId}
+            onSuccess={() => {
+              setIsAddonModalOpen(false);
+              refreshDashboard();
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }

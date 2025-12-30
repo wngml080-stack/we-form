@@ -29,10 +29,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "퇴사한 계정은 사용할 수 없습니다." }, { status: 403 });
     }
 
-    // 스케줄 조회
+    // 스케줄 조회 (회원권 환불을 위해 추가 정보 포함)
     const { data: schedule, error: scheduleError } = await supabase
       .from("schedules")
-      .select("id, staff_id, gym_id, is_locked, report_id")
+      .select("id, staff_id, gym_id, is_locked, report_id, member_id, type, status")
       .eq("id", scheduleId)
       .single();
 
@@ -56,6 +56,38 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       }
       if (schedule.is_locked) {
         return NextResponse.json({ error: "제출/승인 대기 또는 승인된 스케줄은 삭제할 수 없습니다." }, { status: 403 });
+      }
+    }
+
+    // 선차감 시스템: 삭제 시 회원권 환불 (노쇼/취소/서비스가 아닌 경우만)
+    const refundStatuses = ["no_show", "cancelled", "service"];
+    const scheduleType = schedule.type?.toLowerCase() || "";
+    const needsRefund = schedule.member_id &&
+      (scheduleType === "pt" || scheduleType === "ot") &&
+      !refundStatuses.includes(schedule.status);
+
+    if (needsRefund) {
+      const typeFilter = scheduleType === "pt"
+        ? "name.ilike.%PT%,name.ilike.%피티%"
+        : "name.ilike.%OT%,name.ilike.%오티%";
+
+      const { data: membership } = await supabase
+        .from("member_memberships")
+        .select("id, used_sessions")
+        .eq("member_id", schedule.member_id)
+        .eq("gym_id", schedule.gym_id)
+        .eq("status", "active")
+        .or(typeFilter)
+        .order("end_date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (membership && membership.used_sessions > 0) {
+        await supabase
+          .from("member_memberships")
+          .update({ used_sessions: membership.used_sessions - 1 })
+          .eq("id", membership.id);
+        console.log(`✅ 스케줄 삭제 시 회원권 환불: ${membership.used_sessions} → ${membership.used_sessions - 1}`);
       }
     }
 

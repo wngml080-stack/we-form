@@ -198,6 +198,8 @@ export async function POST(
     // 결제 내역 등록
     const paymentAmount = parseFloat(amount || "0");
     const paymentTotalAmount = total_amount ? parseFloat(total_amount) : paymentAmount;
+    // 결제일은 오늘 날짜+시간 사용 (timestamptz 타입에 맞게 ISO 형식)
+    const paymentDate = new Date().toISOString();
 
     if (paymentAmount > 0) {
       const { error: paymentError } = await supabase.from("member_payments").insert({
@@ -213,7 +215,7 @@ export async function POST(
         registration_type,
         visit_route: visit_route || null,
         memo: memo || null,
-        paid_at: start_date,
+        paid_at: paymentDate,
         created_by: staff.id,
       });
 
@@ -231,7 +233,7 @@ export async function POST(
         amount: paymentAmount,
         method: method || "card",
         memo: `${member.name} - ${membership_name || registration_type}`,
-        occurred_at: start_date,
+        occurred_at: paymentDate,
       });
     }
 
@@ -283,7 +285,7 @@ export async function POST(
           continue;
         }
 
-        // 결제 기록
+        // 결제 기록 (결제일은 오늘 날짜 사용)
         await supabase.from("member_payments").insert({
           company_id,
           gym_id,
@@ -294,7 +296,7 @@ export async function POST(
           membership_type: membership.membership_type || null,
           registration_type: registration_type,
           memo: `${membership.membership_name} (${membershipSessions}회)`,
-          paid_at: membership.start_date || start_date,
+          paid_at: paymentDate,
           start_date: membership.start_date || null,
           end_date: membership.end_date || null,
           created_by: staff.id,
@@ -310,7 +312,7 @@ export async function POST(
           amount: membershipAmount,
           method: membership.payment_method || "card",
           memo: `${member.name} - ${membership.membership_name} 추가`,
-          occurred_at: membership.start_date || start_date,
+          occurred_at: paymentDate,
         });
 
         // 활동 로그
@@ -333,7 +335,7 @@ export async function POST(
 
         const addonAmount = parseFloat(addon.amount);
 
-        // 결제 기록
+        // 결제 기록 (결제일은 오늘 날짜 사용)
         await supabase.from("member_payments").insert({
           company_id,
           gym_id,
@@ -344,7 +346,7 @@ export async function POST(
           membership_type: "부가상품",
           registration_type: "부가상품",
           memo: addon.memo,
-          paid_at: addon.start_date || start_date,
+          paid_at: paymentDate,
           start_date: addon.start_date || null,
           end_date: addon.end_date || null,
           created_by: staff.id,
@@ -360,7 +362,7 @@ export async function POST(
           amount: addonAmount,
           method: addon.method || "card",
           memo: `부가상품: ${addon.memo}`,
-          occurred_at: addon.start_date || start_date,
+          occurred_at: paymentDate,
         });
       }
     }
