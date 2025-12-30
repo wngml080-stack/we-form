@@ -6,34 +6,48 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "@/lib/toast";
 import { MembershipProduct } from "@/types/membership";
-import { CreateFormData, MembershipItem, isPTType } from "./useNewMemberForm";
+import { ExistingSalesFormData, MembershipItem, MemberMembershipInfo, getLatestEndDateByType, getNextDay, isPTType, calculateEndDate } from "./useExistingSalesForm";
 
-interface MembershipSectionProps {
-  createForm: CreateFormData;
-  selectedProductId: string;
+interface ExistingMembershipSectionProps {
+  formData: ExistingSalesFormData;
+  setFormData: (data: ExistingSalesFormData) => void;
   products: MembershipProduct[];
-  newMemberMemberships: MembershipItem[];
+  selectedProductId: string;
+  memberships: MembershipItem[];
+  memberMemberships?: MemberMembershipInfo[];
   onProductSelect: (productId: string) => void;
-  updateFormWithEndDate: (field: keyof CreateFormData, value: string) => void;
-  setCreateForm: (form: CreateFormData) => void;
-  addNewMemberMembership: () => void;
-  removeNewMemberMembership: (index: number) => void;
-  updateNewMemberMembership: (index: number, field: keyof MembershipItem, value: string) => void;
+  addMembership: () => void;
+  removeMembership: (index: number) => void;
+  updateMembership: (index: number, field: keyof MembershipItem, value: string) => void;
+  batchUpdateMembership: (index: number, updates: Partial<MembershipItem>) => void;
 }
 
-export function MembershipSection({
-  createForm, selectedProductId, products, newMemberMemberships,
-  onProductSelect, updateFormWithEndDate, setCreateForm,
-  addNewMemberMembership, removeNewMemberMembership, updateNewMemberMembership
-}: MembershipSectionProps) {
+export function ExistingMembershipSection({
+  formData, setFormData, products, selectedProductId, memberships, memberMemberships,
+  onProductSelect, addMembership, removeMembership, updateMembership, batchUpdateMembership
+}: ExistingMembershipSectionProps) {
+  // 기본 회원권의 최소 시작일 계산 (같은 유형의 기존 회원권 종료일 다음 날)
+  const minStartDate = useMemo(() => {
+    if (!memberMemberships || !formData.membership_type) return undefined;
+    const latestEndDate = getLatestEndDateByType(memberMemberships, formData.membership_type);
+    if (latestEndDate) {
+      const today = new Date().toISOString().split("T")[0];
+      if (latestEndDate >= today) {
+        return getNextDay(latestEndDate);
+      }
+    }
+    return undefined;
+  }, [memberMemberships, formData.membership_type]);
+
   // 필터링된 상품 목록을 useMemo로 계산 (Select 컴포넌트 DOM 이슈 방지)
   const filteredProducts = useMemo(() => {
     return products.filter(p =>
       p.membership_type !== "부가상품" &&
-      (!createForm.membership_type || p.membership_type === createForm.membership_type)
+      (!formData.membership_type || p.membership_type === formData.membership_type)
     );
-  }, [products, createForm.membership_type]);
+  }, [products, formData.membership_type]);
 
   // 선택된 상품과 할인율 계산
   const selectedProduct = useMemo(() => {
@@ -43,17 +57,38 @@ export function MembershipSection({
   const discountInfo = useMemo(() => {
     if (!selectedProduct) return null;
     const originalPrice = selectedProduct.default_price;
-    const currentAmount = parseFloat(createForm.membership_amount) || 0;
+    const currentAmount = parseFloat(formData.amount) || 0;
     if (originalPrice <= 0) return null;
     const discountPercent = Math.round(((originalPrice - currentAmount) / originalPrice) * 100);
     return { originalPrice, discountPercent };
-  }, [selectedProduct, createForm.membership_amount]);
+  }, [selectedProduct, formData.amount]);
+
+  // 회원권 유형 변경 핸들러
+  const handleMembershipTypeChange = (newType: string) => {
+    // 새로운 유형에 대한 최소 시작일 확인
+    const newLatestEndDate = getLatestEndDateByType(memberMemberships, newType);
+    let newStartDate = formData.start_date;
+
+    if (newLatestEndDate) {
+      const today = new Date().toISOString().split("T")[0];
+      if (newLatestEndDate >= today) {
+        const newMinStartDate = getNextDay(newLatestEndDate);
+        // 현재 시작일이 새 유형의 최소 시작일보다 이전이면 자동 조정
+        if (formData.start_date < newMinStartDate) {
+          newStartDate = newMinStartDate;
+          toast.info(`같은 유형(${newType})의 기존 회원권이 있어 시작일이 ${newMinStartDate}로 변경됩니다.`);
+        }
+      }
+    }
+
+    setFormData({ ...formData, membership_type: newType, start_date: newStartDate });
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center border-b pb-2">
         <h3 className="font-semibold text-sm text-gray-700">회원권</h3>
-        <Button type="button" variant="outline" size="sm" onClick={addNewMemberMembership} className="text-xs">
+        <Button type="button" variant="outline" size="sm" onClick={addMembership} className="text-xs">
           <Plus className="w-3 h-3 mr-1" />
           회원권 추가
         </Button>
@@ -69,7 +104,7 @@ export function MembershipSection({
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div className="space-y-1">
             <Label className="text-xs">회원권 유형</Label>
-            <Select value={createForm.membership_type} onValueChange={(v) => updateFormWithEndDate("membership_type", v)}>
+            <Select value={formData.membership_type} onValueChange={handleMembershipTypeChange}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="헬스">헬스</SelectItem>
@@ -84,17 +119,35 @@ export function MembershipSection({
           </div>
           <div className="space-y-1">
             <Label className="text-xs">등록세션 (회) <span className="text-red-500">*</span></Label>
-            <Input type="number" value={createForm.total_sessions} readOnly className="h-9 bg-gray-100" placeholder="30" />
+            <Input
+              type="number"
+              value={formData.additional_sessions}
+              readOnly
+              placeholder="30"
+              className="h-9 bg-gray-100"
+            />
           </div>
-          {isPTType(createForm.membership_type) ? (
+          {isPTType(formData.membership_type) ? (
             <div className="space-y-1">
               <Label className="text-xs">1회당 유효일수</Label>
-              <Input type="number" value={createForm.days_per_session} readOnly className="h-9 bg-gray-100" placeholder="7" />
+              <Input
+                type="number"
+                value={formData.days_per_session}
+                readOnly
+                placeholder="7"
+                className="h-9 bg-gray-100"
+              />
             </div>
           ) : (
             <div className="space-y-1">
               <Label className="text-xs">개월수 <span className="text-red-500">*</span></Label>
-              <Input type="number" value={createForm.duration_months} readOnly className="h-9 bg-gray-100" placeholder="3" />
+              <Input
+                type="number"
+                value={formData.duration_months}
+                readOnly
+                placeholder="3"
+                className="h-9 bg-gray-100"
+              />
             </div>
           )}
         </div>
@@ -112,10 +165,10 @@ export function MembershipSection({
             <SelectContent className="bg-white max-h-[200px]">
               {filteredProducts.length === 0 ? (
                 <div className="p-4 text-sm text-gray-500 text-center">
-                  {products.length === 0
-                    ? <>등록된 상품이 없습니다.<br />상품 관리 탭에서 먼저 상품을 등록해주세요.</>
-                    : <>선택한 회원권 유형에 해당하는 상품이 없습니다.</>
-                  }
+                  {formData.membership_type
+                    ? `${formData.membership_type} 유형의 상품이 없습니다.`
+                    : "등록된 상품이 없습니다."}<br />
+                  상품 관리 탭에서 먼저 상품을 등록해주세요.
                 </div>
               ) : (
                 filteredProducts.map((product) => (
@@ -132,7 +185,13 @@ export function MembershipSection({
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div className="space-y-1">
             <Label className="text-xs">등록금액 (원) <span className="text-red-500">*</span></Label>
-            <Input type="number" value={createForm.membership_amount} onChange={(e) => setCreateForm({ ...createForm, membership_amount: e.target.value })} placeholder="1000000" className="h-9" />
+            <Input
+              type="number"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value, total_amount: e.target.value })}
+              placeholder="1000000"
+              className="h-9"
+            />
             {discountInfo && (
               <p className="text-xs text-red-500">
                 정가 {discountInfo.originalPrice.toLocaleString()}원 대비 {discountInfo.discountPercent}% 할인
@@ -141,7 +200,7 @@ export function MembershipSection({
           </div>
           <div className="space-y-1">
             <Label className="text-xs">결제방법</Label>
-            <Select value={createForm.payment_method} onValueChange={(v) => setCreateForm({ ...createForm, payment_method: v })}>
+            <Select value={formData.method} onValueChange={(v) => setFormData({ ...formData, method: v })}>
               <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="card">카드</SelectItem>
@@ -152,7 +211,12 @@ export function MembershipSection({
           </div>
           <div className="space-y-1">
             <Label className="text-xs">결제카드 (수기입력)</Label>
-            <Input value={createForm.card_info} onChange={(e) => setCreateForm({ ...createForm, card_info: e.target.value })} placeholder="예: 신한카드" className="h-9" />
+            <Input
+              value={formData.card_info}
+              onChange={(e) => setFormData({ ...formData, card_info: e.target.value })}
+              placeholder="예: 신한카드"
+              className="h-9"
+            />
           </div>
         </div>
 
@@ -160,24 +224,56 @@ export function MembershipSection({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label className="text-xs">시작날짜 <span className="text-red-500">*</span></Label>
-            <Input type="date" value={createForm.start_date} onChange={(e) => updateFormWithEndDate("start_date", e.target.value)} className="h-9" />
+            <Input
+              type="date"
+              value={formData.start_date}
+              min={minStartDate}
+              onChange={(e) => {
+                const newStartDate = e.target.value;
+                if (minStartDate && newStartDate < minStartDate) {
+                  toast.error(`같은 유형의 기존 회원권이 있어 ${minStartDate} 이후로만 시작일을 설정할 수 있습니다.`);
+                  return;
+                }
+                const newEndDate = calculateEndDate(
+                  newStartDate,
+                  formData.membership_type,
+                  formData.additional_sessions,
+                  formData.days_per_session,
+                  formData.duration_months
+                );
+                setFormData({ ...formData, start_date: newStartDate, end_date: newEndDate });
+              }}
+              className="h-9"
+            />
+            {minStartDate && (
+              <p className="text-xs text-gray-500">
+                같은 유형 기존 회원권 종료 후 {minStartDate}부터 가능
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs">종료일 (자동계산)</Label>
-            <Input type="date" value={createForm.end_date} readOnly className="h-9 bg-gray-100" />
+            <Input
+              type="date"
+              value={formData.end_date}
+              readOnly
+              className="h-9 bg-gray-100"
+            />
           </div>
         </div>
       </div>
 
       {/* 추가 회원권 */}
-      {newMemberMemberships.map((membership, index) => (
+      {memberships.map((membership, index) => (
         <AdditionalMembershipCard
           key={membership.id}
           membership={membership}
           index={index}
           products={products}
-          onRemove={() => removeNewMemberMembership(index)}
-          onUpdate={(field, value) => updateNewMemberMembership(index, field, value)}
+          memberMemberships={memberMemberships}
+          onRemove={() => removeMembership(index)}
+          onUpdate={(field, value) => updateMembership(index, field, value)}
+          onBatchUpdate={(updates) => batchUpdateMembership(index, updates)}
         />
       ))}
     </div>
@@ -186,14 +282,29 @@ export function MembershipSection({
 
 // 추가 회원권 카드 컴포넌트
 function AdditionalMembershipCard({
-  membership, index, products, onRemove, onUpdate
+  membership, index, products, memberMemberships, onRemove, onUpdate, onBatchUpdate
 }: {
   membership: MembershipItem;
   index: number;
   products: MembershipProduct[];
+  memberMemberships?: MemberMembershipInfo[];
   onRemove: () => void;
   onUpdate: (field: keyof MembershipItem, value: string) => void;
+  onBatchUpdate: (updates: Partial<MembershipItem>) => void;
 }) {
+  // 추가 회원권의 최소 시작일 계산
+  const minStartDate = useMemo(() => {
+    if (!memberMemberships || !membership.membership_type) return undefined;
+    const latestEndDate = getLatestEndDateByType(memberMemberships, membership.membership_type);
+    if (latestEndDate) {
+      const today = new Date().toISOString().split("T")[0];
+      if (latestEndDate >= today) {
+        return getNextDay(latestEndDate);
+      }
+    }
+    return undefined;
+  }, [memberMemberships, membership.membership_type]);
+
   // 필터링된 상품 목록을 useMemo로 계산 (Select 컴포넌트 DOM 이슈 방지)
   const filteredProducts = useMemo(() => {
     return products.filter(p =>
@@ -219,13 +330,57 @@ function AdditionalMembershipCard({
   const handleProductSelect = (productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (product) {
-      onUpdate("product_id", productId);
-      onUpdate("membership_name", product.name);
-      onUpdate("membership_type", product.membership_type || "PT");
-      onUpdate("total_sessions", product.default_sessions?.toString() || "0");
-      onUpdate("amount", product.default_price.toString());
-      onUpdate("days_per_session", product.days_per_session?.toString() || "7");
-      onUpdate("duration_months", product.validity_months?.toString() || "");
+      const membershipType = product.membership_type || "PT";
+
+      // 같은 유형의 기존 회원권 종료일 확인
+      let startDate = new Date().toISOString().split("T")[0];
+      if (memberMemberships) {
+        const latestEndDate = getLatestEndDateByType(memberMemberships, membershipType);
+        if (latestEndDate) {
+          const today = new Date().toISOString().split("T")[0];
+          // 기존 회원권 종료일이 오늘 이후라면, 종료일 다음 날부터 시작
+          if (latestEndDate >= today) {
+            startDate = getNextDay(latestEndDate);
+            toast.info(`같은 유형(${membershipType})의 기존 회원권이 ${latestEndDate}까지 있어서 ${startDate}부터 시작합니다.`);
+          }
+        }
+      }
+
+      // 배치 업데이트로 모든 필드를 한번에 업데이트
+      onBatchUpdate({
+        product_id: productId,
+        membership_name: product.name,
+        membership_type: membershipType,
+        total_sessions: product.default_sessions?.toString() || "0",
+        amount: product.default_price.toString(),
+        start_date: startDate,
+      });
+    }
+  };
+
+  // 회원권 유형 변경 핸들러 (시작일 재검증 포함)
+  const handleMembershipTypeChange = (newType: string) => {
+    // 새로운 유형에 대한 최소 시작일 계산
+    let newMinStartDate: string | undefined;
+    if (memberMemberships) {
+      const latestEndDate = getLatestEndDateByType(memberMemberships, newType);
+      if (latestEndDate) {
+        const today = new Date().toISOString().split("T")[0];
+        if (latestEndDate >= today) {
+          newMinStartDate = getNextDay(latestEndDate);
+        }
+      }
+    }
+
+    // 현재 시작일이 새로운 최소 시작일보다 이전이면 시작일도 업데이트
+    if (newMinStartDate && membership.start_date < newMinStartDate) {
+      toast.info(`같은 유형(${newType})의 기존 회원권이 있어 시작일이 ${newMinStartDate}로 변경됩니다.`);
+      onBatchUpdate({
+        membership_type: newType,
+        start_date: newMinStartDate,
+      });
+    } else {
+      onUpdate("membership_type", newType);
     }
   };
 
@@ -242,7 +397,7 @@ function AdditionalMembershipCard({
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">회원권 유형</Label>
-          <Select value={membership.membership_type} onValueChange={(v) => onUpdate("membership_type", v)}>
+          <Select value={membership.membership_type} onValueChange={handleMembershipTypeChange}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent className="bg-white">
               <SelectItem value="헬스">헬스</SelectItem>
@@ -257,17 +412,35 @@ function AdditionalMembershipCard({
         </div>
         <div className="space-y-1">
           <Label className="text-xs">등록세션 (회) <span className="text-red-500">*</span></Label>
-          <Input type="number" value={membership.total_sessions} readOnly className="h-9 bg-gray-100" placeholder="30" />
+          <Input
+            type="number"
+            value={membership.total_sessions}
+            readOnly
+            placeholder="30"
+            className="h-9 bg-gray-100"
+          />
         </div>
         {isPTType(membership.membership_type) ? (
           <div className="space-y-1">
             <Label className="text-xs">1회당 유효일수</Label>
-            <Input type="number" value={membership.days_per_session} readOnly className="h-9 bg-gray-100" placeholder="7" />
+            <Input
+              type="number"
+              value={membership.days_per_session}
+              readOnly
+              placeholder="7"
+              className="h-9 bg-gray-100"
+            />
           </div>
         ) : (
           <div className="space-y-1">
             <Label className="text-xs">개월수 <span className="text-red-500">*</span></Label>
-            <Input type="number" value={membership.duration_months} readOnly className="h-9 bg-gray-100" placeholder="3" />
+            <Input
+              type="number"
+              value={membership.duration_months}
+              readOnly
+              placeholder="3"
+              className="h-9 bg-gray-100"
+            />
           </div>
         )}
       </div>
@@ -283,7 +456,9 @@ function AdditionalMembershipCard({
           <SelectContent className="bg-white max-h-[200px]">
             {filteredProducts.length === 0 ? (
               <div className="p-4 text-sm text-gray-500 text-center">
-                선택한 회원권 유형에 해당하는 상품이 없습니다.
+                {membership.membership_type
+                  ? `${membership.membership_type} 유형의 상품이 없습니다.`
+                  : "등록된 상품이 없습니다."}
               </div>
             ) : (
               filteredProducts.map((product) => (
@@ -300,7 +475,13 @@ function AdditionalMembershipCard({
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">등록금액 (원) <span className="text-red-500">*</span></Label>
-          <Input type="number" value={membership.amount} onChange={(e) => onUpdate("amount", e.target.value)} placeholder="1000000" className="h-9" />
+          <Input
+            type="number"
+            value={membership.amount}
+            onChange={(e) => onUpdate("amount", e.target.value)}
+            placeholder="1000000"
+            className="h-9"
+          />
           {discountInfo && (
             <p className="text-xs text-red-500">
               정가 {discountInfo.originalPrice.toLocaleString()}원 대비 {discountInfo.discountPercent}% 할인
@@ -320,7 +501,12 @@ function AdditionalMembershipCard({
         </div>
         <div className="space-y-1">
           <Label className="text-xs">결제카드 (수기입력)</Label>
-          <Input value={membership.card_info} onChange={(e) => onUpdate("card_info", e.target.value)} placeholder="예: 신한카드" className="h-9" />
+          <Input
+            value={membership.card_info}
+            onChange={(e) => onUpdate("card_info", e.target.value)}
+            placeholder="예: 신한카드"
+            className="h-9"
+          />
         </div>
       </div>
 
@@ -328,11 +514,34 @@ function AdditionalMembershipCard({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">시작날짜 <span className="text-red-500">*</span></Label>
-          <Input type="date" value={membership.start_date} onChange={(e) => onUpdate("start_date", e.target.value)} className="h-9" />
+          <Input
+            type="date"
+            value={membership.start_date}
+            min={minStartDate}
+            onChange={(e) => {
+              const newStartDate = e.target.value;
+              if (minStartDate && newStartDate < minStartDate) {
+                toast.error(`같은 유형의 기존 회원권이 있어 ${minStartDate} 이후로만 시작일을 설정할 수 있습니다.`);
+                return;
+              }
+              onUpdate("start_date", newStartDate);
+            }}
+            className="h-9"
+          />
+          {minStartDate && (
+            <p className="text-xs text-gray-500">
+              같은 유형 기존 회원권 종료 후 {minStartDate}부터 가능
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <Label className="text-xs">종료일 (자동계산)</Label>
-          <Input type="date" value={membership.end_date} readOnly className="h-9 bg-gray-100" />
+          <Input
+            type="date"
+            value={membership.end_date}
+            readOnly
+            className="h-9 bg-gray-100"
+          />
         </div>
       </div>
     </div>

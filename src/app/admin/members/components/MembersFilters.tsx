@@ -35,7 +35,7 @@ export function MembersFilters({
         <SelectContent className="bg-white">
           <SelectItem value="all">전체 상태</SelectItem>
           <SelectItem value="active">활성</SelectItem>
-          <SelectItem value="paused">휴면</SelectItem>
+          <SelectItem value="paused">홀딩</SelectItem>
           <SelectItem value="expired">만료</SelectItem>
         </SelectContent>
       </Select>

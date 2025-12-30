@@ -55,7 +55,6 @@ export interface MemberEditFormData {
 export interface MembershipEditFormData {
   id: string;
   name: string;
-  membership_type: string;
   start_date: string;
   end_date: string;
   total_sessions: string;
@@ -97,7 +96,6 @@ const INITIAL_MEMBER_EDIT_FORM: MemberEditFormData = {
 const INITIAL_MEMBERSHIP_EDIT_FORM: MembershipEditFormData = {
   id: "",
   name: "",
-  membership_type: "",
   start_date: "",
   end_date: "",
   total_sessions: "",
@@ -150,12 +148,19 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
   const [isMemberDetailOpen, setIsMemberDetailOpen] = useState(false);
   const [isMemberEditOpen, setIsMemberEditOpen] = useState(false);
   const [isMembershipEditOpen, setIsMembershipEditOpen] = useState(false);
+  const [isAddonEditOpen, setIsAddonEditOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   // Selected member and forms
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]);
+  const [memberAllMemberships, setMemberAllMemberships] = useState<any[]>([]);
+  const [memberActivityLogs, setMemberActivityLogs] = useState<any[]>([]);
+  const [transferMember, setTransferMember] = useState<any>(null);
+  const [transferMembership, setTransferMembership] = useState<any>(null);
   const [membershipEditForm, setMembershipEditForm] = useState<MembershipEditFormData>(INITIAL_MEMBERSHIP_EDIT_FORM);
   const [memberEditForm, setMemberEditForm] = useState<MemberEditFormData>(INITIAL_MEMBER_EDIT_FORM);
+  const [selectedAddon, setSelectedAddon] = useState<any>(null);
   const [membershipForm, setMembershipForm] = useState<MembershipFormData>(INITIAL_MEMBERSHIP_FORM);
   const [membershipModalAddons, setMembershipModalAddons] = useState<AddonItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
@@ -195,18 +200,20 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     if (data) setStaffList(data);
   }, [supabase]);
 
-  // Fetch products
+  // Fetch products (API를 통해 조회하여 RLS 우회)
   const fetchProducts = useCallback(async (targetGymId: string | null) => {
     if (!targetGymId) return;
-    const { data } = await supabase
-      .from("membership_products")
-      .select("*")
-      .eq("gym_id", targetGymId)
-      .eq("is_active", true)
-      .order("display_order")
-      .order("name");
-    if (data) setProducts(data);
-  }, [supabase]);
+    try {
+      const response = await fetch(`/api/admin/products?gym_id=${targetGymId}`);
+      const result = await response.json();
+      if (response.ok && result.data) {
+        const activeProducts = result.data.filter((p: any) => p.is_active === true);
+        setProducts(activeProducts);
+      }
+    } catch (error) {
+      // 에러 무시
+    }
+  }, []);
 
   // Fetch members
   const fetchMembers = useCallback(async (targetGymId: string | null, targetCompanyId: string | null, role: string, staffId: string) => {
@@ -217,7 +224,7 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
       .select(`
         *,
         member_memberships!left (
-          id, name, total_sessions, used_sessions, start_date, end_date, status
+          id, name, membership_type, total_sessions, used_sessions, start_date, end_date, status
         )
       `)
       .eq("gym_id", targetGymId)
@@ -229,10 +236,7 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
 
     const { data, error } = await query.order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("회원 조회 에러:", error.message);
-      return;
-    }
+    if (error) return;
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -243,15 +247,18 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
       let newStatus = member.status;
       let shouldUpdate = false;
 
-      if (!activeMembership) {
-        if (member.status !== 'expired') {
-          newStatus = 'expired';
-          shouldUpdate = true;
-        }
-      } else if (activeMembership.end_date && activeMembership.end_date < today) {
-        if (member.status !== 'expired') {
-          newStatus = 'expired';
-          shouldUpdate = true;
+      // 홀딩(paused) 상태는 유지 - 자동으로 expired로 변경하지 않음
+      if (member.status !== 'paused') {
+        if (!activeMembership) {
+          if (member.status !== 'expired') {
+            newStatus = 'expired';
+            shouldUpdate = true;
+          }
+        } else if (activeMembership.end_date && activeMembership.end_date < today) {
+          if (member.status !== 'expired') {
+            newStatus = 'expired';
+            shouldUpdate = true;
+          }
         }
       }
 
@@ -282,9 +289,14 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
 
   // Effects
   useEffect(() => {
-    if (authLoading || !filterInitialized) return;
-    if (!user) return;
+    if (authLoading || !filterInitialized || !user) return;
     setMyStaffId(user.id);
+    console.log("[Members] 회원 조회 시작:", {
+      selectedGymId,
+      selectedCompanyId,
+      userGymId: user.gym_id,
+      userCompanyId: user.company_id
+    });
     if (selectedGymId && selectedCompanyId) {
       fetchMembers(selectedGymId, selectedCompanyId, userRole, user.id);
       fetchStaffList(selectedGymId);
@@ -383,18 +395,17 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     setIsMemberEditOpen(true);
   };
 
-  const openMembershipEditModal = (member: any) => {
+  const openMembershipEditModal = (member: any, membership?: any) => {
     setSelectedMember(member);
-    const membership = member.activeMembership;
-    if (membership) {
+    const targetMembership = membership || member.activeMembership;
+    if (targetMembership) {
       setMembershipEditForm({
-        id: membership.id || "",
-        name: membership.name || "",
-        membership_type: membership.membership_type || "",
-        start_date: membership.start_date || "",
-        end_date: membership.end_date || "",
-        total_sessions: membership.total_sessions?.toString() || "",
-        used_sessions: membership.used_sessions?.toString() || ""
+        id: targetMembership.id || "",
+        name: targetMembership.name || "",
+        start_date: targetMembership.start_date || "",
+        end_date: targetMembership.end_date || "",
+        total_sessions: targetMembership.total_sessions?.toString() || "",
+        used_sessions: targetMembership.used_sessions?.toString() || ""
       });
     }
     setIsMembershipEditOpen(true);
@@ -402,17 +413,44 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
 
   const openMemberDetailModal = async (member: any) => {
     setSelectedMember(member);
+    const memberGymId = member.gym_id || gymId;
+
     try {
-      const { data: payments, error } = await supabase
-        .from("member_payments")
-        .select(`id, amount, method, memo, created_at, member_memberships (name, membership_type), staffs:created_by (name)`)
-        .eq("member_id", member.id)
-        .order("created_at", { ascending: false });
-      setMemberPaymentHistory(error ? [] : payments || []);
-    } catch {
+      const response = await fetch(`/api/admin/members/${member.id}/detail?gym_id=${memberGymId}`);
+      const result = await response.json();
+
+      if (!response.ok) {
+        setMemberAllMemberships(member.member_memberships || []);
+        setMemberPaymentHistory([]);
+        setMemberActivityLogs([]);
+      } else {
+        const membershipsWithCreatedAt = (result.memberships || []).map((m: any) => ({
+          ...m,
+          created_at: m.created_at || new Date().toISOString()
+        }));
+        setMemberAllMemberships(membershipsWithCreatedAt);
+        setMemberPaymentHistory(result.payments || []);
+        setMemberActivityLogs(result.activityLogs || []);
+      }
+    } catch (e) {
+      setMemberAllMemberships(member.member_memberships || []);
       setMemberPaymentHistory([]);
+      setMemberActivityLogs([]);
     }
+
     setIsMemberDetailOpen(true);
+  };
+
+  const openAddonEditModal = (member: any, addon: any) => {
+    setSelectedMember(member);
+    setSelectedAddon(addon);
+    setIsAddonEditOpen(true);
+  };
+
+  const openTransferModal = (member: any, membership?: any) => {
+    setTransferMember(member);
+    setTransferMembership(membership || member.activeMembership || null);
+    setIsTransferModalOpen(true);
   };
 
   // Sort handler
@@ -465,6 +503,12 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     }
   }, [usePagination, paginatedData, gymId, companyId, myRole, myStaffId, fetchMembers]);
 
+  const refreshProducts = useCallback(() => {
+    if (gymId) {
+      fetchProducts(gymId);
+    }
+  }, [gymId, fetchProducts]);
+
   return {
     // Feature flags
     usePagination, useTanStackTable,
@@ -491,17 +535,20 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     isMemberDetailOpen, setIsMemberDetailOpen,
     isMemberEditOpen, setIsMemberEditOpen,
     isMembershipEditOpen, setIsMembershipEditOpen,
+    isAddonEditOpen, setIsAddonEditOpen,
+    isTransferModalOpen, setIsTransferModalOpen,
     // Selected member and forms
-    selectedMember, memberPaymentHistory,
+    selectedMember, memberPaymentHistory, memberAllMemberships, memberActivityLogs,
+    selectedAddon, transferMember, transferMembership,
     membershipEditForm, setMembershipEditForm,
     memberEditForm, setMemberEditForm,
     membershipForm, setMembershipForm,
     membershipModalAddons,
     addMembershipModalAddon, removeMembershipModalAddon, updateMembershipModalAddon,
     // Modal openers
-    openMembershipModal, openMemberEditModal, openMembershipEditModal, openMemberDetailModal,
+    openMembershipModal, openMemberEditModal, openMembershipEditModal, openMemberDetailModal, openAddonEditModal, openTransferModal,
     // Refresh and utilities
-    refreshMembers, fetchMembers, setIsLoading,
+    refreshMembers, refreshProducts, fetchMembers, setIsLoading,
     supabase
   };
 }

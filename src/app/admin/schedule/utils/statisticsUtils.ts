@@ -204,7 +204,8 @@ export function enrichSchedulesWithSessionInfo(allSchedules: any[], memberMember
     }
   });
 
-  const isCompleted = (status: string) => status === 'completed' || status === 'service' || status === 'no_show_deducted';
+  // 회차 차감되는 상태만: completed, no_show_deducted (service는 차감 없음)
+  const isCompleted = (status: string) => status === 'completed' || status === 'no_show_deducted';
 
   Object.values(memberSchedules).forEach(({ pt, ot }) => {
     pt.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
@@ -242,9 +243,10 @@ export function enrichSchedulesWithSessionInfo(allSchedules: any[], memberMember
   return allSchedules;
 }
 
-// 회차로 카운트되는 수업인지 확인
+// 회차로 카운트되는 수업인지 확인 (실제 차감되는 수업만)
+// completed, no_show_deducted만 차감 / service, no_show, cancelled는 차감 없음
 export function isCompletedSession(status: string): boolean {
-  return status === 'completed' || status === 'service' || status === 'no_show_deducted';
+  return status === 'completed' || status === 'no_show_deducted';
 }
 
 // 특정 회원의 PT/OT 회차 계산

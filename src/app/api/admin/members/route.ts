@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
           membership_type: payment.membership_type,
           membership_name: payment.membership_name,
           registration_type: payment.registration_type || "신규",
-          payment_date: payment.payment_date,
+          paid_at: payment.payment_date,
           amount: parseFloat(payment.amount),
           total_amount: parseFloat(payment.total_amount || payment.amount),
           total_sessions: payment.total_sessions || null,
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
           start_date: payment.start_date,
           end_date: payment.end_date,
           method: payment.method || "card",
-          registered_by: staff.id,
+          created_by: staff.id,
           memo: payment.memo || null
         })
         .select()
@@ -240,9 +240,12 @@ export async function POST(request: NextRequest) {
           amount: addonAmount,
           total_amount: addonAmount,
           method: addon.payment_method || "card",
+          membership_type: "부가상품",
           registration_type: "부가상품",
           memo: addon.memo || "부가상품 구매",
           paid_at: addon.occurred_at || created_at,
+          start_date: addon.start_date || null,
+          end_date: addon.end_date || null,
           created_by: staff.id
         });
 
@@ -252,10 +255,10 @@ export async function POST(request: NextRequest) {
           gym_id,
           member_id: newMember.id,
           staff_id: staff.id,
-          type: "addon",
+          type: "sale",
           amount: addonAmount,
           method: addon.payment_method || "card",
-          memo: addon.memo || `${name} - 부가상품`,
+          memo: `부가상품: ${addon.memo || '부가상품'}`,
           occurred_at: addon.occurred_at || created_at
         });
       }

@@ -183,9 +183,10 @@ export function useStaffPageData() {
   const fetchMembers = async (gymId: string | null, companyId: string | null) => {
     if (!gymId || !companyId) return;
 
+    // !inner 제거: 회원권이 없는 회원도 조회되도록 LEFT JOIN 사용
     const { data, error } = await supabase
       .from("members")
-      .select(`*, member_memberships!inner (id, name, total_sessions, used_sessions, status)`)
+      .select(`*, member_memberships (id, name, total_sessions, used_sessions, status)`)
       .eq("gym_id", gymId)
       .eq("company_id", companyId)
       .eq("status", "active")
@@ -238,7 +239,8 @@ export function useStaffPageData() {
       else if (type === 'ot') memberSchedules[s.member_id].ot.push(s);
     });
 
-    const isCompleted = (status: string) => status === 'completed' || status === 'service' || status === 'no_show_deducted';
+    // 회차 차감되는 상태만: completed, no_show_deducted (service는 차감 없음)
+    const isCompleted = (status: string) => status === 'completed' || status === 'no_show_deducted';
 
     Object.values(memberSchedules).forEach(({ pt, ot }) => {
       pt.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
@@ -397,6 +399,31 @@ export function useStaffPageData() {
       toast.error("등록 실패!");
       console.error(error);
     } else {
+      // 선차감: 예약 생성 시 회원권 1회 차감 (PT/OT만)
+      if (selectedMemberId && (newClassType === "PT" || newClassType === "OT")) {
+        const typeFilter = newClassType === "PT"
+          ? "name.ilike.%PT%,name.ilike.%피티%"
+          : "name.ilike.%OT%,name.ilike.%오티%";
+
+        const { data: membership } = await supabase
+          .from("member_memberships")
+          .select("id, used_sessions, total_sessions")
+          .eq("member_id", selectedMemberId)
+          .eq("gym_id", myGymId)
+          .eq("status", "active")
+          .or(typeFilter)
+          .order("end_date", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (membership && membership.used_sessions < membership.total_sessions) {
+          await supabase
+            .from("member_memberships")
+            .update({ used_sessions: membership.used_sessions + 1 })
+            .eq("id", membership.id);
+        }
+      }
+
       setIsAddModalOpen(false);
       setNewMemberName("");
       setSelectedMemberId(null);

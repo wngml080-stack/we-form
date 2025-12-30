@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { toast } from "@/lib/toast";
-import { createSupabaseClient } from "@/lib/supabase/client";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
 import { MembershipProduct } from "@/types/membership";
 
@@ -38,6 +37,7 @@ export interface MembershipItem {
   days_per_session: string;
   duration_months: string;
   payment_method: string;
+  card_info: string;
 }
 
 export interface CreateFormData {
@@ -53,6 +53,7 @@ export interface CreateFormData {
   days_per_session: string;
   duration_months: string;
   payment_method: string;
+  card_info: string;
   registered_by: string;
   trainer_id: string;
   birth_date: string;
@@ -77,6 +78,7 @@ export const INITIAL_CREATE_FORM: CreateFormData = {
   days_per_session: "7",
   duration_months: "",
   payment_method: "card",
+  card_info: "",
   registered_by: "",
   trainer_id: "",
   birth_date: "",
@@ -132,7 +134,6 @@ interface UseNewMemberFormProps {
 export function useNewMemberForm({
   products, gymId, companyId, myStaffId, onSuccess, onClose
 }: UseNewMemberFormProps) {
-  const supabase = createSupabaseClient();
   const [isLoading, setIsLoading] = useState(false);
   const [createForm, setCreateForm] = useState<CreateFormData>({
     ...INITIAL_CREATE_FORM,
@@ -157,6 +158,7 @@ export function useNewMemberForm({
     days_per_session: "7",
     duration_months: "",
     payment_method: "card",
+    card_info: "",
   });
 
   const addNewMemberMembership = () => {
@@ -232,41 +234,6 @@ export function useNewMemberForm({
     setNewMemberAddons(updated);
   };
 
-  // 부가상품 저장
-  const saveAddonPayments = async (memberId: string, addons: AddonItem[], registeredAt: string) => {
-    for (const addon of addons) {
-      if (!addon.addon_type || !addon.amount) continue;
-
-      const addonName = addon.addon_type === "기타" ? addon.custom_addon_name : addon.addon_type;
-      const memoText = addon.locker_number ? `${addonName} (락커 ${addon.locker_number})` : addonName;
-
-      await supabase.from("member_payments").insert({
-        company_id: companyId,
-        gym_id: gymId,
-        member_id: memberId,
-        amount: parseFloat(addon.amount),
-        total_amount: parseFloat(addon.amount),
-        method: addon.method,
-        membership_type: "부가상품",
-        registration_type: "부가상품",
-        memo: memoText,
-        paid_at: registeredAt,
-        created_by: myStaffId,
-      });
-
-      await supabase.from("sales_logs").insert({
-        company_id: companyId,
-        gym_id: gymId,
-        staff_id: myStaffId,
-        type: "sale",
-        amount: parseFloat(addon.amount),
-        method: addon.method,
-        memo: `부가상품: ${memoText}`,
-        occurred_at: registeredAt,
-      });
-    }
-  };
-
   // 폼 리셋
   const resetForm = () => {
     setCreateForm({
@@ -292,13 +259,24 @@ export function useNewMemberForm({
     const product = products.find((p) => p.id === productId);
     if (product) {
       setSelectedProductId(productId);
-      setCreateForm({
+      const newForm = {
         ...createForm,
         membership_name: product.name,
         membership_type: product.membership_type || "PT",
         total_sessions: product.default_sessions?.toString() || "0",
         membership_amount: product.default_price.toString(),
-      });
+        days_per_session: product.days_per_session?.toString() || "7",
+        duration_months: product.validity_months?.toString() || "",
+      };
+      // 종료일 자동 계산
+      newForm.end_date = calculateEndDate(
+        newForm.start_date,
+        newForm.membership_type,
+        newForm.total_sessions,
+        newForm.days_per_session,
+        newForm.duration_months
+      );
+      setCreateForm(newForm);
     }
   };
 
@@ -316,10 +294,15 @@ export function useNewMemberForm({
       );
     }
 
+    // 회원권 유형이 변경되면 선택된 상품 초기화 (DOM 이슈 방지)
+    if (field === "membership_type") {
+      setSelectedProductId("");
+    }
+
     setCreateForm(updatedForm);
   };
 
-  // 회원 등록
+  // 회원 등록 (API 사용)
   const handleCreateMember = async () => {
     if (!createForm.name || !createForm.phone) {
       toast.warning("필수 항목을 모두 입력해주세요. (회원명, 연락처)");
@@ -340,10 +323,11 @@ export function useNewMemberForm({
 
     setIsLoading(true);
     try {
-      // 1. 회원 등록
-      const { data: member, error: memberError } = await supabase
-        .from("members")
-        .insert({
+      // API를 통해 회원 등록 (RLS 우회)
+      const response = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           company_id: companyId,
           gym_id: gymId,
           name: createForm.name,
@@ -353,127 +337,80 @@ export function useNewMemberForm({
           registered_by: createForm.registered_by || myStaffId,
           trainer_id: createForm.trainer_id || null,
           exercise_goal: createForm.exercise_goal || null,
-          weight: createForm.weight ? parseFloat(createForm.weight) : null,
-          body_fat_mass: createForm.body_fat_mass ? parseFloat(createForm.body_fat_mass) : null,
-          skeletal_muscle_mass: createForm.skeletal_muscle_mass ? parseFloat(createForm.skeletal_muscle_mass) : null,
+          weight: createForm.weight || null,
+          body_fat_mass: createForm.body_fat_mass || null,
+          skeletal_muscle_mass: createForm.skeletal_muscle_mass || null,
           memo: createForm.memo || null,
           status: "active",
           created_at: createForm.registered_at,
-        })
-        .select()
-        .single();
-
-      if (memberError) throw memberError;
-
-      // 2. 기본 회원권 등록
-      if (selectedProductId || createForm.membership_amount) {
-        const { data: membership, error: membershipError } = await supabase
-          .from("member_memberships")
-          .insert({
-            gym_id: gymId,
-            member_id: member.id,
+          // 회원권 정보
+          membership: (selectedProductId || createForm.membership_amount) ? {
             name: createForm.membership_name,
             membership_type: createForm.membership_type,
             total_sessions: parseInt(createForm.total_sessions) || 0,
-            used_sessions: 0,
             start_date: createForm.start_date || createForm.registered_at,
             end_date: createForm.end_date || null,
-            status: "active",
-          })
-          .select()
-          .single();
-
-        if (membershipError) throw membershipError;
-
-        // 3. 결제 정보 등록
-        const amount = parseFloat(createForm.membership_amount);
-        const { error: paymentError } = await supabase
-          .from("member_payments")
-          .insert({
-            company_id: companyId,
-            gym_id: gymId,
-            member_id: member.id,
-            membership_id: membership.id,
-            amount: amount,
-            total_amount: amount,
-            method: createForm.payment_method,
+          } : null,
+          // 결제 정보
+          payment: (selectedProductId || createForm.membership_amount) ? {
             membership_type: createForm.membership_type,
+            membership_name: createForm.membership_name,
             registration_type: "신규",
+            payment_date: createForm.registered_at,
+            amount: createForm.membership_amount,
+            total_amount: createForm.membership_amount,
+            total_sessions: createForm.total_sessions,
+            start_date: createForm.start_date || createForm.registered_at,
+            end_date: createForm.end_date || null,
+            method: createForm.payment_method,
             memo: `${createForm.membership_name} 신규 등록`,
-            paid_at: createForm.registered_at,
-          });
+          } : null,
+          // 매출 로그
+          sales_log: (selectedProductId || createForm.membership_amount) ? {
+            type: "sale",
+            amount: createForm.membership_amount,
+            method: createForm.payment_method,
+            memo: `${createForm.name} - ${createForm.membership_name} 신규 등록`,
+            occurred_at: createForm.registered_at,
+          } : null,
+          // 추가 회원권
+          additional_memberships: newMemberMemberships.filter(m => m.product_id && m.amount).map(m => ({
+            product_id: m.product_id,
+            membership_name: m.membership_name,
+            membership_type: m.membership_type,
+            total_sessions: m.total_sessions,
+            start_date: m.start_date || m.registered_at,
+            end_date: m.end_date || null,
+            amount: m.amount,
+            payment_method: m.payment_method,
+            registered_at: m.registered_at,
+          })),
+          // 부가상품
+          addons: newMemberAddons.filter(a => a.addon_type && a.amount).map(a => {
+            const addonName = a.addon_type === "기타" ? a.custom_addon_name : a.addon_type;
+            let memoText = addonName;
+            if (a.locker_number && (a.addon_type === "개인락커" || a.addon_type === "물품락커")) {
+              memoText = `${addonName} ${a.locker_number}번`;
+            }
+            if (a.duration) {
+              const durationLabel = a.duration_type === "months" ? "개월" : "일";
+              memoText += ` (${a.duration}${durationLabel})`;
+            }
+            return {
+              amount: a.amount,
+              payment_method: a.method,
+              memo: memoText,
+              start_date: a.start_date || null,
+              end_date: a.end_date || null,
+              occurred_at: createForm.registered_at,
+            };
+          }),
+        }),
+      });
 
-        if (paymentError) throw paymentError;
-
-        // 4. 매출 로그
-        await supabase.from("sales_logs").insert({
-          company_id: companyId,
-          gym_id: gymId,
-          staff_id: myStaffId,
-          type: "sale",
-          amount: amount,
-          method: createForm.payment_method,
-          memo: `${createForm.name} - ${createForm.membership_name} 신규 등록`,
-          occurred_at: createForm.registered_at,
-        });
-      }
-
-      // 5. 추가 회원권 등록
-      for (const additionalMembership of newMemberMemberships) {
-        if (!additionalMembership.product_id || !additionalMembership.amount) continue;
-
-        const { data: addMembership, error: addMembershipError } = await supabase
-          .from("member_memberships")
-          .insert({
-            gym_id: gymId,
-            member_id: member.id,
-            name: additionalMembership.membership_name,
-            membership_type: additionalMembership.membership_type,
-            total_sessions: parseInt(additionalMembership.total_sessions) || 0,
-            used_sessions: 0,
-            start_date: additionalMembership.start_date || additionalMembership.registered_at,
-            end_date: additionalMembership.end_date || null,
-            status: "active",
-          })
-          .select()
-          .single();
-
-        if (addMembershipError) {
-          console.error("추가 회원권 등록 실패:", addMembershipError);
-          continue;
-        }
-
-        const addAmount = parseFloat(additionalMembership.amount);
-        await supabase.from("member_payments").insert({
-          company_id: companyId,
-          gym_id: gymId,
-          member_id: member.id,
-          membership_id: addMembership.id,
-          amount: addAmount,
-          total_amount: addAmount,
-          method: additionalMembership.payment_method,
-          membership_type: additionalMembership.membership_type,
-          registration_type: "신규",
-          memo: `${additionalMembership.membership_name} 신규 등록 (추가)`,
-          paid_at: additionalMembership.registered_at,
-          created_by: myStaffId,
-        });
-
-        await supabase.from("sales_logs").insert({
-          company_id: companyId,
-          gym_id: gymId,
-          staff_id: myStaffId,
-          type: "sale",
-          amount: addAmount,
-          method: additionalMembership.payment_method,
-          memo: `${createForm.name} - ${additionalMembership.membership_name} 신규 등록 (추가)`,
-          occurred_at: additionalMembership.registered_at,
-        });
-      }
-
-      // 6. 부가상품 저장
-      if (newMemberAddons.length > 0) {
-        await saveAddonPayments(member.id, newMemberAddons, createForm.registered_at);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "회원 등록에 실패했습니다.");
       }
 
       showSuccess("회원이 등록되었습니다!");

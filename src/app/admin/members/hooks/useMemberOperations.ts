@@ -7,7 +7,6 @@ import { SupabaseClient } from "@supabase/supabase-js";
 interface MembershipEditForm {
   id: string;
   name: string;
-  membership_type: string;
   start_date: string;
   end_date: string;
   total_sessions: string;
@@ -94,13 +93,47 @@ export function useMemberOperations({
     }
   };
 
+  // 활동 로그 기록 함수
+  const logActivity = async (
+    memberId: string,
+    actionType: string,
+    description: string,
+    membershipId?: string,
+    changes?: { before?: Record<string, unknown>; after?: Record<string, unknown> }
+  ) => {
+    if (!gymId || !companyId) return;
+    try {
+      await supabase.from("member_activity_logs").insert({
+        gym_id: gymId,
+        company_id: companyId,
+        member_id: memberId,
+        membership_id: membershipId || null,
+        action_type: actionType,
+        description,
+        changes: changes || null,
+        created_by: myStaffId
+      });
+    } catch (error) {
+      console.error("활동 로그 기록 실패:", error);
+    }
+  };
+
   // 부가상품 저장 함수
   const saveAddonPayments = async (memberId: string, addons: AddonItem[], registeredAt: string) => {
     for (const addon of addons) {
       if (!addon.addon_type || !addon.amount) continue;
 
       const addonName = addon.addon_type === "기타" ? addon.custom_addon_name : addon.addon_type;
-      const memoText = addon.locker_number ? `${addonName} (락커 ${addon.locker_number})` : addonName;
+      // 락커 번호 형식 통일: "개인락커 15번"
+      let memoText = addonName;
+      if (addon.locker_number && (addon.addon_type === "개인락커" || addon.addon_type === "물품락커")) {
+        memoText = `${addonName} ${addon.locker_number}번`;
+      }
+      // 기간 정보 추가
+      if (addon.duration) {
+        const durationLabel = addon.duration_type === "months" ? "개월" : "일";
+        memoText += ` (${addon.duration}${durationLabel})`;
+      }
 
       // 결제 기록 생성
       await supabase.from("member_payments").insert({
@@ -114,6 +147,8 @@ export function useMemberOperations({
         registration_type: "부가상품",
         memo: memoText,
         paid_at: registeredAt,
+        start_date: addon.start_date || null,
+        end_date: addon.end_date || null,
         created_by: myStaffId
       });
 
@@ -131,28 +166,33 @@ export function useMemberOperations({
     }
   };
 
-  // 회원권 수정 처리
+  // 회원권 수정 처리 (API 사용)
   const handleEditMembership = async (
     membershipEditForm: MembershipEditForm,
-    onSuccess: () => void
+    onSuccess: () => void,
+    memberId?: string
   ) => {
-    if (!membershipEditForm.id || !gymId) return;
+    if (!membershipEditForm.id || !gymId || !memberId) return;
 
     setIsLoading(true);
     try {
-      const updateData = {
-        start_date: membershipEditForm.start_date || null,
-        end_date: membershipEditForm.end_date || null,
-        total_sessions: parseInt(membershipEditForm.total_sessions) || 0,
-        used_sessions: parseInt(membershipEditForm.used_sessions) || 0
-      };
+      const response = await fetch(`/api/admin/members/${memberId}/membership`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          membershipId: membershipEditForm.id,
+          name: membershipEditForm.name,
+          start_date: membershipEditForm.start_date || null,
+          end_date: membershipEditForm.end_date || null,
+          total_sessions: membershipEditForm.total_sessions,
+          used_sessions: membershipEditForm.used_sessions,
+        }),
+      });
 
-      const { error } = await supabase
-        .from("member_memberships")
-        .update(updateData)
-        .eq("id", membershipEditForm.id);
-
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "수정에 실패했습니다.");
+      }
 
       showSuccess("회원권 정보가 수정되었습니다!");
       onSuccess();
@@ -164,7 +204,7 @@ export function useMemberOperations({
     }
   };
 
-  // 회원정보 수정 처리
+  // 회원정보 수정 처리 (API 사용)
   const handleUpdateMemberInfo = async (
     selectedMember: any,
     memberEditForm: MemberEditForm,
@@ -174,32 +214,34 @@ export function useMemberOperations({
 
     setIsLoading(true);
     try {
-      const updateData: any = {
-        name: memberEditForm.name,
-        phone: memberEditForm.phone,
-        birth_date: memberEditForm.birth_date || null,
-        gender: memberEditForm.gender || null,
-        exercise_goal: memberEditForm.exercise_goal || null,
-        memo: memberEditForm.memo || null
-      };
+      const response = await fetch(`/api/admin/members/${selectedMember.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: memberEditForm.name,
+          phone: memberEditForm.phone,
+          birth_date: memberEditForm.birth_date || null,
+          gender: memberEditForm.gender || null,
+          exercise_goal: memberEditForm.exercise_goal || null,
+          memo: memberEditForm.memo || null,
+          weight: memberEditForm.weight || null,
+          body_fat_mass: memberEditForm.body_fat_mass || null,
+          skeletal_muscle_mass: memberEditForm.skeletal_muscle_mass || null,
+          trainer_id: memberEditForm.trainer_id || null,
+        }),
+      });
 
-      if (memberEditForm.weight) updateData.weight = parseFloat(memberEditForm.weight);
-      if (memberEditForm.body_fat_mass) updateData.body_fat_mass = parseFloat(memberEditForm.body_fat_mass);
-      if (memberEditForm.skeletal_muscle_mass) updateData.skeletal_muscle_mass = parseFloat(memberEditForm.skeletal_muscle_mass);
-      if (memberEditForm.trainer_id) updateData.trainer_id = memberEditForm.trainer_id;
-
-      const { error } = await supabase
-        .from("members")
-        .update(updateData)
-        .eq("id", selectedMember.id);
-
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "수정에 실패했습니다.");
+      }
 
       showSuccess("회원정보가 수정되었습니다!");
       onSuccess();
       refreshData();
     } catch (error: any) {
-      showError(error, "회원정보 수정");
+      console.error("회원정보 수정 오류:", error);
+      showError(error.message || "회원정보 수정에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -283,15 +325,22 @@ export function useMemberOperations({
     }
   };
 
-  // 대량 트레이너 할당
+  // 대량 트레이너 할당 (API 사용 - RLS 우회)
   const handleBulkTrainerAssign = async (memberIds: string[], trainerId: string) => {
     try {
-      const { error } = await supabase
-        .from("members")
-        .update({ trainer_id: trainerId })
-        .in("id", memberIds);
+      const response = await fetch("/api/admin/members/bulk-trainer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberIds, trainerId }),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "트레이너 할당 실패");
+      }
+
+      console.log(`트레이너 할당 완료: ${result.updated}명`);
       refreshData();
     } catch (error: any) {
       console.error("대량 트레이너 할당 실패:", error);
@@ -331,15 +380,22 @@ export function useMemberOperations({
     }
   };
 
-  // 회원권 삭제
-  const handleDeleteMembership = async (membershipId: string) => {
-    try {
-      const { error } = await supabase
-        .from("member_memberships")
-        .delete()
-        .eq("id", membershipId);
+  // 회원권 삭제 (API 사용)
+  const handleDeleteMembership = async (membershipId: string, memberId?: string) => {
+    if (!memberId) {
+      showError("회원 ID가 필요합니다.", "회원권 삭제");
+      return;
+    }
 
-      if (error) throw error;
+    try {
+      const response = await fetch(`/api/admin/members/${memberId}/membership?membershipId=${membershipId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "삭제에 실패했습니다.");
+      }
 
       showSuccess("회원권이 삭제되었습니다.");
       refreshData();
@@ -371,7 +427,7 @@ export function getStatusBadge(status: string) {
   };
   const labels: Record<string, string> = {
     active: "활성",
-    paused: "휴면",
+    paused: "홀딩",
     expired: "만료"
   };
   return { color: colors[status] || "bg-gray-100", label: labels[status] || status };

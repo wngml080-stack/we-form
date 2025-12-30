@@ -49,6 +49,7 @@ export default function AdminReportsPage() {
   const [selectedReport, setSelectedReport] = useState<MonthlyReport | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [adminMemo, setAdminMemo] = useState("");
+  const [showAllGyms, setShowAllGyms] = useState(false); // 전체 보기 토글
 
   // Supabase 클라이언트 한 번만 생성 (메모이제이션)
   const supabase = useMemo(() => createSupabaseClient(), []);
@@ -67,21 +68,35 @@ export default function AdminReportsPage() {
       return;
     }
 
-    if (filterInitialized && selectedGymId) {
-      fetchReports(selectedGymId);
+    if (filterInitialized) {
+      // role별로 다른 필터링 적용
+      fetchReports();
     }
-  }, [authLoading, user, filterInitialized, selectedGymId, userRole]);
+  }, [authLoading, user, filterInitialized, selectedGymId, userRole, showAllGyms]);
 
-  const fetchReports = async (gymId: string) => {
+  const fetchReports = async () => {
     setIsLoading(true);
 
     try {
-      // 1. 보고서 조회 - 선택한 지점의 보고서만 조회
-      const { data: reportsData, error: reportsError } = await supabase
+      // 1. 보고서 조회 - role에 따라 다른 필터링
+      let query = supabase
         .from("monthly_schedule_reports")
         .select("*")
-        .eq("gym_id", gymId)
         .order("submitted_at", { ascending: false });
+
+      // admin: 선택된 지점만
+      // company_admin: 전체 보기 가능 (showAllGyms) 또는 선택된 지점
+      // system_admin: 전체 보기 가능 (showAllGyms) 또는 선택된 지점
+      if (userRole === "admin") {
+        // admin은 자기 지점만
+        query = query.eq("gym_id", selectedGymId);
+      } else if (!showAllGyms && selectedGymId) {
+        // company_admin, system_admin: 전체 보기가 아닐 때만 지점 필터
+        query = query.eq("gym_id", selectedGymId);
+      }
+      // showAllGyms가 true면 전체 (RLS가 role에 맞게 필터링)
+
+      const { data: reportsData, error: reportsError } = await query;
 
       if (reportsError) {
         console.error("Error fetching reports:", reportsError);
@@ -156,9 +171,7 @@ export default function AdminReportsPage() {
       setIsReviewOpen(false);
 
       // Refetch reports
-      if (selectedGymId) {
-        fetchReports(selectedGymId);
-      }
+      fetchReports();
     }
   };
 
@@ -191,9 +204,23 @@ export default function AdminReportsPage() {
             월별 스케줄 승인
           </h1>
           <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">
-            {gymName ? `${gymName} 직원들의 스케줄을 승인합니다.` : "직원들이 제출한 월별 스케줄을 검토하고 승인합니다."}
+            {showAllGyms
+              ? "전체 지점의 스케줄을 검토하고 승인합니다."
+              : gymName
+                ? `${gymName} 직원들의 스케줄을 승인합니다.`
+                : "직원들이 제출한 월별 스케줄을 검토하고 승인합니다."}
           </p>
         </div>
+        {/* company_admin, system_admin만 전체 보기 버튼 표시 */}
+        {(userRole === "company_admin" || userRole === "system_admin") && (
+          <Button
+            variant={showAllGyms ? "default" : "outline"}
+            onClick={() => setShowAllGyms(!showAllGyms)}
+            className={showAllGyms ? "bg-[#2F80ED] hover:bg-[#2570d6]" : ""}
+          >
+            {showAllGyms ? "선택 지점만 보기" : "전체 지점 보기"}
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4">

@@ -24,7 +24,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { calculateMonthlyStats } from "@/lib/schedule-utils";
-import { Calculator, Download, Save } from "lucide-react";
+import { Calculator, Download, Save, AlertTriangle, CheckCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // 타입 정의
 type StaffSalaryResult = {
@@ -41,6 +42,7 @@ type StaffSalaryResult = {
         calculation: string; // "50회 x 20,000원" 등 설명
     }[];
     stats: any; // 근무 통계
+    reportStatus: 'approved' | 'submitted' | 'rejected' | 'none'; // 보고서 승인 상태
 };
 
 export default function SalaryCalculator() {
@@ -60,14 +62,78 @@ export default function SalaryCalculator() {
     const [isSaved, setIsSaved] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
+    // 월별 보고서 승인 상태
+    const [reportApprovalStatus, setReportApprovalStatus] = useState<{
+        hasReports: boolean;
+        allApproved: boolean;
+        approvedCount: number;
+        totalCount: number;
+        staffStatuses: Record<string, 'approved' | 'submitted' | 'rejected' | 'none'>;
+    }>({
+        hasReports: false,
+        allApproved: false,
+        approvedCount: 0,
+        totalCount: 0,
+        staffStatuses: {}
+    });
+
     const supabase = createSupabaseClient();
 
     // 월이 바뀌거나 지점ID가 로드되면 저장된 데이터 불러오기
     useEffect(() => {
         if (filterInitialized && gymId && selectedMonth) {
             fetchSavedData();
+            checkReportApprovalStatus();
         }
     }, [filterInitialized, gymId, selectedMonth]);
+
+    // 월별 보고서 승인 상태 확인
+    const checkReportApprovalStatus = async () => {
+        if (!gymId) return;
+
+        try {
+            // 해당 지점의 직원 목록 조회
+            const { data: staffList } = await supabase
+                .from("staffs")
+                .select("id")
+                .eq("gym_id", gymId)
+                .neq("role", "admin");
+
+            const staffIds = staffList?.map(s => s.id) || [];
+
+            // 해당 월의 보고서 상태 조회
+            const { data: reports } = await supabase
+                .from("monthly_schedule_reports")
+                .select("staff_id, status")
+                .eq("gym_id", gymId)
+                .eq("year_month", selectedMonth);
+
+            const staffStatuses: Record<string, 'approved' | 'submitted' | 'rejected' | 'none'> = {};
+
+            // 모든 직원의 상태 초기화
+            staffIds.forEach(id => {
+                staffStatuses[id] = 'none';
+            });
+
+            // 보고서가 있는 직원의 상태 업데이트
+            reports?.forEach(report => {
+                staffStatuses[report.staff_id] = report.status as 'approved' | 'submitted' | 'rejected';
+            });
+
+            const approvedCount = Object.values(staffStatuses).filter(s => s === 'approved').length;
+            const totalCount = staffIds.length;
+
+            setReportApprovalStatus({
+                hasReports: (reports?.length || 0) > 0,
+                allApproved: approvedCount === totalCount && totalCount > 0,
+                approvedCount,
+                totalCount,
+                staffStatuses
+            });
+        } catch (error) {
+            console.error("보고서 상태 확인 실패:", error);
+        }
+    };
 
     const fetchSavedData = async () => {
         if (!gymId) return;
@@ -115,12 +181,13 @@ export default function SalaryCalculator() {
                         total_salary: s.total_amount,
                         details: breakdown.details || [],
                         stats: breakdown.stats || {
-                            pt_total_count: 0, 
-                            pt_inside_count: 0, 
-                            pt_outside_count: 0, 
-                            pt_weekend_count: 0, 
+                            pt_total_count: 0,
+                            pt_inside_count: 0,
+                            pt_outside_count: 0,
+                            pt_weekend_count: 0,
                             pt_holiday_count: 0
-                        }
+                        },
+                        reportStatus: breakdown.reportStatus || 'none'
                     };
                 });
                 setResults(savedResults);
@@ -177,7 +244,8 @@ export default function SalaryCalculator() {
                     class_salary: r.class_salary,
                     incentive_salary: r.incentive_salary,
                     details: r.details,
-                    stats: r.stats
+                    stats: r.stats,
+                    reportStatus: r.reportStatus
                 },
                 updated_at: new Date().toISOString()
             }));
@@ -226,9 +294,11 @@ export default function SalaryCalculator() {
             const startDate = new Date(year, month - 1, 1);
             const endDate = new Date(year, month, 0, 23, 59, 59);
 
+            // 승인된 보고서가 있는 직원의 스케줄만 is_locked=true인 것을 조회
+            // 미승인 직원은 모든 스케줄 조회 (임시 계산용)
             const { data: schedules } = await supabase
                 .from("schedules")
-                .select("staff_id, schedule_type, counted_for_salary, status")
+                .select("staff_id, schedule_type, counted_for_salary, status, is_locked")
                 .eq("gym_id", gymId)
                 .gte("start_time", startDate.toISOString())
                 .lte("start_time", endDate.toISOString());
@@ -245,9 +315,19 @@ export default function SalaryCalculator() {
             for (const staff of staffList) {
                 // @ts-ignore
                 const setting = staff.salary_setting?.[0];
-                
-                // 스케줄 통계 계산 (설정이 없어도 통계는 계산 가능)
-                const staffSchedules = schedules?.filter(s => s.staff_id === staff.id) || [];
+
+                // 해당 직원의 보고서 승인 상태 확인
+                const staffReportStatus = reportApprovalStatus.staffStatuses[staff.id] || 'none';
+                const isApproved = staffReportStatus === 'approved';
+
+                // 승인된 직원: is_locked=true인 스케줄만 집계
+                // 미승인 직원: 모든 스케줄 집계 (임시 계산)
+                const staffSchedules = schedules?.filter(s => {
+                    if (s.staff_id !== staff.id) return false;
+                    if (isApproved) return s.is_locked === true;
+                    return true;
+                }) || [];
+
                 const stats = calculateMonthlyStats(staffSchedules);
                 const personalSales = salesData[staff.id] || 0;
 
@@ -260,7 +340,8 @@ export default function SalaryCalculator() {
                     class_salary: 0,
                     total_salary: 0,
                     details: [],
-                    stats: stats
+                    stats: stats,
+                    reportStatus: staffReportStatus
                 };
 
                 if (setting && setting.template) {
@@ -383,6 +464,29 @@ export default function SalaryCalculator() {
 
     return (
         <div className="space-y-6">
+            {/* 보고서 승인 상태 배너 */}
+            {reportApprovalStatus.totalCount > 0 && (
+                reportApprovalStatus.allApproved ? (
+                    <Alert className="bg-emerald-50 border-emerald-200">
+                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                        <AlertTitle className="text-emerald-800">모든 보고서 승인됨</AlertTitle>
+                        <AlertDescription className="text-emerald-700">
+                            {selectedMonth} 월의 모든 직원 보고서가 승인되었습니다. 확정된 스케줄로 급여가 계산됩니다.
+                        </AlertDescription>
+                    </Alert>
+                ) : (
+                    <Alert className="bg-amber-50 border-amber-200">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <AlertTitle className="text-amber-800">일부 보고서 미승인</AlertTitle>
+                        <AlertDescription className="text-amber-700">
+                            승인됨: {reportApprovalStatus.approvedCount} / {reportApprovalStatus.totalCount}명
+                            {" "}- 미승인 직원은 <strong>임시 계산</strong>으로 표시됩니다.
+                            모든 보고서 승인 후 최종 급여를 확정하세요.
+                        </AlertDescription>
+                    </Alert>
+                )
+            )}
+
             <div className="flex flex-col md:flex-row justify-between items-end gap-4">
                 <div>
                     <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -487,7 +591,18 @@ export default function SalaryCalculator() {
                         ) : results.map((result) => (
                             <TableRow key={result.staff_id} className="hover:bg-gray-50">
                                 <TableCell>
-                                    <div className="font-bold text-gray-800">{result.staff_name}</div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-gray-800">{result.staff_name}</span>
+                                        {result.reportStatus === 'approved' ? (
+                                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0">확정</Badge>
+                                        ) : result.reportStatus === 'submitted' ? (
+                                            <Badge className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0">대기</Badge>
+                                        ) : result.reportStatus === 'rejected' ? (
+                                            <Badge className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0">반려</Badge>
+                                        ) : (
+                                            <Badge className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0">임시</Badge>
+                                        )}
+                                    </div>
                                     <div className="text-xs text-gray-500">{result.job_position}</div>
                                     <div className="text-xs text-blue-500 mt-1">
                                         PT {result.stats.pt_total_count}회

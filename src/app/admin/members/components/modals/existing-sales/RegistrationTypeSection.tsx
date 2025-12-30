@@ -26,8 +26,7 @@ export function RegistrationTypeSection({
           </SelectTrigger>
           <SelectContent className="bg-white">
             <SelectItem value="리뉴">리뉴 (회원권 갱신)</SelectItem>
-            <SelectItem value="기간변경">기간변경</SelectItem>
-            <SelectItem value="부가상품">부가상품 (새 회원권 추가)</SelectItem>
+            <SelectItem value="기간변경">기간(세션)변경</SelectItem>
           </SelectContent>
         </Select>
       </div>

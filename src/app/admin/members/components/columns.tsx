@@ -26,18 +26,42 @@ export interface Member {
   totalMemberships?: number;
 }
 
-// 상태 뱃지 헬퍼 함수 (기존 로직 재사용)
-function getStatusBadge(status: string) {
+// 상태 뱃지 헬퍼 함수 (종료일 기준으로 마감임박/만료 계산)
+function getStatusBadge(status: string, endDate?: string | null) {
   const colors: Record<string, string> = {
     active: "bg-emerald-100 text-emerald-700",
+    expiring: "bg-orange-100 text-orange-700",
     paused: "bg-amber-100 text-amber-700",
     expired: "bg-gray-100 text-gray-500"
   };
   const labels: Record<string, string> = {
     active: "활성",
-    paused: "휴면",
+    expiring: "마감임박",
+    paused: "홀딩",
     expired: "만료"
   };
+
+  // 홀딩 상태는 그대로 표시
+  if (status === "paused") {
+    return { color: colors.paused, label: labels.paused };
+  }
+
+  // 종료일 기준으로 상태 계산
+  if (endDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { color: colors.expired, label: labels.expired };
+    }
+    if (diffDays <= 7) {
+      return { color: colors.expiring, label: labels.expiring };
+    }
+  }
+
   return { color: colors[status] || "bg-gray-100", label: labels[status] || status };
 }
 
@@ -246,7 +270,8 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
       cell: ({ row }) => {
         const member = row.original;
         const status = row.getValue("status") as string;
-        const statusBadge = getStatusBadge(status);
+        const endDate = member.activeMembership?.end_date;
+        const statusBadge = getStatusBadge(status, endDate);
 
         return (
           <button

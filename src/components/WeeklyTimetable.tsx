@@ -335,7 +335,11 @@ export default function WeeklyTimetable({
                                     if (statusLabel && schedule.is_not_completed) {
                                       return `PT ${schedule.total_sessions}회/${statusLabel}`;
                                     }
-                                    // 진행/차감된 수업은 회차 표시
+                                    // 노쇼(차감) 수업은 "노쇼차감 N회차" 표시
+                                    if (schedule.status === 'no_show_deducted' && schedule.session_number) {
+                                      return `PT ${schedule.total_sessions}회/노쇼차감 ${schedule.session_number}회차`;
+                                    }
+                                    // 진행된 수업은 회차 표시
                                     if (schedule.session_number) {
                                       return `PT ${schedule.total_sessions}회/${schedule.session_number}회차`;
                                     }
@@ -352,6 +356,10 @@ export default function WeeklyTimetable({
                                   // 미진행 수업은 상태 표시
                                   if (statusLabel && schedule.is_not_completed) {
                                     return `OT ${statusLabel}`;
+                                  }
+                                  // 노쇼(차감) 수업은 "노쇼차감 N회차" 표시
+                                  if (schedule.status === 'no_show_deducted' && schedule.session_number) {
+                                    return `OT 노쇼차감 ${schedule.session_number}회차`;
                                   }
                                   // 진행된 수업은 회차 표시
                                   if (schedule.session_number) {

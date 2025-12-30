@@ -2,9 +2,19 @@
 
 import { useState, useMemo } from "react";
 import { toast } from "@/lib/toast";
-import { createSupabaseClient } from "@/lib/supabase/client";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
 import { MembershipProduct } from "@/types/membership";
+
+export interface MemberMembershipInfo {
+  id: string;
+  name: string;
+  membership_type?: string;
+  total_sessions: number;
+  used_sessions: number;
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+}
 
 export interface Member {
   id: string;
@@ -17,14 +27,62 @@ export interface Member {
   body_fat_mass?: number;
   skeletal_muscle_mass?: number;
   trainer_id?: string;
-  activeMembership?: {
-    id: string;
-    name: string;
-    total_sessions: number;
-    used_sessions: number;
-    end_date?: string;
-  };
+  activeMembership?: MemberMembershipInfo;
+  member_memberships?: MemberMembershipInfo[];
 }
+
+// 회원권명에서 유형을 추론하는 함수
+const inferMembershipType = (name: string): string | null => {
+  const lowerName = name.toLowerCase();
+  if (lowerName.includes("헬스") || lowerName.includes("health")) return "헬스";
+  if (lowerName.includes("필라테스") || lowerName.includes("pilates")) return "필라테스";
+  if (lowerName.includes("ppt") || lowerName.includes("페어")) return "PPT";
+  if (lowerName.includes("gpt") || lowerName.includes("그룹")) return "GPT";
+  if (lowerName.includes("pt") || lowerName.includes("퍼스널")) return "PT";
+  if (lowerName.includes("골프") || lowerName.includes("golf")) return "골프";
+  if (lowerName.includes("gx") || lowerName.includes("그룹엑서사이즈")) return "GX";
+  return null;
+};
+
+// 같은 회원권 유형의 최신 종료일을 찾는 함수
+export const getLatestEndDateByType = (
+  memberships: MemberMembershipInfo[] | undefined,
+  membershipType: string
+): string | null => {
+  if (!memberships || memberships.length === 0) return null;
+
+  // 같은 유형의 회원권 중 종료일이 가장 늦은 것을 찾음
+  // membership_type이 NULL인 경우 회원권명에서 유형을 추론
+  const sameTypeMemberships = memberships.filter((m) => {
+    if (!m.end_date) return false;
+
+    // membership_type이 있으면 직접 비교
+    if (m.membership_type) {
+      return m.membership_type === membershipType;
+    }
+
+    // membership_type이 없으면 이름에서 유형 추론
+    const inferredType = inferMembershipType(m.name || "");
+    return inferredType === membershipType;
+  });
+
+  if (sameTypeMemberships.length === 0) return null;
+
+  const latestEndDate = sameTypeMemberships.reduce((latest, current) => {
+    if (!latest.end_date) return current;
+    if (!current.end_date) return latest;
+    return new Date(current.end_date) > new Date(latest.end_date) ? current : latest;
+  });
+
+  return latestEndDate.end_date || null;
+};
+
+// 종료일 다음 날을 계산하는 함수
+export const getNextDay = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().split("T")[0];
+};
 
 export interface AddonItem {
   product_id?: string;
@@ -39,6 +97,22 @@ export interface AddonItem {
   method: string;
 }
 
+export interface MembershipItem {
+  id: string;
+  product_id: string;
+  membership_type: string;
+  membership_name: string;
+  registered_at: string;
+  start_date: string;
+  end_date: string;
+  amount: string;
+  total_sessions: string;
+  days_per_session: string;
+  duration_months: string;
+  payment_method: string;
+  card_info: string;
+}
+
 export interface ExistingSalesFormData {
   member_id: string;
   registration_type: string;
@@ -46,6 +120,8 @@ export interface ExistingSalesFormData {
   membership_name: string;
   total_sessions: string;
   additional_sessions: string;
+  days_per_session: string;
+  duration_months: string;
   start_date: string;
   end_date: string;
   amount: string;
@@ -53,6 +129,7 @@ export interface ExistingSalesFormData {
   installment_count: string;
   installment_current: string;
   method: string;
+  card_info: string;
   visit_route: string;
   memo: string;
   member_name: string;
@@ -73,6 +150,8 @@ const INITIAL_FORM_DATA: ExistingSalesFormData = {
   membership_name: "PT 30회",
   total_sessions: "30",
   additional_sessions: "0",
+  days_per_session: "7",
+  duration_months: "",
   start_date: new Date().toISOString().split("T")[0],
   end_date: "",
   amount: "",
@@ -80,6 +159,7 @@ const INITIAL_FORM_DATA: ExistingSalesFormData = {
   installment_count: "1",
   installment_current: "1",
   method: "card",
+  card_info: "",
   visit_route: "",
   memo: "",
   member_name: "",
@@ -136,15 +216,17 @@ interface UseExistingSalesFormProps {
 }
 
 export function useExistingSalesForm({
-  members, products, gymId, companyId, myStaffId, onSuccess, onClose
+  members, products, gymId, companyId, onSuccess, onClose
 }: UseExistingSalesFormProps) {
-  const supabase = createSupabaseClient();
+
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<ExistingSalesFormData>(INITIAL_FORM_DATA);
   const [memberSearch, setMemberSearch] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [addons, setAddons] = useState<AddonItem[]>([]);
+  const [memberships, setMemberships] = useState<MembershipItem[]>([]);
+  const [memberPayments, setMemberPayments] = useState<any[]>([]);
 
   // 부가상품 목록 필터링
   const addonProducts = useMemo(() => {
@@ -153,6 +235,7 @@ export function useExistingSalesForm({
 
   // 필터링된 회원 목록
   const filteredMembers = useMemo(() => {
+    if (!members || members.length === 0) return [];
     return members.filter((member) => {
       if (!memberSearch.trim()) return true;
       const searchLower = memberSearch.toLowerCase();
@@ -214,38 +297,61 @@ export function useExistingSalesForm({
     setAddons(updated);
   };
 
-  // 부가상품 저장
-  const saveAddonPayments = async (memberId: string, addonList: AddonItem[], registeredAt: string) => {
-    for (const addon of addonList) {
-      if (!addon.addon_type || !addon.amount) continue;
+  // 회원권 추가/삭제/수정 헬퍼
+  const createEmptyMembership = (): MembershipItem => ({
+    id: crypto.randomUUID(),
+    product_id: "",
+    membership_type: "PT",
+    membership_name: "",
+    registered_at: new Date().toISOString().split("T")[0],
+    start_date: new Date().toISOString().split("T")[0],
+    end_date: "",
+    amount: "",
+    total_sessions: "",
+    days_per_session: "7",
+    duration_months: "",
+    payment_method: "card",
+    card_info: "",
+  });
 
-      const addonName = addon.addon_type === "기타" ? addon.custom_addon_name : addon.addon_type;
-      const memoText = addon.locker_number ? `${addonName} (락커 ${addon.locker_number})` : addonName;
+  const addMembership = () => {
+    setMemberships([...memberships, createEmptyMembership()]);
+  };
 
-      await supabase.from("member_payments").insert({
-        company_id: companyId,
-        gym_id: gymId,
-        member_id: memberId,
-        amount: parseFloat(addon.amount),
-        total_amount: parseFloat(addon.amount),
-        method: addon.method,
-        registration_type: "부가상품",
-        memo: memoText,
-        paid_at: registeredAt,
-        created_by: myStaffId,
-      });
+  const removeMembership = (index: number) => {
+    setMemberships(memberships.filter((_, i) => i !== index));
+  };
 
-      await supabase.from("sales_logs").insert({
-        company_id: companyId,
-        gym_id: gymId,
-        staff_id: myStaffId,
-        type: "sale",
-        amount: parseFloat(addon.amount),
-        method: addon.method,
-        memo: `부가상품: ${memoText}`,
-        occurred_at: registeredAt,
-      });
-    }
+  const updateMembership = (index: number, field: keyof MembershipItem, value: string) => {
+    setMemberships(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+
+      const m = updated[index];
+      if (["start_date", "total_sessions", "days_per_session", "duration_months", "membership_type"].includes(field)) {
+        updated[index].end_date = calculateEndDate(
+          m.start_date, m.membership_type, m.total_sessions, m.days_per_session, m.duration_months
+        );
+      }
+
+      return updated;
+    });
+  };
+
+  // 회원권 여러 필드 한번에 업데이트 (배치 업데이트)
+  const batchUpdateMembership = (index: number, updates: Partial<MembershipItem>) => {
+    setMemberships(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], ...updates };
+
+      const m = updated[index];
+      // 종료일 자동 계산
+      updated[index].end_date = calculateEndDate(
+        m.start_date, m.membership_type, m.total_sessions, m.days_per_session, m.duration_months
+      );
+
+      return updated;
+    });
   };
 
   const resetForm = () => {
@@ -254,6 +360,8 @@ export function useExistingSalesForm({
     setSelectedProductId("");
     setSelectedMember(null);
     setAddons([]);
+    setMemberships([]);
+    setMemberPayments([]);
   };
 
   const handleClose = () => {
@@ -263,8 +371,9 @@ export function useExistingSalesForm({
     }
   };
 
-  const handleMemberSelect = (memberId: string) => {
+  const handleMemberSelect = async (memberId: string) => {
     const member = members.find((m) => m.id === memberId);
+
     if (member) {
       setSelectedMember(member);
       setFormData({
@@ -280,12 +389,23 @@ export function useExistingSalesForm({
         skeletal_muscle_mass: member.skeletal_muscle_mass?.toString() || "",
         trainer_id: member.trainer_id || "",
       });
+
+      // 회원 결제 정보 조회 (기존 락커 정보 확인용)
+      try {
+        const response = await fetch(`/api/admin/members/${memberId}/detail?gym_id=${gymId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setMemberPayments(data.payments || []);
+        }
+      } catch (error) {
+        // 에러 무시
+      }
     } else {
       setFormData({ ...formData, member_id: memberId });
     }
   };
 
-  const handleProductSelect = (productId: string, baseDate?: string) => {
+  const handleProductSelect = (productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (product) {
       setSelectedProductId(productId);
@@ -294,8 +414,24 @@ export function useExistingSalesForm({
       const daysPerSession = product.days_per_session?.toString() || "7";
       const durationMonths = product.validity_months?.toString() || "";
 
+      // 기본 시작일은 오늘
+      const today = new Date().toISOString().split("T")[0];
+      let startDate = today;
+
+      // 같은 유형의 기존 회원권 종료일 확인
+      if (selectedMember?.member_memberships) {
+        const latestEndDate = getLatestEndDateByType(selectedMember.member_memberships, membershipType);
+        if (latestEndDate) {
+          // 기존 회원권 종료일이 오늘 이후라면, 종료일 다음 날부터 시작
+          if (latestEndDate >= today) {
+            startDate = getNextDay(latestEndDate);
+            toast.info(`같은 유형(${membershipType})의 기존 회원권이 ${latestEndDate}까지 있어서 ${startDate}부터 시작합니다.`);
+          }
+        }
+      }
+
       const endDate = calculateEndDate(
-        baseDate || formData.start_date,
+        startDate,
         membershipType,
         totalSessions,
         daysPerSession,
@@ -304,10 +440,13 @@ export function useExistingSalesForm({
 
       setFormData({
         ...formData,
+        start_date: startDate,
         membership_type: membershipType,
         membership_name: product.name,
         total_sessions: totalSessions,
         additional_sessions: totalSessions,
+        days_per_session: daysPerSession,
+        duration_months: durationMonths,
         amount: product.default_price.toString(),
         total_amount: product.default_price.toString(),
         end_date: endDate,
@@ -328,102 +467,80 @@ export function useExistingSalesForm({
 
     setIsLoading(true);
     try {
-      const member = members.find((m) => m.id === formData.member_id);
-      if (!member) throw new Error("회원을 찾을 수 없습니다.");
-
-      const registrationType = formData.registration_type;
-
-      if (registrationType === "리뉴") {
-        const activeMembership = member.activeMembership;
-        if (!activeMembership) {
-          toast.warning("활성 회원권이 없습니다. 부가상품으로 등록해주세요.");
-          return;
+      // 부가상품 메모 형식 변환
+      const formattedAddons = addons.filter(a => a.addon_type && a.amount).map(addon => {
+        const addonName = addon.addon_type === "기타" ? addon.custom_addon_name : addon.addon_type;
+        let memoText = addonName;
+        if (addon.locker_number && (addon.addon_type === "개인락커" || addon.addon_type === "물품락커")) {
+          memoText = `${addonName} ${addon.locker_number}번`;
         }
-
-        const additionalSessions = parseInt(formData.additional_sessions || "0");
-        const { error: updateError } = await supabase
-          .from("member_memberships")
-          .update({
-            total_sessions: activeMembership.total_sessions + additionalSessions,
-            end_date: formData.end_date || activeMembership.end_date,
-            status: "active",
-          })
-          .eq("id", activeMembership.id);
-
-        if (updateError) throw updateError;
-
-        await supabase.from("members").update({ status: "active" }).eq("id", member.id);
-      } else if (registrationType === "기간변경") {
-        const activeMembership = member.activeMembership;
-        if (!activeMembership) {
-          toast.warning("활성 회원권이 없습니다.");
-          return;
+        if (addon.duration) {
+          const durationLabel = addon.duration_type === "months" ? "개월" : "일";
+          memoText += ` (${addon.duration}${durationLabel})`;
         }
-
-        const { error: updateError } = await supabase
-          .from("member_memberships")
-          .update({ end_date: formData.end_date })
-          .eq("id", activeMembership.id);
-
-        if (updateError) throw updateError;
-      } else if (registrationType === "부가상품") {
-        const { error: membershipError } = await supabase.from("member_memberships").insert({
-          gym_id: gymId,
-          member_id: member.id,
-          name: formData.membership_name,
-          total_sessions: parseInt(formData.total_sessions),
-          used_sessions: 0,
-          start_date: formData.start_date,
-          end_date: formData.end_date || null,
-          status: "active",
-        });
-
-        if (membershipError) throw membershipError;
-      }
-
-      // 결제 내역 등록
-      const amount = parseFloat(formData.amount);
-      const totalAmount = formData.total_amount ? parseFloat(formData.total_amount) : amount;
-
-      const { error: paymentError } = await supabase.from("member_payments").insert({
-        company_id: companyId,
-        gym_id: gymId,
-        member_id: member.id,
-        amount: amount,
-        total_amount: totalAmount,
-        installment_count: parseInt(formData.installment_count),
-        installment_current: parseInt(formData.installment_current),
-        method: formData.method,
-        membership_type: formData.membership_type,
-        registration_type: formData.registration_type,
-        visit_route: formData.visit_route || null,
-        memo: formData.memo || null,
-        paid_at: formData.start_date,
-        created_by: myStaffId,
+        return {
+          addon_type: addon.addon_type,
+          amount: addon.amount,
+          method: addon.method,
+          memo: memoText,
+          start_date: addon.start_date || null,
+          end_date: addon.end_date || null,
+        };
       });
 
-      if (paymentError) throw paymentError;
+      // API를 통해 매출 등록 (RLS 우회)
+      const response = await fetch(`/api/admin/members/${formData.member_id}/sales`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id: companyId,
+          gym_id: gymId,
+          registration_type: formData.registration_type,
+          membership_type: formData.membership_type,
+          membership_name: formData.membership_name,
+          total_sessions: formData.total_sessions,
+          additional_sessions: formData.additional_sessions,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          amount: formData.amount,
+          total_amount: formData.total_amount,
+          installment_count: formData.installment_count,
+          installment_current: formData.installment_current,
+          method: formData.method,
+          visit_route: formData.visit_route,
+          memo: formData.memo,
+          // 회원 정보 업데이트
+          member_update: {
+            name: formData.member_name,
+            phone: formData.member_phone,
+            birth_date: formData.birth_date,
+            gender: formData.gender,
+            exercise_goal: formData.exercise_goal,
+            weight: formData.weight,
+            body_fat_mass: formData.body_fat_mass,
+            skeletal_muscle_mass: formData.skeletal_muscle_mass,
+            trainer_id: formData.trainer_id,
+          },
+          // 추가 회원권
+          additional_memberships: memberships.filter(m => m.product_id && m.amount).map(m => ({
+            product_id: m.product_id,
+            membership_name: m.membership_name,
+            membership_type: m.membership_type,
+            total_sessions: m.total_sessions,
+            start_date: m.start_date || m.registered_at,
+            end_date: m.end_date || null,
+            amount: m.amount,
+            payment_method: m.payment_method,
+            registered_at: m.registered_at,
+          })),
+          // 부가상품
+          addons: formattedAddons,
+        }),
+      });
 
-      // 회원 정보 업데이트
-      const memberUpdateData: Record<string, unknown> = {};
-      if (formData.member_name) memberUpdateData.name = formData.member_name;
-      if (formData.member_phone) memberUpdateData.phone = formData.member_phone;
-      if (formData.birth_date) memberUpdateData.birth_date = formData.birth_date;
-      if (formData.gender) memberUpdateData.gender = formData.gender;
-      if (formData.exercise_goal) memberUpdateData.exercise_goal = formData.exercise_goal;
-      if (formData.weight) memberUpdateData.weight = parseFloat(formData.weight);
-      if (formData.body_fat_mass) memberUpdateData.body_fat_mass = parseFloat(formData.body_fat_mass);
-      if (formData.skeletal_muscle_mass) memberUpdateData.skeletal_muscle_mass = parseFloat(formData.skeletal_muscle_mass);
-      if (formData.trainer_id) memberUpdateData.trainer_id = formData.trainer_id;
-
-      if (Object.keys(memberUpdateData).length > 0) {
-        const { error: memberUpdateError } = await supabase.from("members").update(memberUpdateData).eq("id", member.id);
-        if (memberUpdateError) throw memberUpdateError;
-      }
-
-      // 부가상품 저장
-      if (addons.length > 0) {
-        await saveAddonPayments(member.id, addons, formData.start_date);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "매출 등록에 실패했습니다.");
       }
 
       showSuccess("매출이 등록되었습니다!");
@@ -444,8 +561,11 @@ export function useExistingSalesForm({
     selectedProductId, setSelectedProductId,
     selectedMember,
     addons, addonProducts,
+    memberships, products,
     filteredMembers,
+    memberPayments,
     addAddon, removeAddon, updateAddon,
+    addMembership, removeMembership, updateMembership, batchUpdateMembership,
     handleClose, handleSubmit,
     handleMemberSelect, handleProductSelect,
   };

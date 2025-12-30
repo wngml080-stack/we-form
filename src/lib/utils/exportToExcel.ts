@@ -30,7 +30,7 @@ export async function exportMembersToExcel(members: Member[], filename?: string)
       : 0,
     "시작일": member.activeMembership?.start_date || "-",
     "종료일": member.activeMembership?.end_date || "-",
-    "상태": member.status === "active" ? "활성" : member.status === "paused" ? "휴면" : "만료",
+    "상태": member.status === "active" ? "활성" : member.status === "paused" ? "홀딩" : "만료",
     "등록일": member.created_at ? new Date(member.created_at).toISOString().split('T')[0] : "-",
   }));
 

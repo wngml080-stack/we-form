@@ -51,6 +51,14 @@ const AddMembershipModal = dynamicImport(
   () => import("./components/modals/AddMembershipModal").then(mod => ({ default: mod.AddMembershipModal })),
   { ssr: false }
 );
+const AddonEditModal = dynamicImport(
+  () => import("./components/modals/AddonEditModal").then(mod => ({ default: mod.AddonEditModal })),
+  { ssr: false }
+);
+const TransferMembershipModal = dynamicImport(
+  () => import("./components/modals/TransferMembershipModal").then(mod => ({ default: mod.TransferMembershipModal })),
+  { ssr: false }
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +67,7 @@ function AdminMembersPageContent() {
   const registrationType = searchParams.get('type');
 
   const data = useMembersPageData({ registrationType });
+
   const memberOperations = useMemberOperations({
     supabase: data.supabase,
     gymId: data.gymId,
@@ -142,7 +151,7 @@ function AdminMembersPageContent() {
         </TabsContent>
 
         <TabsContent value="products">
-          {data.gymId && <ProductsTab gymId={data.gymId} />}
+          {data.gymId && <ProductsTab gymId={data.gymId} onProductsChange={data.refreshProducts} />}
         </TabsContent>
       </Tabs>
 
@@ -163,12 +172,16 @@ function AdminMembersPageContent() {
         onClose={() => data.setIsMemberDetailOpen(false)}
         member={data.selectedMember}
         paymentHistory={data.memberPaymentHistory}
+        allMemberships={data.memberAllMemberships}
+        activityLogs={data.memberActivityLogs}
         onEditMember={data.openMemberEditModal}
         onEditMembership={data.openMembershipEditModal}
         onDeleteMembership={async (membershipId) => {
-          await memberOperations.handleDeleteMembership(membershipId);
+          await memberOperations.handleDeleteMembership(membershipId, data.selectedMember?.id);
           data.setIsMemberDetailOpen(false);
         }}
+        onEditAddon={data.openAddonEditModal}
+        onTransferMembership={data.openTransferModal}
       />
 
       <MemberEditModal
@@ -224,7 +237,7 @@ function AdminMembersPageContent() {
       <ExistingSalesModal
         isOpen={data.isExistingSalesOpen}
         onClose={() => data.setIsExistingSalesOpen(false)}
-        members={data.members}
+        members={data.displayMembers}
         products={data.products}
         gymId={data.gymId || ""}
         companyId={data.companyId || ""}
@@ -235,7 +248,7 @@ function AdminMembersPageContent() {
       <AddonSalesModal
         isOpen={data.isAddonSalesOpen}
         onClose={() => data.setIsAddonSalesOpen(false)}
-        members={data.members}
+        members={data.displayMembers}
         gymId={data.gymId || ""}
         companyId={data.companyId || ""}
         onSuccess={data.refreshMembers}
@@ -256,6 +269,32 @@ function AdminMembersPageContent() {
         onClose={() => data.setIsExcelImportOpen(false)}
         gymId={data.gymId || ""}
         companyId={data.companyId || ""}
+        onSuccess={data.refreshMembers}
+      />
+
+      <AddonEditModal
+        isOpen={data.isAddonEditOpen}
+        onClose={() => data.setIsAddonEditOpen(false)}
+        memberName={data.selectedMember?.name || ""}
+        memberId={data.selectedMember?.id}
+        addon={data.selectedAddon}
+        onSuccess={() => {
+          data.refreshMembers();
+          // Refresh member detail if it was open
+          if (data.selectedMember) {
+            data.openMemberDetailModal(data.selectedMember);
+          }
+        }}
+      />
+
+      <TransferMembershipModal
+        isOpen={data.isTransferModalOpen}
+        onClose={() => data.setIsTransferModalOpen(false)}
+        members={data.displayMembers}
+        gymId={data.gymId || ""}
+        companyId={data.companyId || ""}
+        preselectedMember={data.transferMember}
+        preselectedMembership={data.transferMembership}
         onSuccess={data.refreshMembers}
       />
     </div>

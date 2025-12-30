@@ -53,47 +53,59 @@ export async function POST(request: Request) {
 
     if (updateError) throw updateError;
 
-    // 3. 출석/노쇼 처리 (횟수 차감 및 출석부 기록)
-    // 'completed'(출석) 또는 'no_show_deducted'(노쇼-공제) 일 때만 처리
-    if (["completed", "no_show_deducted"].includes(newStatus)) {
+    // 3. 회원권 횟수 처리
+    // 선차감 시스템: 예약 시 차감, 노쇼/취소/서비스 시 환불
+    // - reserved: 예약 생성 시 차감 (스케줄 생성 API에서 처리)
+    // - completed, no_show_deducted: 변동 없음 (이미 예약 시 차감됨)
+    // - no_show, cancelled, service: 1회 환불 (used_sessions - 1)
 
-      let membershipInfo = "회원권 없음";
+    let membershipInfo = "회원권 없음";
+    const refundStatuses = ["no_show", "cancelled", "service"];
 
-      // 3-1. 회원권 차감 로직 (회원이 연결되어 있을 때만)
-      if (schedule.member_id) {
-        // 사용 가능한(active) 회원권 조회 (만료일이 가까운 순서로)
-        const { data: membership } = await supabase
-          .from("member_memberships")
-          .select("id, used_sessions, total_sessions, name")
-          .eq("member_id", schedule.member_id)
-          .eq("gym_id", schedule.gym_id)
-          .eq("status", "active")
-          .order("end_date", { ascending: true }) // 만료 임박순
-          .limit(1)
-          .maybeSingle();
+    if (refundStatuses.includes(newStatus) && schedule.member_id) {
+      // 스케줄 타입에 맞는 회원권 조회
+      const scheduleType = schedule.type?.toLowerCase() || "";
 
-        if (membership) {
-          // 횟수 차감 (used_sessions + 1)
-          if (membership.used_sessions < membership.total_sessions) {
-             await supabase
-              .from("member_memberships")
-              .update({ used_sessions: membership.used_sessions + 1 })
-              .eq("id", membership.id);
+      let membershipQuery = supabase
+        .from("member_memberships")
+        .select("id, used_sessions, total_sessions, name")
+        .eq("member_id", schedule.member_id)
+        .eq("gym_id", schedule.gym_id)
+        .eq("status", "active");
 
-             membershipInfo = `${membership.name} (1회 차감)`;
-          } else {
-            membershipInfo = `${membership.name} (횟수 소진됨)`;
-          }
-        }
+      // PT 스케줄이면 PT 회원권만, OT면 OT 회원권만 찾기
+      if (scheduleType === "pt") {
+        membershipQuery = membershipQuery.or("name.ilike.%PT%,name.ilike.%피티%");
+      } else if (scheduleType === "ot") {
+        membershipQuery = membershipQuery.or("name.ilike.%OT%,name.ilike.%오티%");
       }
 
-      // 3-2. 출석부(attendances) 기록 생성
-      // 이미 존재하는지 확인 (중복 생성 방지)
+      const { data: membership } = await membershipQuery
+        .order("end_date", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (membership && membership.used_sessions > 0) {
+        // 횟수 환불 (used_sessions - 1)
+        await supabase
+          .from("member_memberships")
+          .update({ used_sessions: membership.used_sessions - 1 })
+          .eq("id", membership.id);
+
+        membershipInfo = `${membership.name} (1회 환불)`;
+        console.log(`✅ 회원권 환불: ${membership.name}, ${membership.used_sessions} → ${membership.used_sessions - 1}`);
+      }
+    }
+
+    // 4. 출석부(attendances) 기록 생성/업데이트
+    if (["completed", "no_show_deducted"].includes(newStatus)) {
       const { data: existing } = await supabase
         .from("attendances")
         .select("id")
         .eq("schedule_id", schedule.id)
         .maybeSingle();
+
+      const statusLabel = newStatus === 'completed' ? '출석' : '노쇼(공제)';
 
       if (!existing) {
         const { error: attendanceError } = await supabase
@@ -102,17 +114,16 @@ export async function POST(request: Request) {
             gym_id: schedule.gym_id,
             schedule_id: schedule.id,
             staff_id: schedule.staff_id,
-            member_id: schedule.member_id, // null일 수 있음
+            member_id: schedule.member_id,
             status_code: newStatus,
             attended_at: new Date().toISOString(),
-            memo: `[자동] ${newStatus === 'completed' ? '출석' : '노쇼(공제)'} 처리 / ${membershipInfo}`
+            memo: `[자동] ${statusLabel} 처리`
           });
 
         if (attendanceError) {
-           console.error("❌ 출석부 기록 실패:", attendanceError);
+          console.error("❌ 출석부 기록 실패:", attendanceError);
         }
       } else {
-        // 이미 존재하면 상태만 업데이트
         await supabase
           .from("attendances")
           .update({

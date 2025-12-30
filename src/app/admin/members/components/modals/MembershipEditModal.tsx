@@ -15,7 +15,6 @@ import {
 interface MembershipEditFormData {
   id: string;
   name: string;
-  membership_type: string;
   start_date: string;
   end_date: string;
   total_sessions: string;
@@ -56,16 +55,6 @@ export function MembershipEditModal({
             <Label className="text-gray-700">회원권명</Label>
             <Input
               value={formData.name}
-              disabled
-              className="bg-gray-50"
-            />
-          </div>
-
-          {/* 회원권 유형 (읽기 전용) */}
-          <div className="space-y-2">
-            <Label className="text-gray-700">회원권 유형</Label>
-            <Input
-              value={formData.membership_type}
               disabled
               className="bg-gray-50"
             />

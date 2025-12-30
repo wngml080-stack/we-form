@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "@/lib/toast";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,74 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
+import { Package } from "lucide-react";
+
+interface MemberPayment {
+  id: string;
+  membership_type?: string;
+  registration_type?: string;
+  memo?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface ActiveAddon {
+  type: string;
+  displayName: string;
+  lockerNumber: string | null;
+  endDate: string;
+}
+
+// 다음날 계산
+const getNextDay = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + 1);
+  return date.toISOString().split("T")[0];
+};
+
+// 락커 유형별 기존 종료일 가져오기
+const getLatestLockerEndDate = (payments: MemberPayment[] | undefined, lockerType: string): string | null => {
+  if (!payments || payments.length === 0) return null;
+  const lockerPayments = payments.filter(p => {
+    if (p.membership_type !== "부가상품" && p.registration_type !== "부가상품") return false;
+    return p.memo?.includes(lockerType) && p.end_date;
+  });
+  if (lockerPayments.length === 0) return null;
+  const today = new Date().toISOString().split("T")[0];
+  const activeLockers = lockerPayments.filter(p => p.end_date && p.end_date >= today);
+  if (activeLockers.length === 0) return null;
+  return activeLockers.reduce((latest, current) => {
+    if (!latest.end_date) return current;
+    if (!current.end_date) return latest;
+    return new Date(current.end_date) > new Date(latest.end_date) ? current : latest;
+  }).end_date || null;
+};
+
+// 부가상품 정보 파싱
+const parseAddonInfo = (memo: string | undefined): { type: string; displayName: string; lockerNumber: string | null } => {
+  if (!memo) return { type: "기타", displayName: "부가상품", lockerNumber: null };
+  let type = "기타";
+  let lockerNumber: string | null = null;
+  let displayName = memo;
+  if (memo.includes("개인락커")) {
+    type = "개인락커";
+    const match = memo.match(/개인락커\s*(\d+)번?/);
+    if (match) lockerNumber = match[1];
+    displayName = lockerNumber ? `개인락커 ${lockerNumber}번` : "개인락커";
+  } else if (memo.includes("물품락커")) {
+    type = "물품락커";
+    const match = memo.match(/물품락커\s*(\d+)번?/);
+    if (match) lockerNumber = match[1];
+    displayName = lockerNumber ? `물품락커 ${lockerNumber}번` : "물품락커";
+  } else if (memo.includes("운동복")) {
+    type = "운동복";
+    displayName = "운동복";
+  } else if (memo.includes("양말")) {
+    type = "양말";
+    displayName = "양말";
+  }
+  return { type, displayName, lockerNumber };
+};
 
 interface AddonSalesFormData {
   member_id: string;
@@ -80,10 +149,60 @@ export function AddonSalesModal({
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<AddonSalesFormData>(INITIAL_FORM_DATA);
   const [memberSearch, setMemberSearch] = useState("");
+  const [memberPayments, setMemberPayments] = useState<MemberPayment[]>([]);
 
   const resetForm = () => {
     setFormData(INITIAL_FORM_DATA);
     setMemberSearch("");
+    setMemberPayments([]);
+  };
+
+  // 회원 선택 시 결제 정보 조회
+  const handleMemberSelect = async (memberId: string) => {
+    setFormData({ ...formData, member_id: memberId });
+
+    try {
+      const response = await fetch(`/api/admin/members/${memberId}/detail?gym_id=${gymId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMemberPayments(data.payments || []);
+      }
+    } catch (error) {
+      console.error("회원 결제 정보 조회 에러:", error);
+    }
+  };
+
+  // 기존 활성 부가상품 목록 계산
+  const activeAddons = useMemo(() => {
+    if (!memberPayments || memberPayments.length === 0) return [];
+    const today = new Date().toISOString().split("T")[0];
+    const filtered = memberPayments.filter(p => {
+      const isAddon = p.membership_type === "부가상품" || p.registration_type === "부가상품";
+      const hasValidEndDate = p.end_date && p.end_date >= today;
+      return isAddon && hasValidEndDate;
+    });
+    return filtered.map(p => {
+      const info = parseAddonInfo(p.memo);
+      return { ...info, endDate: p.end_date || "" } as ActiveAddon;
+    }).sort((a, b) => a.type.localeCompare(b.type));
+  }, [memberPayments]);
+
+  // 락커 유형별 최소 시작일 계산
+  const getMinStartDate = (addonType: string): string | undefined => {
+    if (addonType === "개인락커" || addonType === "물품락커") {
+      const latestEndDate = getLatestLockerEndDate(memberPayments, addonType);
+      if (latestEndDate) return getNextDay(latestEndDate);
+    }
+    return undefined;
+  };
+
+  // 유형별 색상 정의
+  const typeColors: Record<string, { bg: string; text: string; badge: string }> = {
+    "개인락커": { bg: "bg-blue-50", text: "text-blue-800", badge: "bg-blue-200 text-blue-800" },
+    "물품락커": { bg: "bg-cyan-50", text: "text-cyan-800", badge: "bg-cyan-200 text-cyan-800" },
+    "운동복": { bg: "bg-green-50", text: "text-green-800", badge: "bg-green-200 text-green-800" },
+    "양말": { bg: "bg-orange-50", text: "text-orange-800", badge: "bg-orange-200 text-orange-800" },
+    "기타": { bg: "bg-purple-50", text: "text-purple-800", badge: "bg-purple-200 text-purple-800" },
   };
 
   const handleClose = () => {
@@ -173,6 +292,8 @@ export function AddonSalesModal({
           registration_type: "부가상품",
           memo: `${addonName}${periodInfo}${formData.memo ? ` - ${formData.memo}` : ""}`,
           paid_at: formData.payment_date || formData.start_date,
+          start_date: formData.start_date || null,
+          end_date: formData.end_date || null,
         });
 
       if (paymentError) throw paymentError;
@@ -189,7 +310,7 @@ export function AddonSalesModal({
     }
   };
 
-  const filteredMembers = members.filter((member) => {
+  const filteredMembers = (members || []).filter((member) => {
     if (!memberSearch.trim()) return true;
     const searchLower = memberSearch.toLowerCase();
     return (
@@ -221,22 +342,60 @@ export function AddonSalesModal({
             />
             <Select
               value={formData.member_id}
-              onValueChange={(v) =>
-                setFormData({ ...formData, member_id: v })
-              }
+              onValueChange={handleMemberSelect}
             >
               <SelectTrigger>
                 <SelectValue placeholder="회원을 선택하세요" />
               </SelectTrigger>
               <SelectContent className="bg-white max-h-[200px]">
-                {filteredMembers.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name} ({member.phone})
-                  </SelectItem>
-                ))}
+                {filteredMembers.length === 0 ? (
+                  <div className="p-4 text-sm text-gray-500 text-center">
+                    {memberSearch ? "검색 결과가 없습니다." : "등록된 회원이 없습니다."}
+                  </div>
+                ) : (
+                  filteredMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.name} ({member.phone})
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
+
+          {/* 기존 활성 부가상품 표시 */}
+          {activeAddons.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2 text-amber-800 font-medium text-sm">
+                <Package className="w-4 h-4" />
+                현재 이용중인 부가상품
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activeAddons.map((addon, idx) => {
+                  const colors = typeColors[addon.type] || typeColors["기타"];
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${colors.bg} border`}
+                    >
+                      <Badge className={`border-0 text-xs ${colors.badge}`}>
+                        {addon.type}
+                      </Badge>
+                      <span className={`text-xs font-medium ${colors.text}`}>
+                        {addon.lockerNumber ? `${addon.lockerNumber}번` : addon.displayName}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        ~{addon.endDate}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-amber-700">
+                동일 유형의 부가상품은 기존 만료일 이후부터 등록 가능합니다.
+              </p>
+            </div>
+          )}
 
           {/* 부가상품 유형 */}
           <div className="space-y-2">
@@ -245,14 +404,27 @@ export function AddonSalesModal({
             </Label>
             <Select
               value={formData.addon_type}
-              onValueChange={(v) =>
+              onValueChange={(v) => {
+                let newStartDate = formData.start_date;
+                // 락커 유형인 경우 기존 락커 종료일 확인
+                if (v === "개인락커" || v === "물품락커") {
+                  const latestEndDate = getLatestLockerEndDate(memberPayments, v);
+                  if (latestEndDate) {
+                    const minStartDate = getNextDay(latestEndDate);
+                    newStartDate = minStartDate;
+                    toast.info(`기존 ${v}가 ${latestEndDate}까지 있어 ${minStartDate}부터 시작합니다.`);
+                  }
+                }
+                const newEndDate = calculateEndDate(newStartDate, formData.duration, formData.duration_type);
                 setFormData({
                   ...formData,
                   addon_type: v,
                   custom_addon_name: "",
                   locker_number: "",
-                })
-              }
+                  start_date: newStartDate,
+                  end_date: newEndDate,
+                });
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="유형 선택" />
@@ -399,8 +571,15 @@ export function AddonSalesModal({
               <Input
                 type="date"
                 value={formData.start_date}
+                min={getMinStartDate(formData.addon_type)}
                 onChange={(e) => {
                   const newStartDate = e.target.value;
+                  // 락커 유형인 경우 시작일 검증
+                  const minStartDate = getMinStartDate(formData.addon_type);
+                  if (minStartDate && newStartDate < minStartDate) {
+                    toast.error(`기존 ${formData.addon_type}가 있어 ${minStartDate} 이후로만 설정 가능합니다.`);
+                    return;
+                  }
                   const newEndDate = calculateEndDate(
                     newStartDate,
                     formData.duration,

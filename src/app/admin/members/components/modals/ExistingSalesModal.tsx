@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -13,10 +15,7 @@ import { MembershipProduct } from "@/types/membership";
 import { useExistingSalesForm, Member } from "./existing-sales/useExistingSalesForm";
 import { MemberSelectSection } from "./existing-sales/MemberSelectSection";
 import { RegistrationTypeSection } from "./existing-sales/RegistrationTypeSection";
-import { RenewalSection } from "./existing-sales/RenewalSection";
-import { PeriodChangeSection } from "./existing-sales/PeriodChangeSection";
-import { AdditionalProductSection } from "./existing-sales/AdditionalProductSection";
-import { PaymentInfoSection } from "./existing-sales/PaymentInfoSection";
+import { ExistingMembershipSection } from "./existing-sales/ExistingMembershipSection";
 import { AddonProductsSection } from "./existing-sales/AddonProductsSection";
 
 interface ExistingSalesModalProps {
@@ -46,9 +45,12 @@ export function ExistingSalesModal({
     memberSearch, setMemberSearch,
     selectedProductId,
     selectedMember,
-    addons, addonProducts,
+    addons,
+    memberships, products: hookProducts,
     filteredMembers,
+    memberPayments,
     addAddon, removeAddon, updateAddon,
+    addMembership, removeMembership, updateMembership, batchUpdateMembership,
     handleClose, handleSubmit,
     handleMemberSelect, handleProductSelect,
   } = useExistingSalesForm({
@@ -56,8 +58,8 @@ export function ExistingSalesModal({
   });
 
   const handleRenewalProductSelect = (productId: string) => {
-    const baseDate = selectedMember?.activeMembership?.end_date || formData.start_date;
-    handleProductSelect(productId, baseDate);
+    // baseDate를 전달하지 않음 - 같은 유형의 회원권 종료일만 체크하도록
+    handleProductSelect(productId);
   };
 
   const handleRegistrationTypeChange = (type: string) => {
@@ -89,45 +91,39 @@ export function ExistingSalesModal({
             onTypeChange={handleRegistrationTypeChange}
           />
 
-          {formData.registration_type === "리뉴" && (
-            <RenewalSection
+          {formData.registration_type && (
+            <ExistingMembershipSection
               formData={formData}
               setFormData={setFormData}
-              products={products}
+              products={hookProducts}
               selectedProductId={selectedProductId}
+              memberships={memberships}
+              memberMemberships={selectedMember?.member_memberships}
               onProductSelect={handleRenewalProductSelect}
+              addMembership={addMembership}
+              removeMembership={removeMembership}
+              updateMembership={updateMembership}
+              batchUpdateMembership={batchUpdateMembership}
             />
           )}
-
-          {formData.registration_type === "기간변경" && (
-            <PeriodChangeSection
-              formData={formData}
-              setFormData={setFormData}
-            />
-          )}
-
-          {formData.registration_type === "부가상품" && (
-            <AdditionalProductSection
-              formData={formData}
-              setFormData={setFormData}
-              products={products}
-              selectedProductId={selectedProductId}
-              onProductSelect={handleProductSelect}
-            />
-          )}
-
-          <PaymentInfoSection
-            formData={formData}
-            setFormData={setFormData}
-          />
 
           <AddonProductsSection
             addons={addons}
-            addonProducts={addonProducts}
+            memberPayments={memberPayments}
             onAddAddon={addAddon}
             onRemoveAddon={removeAddon}
             onUpdateAddon={updateAddon}
           />
+
+          {/* 메모 */}
+          <div className="space-y-2">
+            <Label>메모</Label>
+            <Input
+              value={formData.memo}
+              onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
+              placeholder="메모를 입력하세요"
+            />
+          </div>
         </div>
 
         <DialogFooter>

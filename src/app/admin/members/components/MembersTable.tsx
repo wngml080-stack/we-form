@@ -154,7 +154,7 @@ export function MembersTable({
               <select
                 onChange={async (e) => {
                   if (!e.target.value) return;
-                  const confirmed = confirm(`선택된 ${selectedRowCount}명의 회원 상태를 "${e.target.value === 'active' ? '활성' : e.target.value === 'paused' ? '휴면' : '만료'}"으로 변경하시겠습니까?`);
+                  const confirmed = confirm(`선택된 ${selectedRowCount}명의 회원 상태를 "${e.target.value === 'active' ? '활성' : e.target.value === 'paused' ? '홀딩' : '만료'}"으로 변경하시겠습니까?`);
                   if (confirmed) {
                     try {
                       const memberIds = selectedRows.map(row => row.id);
@@ -173,7 +173,7 @@ export function MembersTable({
               >
                 <option value="" disabled>상태 변경</option>
                 <option value="active">활성</option>
-                <option value="paused">휴면</option>
+                <option value="paused">홀딩</option>
                 <option value="expired">만료</option>
               </select>
             )}

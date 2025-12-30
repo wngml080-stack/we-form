@@ -34,12 +34,18 @@ export function MemberSelectSection({
             <SelectValue placeholder="회원 선택" />
           </SelectTrigger>
           <SelectContent className="bg-white max-h-[200px]">
-            {filteredMembers.map((member) => (
-              <SelectItem key={member.id} value={member.id}>
-                {member.name} ({member.phone})
-                {member.activeMembership && ` - ${member.activeMembership.name}`}
-              </SelectItem>
-            ))}
+            {filteredMembers.length === 0 ? (
+              <div className="p-4 text-sm text-gray-500 text-center">
+                {memberSearch ? "검색 결과가 없습니다." : "등록된 회원이 없습니다."}
+              </div>
+            ) : (
+              filteredMembers.map((member) => (
+                <SelectItem key={member.id} value={member.id}>
+                  {member.name} ({member.phone})
+                  {member.activeMembership && ` - ${member.activeMembership.name}`}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
