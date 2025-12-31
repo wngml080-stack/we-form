@@ -17,7 +17,7 @@
 - 대시보드 및 리포트
 
 ### 인증 시스템
-- **Clerk**: OAuth 기반 인증 (Google/Apple)
+- **Supabase Auth**: 이메일/비밀번호 인증
 - **Supabase**: 데이터 저장 및 RLS (Row Level Security)
 
 ---
@@ -60,8 +60,7 @@ erDiagram
 
   STAFFS {
     uuid      id                PK "직원 ID"
-    uuid      user_id           "Supabase Auth 유저 ID (레거시)"
-    text      clerk_user_id     "Clerk 유저 ID"
+    uuid      user_id           "Supabase Auth 유저 ID"
     uuid      company_id        FK "소속 회사 ID"
     uuid      gym_id            FK "소속 지점 ID (null 가능)"
     text      name              "직원 이름"
@@ -382,7 +381,7 @@ erDiagram
 - `fc_bep`, `pt_bep`: 손익분기점 목표 매출
 
 #### `staffs` - 직원
-- `clerk_user_id`: Clerk 인증 연동
+- `user_id`: Supabase Auth 인증 연동
 - `role`: 권한 레벨
 - `employment_status`: 재직 상태
 
@@ -438,8 +437,8 @@ erDiagram
 ### 5-1. 공통 원칙
 
 ```sql
--- 현재 사용자의 staff 정보 조회
-SELECT * FROM staffs WHERE clerk_user_id = auth.jwt()->>'sub';
+-- 현재 사용자의 staff 정보 조회 (이메일 기반 매칭)
+SELECT * FROM staffs WHERE email = auth.jwt()->>'email';
 
 -- 권한 체인: auth → staffs → company_id / gym_id
 ```
@@ -465,7 +464,7 @@ SELECT * FROM staffs WHERE clerk_user_id = auth.jwt()->>'sub';
 | `/api/auth/find-company` | companies |
 | `/api/onboarding/company` | companies, staffs |
 | `/api/onboarding/staff` | staffs |
-| `/api/webhooks/clerk` | staffs (Clerk 동기화) |
+| `/api/auth/callback` | staffs (Supabase Auth 콜백) |
 
 ### 관리자
 | API | 관련 테이블 |

@@ -247,9 +247,9 @@ export default function AdminAttendancePage() {
       } else {
         throw new Error(result.error);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("출석 기록 생성 실패:", error);
-      toast.error(`출석 기록 등록 실패: ${error.message}`);
+      toast.error(`출석 기록 등록 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`);
     }
   };
 

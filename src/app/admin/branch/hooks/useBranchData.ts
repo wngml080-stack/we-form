@@ -67,6 +67,30 @@ export interface AnnouncementForm {
   is_active: boolean;
 }
 
+export interface BranchAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  priority: "urgent" | "normal" | "low";
+  gym_id: string | null;
+  company_id: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  view_count?: number;
+  gyms?: { name: string } | null;
+  staffs?: { name: string } | null;
+}
+
+export interface GymInfo {
+  id: string;
+  name: string;
+  fc_bep?: number;
+  pt_bep?: number;
+}
+
 export type SalesPeriod = "thisMonth" | "lastMonth" | "custom";
 export type SalesType = "all" | "fc" | "pt";
 
@@ -78,7 +102,7 @@ export function useBranchData() {
   const selectedCompanyId = branchFilter.selectedCompanyId;
   const gyms = branchFilter.gyms;
 
-  const [gymData, setGymData] = useState<any>(null);
+  const [gymData, setGymData] = useState<GymInfo | null>(null);
   const [stats, setStats] = useState<BranchStats>({
     totalMembers: 0,
     activeMembers: 0,
@@ -91,9 +115,9 @@ export function useBranchData() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Announcement management
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<BranchAnnouncement[]>([]);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<any | null>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<BranchAnnouncement | null>(null);
   const [announcementForm, setAnnouncementForm] = useState<AnnouncementForm>({
     title: "",
     content: "",

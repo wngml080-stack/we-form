@@ -1,10 +1,11 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import { BranchAnnouncement } from "../branch/hooks/useBranchData";
 
 interface BranchAnnouncementsCardProps {
-  announcements: any[];
-  onAnnouncementClick: (announcement: any) => void;
+  announcements: BranchAnnouncement[];
+  onAnnouncementClick: (announcement: BranchAnnouncement) => void;
 }
 
 export function BranchAnnouncementsCard({ announcements, onAnnouncementClick }: BranchAnnouncementsCardProps) {

@@ -3,10 +3,7 @@
 -- Supabase Dashboard → SQL Editor에서 실행하세요
 -- =====================================================
 
--- 1. clerk_user_id 컬럼 제거 (Clerk → Supabase Auth 전환 후 불필요)
-ALTER TABLE staffs DROP COLUMN IF EXISTS clerk_user_id;
-
--- 2. member_payments 테이블 (매출 관리용)
+-- 1. member_payments 테이블 (매출 관리용)
 CREATE TABLE IF NOT EXISTS member_payments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   gym_id UUID REFERENCES gyms(id) ON DELETE CASCADE,

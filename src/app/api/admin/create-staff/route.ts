@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // staffs 테이블에 직원 정보 등록 (Clerk 로그인 시 clerk_user_id 자동 연결)
+    // staffs 테이블에 직원 정보 등록 (로그인 시 이메일로 자동 매칭)
     const { error: dbError } = await supabaseAdmin
       .from("staffs")
       .insert({

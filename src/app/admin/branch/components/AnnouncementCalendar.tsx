@@ -5,9 +5,10 @@ import { Bell, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { BranchAnnouncement } from "../hooks/useBranchData";
 
 interface AnnouncementCalendarProps {
-  announcements: any[];
+  announcements: BranchAnnouncement[];
   currentCalendarMonth: Date;
   setCurrentCalendarMonth: (date: Date) => void;
   onDateClick: (date: Date, hasAnnouncements: boolean) => void;

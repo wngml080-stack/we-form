@@ -151,35 +151,9 @@ export function useAdminDashboardData() {
     }
   };
 
-  // 회원 목록 조회 (ExistingSalesModal에서 필요한 필드 포함)
-  const fetchMembers = async (gymId: string, companyId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("members")
-        .select(`
-          id, name, phone, birth_date, gender, exercise_goal,
-          weight, body_fat_mass, skeletal_muscle_mass, trainer_id,
-          member_memberships (
-            id, name, membership_type, total_sessions, used_sessions,
-            start_date, end_date, status
-          )
-        `)
-        .eq("gym_id", gymId)
-        .eq("company_id", companyId)
-        .order("name", { ascending: true });
-      if (!error && data) {
-        // 활성 회원권만 필터링
-        const membersWithActiveMemberships = data.map(member => ({
-          ...member,
-          member_memberships: member.member_memberships?.filter(
-            (m: any) => m.status === 'active'
-          ) || []
-        }));
-        setMembers(membersWithActiveMemberships);
-      }
-    } catch (error) {
-      console.error("회원 목록 조회 에러:", error);
-    }
+  // 회원 목록 조회 - 임시 비활성화 (테이블 재연결 예정)
+  const fetchMembers = async (_gymId: string, _companyId: string) => {
+    setMembers([]);
   };
 
   useEffect(() => {
@@ -206,11 +180,6 @@ export function useAdminDashboardData() {
     const koreaTime = new Date(now.getTime() + (koreaOffset + now.getTimezoneOffset()) * 60000);
     const today = koreaTime.toISOString().split('T')[0];
 
-    const thisMonthStart = new Date(koreaTime.getFullYear(), koreaTime.getMonth(), 1);
-    const monthStart = thisMonthStart.toISOString();
-
-    const twelveMonthsAgo = new Date(koreaTime.getFullYear(), koreaTime.getMonth() - 11, 1);
-
     let schedulesQuery = supabase.from("schedules")
       .select("id, member_name, type, status, start_time, end_time, staff_id, staffs(name)")
       .eq("gym_id", gymId)
@@ -221,10 +190,6 @@ export function useAdminDashboardData() {
     if (userRole !== "system_admin") {
       schedulesQuery = schedulesQuery.eq("staff_id", staffId);
     }
-
-    const thirtyDaysAgo = new Date(koreaTime);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
 
     const fetchSystemAnnouncementsPromise = fetch("/api/admin/system/announcements")
       .then(res => res.json())
@@ -237,94 +202,17 @@ export function useAdminDashboardData() {
       .catch(() => []);
 
     const [
-      membersResult, schedulesResult, todayPaymentsResult, monthPaymentsResult,
-      announcementsResult, eventsResult, systemAnnouncementsData,
-      historicalPaymentsResult, ptMembersResult, recentSchedulesResult
+      schedulesResult, announcementsResult, eventsResult, systemAnnouncementsData
     ] = await Promise.all([
-      supabase.from("members").select("id, status, created_at").eq("gym_id", gymId).eq("company_id", companyId),
       schedulesQuery,
-      supabase.from("member_payments").select("amount").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", `${today}T00:00:00`),
-      supabase.from("member_payments").select("amount").eq("gym_id", gymId).eq("company_id", companyId).gte("paid_at", monthStart),
       supabase.from("announcements").select("*").eq("company_id", companyId).eq("is_active", true)
         .or(`gym_id.eq.${gymId},gym_id.is.null`)
         .order("priority", { ascending: false }).order("created_at", { ascending: false }).limit(10),
       fetchCompanyEventsPromise,
-      fetchSystemAnnouncementsPromise,
-      supabase.from("member_payments").select("*").eq("gym_id", gymId).eq("company_id", companyId),
-      supabase.from("member_memberships")
-        .select("member_id, name, total_sessions, used_sessions, start_date, end_date, status")
-        .eq("gym_id", gymId).eq("status", "active"),
-      supabase.from("schedules").select("member_id, start_time, status").eq("gym_id", gymId).gte("start_time", thirtyDaysAgoStr)
+      fetchSystemAnnouncementsPromise
     ]);
 
-    const members = membersResult.data || [];
     const schedules = schedulesResult.data || [];
-    const todayPayments = todayPaymentsResult.data || [];
-    const monthPayments = monthPaymentsResult.data || [];
-    const allPayments = historicalPaymentsResult.data || [];
-    const recentSchedules = (recentSchedulesResult.data || []).filter(
-      (s: any) => s.status === "completed" || s.status === "reserved"
-    );
-
-    const ptTypes = ["PT", "PPT", "GPT"];
-
-    // 월별 매출 데이터 정리
-    const monthlySales: Record<string, number> = {};
-    const twelveMonthsAgoDate = new Date();
-    twelveMonthsAgoDate.setMonth(twelveMonthsAgoDate.getMonth() - 11);
-    twelveMonthsAgoDate.setDate(1);
-
-    allPayments.forEach((payment: { amount: string; paid_at: string }) => {
-      if (!payment.paid_at) return;
-      const paymentDate = new Date(payment.paid_at);
-      if (paymentDate >= twelveMonthsAgoDate) {
-        const monthKey = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
-        monthlySales[monthKey] = (monthlySales[monthKey] || 0) + parseFloat(payment.amount || "0");
-      }
-    });
-    setMonthlySalesData(monthlySales);
-
-    // PT 회원 통계 계산
-    const ptMemberships = (ptMembersResult.data || []) as any[];
-    const ptMemberIds = new Set<string>();
-    const activePtMemberIds = new Set<string>();
-    const todayDateObj = new Date(today);
-
-    ptMemberships.forEach((membership: any) => {
-      if (!membership.member_id) return;
-      const membershipName = (membership.name || "").toString().trim().toUpperCase();
-      if (!ptTypes.includes(membershipName)) return;
-
-      ptMemberIds.add(membership.member_id);
-
-      const totalSessions = parseInt(membership.total_sessions) || 0;
-      const usedSessions = parseInt(membership.used_sessions) || 0;
-      const remainingSessions = totalSessions - usedSessions;
-      const hasRemainingSessions = remainingSessions > 0;
-
-      const endDate = membership.end_date ? new Date(membership.end_date) : null;
-      const isNotExpired = endDate && endDate >= todayDateObj;
-
-      if (hasRemainingSessions || isNotExpired) {
-        activePtMemberIds.add(membership.member_id);
-      }
-    });
-
-    const recentlyActiveMemberIds = new Set<string>();
-    recentSchedules.forEach((schedule: any) => {
-      if (schedule.member_id) recentlyActiveMemberIds.add(schedule.member_id);
-    });
-
-    let ghostMemberCount = 0;
-    activePtMemberIds.forEach(memberId => {
-      if (!recentlyActiveMemberIds.has(memberId)) ghostMemberCount++;
-    });
-
-    const totalMembers = members.length;
-    const activeMembers = members.filter(m => m.status === 'active').length;
-    const newMembersThisMonth = members.filter(m => new Date(m.created_at) >= thisMonthStart).length;
-    const todaySales = todayPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
-    const monthSales = monthPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
     setTodaySchedules(schedules);
     setAnnouncements(announcementsResult.data || []);
@@ -332,11 +220,13 @@ export function useAdminDashboardData() {
     const activeSystemAnnouncements = (systemAnnouncementsData || []).filter((a: any) => a.is_active);
     setSystemAnnouncements(activeSystemAnnouncements);
 
+    // 회원/매출 관련 통계 - 임시 비활성화 (테이블 재연결 예정)
     setStats({
-      totalMembers, activeMembers, todaySchedules: schedules?.length || 0,
-      todaySales, monthSales, newMembersThisMonth,
-      totalPTMembers: ptMemberIds.size, activePTMembers: activePtMemberIds.size, ghostMembers: ghostMemberCount
+      totalMembers: 0, activeMembers: 0, todaySchedules: schedules?.length || 0,
+      todaySales: 0, monthSales: 0, newMembersThisMonth: 0,
+      totalPTMembers: 0, activePTMembers: 0, ghostMembers: 0
     });
+    setMonthlySalesData({});
 
     fetchRecentLogs(gymId, companyId);
   };

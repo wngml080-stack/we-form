@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Save, X, Edit2, Plus } from "lucide-react";
+import { Trash2, Save, X, Plus } from "lucide-react";
 
 interface Staff {
   id: string;
@@ -48,6 +48,7 @@ interface PaymentsTableProps {
   onCancelNewRow: () => void;
   onNewRowChange: (field: string, value: string | number) => void;
   onAddOption?: (type: "sale_type" | "membership_category" | "membership_name", name: string) => void;
+  onAddNewRow?: () => void;
 }
 
 // 추가 기능이 있는 Select 컴포넌트
@@ -145,7 +146,8 @@ export function PaymentsTable({
   onSaveNewRow,
   onCancelNewRow,
   onNewRowChange,
-  onAddOption
+  onAddOption,
+  onAddNewRow
 }: PaymentsTableProps) {
   const methodLabels: Record<string, string> = {
     card: "카드",
@@ -158,98 +160,103 @@ export function PaymentsTable({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("ko-KR");
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}.${day}`;
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <div className="bg-white border border-gray-300 overflow-hidden">
+      {/* 엑셀 스타일 테이블 */}
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">날짜</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">회원명</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">휴대폰</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">유형</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">회원권</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">회원권명</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">금액</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">결제방법</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">할부</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">담당</th>
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">메모</th>
-              <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap">관리</th>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-[#E8F0FE] border-b border-gray-300">
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[100px]">날짜</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[80px]">회원명</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[110px]">휴대폰번호</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[70px]">유형</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[80px]">회원권</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[80px]">회원권명</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[90px]">금액</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[80px]">결제방법</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[70px]">할부</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[70px]">담당TR</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 border-r border-gray-300 whitespace-nowrap min-w-[100px]">메모</th>
+              <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 whitespace-nowrap min-w-[60px]">삭제</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody>
             {payments.map((payment) => (
               payment.isNew ? (
-                <tr key={payment.id} className="bg-blue-50">
-                  <td className="px-2 py-2">
+                <tr key={payment.id} className="bg-blue-50 border-b border-gray-200">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       type="date"
                       value={editForm.payment_date || new Date().toISOString().split("T")[0]}
                       onChange={(e) => onNewRowChange("payment_date", e.target.value)}
-                      className="h-8 w-28 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       value={editForm.member_name || ""}
                       onChange={(e) => onNewRowChange("member_name", e.target.value)}
                       placeholder="회원명"
-                      className="h-8 w-20 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       value={editForm.phone || ""}
                       onChange={(e) => onNewRowChange("phone", e.target.value)}
                       placeholder="010-0000-0000"
-                      className="h-8 w-28 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <SelectWithAdd
                       value={editForm.sale_type || "신규"}
                       options={allSaleTypes}
                       onChange={(v) => onNewRowChange("sale_type", v)}
                       onAdd={(name) => onAddOption?.("sale_type", name)}
-                      className="h-8 w-20 text-xs"
+                      className="h-7 w-full text-xs border-0"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <SelectWithAdd
                       value={editForm.membership_category || ""}
                       options={allMembershipCategories}
                       placeholder="선택"
                       onChange={(v) => onNewRowChange("membership_category", v)}
                       onAdd={(name) => onAddOption?.("membership_category", name)}
-                      className="h-8 w-24 text-xs"
+                      className="h-7 w-full text-xs border-0"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <SelectWithAdd
                       value={editForm.membership_name || ""}
                       options={allMembershipNames}
                       placeholder="선택"
                       onChange={(v) => onNewRowChange("membership_name", v)}
                       onAdd={(name) => onAddOption?.("membership_name", name)}
-                      className="h-8 w-20 text-xs"
+                      className="h-7 w-full text-xs border-0"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       type="number"
                       value={editForm.amount || ""}
                       onChange={(e) => onNewRowChange("amount", parseInt(e.target.value) || 0)}
                       placeholder="금액"
-                      className="h-8 w-24 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400 text-right"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Select value={editForm.method || "card"} onValueChange={(v) => onNewRowChange("method", v)}>
-                      <SelectTrigger className="h-8 w-20 text-xs">
+                      <SelectTrigger className="h-7 w-full text-xs border-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -259,9 +266,9 @@ export function PaymentsTable({
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Select value={String(editForm.installment || 1)} onValueChange={(v) => onNewRowChange("installment", parseInt(v))}>
-                      <SelectTrigger className="h-8 w-16 text-xs">
+                      <SelectTrigger className="h-7 w-full text-xs border-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -271,9 +278,9 @@ export function PaymentsTable({
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Select value={editForm.trainer_id || "none"} onValueChange={(v) => onNewRowChange("trainer_id", v === "none" ? "" : v)}>
-                      <SelectTrigger className="h-8 w-20 text-xs">
+                      <SelectTrigger className="h-7 w-full text-xs border-0">
                         <SelectValue placeholder="선택" />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -284,87 +291,87 @@ export function PaymentsTable({
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       value={editForm.memo || ""}
                       onChange={(e) => onNewRowChange("memo", e.target.value)}
                       placeholder="메모"
-                      className="h-8 w-24 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1">
                     <div className="flex justify-center gap-1">
-                      <Button size="sm" variant="ghost" onClick={onSaveNewRow} className="h-7 w-7 p-0 text-green-600">
-                        <Save className="w-4 h-4" />
+                      <Button size="sm" variant="ghost" onClick={onSaveNewRow} className="h-6 w-6 p-0 text-green-600 hover:text-green-700">
+                        <Save className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={onCancelNewRow} className="h-7 w-7 p-0 text-gray-400">
-                        <X className="w-4 h-4" />
+                      <Button size="sm" variant="ghost" onClick={onCancelNewRow} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600">
+                        <X className="w-3 h-3" />
                       </Button>
                     </div>
                   </td>
                 </tr>
               ) : editingId === payment.id ? (
-                <tr key={payment.id} className="bg-yellow-50">
-                  <td className="px-2 py-2">
+                <tr key={payment.id} className="bg-yellow-50 border-b border-gray-200">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       type="date"
                       value={editForm.payment_date || ""}
                       onChange={(e) => onEditFormChange("payment_date", e.target.value)}
-                      className="h-8 w-28 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       value={editForm.member_name || ""}
                       onChange={(e) => onEditFormChange("member_name", e.target.value)}
-                      className="h-8 w-20 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       value={editForm.phone || ""}
                       onChange={(e) => onEditFormChange("phone", e.target.value)}
-                      className="h-8 w-28 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <SelectWithAdd
                       value={editForm.sale_type || ""}
                       options={allSaleTypes}
                       onChange={(v) => onEditFormChange("sale_type", v)}
                       onAdd={(name) => onAddOption?.("sale_type", name)}
-                      className="h-8 w-20 text-xs"
+                      className="h-7 w-full text-xs border-0"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <SelectWithAdd
                       value={editForm.membership_category || ""}
                       options={allMembershipCategories}
                       onChange={(v) => onEditFormChange("membership_category", v)}
                       onAdd={(name) => onAddOption?.("membership_category", name)}
-                      className="h-8 w-24 text-xs"
+                      className="h-7 w-full text-xs border-0"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <SelectWithAdd
                       value={editForm.membership_name || ""}
                       options={allMembershipNames}
                       onChange={(v) => onEditFormChange("membership_name", v)}
                       onAdd={(name) => onAddOption?.("membership_name", name)}
-                      className="h-8 w-20 text-xs"
+                      className="h-7 w-full text-xs border-0"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       type="number"
                       value={editForm.amount || ""}
                       onChange={(e) => onEditFormChange("amount", parseInt(e.target.value) || 0)}
-                      className="h-8 w-24 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400 text-right"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Select value={editForm.method || ""} onValueChange={(v) => onEditFormChange("method", v)}>
-                      <SelectTrigger className="h-8 w-20 text-xs">
+                      <SelectTrigger className="h-7 w-full text-xs border-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -374,9 +381,9 @@ export function PaymentsTable({
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Select value={String(editForm.installment || 1)} onValueChange={(v) => onEditFormChange("installment", parseInt(v))}>
-                      <SelectTrigger className="h-8 w-16 text-xs">
+                      <SelectTrigger className="h-7 w-full text-xs border-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -386,9 +393,9 @@ export function PaymentsTable({
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Select value={editForm.trainer_id || "none"} onValueChange={(v) => onEditFormChange("trainer_id", v === "none" ? "" : v)}>
-                      <SelectTrigger className="h-8 w-20 text-xs">
+                      <SelectTrigger className="h-7 w-full text-xs border-0">
                         <SelectValue placeholder="선택" />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -399,64 +406,43 @@ export function PaymentsTable({
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1 border-r border-gray-200">
                     <Input
                       value={editForm.memo || ""}
                       onChange={(e) => onEditFormChange("memo", e.target.value)}
-                      className="h-8 w-24 text-xs"
+                      className="h-7 w-full text-xs border-0 bg-transparent focus:ring-1 focus:ring-blue-400"
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1 py-1">
                     <div className="flex justify-center gap-1">
-                      <Button size="sm" variant="ghost" onClick={onSaveEdit} className="h-7 w-7 p-0 text-green-600">
-                        <Save className="w-4 h-4" />
+                      <Button size="sm" variant="ghost" onClick={onSaveEdit} className="h-6 w-6 p-0 text-green-600 hover:text-green-700">
+                        <Save className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={onCancelEdit} className="h-7 w-7 p-0 text-gray-400">
-                        <X className="w-4 h-4" />
+                      <Button size="sm" variant="ghost" onClick={onCancelEdit} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600">
+                        <X className="w-3 h-3" />
                       </Button>
                     </div>
                   </td>
                 </tr>
               ) : (
-                <tr key={payment.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-3 text-sm text-gray-900 whitespace-nowrap">{formatDate(payment.payment_date)}</td>
-                  <td className="px-3 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{payment.member_name}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">{payment.phone || "-"}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      payment.sale_type === "신규" ? "bg-green-100 text-green-700" :
-                      payment.sale_type === "재등록" ? "bg-blue-100 text-blue-700" :
-                      payment.sale_type === "연장" ? "bg-indigo-100 text-indigo-700" :
-                      payment.sale_type === "환불" ? "bg-red-100 text-red-700" :
-                      "bg-gray-100 text-gray-700"
-                    }`}>
-                      {payment.sale_type}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">{payment.membership_category}</td>
-                  <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">{payment.membership_name}</td>
-                  <td className="px-3 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{formatCurrency(payment.amount)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      payment.method === "card" ? "bg-purple-100 text-purple-700" :
-                      payment.method === "cash" ? "bg-green-100 text-green-700" :
-                      "bg-orange-100 text-orange-700"
-                    }`}>
-                      {methodLabels[payment.method] || payment.method}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">
+                <tr key={payment.id} className="hover:bg-gray-50 border-b border-gray-200 cursor-pointer" onDoubleClick={() => onStartEdit(payment)}>
+                  <td className="px-2 py-2 text-xs text-gray-900 text-center border-r border-gray-200 whitespace-nowrap">{formatDate(payment.payment_date)}</td>
+                  <td className="px-2 py-2 text-xs text-gray-900 text-center border-r border-gray-200 whitespace-nowrap">{payment.member_name}</td>
+                  <td className="px-2 py-2 text-xs text-gray-600 text-center border-r border-gray-200 whitespace-nowrap">{payment.phone || "-"}</td>
+                  <td className="px-2 py-2 text-xs text-center border-r border-gray-200 whitespace-nowrap">{payment.sale_type}</td>
+                  <td className="px-2 py-2 text-xs text-gray-600 text-center border-r border-gray-200 whitespace-nowrap">{payment.membership_category}</td>
+                  <td className="px-2 py-2 text-xs text-gray-600 text-center border-r border-gray-200 whitespace-nowrap">{payment.membership_name}</td>
+                  <td className="px-2 py-2 text-xs text-gray-900 text-right border-r border-gray-200 whitespace-nowrap">{formatCurrency(payment.amount)}</td>
+                  <td className="px-2 py-2 text-xs text-center border-r border-gray-200 whitespace-nowrap">{methodLabels[payment.method] || payment.method}</td>
+                  <td className="px-2 py-2 text-xs text-gray-600 text-center border-r border-gray-200 whitespace-nowrap">
                     {payment.installment === 1 ? "일시불" : `${payment.installment}개월`}
                   </td>
-                  <td className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap">{payment.trainer_name || "-"}</td>
-                  <td className="px-3 py-3 text-sm text-gray-500 whitespace-nowrap max-w-[100px] truncate">{payment.memo || "-"}</td>
-                  <td className="px-3 py-3">
-                    <div className="flex justify-center gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => onStartEdit(payment)} className="h-7 w-7 p-0 text-gray-400 hover:text-blue-600">
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => onDelete(payment.id)} className="h-7 w-7 p-0 text-gray-400 hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
+                  <td className="px-2 py-2 text-xs text-gray-600 text-center border-r border-gray-200 whitespace-nowrap">{payment.trainer_name || "-"}</td>
+                  <td className="px-2 py-2 text-xs text-gray-500 text-center border-r border-gray-200 whitespace-nowrap max-w-[100px] truncate">{payment.memo || "-"}</td>
+                  <td className="px-2 py-2">
+                    <div className="flex justify-center">
+                      <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(payment.id); }} className="h-6 w-6 p-0 text-gray-400 hover:text-red-600">
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </td>
@@ -465,13 +451,25 @@ export function PaymentsTable({
             ))}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-12 text-center text-gray-500">
+                <td colSpan={12} className="px-4 py-8 text-center text-gray-500 text-sm border-b border-gray-200">
                   매출 내역이 없습니다.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+      </div>
+      {/* 하단 매출 추가 버튼 */}
+      <div className="border-t border-gray-300 bg-gray-50 px-3 py-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onAddNewRow}
+          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-xs font-medium"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          매출 추가
+        </Button>
       </div>
     </div>
   );

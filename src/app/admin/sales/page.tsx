@@ -8,6 +8,7 @@ import { SalesHeader } from "./components/SalesHeader";
 import { SalesFilters } from "./components/SalesFilters";
 import { SalesStats } from "./components/SalesStats";
 import { PaymentsTable } from "./components/PaymentsTable";
+import { exportSalesToExcel } from "./utils/excelExport";
 
 const SalesSettingsModal = dynamic(
   () => import("./components/modals/SalesSettingsModal").then(mod => ({ default: mod.SalesSettingsModal })),
@@ -159,6 +160,15 @@ export default function SalesPage() {
     }
   };
 
+  // 엑셀 내보내기
+  const handleExportExcel = () => {
+    const exportData = filteredPayments.map(p => ({
+      ...p,
+      payment_date: p.created_at?.split("T")[0] || ""
+    }));
+    exportSalesToExcel(exportData, gymName || "매출");
+  };
+
   // 페이먼트 데이터를 테이블 형식으로 변환
   const tablePayments = [
     ...newRows.map(row => ({
@@ -194,6 +204,7 @@ export default function SalesPage() {
         gymName={gymName || ""}
         onAddNewRow={handleAddNewRow}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onExportExcel={handleExportExcel}
       />
 
       <SalesFilters
@@ -234,6 +245,7 @@ export default function SalesPage() {
         onCancelNewRow={handleCancelNewRow}
         onNewRowChange={handleNewRowChange}
         onAddOption={addCustomOption}
+        onAddNewRow={handleAddNewRow}
       />
 
       <SalesSettingsModal

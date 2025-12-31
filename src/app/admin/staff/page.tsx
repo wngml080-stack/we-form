@@ -149,7 +149,7 @@ export default function AdminStaffPage() {
     }
   };
 
-  // 신규 등록 실행 (Clerk 방식: staffs 테이블에만 등록, 직원이 Clerk 로그인 시 자동 연결)
+  // 신규 등록 실행 (Supabase Auth 방식: staffs 테이블에만 등록, 직원이 로그인 시 이메일로 자동 연결)
   const handleCreateStaff = async () => {
     if (!createForm.name || !createForm.email) { toast.warning("이름과 이메일은 필수입니다."); return; }
 

@@ -1,15 +1,16 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Plus, Settings } from "lucide-react";
+import { Plus, Settings, Download } from "lucide-react";
 
 interface SalesHeaderProps {
   gymName: string;
   onAddNewRow: () => void;
   onOpenSettings: () => void;
+  onExportExcel?: () => void;
 }
 
-export function SalesHeader({ gymName, onAddNewRow, onOpenSettings }: SalesHeaderProps) {
+export function SalesHeader({ gymName, onAddNewRow, onOpenSettings, onExportExcel }: SalesHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
@@ -20,6 +21,10 @@ export function SalesHeader({ gymName, onAddNewRow, onOpenSettings }: SalesHeade
         <Button onClick={onAddNewRow} className="bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4 mr-2" />
           매출 추가
+        </Button>
+        <Button variant="outline" onClick={onExportExcel} className="text-green-700 border-green-300 hover:bg-green-50">
+          <Download className="w-4 h-4 mr-2" />
+          엑셀 다운
         </Button>
         <Button variant="outline" onClick={onOpenSettings}>
           <Settings className="w-4 h-4" />

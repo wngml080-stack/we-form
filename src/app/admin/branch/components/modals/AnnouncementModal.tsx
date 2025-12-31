@@ -12,15 +12,15 @@ import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { AnnouncementForm } from "../../hooks/useBranchData";
+import { AnnouncementForm, BranchAnnouncement, GymInfo } from "../../hooks/useBranchData";
 
 interface AnnouncementModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  editingAnnouncement: any | null;
+  editingAnnouncement: BranchAnnouncement | null;
   announcementForm: AnnouncementForm;
   setAnnouncementForm: (form: AnnouncementForm) => void;
-  gyms: any[];
+  gyms: GymInfo[];
   onSave: () => void;
   isLoading: boolean;
 }

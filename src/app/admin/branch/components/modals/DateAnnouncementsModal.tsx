@@ -6,14 +6,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Bell, Activity, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { BranchAnnouncement } from "../../hooks/useBranchData";
 
 interface DateAnnouncementsModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   selectedDate: Date | null;
-  announcements: any[];
-  onToggleActive: (announcement: any) => void;
-  onEdit: (announcement: any) => void;
+  announcements: BranchAnnouncement[];
+  onToggleActive: (announcement: BranchAnnouncement) => void;
+  onEdit: (announcement: BranchAnnouncement) => void;
   onDelete: (id: string) => void;
 }
 
