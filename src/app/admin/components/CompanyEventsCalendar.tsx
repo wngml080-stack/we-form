@@ -71,7 +71,7 @@ export function CompanyEventsCalendar({
         </button>
       </div>
 
-      <div className="flex-1 overflow-auto custom-scrollbar">
+      <div className="flex-1 overflow-auto custom-scrollbar min-h-0">
         <div className="grid grid-cols-7 gap-1 mb-2">
           {["일", "월", "화", "수", "목", "금", "토"].map((day, idx) => (
             <div
@@ -86,7 +86,7 @@ export function CompanyEventsCalendar({
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-1.5">
           {Array.from({ length: startDayOfWeek }).map((_, i) => (
             <div key={`empty-${i}`} className="aspect-square"></div>
           ))}
@@ -101,8 +101,8 @@ export function CompanyEventsCalendar({
               <div
                 key={dateKey}
                 className={cn(
-                  "aspect-square p-1 rounded-lg cursor-pointer transition-all relative",
-                  isToday && "bg-blue-100 ring-2 ring-blue-500",
+                  "aspect-square p-1 rounded-lg cursor-pointer transition-all relative overflow-visible",
+                  isToday && "bg-blue-100 border-2 border-blue-500",
                   !isToday && dayEvents.length > 0 && "hover:bg-gray-100",
                   !isToday && dayEvents.length === 0 && "hover:bg-gray-50"
                 )}

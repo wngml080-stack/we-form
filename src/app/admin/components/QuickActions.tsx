@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { DollarSign, Calendar, CheckCircle2, Users } from "lucide-react";
+import { DollarSign, Calendar, CheckCircle2, Users, Briefcase } from "lucide-react";
 
 interface QuickActionProps {
   icon: any;
@@ -47,6 +47,12 @@ export function QuickActions() {
         label="PT회원 관리"
         href="/admin/pt-members"
         color="bg-blue-100 text-blue-600"
+      />
+      <QuickAction
+        icon={Briefcase}
+        label="포트폴리오"
+        href="/admin/portfolio"
+        color="bg-indigo-100 text-indigo-600"
       />
     </div>
   );

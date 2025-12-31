@@ -145,19 +145,10 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     }
   }, [startDate, endDate]);
 
-  const fetchPayments = async (gymId: string, companyId: string) => {
-    const { data, error } = await supabase
-      .from("member_payments")
-      .select("*")
-      .eq("gym_id", gymId)
-      .gte("created_at", `${startDate}T00:00:00`)
-      .lte("created_at", `${endDate}T23:59:59`)
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      setPayments(data);
-      calculateStats(data);
-    }
+  // 결제 데이터 조회 - 임시 비활성화 (테이블 재연결 예정)
+  const fetchPayments = async (_gymId: string, _companyId: string) => {
+    setPayments([]);
+    setStats({ total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
   };
 
   const fetchStaffList = async (gymId: string) => {
@@ -251,60 +242,23 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     ));
   };
 
+  // 새 행 저장 - 임시 비활성화 (테이블 재연결 예정)
   const saveNewRow = async (id: string) => {
-    const row = newRows.find(r => r.id === id);
-    if (!row || !selectedGymId || !selectedCompanyId) return;
-
-    const trainer = staffList.find(s => s.id === row.trainer_id);
-
-    const { error } = await supabase.from("member_payments").insert({
-      gym_id: selectedGymId,
-      company_id: selectedCompanyId,
-      member_name: row.member_name,
-      phone: row.phone,
-      sale_type: row.sale_type,
-      membership_category: row.membership_category,
-      membership_name: row.membership_name,
-      amount: row.amount,
-      method: row.method,
-      installment: row.installment,
-      trainer_id: row.trainer_id || null,
-      trainer_name: trainer?.name || null,
-      memo: row.memo
-    });
-
-    if (!error) {
-      setNewRows(prev => prev.filter(r => r.id !== id));
-      fetchPayments(selectedGymId, selectedCompanyId);
-    }
+    setNewRows(prev => prev.filter(r => r.id !== id));
   };
 
   const removeNewRow = (id: string) => {
     setNewRows(prev => prev.filter(r => r.id !== id));
   };
 
-  // 결제 삭제
-  const deletePayment = async (id: string) => {
-    const { error } = await supabase
-      .from("member_payments")
-      .delete()
-      .eq("id", id);
-
-    if (!error && selectedGymId && selectedCompanyId) {
-      fetchPayments(selectedGymId, selectedCompanyId);
-    }
+  // 결제 삭제 - 임시 비활성화 (테이블 재연결 예정)
+  const deletePayment = async (_id: string) => {
+    // 비활성화됨
   };
 
-  // 결제 수정
-  const updatePayment = async (id: string, updates: Partial<Payment>) => {
-    const { error } = await supabase
-      .from("member_payments")
-      .update(updates)
-      .eq("id", id);
-
-    if (!error && selectedGymId && selectedCompanyId) {
-      fetchPayments(selectedGymId, selectedCompanyId);
-    }
+  // 결제 수정 - 임시 비활성화 (테이블 재연결 예정)
+  const updatePayment = async (_id: string, _updates: Partial<Payment>) => {
+    // 비활성화됨
   };
 
   // 커스텀 옵션 추가

@@ -245,24 +245,9 @@ export function useAdminDashboardData() {
     }
   };
 
-  const searchMembers = async (query: string) => {
-    if (!query.trim() || query.length < 2) {
-      setMemberSearchResults([]);
-      return;
-    }
-    try {
-      const { data, error } = await supabase
-        .from("members")
-        .select("id, name, phone")
-        .eq("gym_id", selectedGymId)
-        .eq("company_id", selectedCompanyId)
-        .or(`name.ilike.%${query}%,phone.ilike.%${query}%`)
-        .limit(10);
-
-      if (!error && data) setMemberSearchResults(data);
-    } catch (error) {
-      console.error("회원 검색 에러:", error);
-    }
+  // 회원 검색 - 임시 비활성화 (테이블 재연결 예정)
+  const searchMembers = async (_query: string) => {
+    setMemberSearchResults([]);
   };
 
   const handleNewMemberRegistration = async () => {

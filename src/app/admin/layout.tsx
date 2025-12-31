@@ -13,7 +13,6 @@ import {
   LogOut,
   ClipboardCheck,
   DollarSign,
-  ShoppingCart,
   Menu,
   X,
 } from "lucide-react";
@@ -119,7 +118,6 @@ function AdminLayoutContent({
         ],
         branch: [
           { name: "지점 관리", href: "/admin/branch", icon: Building2, isParent: true },
-          { name: "매출 관리", href: "/admin/sales", icon: ShoppingCart, isChild: true },
           { name: "급여 관리", href: "/admin/salary", icon: DollarSign, isChild: true },
           { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck, isChild: true },
         ],

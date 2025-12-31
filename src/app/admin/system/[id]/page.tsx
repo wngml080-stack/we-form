@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter, useParams } from "next/navigation"; // params 사용
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,8 @@ import { ArrowLeft } from "lucide-react";
 
 export default function CompanyDetailPage() {
   const router = useRouter();
-  const params = useParams(); // URL에서 회사 ID 가져오기
-  const companyId = params.id;
+  const params = use(useParams()); // URL에서 회사 ID 가져오기
+  const companyId = params?.id as string | undefined;
 
   const [company, setCompany] = useState<any>(null);
   const [staffs, setStaffs] = useState<any[]>([]);
@@ -18,6 +18,8 @@ export default function CompanyDetailPage() {
   const supabase = createSupabaseClient();
 
   useEffect(() => {
+    if (!companyId) return;
+
     const fetchData = async () => {
       // 1. 회사 정보 가져오기
       const { data: comp } = await supabase
@@ -39,7 +41,7 @@ export default function CompanyDetailPage() {
     };
 
     fetchData();
-  }, [companyId]);
+  }, [companyId, supabase]);
 
   if (!company) return <div className="p-10">로딩 중...</div>;
 

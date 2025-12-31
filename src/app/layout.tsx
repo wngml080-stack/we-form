@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* jsDelivr CDN preconnect for Paperozi font */}
+        {/* jsDelivr CDN preconnect for Pretendard font */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased">

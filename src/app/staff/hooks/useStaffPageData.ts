@@ -179,31 +179,9 @@ export function useStaffPageData() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, myStaffId]);
 
-  // API 호출 함수들
-  const fetchMembers = async (gymId: string | null, companyId: string | null) => {
-    if (!gymId || !companyId) return;
-
-    // !inner 제거: 회원권이 없는 회원도 조회되도록 LEFT JOIN 사용
-    const { data, error } = await supabase
-      .from("members")
-      .select(`*, member_memberships (id, name, total_sessions, used_sessions, status)`)
-      .eq("gym_id", gymId)
-      .eq("company_id", companyId)
-      .eq("status", "active")
-      .order("name");
-
-    if (error) return;
-
-    const membersWithMemberships = (data || []).map((member: any) => {
-      const memberships = member.member_memberships || [];
-      const activeMembership = memberships.find((m: any) => m.status === 'active');
-      const remaining = activeMembership
-        ? (activeMembership.total_sessions - activeMembership.used_sessions)
-        : 0;
-      return { ...member, activeMembership, remaining };
-    });
-
-    setMembers(membersWithMemberships);
+  // 회원 조회 - 임시 비활성화 (테이블 재연결 예정)
+  const fetchMembers = async (_gymId: string | null, _companyId: string | null) => {
+    setMembers([]);
   };
 
   const fetchSchedules = async (staffId: string) => {
@@ -329,35 +307,10 @@ export function useStaffPageData() {
   };
 
   // 핸들러 함수들
+  // 회원 생성 - 임시 비활성화 (테이블 재연결 예정)
   const handleCreateMember = async () => {
-    if (!newMemberData.name || !myGymId || !myCompanyId) return;
-
-    const { data, error } = await supabase
-      .from("members")
-      .insert({
-        name: newMemberData.name,
-        phone: newMemberData.phone,
-        gym_id: myGymId,
-        company_id: myCompanyId,
-        status: 'active',
-        memo: newMemberData.memo
-      })
-      .select()
-      .single();
-
-    if (error) {
-      toast.error("회원 생성 실패: " + error.message);
-    } else {
-      toast.success("회원이 생성되었습니다.");
-      setIsAddMemberModalOpen(false);
-      setNewMemberData({ name: "", phone: "", memo: "" });
-      fetchMembers(myGymId, myCompanyId);
-
-      setNewMemberName(data.name);
-      setSelectedMemberId(data.id);
-      setMemberSearchQuery(data.name);
-      if (!isAddModalOpen) setIsAddModalOpen(true);
-    }
+    toast.warning("회원 관리 기능이 임시 비활성화되었습니다.");
+    setIsAddMemberModalOpen(false);
   };
 
   const handleAddClass = async () => {

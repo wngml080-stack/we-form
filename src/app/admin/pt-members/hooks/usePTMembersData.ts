@@ -62,56 +62,11 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     }
   }, [filterInitialized, selectedGymId]);
 
-  const fetchPTMembers = async (gymId: string) => {
+  // PT 회원 조회 - 임시 비활성화 (테이블 재연결 예정)
+  const fetchPTMembers = async (_gymId: string) => {
     setIsLoading(true);
-
-    // PT 관련 매출 중 담당트레이너가 있는 데이터 조회
-    const { data, error } = await supabase
-      .from("member_payments")
-      .select("*")
-      .eq("gym_id", gymId)
-      .not("trainer_id", "is", null)
-      .in("membership_category", ["PT", "pt", "개인레슨", "퍼스널트레이닝"])
-      .order("created_at", { ascending: false });
-
-    if (!error && data) {
-      // 회원별로 그룹핑하여 가장 최근 데이터 사용
-      const memberMap = new Map<string, PTMember>();
-
-      data.forEach((payment: any) => {
-        const key = `${payment.member_name}-${payment.phone || "no-phone"}`;
-
-        if (!memberMap.has(key)) {
-          // 회원권명에서 횟수 추출 시도 (예: "10회", "20회")
-          const sessionMatch = payment.membership_name?.match(/(\d+)회/);
-          const totalSessions = sessionMatch ? parseInt(sessionMatch[1]) : undefined;
-
-          memberMap.set(key, {
-            id: payment.id,
-            member_name: payment.member_name,
-            phone: payment.phone,
-            membership_category: payment.membership_category,
-            membership_name: payment.membership_name,
-            sale_type: payment.sale_type,
-            amount: payment.amount,
-            trainer_id: payment.trainer_id,
-            trainer_name: payment.trainer_name || "",
-            remaining_sessions: totalSessions, // 실제로는 출석 데이터와 연동 필요
-            total_sessions: totalSessions,
-            start_date: payment.start_date,
-            end_date: payment.end_date,
-            status: "active", // 기본값, 실제로는 날짜 비교 필요
-            created_at: payment.created_at,
-            memo: payment.memo
-          });
-        }
-      });
-
-      const members = Array.from(memberMap.values());
-      setPTMembers(members);
-      calculateStats(members);
-    }
-
+    setPTMembers([]);
+    setStats({ totalMembers: 0, activeMembers: 0, totalRevenue: 0, avgSessionsRemaining: 0 });
     setIsLoading(false);
   };
 
@@ -179,28 +134,14 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     return counts;
   }, [ptMembers]);
 
-  // 회원 상태 업데이트
-  const updateMemberStatus = async (id: string, status: "active" | "expired" | "paused") => {
-    const { error } = await supabase
-      .from("member_payments")
-      .update({ status })
-      .eq("id", id);
-
-    if (!error && selectedGymId) {
-      fetchPTMembers(selectedGymId);
-    }
+  // 회원 상태 업데이트 - 임시 비활성화 (테이블 재연결 예정)
+  const updateMemberStatus = async (_id: string, _status: "active" | "expired" | "paused") => {
+    // 비활성화됨
   };
 
-  // 담당 트레이너 변경
-  const updateTrainer = async (id: string, trainerId: string, trainerName: string) => {
-    const { error } = await supabase
-      .from("member_payments")
-      .update({ trainer_id: trainerId, trainer_name: trainerName })
-      .eq("id", id);
-
-    if (!error && selectedGymId) {
-      fetchPTMembers(selectedGymId);
-    }
+  // 담당 트레이너 변경 - 임시 비활성화 (테이블 재연결 예정)
+  const updateTrainer = async (_id: string, _trainerId: string, _trainerName: string) => {
+    // 비활성화됨
   };
 
   return {

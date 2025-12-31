@@ -189,60 +189,20 @@ export function useSchedulePageData() {
         const staffIdFilter = user.role === "staff" ? user.id : "all";
         setSelectedStaffId(staffIdFilter);
 
-        if (user.role === "staff") {
-          const [memberResult, membershipResult] = await Promise.all([
-            supabase.from("members").select("id, name").eq("gym_id", selectedGymId).eq("trainer_id", user.id).order("name", { ascending: true }),
-            supabase.from("member_memberships").select("id, member_id, name, total_sessions, used_sessions, start_date, end_date, status").eq("gym_id", selectedGymId).eq("status", "active")
-          ]);
+        // 회원 데이터 조회 - 임시 비활성화 (테이블 재연결 예정)
+        setMembers([]);
+        setMemberMemberships({});
 
-          if (memberResult.data) setMembers(memberResult.data);
-          let grouped: Record<string, any[]> = {};
-          if (membershipResult.data) {
-            const myMemberIds = memberResult.data?.map(m => m.id) || [];
-            const filteredMemberships = membershipResult.data.filter(m => myMemberIds.includes(m.member_id));
-            grouped = filteredMemberships.reduce((acc: Record<string, any[]>, m) => {
-              if (!acc[m.member_id]) acc[m.member_id] = [];
-              acc[m.member_id].push(m);
-              return acc;
-            }, {});
-            setMemberMemberships(grouped);
-          }
-          // 회원권 데이터를 파라미터로 전달하여 클로저 문제 해결
-          fetchSchedules(selectedGymId, staffIdFilter, grouped);
-          return; // 아래 fetchSchedules 호출 방지
-        } else {
-          // API를 사용하여 RLS를 우회한 회원 조회 (회원권 정보 포함)
-          const [memberApiRes, staffResult] = await Promise.all([
-            fetch(`/api/admin/members?gym_id=${selectedGymId}&status=all`).then(res => res.json()),
-            supabase.from("staffs").select("id, name, work_start_time, work_end_time").eq("gym_id", selectedGymId).order("name", { ascending: true }),
-          ]);
-
-          // API 결과에서 회원 목록과 회원권 정보 추출
-          if (memberApiRes.members) {
-            const membersData = memberApiRes.members.map((m: any) => ({
-              id: m.id,
-              name: m.name,
-              trainer_id: m.trainer_id
-            }));
-            setMembers(membersData);
-
-            // API 응답에서 회원권 정보도 추출 (이미 active만 필터링됨)
-            const grouped: Record<string, any[]> = {};
-            memberApiRes.members.forEach((m: any) => {
-              if (m.member_memberships && m.member_memberships.length > 0) {
-                grouped[m.id] = m.member_memberships;
-              }
-            });
-
-            setMemberMemberships(grouped);
-            // 회원권 데이터를 파라미터로 전달하여 클로저 문제 해결
-            if (staffResult.data) setStaffs(staffResult.data);
-            fetchSchedules(selectedGymId, staffIdFilter, grouped);
-          } else {
-            if (staffResult.data) setStaffs(staffResult.data);
-            fetchSchedules(selectedGymId, staffIdFilter);
-          }
+        if (user.role !== "staff") {
+          const staffResult = await supabase
+            .from("staffs")
+            .select("id, name, work_start_time, work_end_time")
+            .eq("gym_id", selectedGymId)
+            .order("name", { ascending: true });
+          if (staffResult.data) setStaffs(staffResult.data);
         }
+
+        fetchSchedules(selectedGymId, staffIdFilter, {});
       } catch {
         // 초기화 실패
       } finally {

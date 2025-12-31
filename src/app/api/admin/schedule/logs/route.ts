@@ -27,86 +27,19 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
-
-    // 오늘 날짜 범위 계산 (한국 시간 기준)
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-
-    // registration_logs 테이블이 없을 경우를 대비해 member_payments에서 조회
-    let query = supabaseAdmin
-      .from("member_payments")
-      .select(`
-        id,
-        member_id,
-        amount,
-        method,
-        membership_type,
-        registration_type,
-        memo,
-        paid_at,
-        created_at,
-        members(name)
-      `)
-      .eq("gym_id", gymId)
-      .eq("company_id", companyId)
-      .order("paid_at", { ascending: false });
-
-    // 오늘만 조회하는 경우
-    if (todayOnly) {
-      query = query
-        .gte("paid_at", todayStart.toISOString())
-        .lte("paid_at", todayEnd.toISOString());
-    } else {
-      query = query.limit(limit);
-    }
-
-    const { data: logs, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    // 로그 형식 변환
-    const formattedLogs = (logs || []).map((log: any) => ({
-      id: log.id,
-      type: log.registration_type === "신규" ? "new_member" :
-            log.registration_type === "재등록" ? "existing_member" :
-            log.registration_type === "부가상품" ? "addon" : "other",
-      member_id: log.member_id,
-      member_name: log.members?.name || log.memo?.split(" - ")[1]?.split("(")[0] || "고객",
-      amount: log.amount,
-      payment_method: log.method,
-      membership_type: log.membership_type,
-      memo: log.memo,
-      registration_type: log.registration_type,
-      created_at: log.paid_at || log.created_at
-    }));
-
-    // 카테고리별 합계 계산
-    const summary = {
-      new_member: { count: 0, amount: 0 },
-      existing_member: { count: 0, amount: 0 },
-      addon: { count: 0, amount: 0 },
-      other: { count: 0, amount: 0 },
-      total: { count: 0, amount: 0 }
-    };
-
-    formattedLogs.forEach((log: any) => {
-      const category = log.type as keyof typeof summary;
-      if (summary[category]) {
-        summary[category].count += 1;
-        summary[category].amount += log.amount || 0;
-      }
-      summary.total.count += 1;
-      summary.total.amount += log.amount || 0;
-    });
+    // 회원/매출 테이블 임시 비활성화 (재연결 예정)
+    void gymId; void companyId; void limit; void todayOnly;
 
     return NextResponse.json({
       success: true,
-      logs: formattedLogs,
-      summary
+      logs: [],
+      summary: {
+        new_member: { count: 0, amount: 0 },
+        existing_member: { count: 0, amount: 0 },
+        addon: { count: 0, amount: 0 },
+        other: { count: 0, amount: 0 },
+        total: { count: 0, amount: 0 }
+      }
     });
 
   } catch (error: any) {

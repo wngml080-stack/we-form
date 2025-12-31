@@ -6,14 +6,14 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Building2, Users, LogOut } from "lucide-react";
-import { Suspense, useMemo, useState, useEffect } from "react";
+import { Suspense, useMemo, useState, useEffect, use } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 
 function PendingContent() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseClient(), []);
   const [email, setEmail] = useState<string | null>(null);
-  const searchParams = useSearchParams();
+  const searchParams = use(useSearchParams());
   const type = searchParams.get("type");
 
   useEffect(() => {

@@ -162,20 +162,9 @@ export default function AdminAttendancePage() {
     }
   };
 
-  // 회원 목록 조회
-  const fetchMembers = async (gymId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("members")
-        .select("id, name, phone")
-        .eq("gym_id", gymId)
-        .order("name", { ascending: true });
-
-      if (error) throw error;
-      if (data) setMembers(data);
-    } catch (error) {
-      console.error("회원 조회 실패:", error);
-    }
+  // 회원 목록 조회 - 임시 비활성화 (테이블 재연결 예정)
+  const fetchMembers = async (_gymId: string) => {
+    setMembers([]);
   };
 
   // 출석 기록 조회
