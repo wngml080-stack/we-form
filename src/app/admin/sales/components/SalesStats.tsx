@@ -1,56 +1,46 @@
 "use client";
 
-import { DollarSign, CreditCard, Banknote } from "lucide-react";
-import { Stats, formatCurrency } from "../hooks/useSalesPageData";
+import { CreditCard, Banknote, Building2, TrendingUp } from "lucide-react";
+
+interface Stats {
+  total: number;
+  card: number;
+  cash: number;
+  transfer: number;
+  count: number;
+}
 
 interface SalesStatsProps {
   stats: Stats;
 }
 
 export function SalesStats({ stats }: SalesStatsProps) {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" }).format(amount);
+  };
+
+  const statItems = [
+    { label: "총 매출", value: stats.total, icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "카드", value: stats.card, icon: CreditCard, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "현금", value: stats.cash, icon: Banknote, color: "text-green-600", bg: "bg-green-50" },
+    { label: "계좌이체", value: stats.transfer, icon: Building2, color: "text-orange-600", bg: "bg-orange-50" },
+  ];
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <div className="bg-[#2F80ED] text-white rounded-xl p-4 sm:p-5 shadow-sm col-span-2 lg:col-span-1">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs sm:text-sm font-medium">총 매출</span>
-          <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {statItems.map((item) => (
+        <div key={item.label} className="bg-white rounded-xl p-4 shadow-sm border">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg ${item.bg} flex items-center justify-center`}>
+              <item.icon className={`w-5 h-5 ${item.color}`} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">{item.label}</p>
+              <p className={`text-lg font-bold ${item.color}`}>{formatCurrency(item.value)}</p>
+            </div>
+          </div>
         </div>
-        <div className="text-xl sm:text-2xl font-bold">{formatCurrency(stats.total)}</div>
-        <div className="text-xs mt-1 opacity-80">{stats.count}건</div>
-      </div>
-
-      <div className="bg-white border rounded-xl p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs sm:text-sm text-gray-600">카드 결제</span>
-          <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
-        </div>
-        <div className="text-lg sm:text-xl font-bold text-blue-600">{formatCurrency(stats.card)}</div>
-        <div className="text-xs text-gray-500 mt-1">
-          {((stats.card / stats.total) * 100 || 0).toFixed(1)}%
-        </div>
-      </div>
-
-      <div className="bg-white border rounded-xl p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs sm:text-sm text-gray-600">현금 결제</span>
-          <Banknote className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
-        </div>
-        <div className="text-lg sm:text-xl font-bold text-emerald-600">{formatCurrency(stats.cash)}</div>
-        <div className="text-xs text-gray-500 mt-1">
-          {((stats.cash / stats.total) * 100 || 0).toFixed(1)}%
-        </div>
-      </div>
-
-      <div className="bg-white border rounded-xl p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs sm:text-sm text-gray-600">계좌이체</span>
-          <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-        </div>
-        <div className="text-lg sm:text-xl font-bold text-purple-600">{formatCurrency(stats.transfer)}</div>
-        <div className="text-xs text-gray-500 mt-1">
-          {((stats.transfer / stats.total) * 100 || 0).toFixed(1)}%
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

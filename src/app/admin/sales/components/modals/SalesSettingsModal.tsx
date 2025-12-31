@@ -1,138 +1,300 @@
 "use client";
 
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Plus, X } from "lucide-react";
-import { DEFAULT_MEMBERSHIP_TYPES, DEFAULT_PAYMENT_METHODS } from "../../hooks/useSalesPageData";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, X, Save } from "lucide-react";
+
+interface CustomOption {
+  id: string;
+  name: string;
+  display_order: number;
+}
 
 interface SalesSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  customMembershipTypes: any[];
-  customPaymentMethods: any[];
-  newMembershipType: string;
-  newPaymentMethod: { name: string; code: string };
-  onNewMembershipTypeChange: (value: string) => void;
-  onNewPaymentMethodChange: (value: { name: string; code: string }) => void;
-  onAddMembershipType: () => void;
-  onAddPaymentMethod: () => void;
-  onDeleteMembershipType: (id: string) => void;
-  onDeletePaymentMethod: (id: string) => void;
+  // 기본 옵션들
+  allSaleTypes: string[];
+  allMembershipCategories: string[];
+  allMembershipNames: string[];
+  allPaymentMethods: string[];
+  // 커스텀 옵션들 (삭제용)
+  customSaleTypes: CustomOption[];
+  customMembershipCategories: CustomOption[];
+  customMembershipNames: CustomOption[];
+  customPaymentMethods: CustomOption[];
+  // 추가/삭제 함수
+  onAddOption: (type: "sale_type" | "membership_category" | "membership_name" | "payment_method", name: string) => void;
+  onDeleteOption: (type: "sale_type" | "membership_category" | "membership_name" | "payment_method", id: string) => void;
 }
 
 export function SalesSettingsModal({
-  isOpen, onClose,
-  customMembershipTypes, customPaymentMethods,
-  newMembershipType, newPaymentMethod,
-  onNewMembershipTypeChange, onNewPaymentMethodChange,
-  onAddMembershipType, onAddPaymentMethod,
-  onDeleteMembershipType, onDeletePaymentMethod
+  isOpen,
+  onClose,
+  allSaleTypes,
+  allMembershipCategories,
+  allMembershipNames,
+  allPaymentMethods,
+  customSaleTypes,
+  customMembershipCategories,
+  customMembershipNames,
+  customPaymentMethods,
+  onAddOption,
+  onDeleteOption
 }: SalesSettingsModalProps) {
+  const [newSaleType, setNewSaleType] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newMethod, setNewMethod] = useState("");
+
+  const methodLabels: Record<string, string> = {
+    card: "카드",
+    cash: "현금",
+    transfer: "계좌이체"
+  };
+
+  // 기본 옵션인지 확인
+  const defaultSaleTypes = ["신규", "재등록", "연장", "양도", "환불"];
+  const defaultCategories = ["PT", "헬스", "필라테스", "요가", "수영", "골프", "GX"];
+  const defaultNames = ["1개월", "3개월", "6개월", "12개월", "1회", "10회", "20회", "30회", "50회"];
+  const defaultMethods = ["card", "cash", "transfer"];
+
+  const handleAddSaleType = () => {
+    if (newSaleType.trim()) {
+      onAddOption("sale_type", newSaleType.trim());
+      setNewSaleType("");
+    }
+  };
+
+  const handleAddCategory = () => {
+    if (newCategory.trim()) {
+      onAddOption("membership_category", newCategory.trim());
+      setNewCategory("");
+    }
+  };
+
+  const handleAddName = () => {
+    if (newName.trim()) {
+      onAddOption("membership_name", newName.trim());
+      setNewName("");
+    }
+  };
+
+  const handleAddMethod = () => {
+    if (newMethod.trim()) {
+      onAddOption("payment_method", newMethod.trim());
+      setNewMethod("");
+    }
+  };
+
+  const isCustomSaleType = (name: string) => !defaultSaleTypes.includes(name);
+  const isCustomCategory = (name: string) => !defaultCategories.includes(name);
+  const isCustomName = (name: string) => !defaultNames.includes(name);
+  const isCustomMethod = (name: string) => !defaultMethods.includes(name);
+
+  const getCustomOptionId = (type: string, name: string) => {
+    switch (type) {
+      case "sale_type":
+        return customSaleTypes.find(o => o.name === name)?.id;
+      case "membership_category":
+        return customMembershipCategories.find(o => o.name === name)?.id;
+      case "membership_name":
+        return customMembershipNames.find(o => o.name === name)?.id;
+      case "payment_method":
+        return customPaymentMethods.find(o => o.name === name)?.id;
+      default:
+        return undefined;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] bg-white max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-gray-900">매출 설정</DialogTitle>
-          <DialogDescription className="text-gray-500">회원권 유형과 결제방법을 관리합니다</DialogDescription>
+          <DialogTitle>매출 설정</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* 회원권 유형 관리 */}
-          <div className="space-y-3">
-            <Label className="text-sm font-bold text-gray-800">회원권 유형</Label>
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500">기본 항목</p>
-              <div className="flex flex-wrap gap-2">
-                {DEFAULT_MEMBERSHIP_TYPES.map((type) => (
-                  <Badge key={type.name} className={`${type.color} px-3 py-1.5`}>
-                    {type.name}
-                  </Badge>
-                ))}
-              </div>
-              {customMembershipTypes.length > 0 && (
-                <>
-                  <p className="text-xs text-gray-500 mt-3">추가 항목</p>
-                  <div className="flex flex-wrap gap-2">
-                    {customMembershipTypes.map((type: any) => (
-                      <Badge key={type.id} className="bg-gray-100 text-gray-700 px-3 py-1.5 flex items-center gap-2">
-                        {type.name}
-                        <button onClick={() => onDeleteMembershipType(type.id)} className="hover:text-red-600">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                placeholder="새 회원권 유형 이름"
-                value={newMembershipType}
-                onChange={(e) => onNewMembershipTypeChange(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && onAddMembershipType()}
-              />
-              <Button onClick={onAddMembershipType} size="sm" className="bg-[#2F80ED] text-white">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+        <Tabs defaultValue="sale_type" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="sale_type" className="text-xs">유형</TabsTrigger>
+            <TabsTrigger value="category" className="text-xs">회원권</TabsTrigger>
+            <TabsTrigger value="name" className="text-xs">회원권명</TabsTrigger>
+            <TabsTrigger value="method" className="text-xs">결제방법</TabsTrigger>
+          </TabsList>
 
-          {/* 결제방법 관리 */}
-          <div className="space-y-3">
-            <Label className="text-sm font-bold text-gray-800">결제방법</Label>
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500">기본 항목</p>
-              <div className="flex flex-wrap gap-2">
-                {DEFAULT_PAYMENT_METHODS.map((method) => (
-                  <Badge key={method.code} className={`${method.color} px-3 py-1.5`}>
-                    {method.name}
-                  </Badge>
-                ))}
-              </div>
-              {customPaymentMethods.length > 0 && (
-                <>
-                  <p className="text-xs text-gray-500 mt-3">추가 항목</p>
-                  <div className="flex flex-wrap gap-2">
-                    {customPaymentMethods.map((method: any) => (
-                      <Badge key={method.id} className="bg-gray-100 text-gray-700 px-3 py-1.5 flex items-center gap-2">
-                        {method.name}
-                        <button onClick={() => onDeletePaymentMethod(method.id)} className="hover:text-red-600">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                </>
-              )}
+          {/* 유형 탭 */}
+          <TabsContent value="sale_type" className="space-y-4">
+            <p className="text-sm text-gray-500">신규, 재등록, 연장, 양도, 환불 등의 매출 유형을 관리합니다.</p>
+            <div className="flex flex-wrap gap-2">
+              {allSaleTypes.map(type => {
+                const isCustom = isCustomSaleType(type);
+                const optionId = getCustomOptionId("sale_type", type);
+                return (
+                  <span
+                    key={type}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
+                      isCustom ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {type}
+                    {isCustom && optionId && (
+                      <button
+                        onClick={() => onDeleteOption("sale_type", optionId)}
+                        className="hover:text-blue-900 ml-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
             </div>
             <div className="flex gap-2">
               <Input
-                placeholder="새 결제방법 이름"
-                value={newPaymentMethod.name}
-                onChange={(e) => onNewPaymentMethodChange({ ...newPaymentMethod, name: e.target.value })}
+                value={newSaleType}
+                onChange={(e) => setNewSaleType(e.target.value)}
+                placeholder="새 유형 추가"
                 className="flex-1"
+                onKeyPress={(e) => e.key === "Enter" && handleAddSaleType()}
               />
-              <Input
-                placeholder="코드 (영문)"
-                value={newPaymentMethod.code}
-                onChange={(e) => onNewPaymentMethodChange({ ...newPaymentMethod, code: e.target.value })}
-                className="w-32"
-              />
-              <Button onClick={onAddPaymentMethod} size="sm" className="bg-[#2F80ED] text-white">
-                <Plus className="w-4 h-4" />
+              <Button variant="outline" size="sm" onClick={handleAddSaleType}>
+                <Plus className="w-4 h-4 mr-1" /> 추가
               </Button>
             </div>
-            <p className="text-xs text-gray-500">코드는 내부 식별용이며, 비워두면 이름을 기반으로 자동 생성됩니다.</p>
-          </div>
-        </div>
+          </TabsContent>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>닫기</Button>
-        </DialogFooter>
+          {/* 회원권 탭 */}
+          <TabsContent value="category" className="space-y-4">
+            <p className="text-sm text-gray-500">PT, 헬스, 필라테스 등의 회원권 종류를 관리합니다.</p>
+            <div className="flex flex-wrap gap-2">
+              {allMembershipCategories.map(cat => {
+                const isCustom = isCustomCategory(cat);
+                const optionId = getCustomOptionId("membership_category", cat);
+                return (
+                  <span
+                    key={cat}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
+                      isCustom ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {cat}
+                    {isCustom && optionId && (
+                      <button
+                        onClick={() => onDeleteOption("membership_category", optionId)}
+                        className="hover:text-indigo-900 ml-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="새 회원권 추가"
+                className="flex-1"
+                onKeyPress={(e) => e.key === "Enter" && handleAddCategory()}
+              />
+              <Button variant="outline" size="sm" onClick={handleAddCategory}>
+                <Plus className="w-4 h-4 mr-1" /> 추가
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* 회원권명 탭 */}
+          <TabsContent value="name" className="space-y-4">
+            <p className="text-sm text-gray-500">1개월, 3개월, 10회 등의 회원권명을 관리합니다.</p>
+            <div className="flex flex-wrap gap-2">
+              {allMembershipNames.map(name => {
+                const isCustom = isCustomName(name);
+                const optionId = getCustomOptionId("membership_name", name);
+                return (
+                  <span
+                    key={name}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
+                      isCustom ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {name}
+                    {isCustom && optionId && (
+                      <button
+                        onClick={() => onDeleteOption("membership_name", optionId)}
+                        className="hover:text-purple-900 ml-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="새 회원권명 추가"
+                className="flex-1"
+                onKeyPress={(e) => e.key === "Enter" && handleAddName()}
+              />
+              <Button variant="outline" size="sm" onClick={handleAddName}>
+                <Plus className="w-4 h-4 mr-1" /> 추가
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* 결제방법 탭 */}
+          <TabsContent value="method" className="space-y-4">
+            <p className="text-sm text-gray-500">카드, 현금, 계좌이체 외의 결제 방법을 추가할 수 있습니다.</p>
+            <div className="flex flex-wrap gap-2">
+              {allPaymentMethods.map(method => {
+                const isCustom = isCustomMethod(method);
+                const optionId = getCustomOptionId("payment_method", method);
+                return (
+                  <span
+                    key={method}
+                    className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm ${
+                      isCustom ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {methodLabels[method] || method}
+                    {isCustom && optionId && (
+                      <button
+                        onClick={() => onDeleteOption("payment_method", optionId)}
+                        className="hover:text-orange-900 ml-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newMethod}
+                onChange={(e) => setNewMethod(e.target.value)}
+                placeholder="새 결제 방법 추가"
+                className="flex-1"
+                onKeyPress={(e) => e.key === "Enter" && handleAddMethod()}
+              />
+              <Button variant="outline" size="sm" onClick={handleAddMethod}>
+                <Plus className="w-4 h-4 mr-1" /> 추가
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={onClose}>
+            닫기
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

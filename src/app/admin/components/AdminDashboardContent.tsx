@@ -11,21 +11,14 @@ import { QuickActions } from "./QuickActions";
 import { BannerWidget } from "./BannerWidget";
 
 // Components - 지연 로드 가능한 컴포넌트 (로딩 후 표시)
-const PTStatsCard = dynamic(() => import("./PTStatsCard").then(mod => ({ default: mod.PTStatsCard })), { ssr: false });
 const BranchAnnouncementsCard = dynamic(() => import("./BranchAnnouncementsCard").then(mod => ({ default: mod.BranchAnnouncementsCard })), { ssr: false });
 const TodaySchedulesCard = dynamic(() => import("./TodaySchedulesCard").then(mod => ({ default: mod.TodaySchedulesCard })), { ssr: false });
 const CompanyEventsCalendar = dynamic(() => import("./CompanyEventsCalendar").then(mod => ({ default: mod.CompanyEventsCalendar })), { ssr: false });
-const RecentLogsSection = dynamic(() => import("./RecentLogsSection").then(mod => ({ default: mod.RecentLogsSection })), { ssr: false });
 
 // Modals - 동적 import (사용자 액션 시에만 로드)
 const EventModal = dynamic(() => import("./modals/EventModal").then(mod => ({ default: mod.EventModal })), { ssr: false });
 const SystemAnnouncementModal = dynamic(() => import("./modals/SystemAnnouncementModal").then(mod => ({ default: mod.SystemAnnouncementModal })), { ssr: false });
 const BranchAnnouncementModal = dynamic(() => import("./modals/BranchAnnouncementModal").then(mod => ({ default: mod.BranchAnnouncementModal })), { ssr: false });
-
-// 회원관리 모달 - 회원관리 페이지와 동일한 모달 사용
-const NewMemberCreateModal = dynamic(() => import("../members/components/modals/NewMemberCreateModal").then(mod => ({ default: mod.NewMemberCreateModal })), { ssr: false });
-const ExistingSalesModal = dynamic(() => import("../members/components/modals/ExistingSalesModal").then(mod => ({ default: mod.ExistingSalesModal })), { ssr: false });
-const AddonSalesModal = dynamic(() => import("../members/components/modals/AddonSalesModal").then(mod => ({ default: mod.AddonSalesModal })), { ssr: false });
 
 interface AdminDashboardContentProps {
   // 서버에서 미리 가져온 사용자 이름 (LCP 최적화)
@@ -41,7 +34,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     isLoading,
 
     // 통계 데이터
-    stats, todaySchedules, announcements, companyEvents, systemAnnouncements, recentLogs, recentLogsSummary,
+    todaySchedules, announcements, companyEvents, systemAnnouncements,
 
     // 달력
     currentMonth, setCurrentMonth, selectedDate, setSelectedDate,
@@ -50,52 +43,12 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     // 시스템 공지
     isAnnouncementModalOpen, setIsAnnouncementModalOpen,
 
-    // 센터 현황
-    centerStatsMonthOffset, setCenterStatsMonthOffset, statsViewMode, setStatsViewMode,
-
     // 지점 공지
     selectedBranchAnnouncement, setSelectedBranchAnnouncement,
     isBranchAnnouncementModalOpen, setIsBranchAnnouncementModalOpen,
 
-    // 신규회원 등록
-    isNewMemberModalOpen, setIsNewMemberModalOpen,
-    newMemberForm, setNewMemberForm,
-    handleNewMemberRegistration,
-
-    // 기존회원 등록
-    isExistingMemberModalOpen, setIsExistingMemberModalOpen,
-    existingMemberForm, setExistingMemberForm,
-    memberSearchResults, setMemberSearchResults,
-    memberSearchQuery, setMemberSearchQuery,
-    searchMembers, handleExistingMemberRegistration,
-
-    // 부가상품 등록
-    isAddonModalOpen, setIsAddonModalOpen,
-    addonForm, setAddonForm,
-    handleAddonRegistration,
-
-    // 상품
-    products,
-
-    // 스태프 목록
-    staffList,
-
-    // 회원 목록
-    members,
-
-    // 지점/회사 정보
-    selectedGymId,
-    selectedCompanyId,
-    myStaffId,
-
-    // 저장 상태
-    isSaving,
-
-    // 대시보드 새로고침
-    refreshDashboard,
-
     // 유틸리티
-    formatCurrency, getSalesForMonth, getMonthLabel, calculateStatistics, getStatusColor
+    getStatusColor
   } = useAdminDashboardData();
 
   // 서버에서 가져온 이름 우선 사용 (LCP 최적화)
@@ -144,12 +97,9 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
             {/* Banner Skeleton */}
             <div className="h-32 bg-gray-100 rounded-2xl animate-pulse" />
 
-            {/* Bento Grid Skeleton */}
+            {/* Grid Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              <div className="space-y-4 sm:space-y-6">
-                <div className="h-64 bg-gray-100 rounded-2xl animate-pulse" />
-                <div className="h-48 bg-gray-100 rounded-2xl animate-pulse" />
-              </div>
+              <div className="h-48 bg-gray-100 rounded-2xl animate-pulse" />
               <div className="h-80 bg-gray-100 rounded-2xl animate-pulse" />
               <div className="h-80 bg-gray-100 rounded-2xl animate-pulse" />
             </div>
@@ -157,47 +107,29 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
         ) : (
           <>
             {/* Quick Actions */}
-            <QuickActions
-              onNewMemberClick={() => setIsNewMemberModalOpen(true)}
-              onExistingMemberClick={() => setIsExistingMemberModalOpen(true)}
-              onAddonClick={() => setIsAddonModalOpen(true)}
-            />
+            <QuickActions />
 
             {/* Banner Widget */}
             <BannerWidget />
 
-            {/* Bento Grid Layout */}
+            {/* Grid Layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-              {/* Left Column */}
-              <div className="space-y-4 sm:space-y-6">
-                <PTStatsCard
-                  stats={stats}
-                  statsViewMode={statsViewMode}
-                  setStatsViewMode={setStatsViewMode}
-                  centerStatsMonthOffset={centerStatsMonthOffset}
-                  setCenterStatsMonthOffset={setCenterStatsMonthOffset}
-                  getSalesForMonth={getSalesForMonth}
-                  getMonthLabel={getMonthLabel}
-                  calculateStatistics={calculateStatistics}
-                  formatCurrency={formatCurrency}
-                />
+              {/* Left Column - 지점 공지 */}
+              <BranchAnnouncementsCard
+                announcements={announcements}
+                onAnnouncementClick={(announcement) => {
+                  setSelectedBranchAnnouncement(announcement);
+                  setIsBranchAnnouncementModalOpen(true);
+                }}
+              />
 
-                <BranchAnnouncementsCard
-                  announcements={announcements}
-                  onAnnouncementClick={(announcement) => {
-                    setSelectedBranchAnnouncement(announcement);
-                    setIsBranchAnnouncementModalOpen(true);
-                  }}
-                />
-              </div>
-
-              {/* Center Column */}
+              {/* Center Column - 오늘 스케줄 */}
               <TodaySchedulesCard
                 schedules={todaySchedules}
                 getStatusColor={getStatusColor}
               />
 
-              {/* Right Column */}
+              {/* Right Column - 회사 일정 */}
               <CompanyEventsCalendar
                 companyEvents={companyEvents}
                 currentMonth={currentMonth}
@@ -210,9 +142,6 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
                 }}
               />
             </div>
-
-            {/* Recent Logs */}
-            <RecentLogsSection logs={recentLogs} summary={recentLogsSummary} formatCurrency={formatCurrency} />
           </>
         )}
       </div>
@@ -236,51 +165,6 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
         onOpenChange={setIsBranchAnnouncementModalOpen}
         announcement={selectedBranchAnnouncement}
       />
-
-      {/* 회원관리 모달 - 회원관리 페이지와 동일 */}
-      {selectedGymId && selectedCompanyId && (
-        <>
-          <NewMemberCreateModal
-            isOpen={isNewMemberModalOpen}
-            onClose={() => setIsNewMemberModalOpen(false)}
-            products={products}
-            staffList={staffList}
-            gymId={selectedGymId}
-            companyId={selectedCompanyId}
-            myStaffId={myStaffId}
-            onSuccess={() => {
-              setIsNewMemberModalOpen(false);
-              refreshDashboard();
-            }}
-          />
-
-          <ExistingSalesModal
-            isOpen={isExistingMemberModalOpen}
-            onClose={() => setIsExistingMemberModalOpen(false)}
-            members={members}
-            gymId={selectedGymId}
-            companyId={selectedCompanyId}
-            products={products}
-            myStaffId={myStaffId}
-            onSuccess={() => {
-              setIsExistingMemberModalOpen(false);
-              refreshDashboard();
-            }}
-          />
-
-          <AddonSalesModal
-            isOpen={isAddonModalOpen}
-            onClose={() => setIsAddonModalOpen(false)}
-            members={members}
-            gymId={selectedGymId}
-            companyId={selectedCompanyId}
-            onSuccess={() => {
-              setIsAddonModalOpen(false);
-              refreshDashboard();
-            }}
-          />
-        </>
-      )}
     </div>
   );
 }

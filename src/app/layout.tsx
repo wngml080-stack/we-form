@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Outfit, Noto_Sans_KR } from "next/font/google";
 
 export const dynamic = 'force-dynamic';
-import { koKR } from "@clerk/localizations";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -35,18 +33,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider localization={koKR}>
-      <html lang="ko" className={`${outfit.variable} ${notoSansKR.variable}`}>
-        <head>
-          {/* Google Fonts preconnect - next/font가 사용 */}
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        </head>
-        <body className="font-sans antialiased">
-          {children}
-          <Toaster />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="ko" className={`${outfit.variable} ${notoSansKR.variable}`}>
+      <head>
+        {/* Google Fonts preconnect - next/font가 사용 */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
+      <body className="font-sans antialiased">
+        {children}
+        <Toaster />
+      </body>
+    </html>
   );
 }

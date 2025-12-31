@@ -19,6 +19,7 @@ import {
   ShoppingCart,
   Menu,
   X,
+  Dumbbell,
 } from "lucide-react";
 import {
   Select,
@@ -124,13 +125,13 @@ function AdminLayoutContent({
         main: [
           { name: "대시보드", href: "/admin", icon: LayoutDashboard },
           { name: "스케줄 관리", href: "/admin/schedule", icon: CalendarDays },
+          { name: "PT회원관리", href: "/admin/pt-members", icon: Dumbbell },
         ],
         branch: [
           { name: "지점 관리", href: "/admin/branch", icon: Building2, isParent: true },
           { name: "매출 관리", href: "/admin/sales", icon: ShoppingCart, isChild: true },
           { name: "급여 관리", href: "/admin/salary", icon: DollarSign, isChild: true },
           { name: "스케줄 승인", href: "/admin/reports", icon: FileCheck, isChild: true },
-          { name: "회원 관리", href: "/admin/members", icon: Users },
           { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck },
         ],
         admin: []

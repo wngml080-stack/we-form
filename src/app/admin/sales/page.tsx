@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
-import dynamicImport from "next/dynamic";
-import { useSearchParams } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { useSalesPageData } from "./hooks/useSalesPageData";
 import { SalesHeader } from "./components/SalesHeader";
@@ -11,71 +9,190 @@ import { SalesFilters } from "./components/SalesFilters";
 import { SalesStats } from "./components/SalesStats";
 import { PaymentsTable } from "./components/PaymentsTable";
 
-// Dynamic imports for modals
-const SalesSettingsModal = dynamicImport(
+const SalesSettingsModal = dynamic(
   () => import("./components/modals/SalesSettingsModal").then(mod => ({ default: mod.SalesSettingsModal })),
   { ssr: false }
 );
 
-function SalesPageContent() {
-  const { isLoading: authLoading } = useAuth();
-  const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
-  const searchParams = useSearchParams();
-
-  const selectedGymId = branchFilter.selectedGymId;
-  const selectedCompanyId = branchFilter.selectedCompanyId;
-  const gymName = branchFilter.gyms.find(g => g.id === selectedGymId)?.name || "We:form";
-  const isLoading = !filterInitialized || authLoading;
+export default function SalesPage() {
+  const { selectedGymId, gymName, selectedCompanyId, isInitialized } = useAdminFilter();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
 
   const {
     filteredPayments,
     stats,
-    allMembershipTypes,
+    staffList,
+    allSaleTypes,
+    allMembershipCategories,
+    allMembershipNames,
     allPaymentMethods,
-    customMembershipTypes,
+    defaultInstallments,
+    customSaleTypes,
+    customMembershipCategories,
+    customMembershipNames,
     customPaymentMethods,
-    isSettingsOpen, setIsSettingsOpen,
-    newMembershipType, setNewMembershipType,
-    newPaymentMethod, setNewPaymentMethod,
-    handleAddMembershipType,
-    handleAddPaymentMethod,
-    handleDeleteMembershipType,
-    handleDeletePaymentMethod,
-    startDate, setStartDate,
-    endDate, setEndDate,
-    methodFilter, setMethodFilter,
-    membershipTypeFilter, setMembershipTypeFilter,
-    registrationTypeFilter, setRegistrationTypeFilter,
-    quickSelect, handleQuickSelect,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    membershipTypeFilter,
+    setMembershipTypeFilter,
+    registrationTypeFilter,
+    setRegistrationTypeFilter,
+    methodFilter,
+    setMethodFilter,
+    quickSelect,
+    handleQuickSelect,
     newRows,
     addNewRow,
     updateNewRow,
     saveNewRow,
     removeNewRow,
-    editingCell,
-    editValue, setEditValue,
-    startEditing,
-    saveEdit,
-    cancelEdit,
+    deletePayment,
+    updatePayment,
+    addCustomOption,
+    deleteCustomOption
   } = useSalesPageData({
     selectedGymId,
     selectedCompanyId,
-    filterInitialized
+    filterInitialized: isInitialized
   });
 
-  // URL 파라미터로 새 행 자동 추가
-  useEffect(() => {
-    if (searchParams.get("addon") === "true" && filterInitialized) {
-      addNewRow();
-      window.history.replaceState({}, "", "/admin/sales");
+  // 새 행 추가 시 처리
+  const handleAddNewRow = () => {
+    addNewRow();
+    setEditForm({
+      payment_date: new Date().toISOString().split("T")[0],
+      sale_type: "신규",
+      method: "card",
+      installment: 1
+    });
+  };
+
+  // 새 행 저장
+  const handleSaveNewRow = () => {
+    const newRow = newRows[0];
+    if (newRow) {
+      saveNewRow(newRow.id);
+      setEditForm({});
     }
-  }, [searchParams, filterInitialized]);
+  };
+
+  // 새 행 취소
+  const handleCancelNewRow = () => {
+    const newRow = newRows[0];
+    if (newRow) {
+      removeNewRow(newRow.id);
+      setEditForm({});
+    }
+  };
+
+  // 새 행 수정
+  const handleNewRowChange = (field: string, value: string | number) => {
+    const newRow = newRows[0];
+    if (newRow) {
+      updateNewRow(newRow.id, field, value);
+      setEditForm((prev: any) => ({ ...prev, [field]: value }));
+    }
+  };
+
+  // 편집 시작
+  const handleStartEdit = (payment: any) => {
+    setEditingId(payment.id);
+    setEditForm({
+      payment_date: payment.payment_date || payment.created_at?.split("T")[0] || "",
+      member_name: payment.member_name,
+      phone: payment.phone || "",
+      sale_type: payment.sale_type,
+      membership_category: payment.membership_category,
+      membership_name: payment.membership_name,
+      amount: payment.amount,
+      method: payment.method,
+      installment: payment.installment || 1,
+      trainer_id: payment.trainer_id || "",
+      memo: payment.memo || ""
+    });
+  };
+
+  // 편집 취소
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({});
+  };
+
+  // 편집 저장
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+
+    const trainer = staffList.find(s => s.id === editForm.trainer_id);
+
+    await updatePayment(editingId, {
+      member_name: editForm.member_name,
+      phone: editForm.phone,
+      sale_type: editForm.sale_type,
+      membership_category: editForm.membership_category,
+      membership_name: editForm.membership_name,
+      amount: editForm.amount,
+      method: editForm.method,
+      installment: editForm.installment,
+      trainer_id: editForm.trainer_id || undefined,
+      trainer_name: trainer?.name || undefined,
+      memo: editForm.memo
+    });
+
+    setEditingId(null);
+    setEditForm({});
+  };
+
+  // 편집 폼 변경
+  const handleEditFormChange = (field: string, value: string | number) => {
+    setEditForm((prev: any) => ({ ...prev, [field]: value }));
+  };
+
+  // 삭제
+  const handleDelete = async (id: string) => {
+    if (confirm("정말 삭제하시겠습니까?")) {
+      await deletePayment(id);
+    }
+  };
+
+  // 페이먼트 데이터를 테이블 형식으로 변환
+  const tablePayments = [
+    ...newRows.map(row => ({
+      ...row,
+      payment_date: new Date().toISOString().split("T")[0],
+      isNew: true
+    })),
+    ...filteredPayments.map(p => ({
+      ...p,
+      payment_date: p.created_at?.split("T")[0] || ""
+    }))
+  ];
+
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!selectedGymId) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-gray-500">지점을 선택해주세요.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
+    <div className="space-y-6">
       <SalesHeader
-        gymName={gymName}
-        onAddNewRow={addNewRow}
+        gymName={gymName || ""}
+        onAddNewRow={handleAddNewRow}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
@@ -86,7 +203,7 @@ function SalesPageContent() {
         registrationTypeFilter={registrationTypeFilter}
         methodFilter={methodFilter}
         quickSelect={quickSelect}
-        allMembershipTypes={allMembershipTypes}
+        allMembershipTypes={allMembershipCategories}
         allPaymentMethods={allPaymentMethods}
         onStartDateChange={setStartDate}
         onEndDateChange={setEndDate}
@@ -99,45 +216,40 @@ function SalesPageContent() {
       <SalesStats stats={stats} />
 
       <PaymentsTable
-        isLoading={isLoading}
-        filteredPayments={filteredPayments}
-        newRows={newRows}
-        editingCell={editingCell}
-        editValue={editValue}
-        allMembershipTypes={allMembershipTypes}
+        payments={tablePayments}
+        staffList={staffList}
+        allSaleTypes={allSaleTypes}
+        allMembershipCategories={allMembershipCategories}
+        allMembershipNames={allMembershipNames}
         allPaymentMethods={allPaymentMethods}
-        onStartEditing={startEditing}
-        onSaveEdit={saveEdit}
-        onCancelEdit={cancelEdit}
-        onEditValueChange={setEditValue}
-        onUpdateNewRow={updateNewRow}
-        onSaveNewRow={saveNewRow}
-        onRemoveNewRow={removeNewRow}
-        onAddNewRow={addNewRow}
+        defaultInstallments={defaultInstallments}
+        editingId={editingId}
+        editForm={editForm}
+        onStartEdit={handleStartEdit}
+        onCancelEdit={handleCancelEdit}
+        onSaveEdit={handleSaveEdit}
+        onDelete={handleDelete}
+        onEditFormChange={handleEditFormChange}
+        onSaveNewRow={handleSaveNewRow}
+        onCancelNewRow={handleCancelNewRow}
+        onNewRowChange={handleNewRowChange}
+        onAddOption={addCustomOption}
       />
 
       <SalesSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        customMembershipTypes={customMembershipTypes}
+        allSaleTypes={allSaleTypes}
+        allMembershipCategories={allMembershipCategories}
+        allMembershipNames={allMembershipNames}
+        allPaymentMethods={allPaymentMethods}
+        customSaleTypes={customSaleTypes}
+        customMembershipCategories={customMembershipCategories}
+        customMembershipNames={customMembershipNames}
         customPaymentMethods={customPaymentMethods}
-        newMembershipType={newMembershipType}
-        newPaymentMethod={newPaymentMethod}
-        onNewMembershipTypeChange={setNewMembershipType}
-        onNewPaymentMethodChange={setNewPaymentMethod}
-        onAddMembershipType={handleAddMembershipType}
-        onAddPaymentMethod={handleAddPaymentMethod}
-        onDeleteMembershipType={handleDeleteMembershipType}
-        onDeletePaymentMethod={handleDeletePaymentMethod}
+        onAddOption={addCustomOption}
+        onDeleteOption={deleteCustomOption}
       />
     </div>
-  );
-}
-
-export default function SalesPage() {
-  return (
-    <Suspense fallback={<div className="p-6">로딩 중...</div>}>
-      <SalesPageContent />
-    </Suspense>
   );
 }

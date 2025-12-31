@@ -529,9 +529,9 @@ POST       /api/admin/system/update-company
 ## 13. 참고 문서
 
 - [ERD.md](ERD.md) - 데이터베이스 구조
-- [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) - 프로젝트 가이드
 - [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) - 디자인 시스템
 - [docs/SALARY_SYSTEM_SETUP.md](docs/SALARY_SYSTEM_SETUP.md) - 급여 시스템 설정
+- [docs/TEST_ACCOUNTS.md](docs/TEST_ACCOUNTS.md) - 테스트 계정 정보
 
 ---
 

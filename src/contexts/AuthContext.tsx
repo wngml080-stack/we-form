@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef, useMemo } from "react";
-import { useUser } from "@clerk/nextjs";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { User } from "@supabase/supabase-js";
 
 // 타입 정의
 interface UserData {
@@ -36,12 +36,12 @@ interface StaffWithCompany {
   work_start_time: string | null;
   work_end_time: string | null;
   employment_status: string;
-  clerk_user_id: string | null;
   companies: { name: string }[] | null;
 }
 
 interface AuthContextType {
   user: UserData | null;
+  authUser: User | null;
   isLoading: boolean;
   isApproved: boolean;
   companyName: string;
@@ -49,10 +49,12 @@ interface AuthContextType {
   gyms: GymData[];
   companies: CompanyData[];
   refetch: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  authUser: null,
   isLoading: true,
   isApproved: false,
   companyName: "",
@@ -60,13 +62,15 @@ const AuthContext = createContext<AuthContextType>({
   gyms: [],
   companies: [],
   refetch: async () => {},
+  signOut: async () => {},
 });
 
 // 캐시 유효 시간 (5분)
 const CACHE_TTL = 5 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authLoaded, setAuthLoaded] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isApproved, setIsApproved] = useState(false);
@@ -85,11 +89,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Supabase 클라이언트 한번만 생성
   const supabase = useMemo(() => createSupabaseClient(), []);
 
+  // Supabase Auth 상태 감지
+  useEffect(() => {
+    // 초기 세션 확인
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUser(session?.user ?? null);
+      setAuthLoaded(true);
+    });
+
+    // Auth 상태 변화 구독
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user ?? null);
+      setAuthLoaded(true);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
   const fetchUserData = useCallback(async (forceRefresh = false) => {
     try {
-      if (!clerkLoaded) return;
+      if (!authLoaded) return;
 
-      if (!clerkUser) {
+      if (!authUser) {
         setUser(null);
         setIsApproved(false);
         setIsLoading(false);
@@ -97,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const email = clerkUser.primaryEmailAddress?.emailAddress;
+      const email = authUser.email;
       if (!email) {
         setIsLoading(false);
         return;
@@ -117,10 +138,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Clerk 이메일로 staffs 테이블 조회 (회사 정보 조인)
+      // 이메일로 staffs 테이블 조회 (회사 정보 조인)
       const { data: me, error } = await supabase
         .from("staffs")
-        .select("id, name, email, role, gym_id, company_id, work_start_time, work_end_time, employment_status, clerk_user_id, companies(name)")
+        .select("id, name, email, role, gym_id, company_id, work_start_time, work_end_time, employment_status, companies(name)")
         .eq("email", email)
         .single();
 
@@ -157,14 +178,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsApproved(false);
         setIsLoading(false);
         return;
-      }
-
-      // clerk_user_id가 없으면 업데이트
-      if (!staffData.clerk_user_id) {
-        await supabase
-          .from("staffs")
-          .update({ clerk_user_id: clerkUser.id })
-          .eq("id", staffData.id);
       }
 
       setIsApproved(true);
@@ -205,18 +218,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [clerkLoaded, clerkUser, supabase]);
+  }, [authLoaded, authUser, supabase]);
 
   useEffect(() => {
-    if (clerkLoaded) {
+    if (authLoaded) {
       fetchUserData();
     }
-  }, [clerkLoaded, clerkUser, fetchUserData]);
+  }, [authLoaded, authUser, fetchUserData]);
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setIsApproved(false);
+    cacheRef.current = { data: null, timestamp: 0, email: null };
+  }, [supabase]);
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        authUser,
         isLoading,
         isApproved,
         companyName,
@@ -224,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         gyms,
         companies,
         refetch: fetchUserData,
+        signOut,
       }}
     >
       {children}

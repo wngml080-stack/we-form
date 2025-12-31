@@ -1,21 +1,65 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
 
-// 보호할 라우트 정의 (페이지만)
-const isProtectedRoute = createRouteMatcher([
-  "/admin(.*)",
-  "/staff(.*)",
-]);
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  });
 
-export default clerkMiddleware(async (auth, req) => {
-  // 보호된 라우트에 접근 시 인증 필요
-  if (isProtectedRoute(req)) {
-    await auth.protect();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // 세션 갱신 (중요: getUser가 아닌 getSession을 먼저 호출해야 함)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  // 보호된 라우트 체크
+  const isProtectedRoute = pathname.startsWith("/admin") || pathname.startsWith("/staff");
+  const isAuthRoute = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
+
+  // 보호된 라우트에 미인증 사용자 접근 시 로그인으로 리다이렉트
+  if (isProtectedRoute && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-in";
+    return NextResponse.redirect(url);
   }
-});
+
+  // 인증된 사용자가 로그인/회원가입 페이지 접근 시 admin으로 리다이렉트
+  if (isAuthRoute && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
+    return NextResponse.redirect(url);
+  }
+
+  return supabaseResponse;
+}
 
 export const config = {
   matcher: [
-    // static 파일, _next 제외 (API 포함)
+    // static 파일, _next 제외
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
   ],
 };

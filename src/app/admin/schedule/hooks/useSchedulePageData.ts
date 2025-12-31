@@ -211,26 +211,32 @@ export function useSchedulePageData() {
           fetchSchedules(selectedGymId, staffIdFilter, grouped);
           return; // 아래 fetchSchedules 호출 방지
         } else {
-          // API를 사용하여 RLS를 우회한 회원 조회 (회원권 정보 포함)
-          const [memberApiRes, staffResult] = await Promise.all([
-            fetch(`/api/admin/members?gym_id=${selectedGymId}&status=all`).then(res => res.json()),
+          // Supabase 직접 쿼리로 회원 조회 (회원권 정보 포함)
+          const [memberResult, staffResult] = await Promise.all([
+            supabase.from("members").select(`
+              id, name, trainer_id,
+              member_memberships (
+                id, name, start_date, end_date, total_sessions, used_sessions, status
+              )
+            `).eq("gym_id", selectedGymId).order("name"),
             supabase.from("staffs").select("id, name, work_start_time, work_end_time").eq("gym_id", selectedGymId).order("name", { ascending: true }),
           ]);
 
-          // API 결과에서 회원 목록과 회원권 정보 추출
-          if (memberApiRes.members) {
-            const membersData = memberApiRes.members.map((m: any) => ({
+          // Supabase 결과에서 회원 목록과 회원권 정보 추출
+          if (memberResult.data) {
+            const membersData = memberResult.data.map((m: any) => ({
               id: m.id,
               name: m.name,
               trainer_id: m.trainer_id
             }));
             setMembers(membersData);
 
-            // API 응답에서 회원권 정보도 추출 (이미 active만 필터링됨)
+            // 회원권 정보 추출 (active만 필터링)
             const grouped: Record<string, any[]> = {};
-            memberApiRes.members.forEach((m: any) => {
-              if (m.member_memberships && m.member_memberships.length > 0) {
-                grouped[m.id] = m.member_memberships;
+            memberResult.data.forEach((m: any) => {
+              const activeMemberships = m.member_memberships?.filter((mm: any) => mm.status === "active") || [];
+              if (activeMemberships.length > 0) {
+                grouped[m.id] = activeMemberships;
               }
             });
 

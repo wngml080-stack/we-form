@@ -1,6 +1,59 @@
-import { SignUp } from "@clerk/nextjs";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createSupabaseClient } from "@/lib/supabase/client";
 
 export default function SignUpPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("비밀번호는 6자 이상이어야 합니다.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const supabase = createSupabaseClient();
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes("already registered")) {
+          setError("이미 가입된 이메일입니다.");
+        } else {
+          setError(error.message);
+        }
+        return;
+      }
+
+      router.push("/onboarding");
+      router.refresh();
+    } catch {
+      setError("회원가입 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f0f4f8] relative overflow-hidden">
       {/* 배경 장식 */}
@@ -23,24 +76,81 @@ export default function SignUpPage() {
         <span className="text-lg font-heading font-bold text-slate-800">We:form</span>
       </div>
 
-      <div className="relative z-10">
-        <SignUp
-          appearance={{
-            elements: {
-              rootBox: "mx-auto",
-              card: "bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_32px_64px_rgba(0,0,0,0.08)] rounded-3xl border border-white/50",
-              headerTitle: "font-heading font-bold text-slate-900",
-              headerSubtitle: "text-slate-500",
-              socialButtonsBlockButton: "bg-white border-2 border-slate-200 hover:border-secondary/50 hover:bg-slate-50 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-300",
-              formButtonPrimary: "bg-gradient-to-br from-[#2F80ED] to-[#1c60b8] hover:from-[#2570d6] hover:to-[#1c60b8] rounded-xl shadow-[0_4px_12px_rgba(47,128,237,0.35)] transition-all duration-300",
-              formFieldInput: "rounded-xl border-2 border-slate-200 focus:border-[#2F80ED] focus:ring-4 focus:ring-[#2F80ED]/10 transition-all duration-300",
-              footerActionLink: "text-[#2F80ED] hover:text-[#2F80ED]/80 font-semibold",
-              identityPreviewEditButton: "text-[#2F80ED] hover:text-[#2F80ED]/80",
-            },
-          }}
-          fallbackRedirectUrl="/admin"
-          signInUrl="/sign-in"
-        />
+      <div className="relative z-10 w-full max-w-md px-4">
+        <div className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_32px_64px_rgba(0,0,0,0.08)] rounded-3xl border border-white/50 p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-heading font-bold text-slate-900">회원가입</h1>
+            <p className="text-slate-500 mt-2">We:form 계정을 만드세요</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+                이메일
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-[#2F80ED] focus:ring-4 focus:ring-[#2F80ED]/10 transition-all duration-300 outline-none"
+                placeholder="email@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+                비밀번호
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-[#2F80ED] focus:ring-4 focus:ring-[#2F80ED]/10 transition-all duration-300 outline-none"
+                placeholder="6자 이상 입력"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-1">
+                비밀번호 확인
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-[#2F80ED] focus:ring-4 focus:ring-[#2F80ED]/10 transition-all duration-300 outline-none"
+                placeholder="비밀번호를 다시 입력"
+              />
+            </div>
+
+            {error && (
+              <div className="p-3 rounded-xl bg-red-50 text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-gradient-to-br from-[#2F80ED] to-[#1c60b8] hover:from-[#2570d6] hover:to-[#1c60b8] text-white font-semibold rounded-xl shadow-[0_4px_12px_rgba(47,128,237,0.35)] transition-all duration-300 disabled:opacity-50"
+            >
+              {isLoading ? "가입 중..." : "회원가입"}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-slate-500">
+            이미 계정이 있으신가요?{" "}
+            <Link href="/sign-in" className="text-[#2F80ED] hover:text-[#2F80ED]/80 font-semibold">
+              로그인
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -11,27 +11,18 @@ interface SalesHeaderProps {
 
 export function SalesHeader({ gymName, onAddNewRow, onOpenSettings }: SalesHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">매출 현황</h1>
-        <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">
-          {gymName}의 매출을 관리합니다
-        </p>
+        <h1 className="text-2xl font-bold text-gray-900">매출 관리</h1>
+        <p className="text-gray-500 text-sm mt-1">{gymName} 매출 현황</p>
       </div>
       <div className="flex gap-2">
-        <Button
-          onClick={onAddNewRow}
-          className="bg-[#2F80ED] hover:bg-[#2570d6] text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          새 결제 추가
+        <Button onClick={onAddNewRow} className="bg-primary hover:bg-primary/90">
+          <Plus className="w-4 h-4 mr-2" />
+          매출 추가
         </Button>
-        <Button
-          variant="outline"
-          onClick={onOpenSettings}
-          className="px-3"
-        >
-          <Settings className="h-4 w-4" />
+        <Button variant="outline" onClick={onOpenSettings}>
+          <Settings className="w-4 h-4" />
         </Button>
       </div>
     </div>

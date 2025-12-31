@@ -1,63 +1,43 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { toast } from "@/lib/toast";
+import { useUser } from "@clerk/nextjs";
 import { createSupabaseClient } from "@/lib/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 
-// 기본 회원권 유형 (고정)
-export const DEFAULT_MEMBERSHIP_TYPES = [
-  { name: "헬스", color: "bg-blue-100 text-blue-700" },
-  { name: "필라테스", color: "bg-pink-100 text-pink-700" },
-  { name: "PT", color: "bg-purple-100 text-purple-700" },
-  { name: "PPT", color: "bg-violet-100 text-violet-700" },
-  { name: "GPT", color: "bg-indigo-100 text-indigo-700" },
-  { name: "골프", color: "bg-green-100 text-green-700" },
-  { name: "GX", color: "bg-orange-100 text-orange-700" },
-];
-
-// 기본 결제방법 (고정)
-export const DEFAULT_PAYMENT_METHODS = [
-  { name: "카드", code: "card", color: "bg-blue-100 text-blue-700" },
-  { name: "현금", code: "cash", color: "bg-emerald-100 text-emerald-700" },
-  { name: "계좌이체", code: "transfer", color: "bg-purple-100 text-purple-700" },
-];
-
-// 날짜를 YYYY-MM-DD 형식으로 변환 (로컬 시간 기준)
-export const formatDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('ko-KR').format(amount) + '원';
-};
-
-export interface NewRow {
+interface Payment {
   id: string;
-  isNew: boolean;
-  paid_at: string;
-  customer_name: string;
-  customer_phone: string;
-  product_name: string;
+  member_name: string;
+  phone?: string;
+  sale_type: string;         // 유형 (신규, 재등록, 양도 등)
+  membership_category: string; // 회원권 (PT, 헬스, 필라테스 등)
+  membership_name: string;   // 회원권명 (1개월, 3개월 등)
+  amount: number;
   method: string;
-  amount: string;
-  memo: string;
+  installment?: number;      // 할부
+  trainer_id?: string;
+  trainer_name?: string;
+  memo?: string;
+  created_at: string;
 }
 
-export interface EditingCell {
+interface Staff {
   id: string;
-  field: string;
+  name: string;
+  role: string;
 }
 
-export interface Stats {
+interface Stats {
   total: number;
   card: number;
   cash: number;
   transfer: number;
   count: number;
+}
+
+interface CustomOption {
+  id: string;
+  name: string;
+  display_order: number;
 }
 
 interface UseSalesPageDataProps {
@@ -66,50 +46,43 @@ interface UseSalesPageDataProps {
   filterInitialized: boolean;
 }
 
-export function useSalesPageData({
-  selectedGymId,
-  selectedCompanyId,
-  filterInitialized
-}: UseSalesPageDataProps) {
-  const { user } = useAuth();
+export function useSalesPageData({ selectedGymId, selectedCompanyId, filterInitialized }: UseSalesPageDataProps) {
+  const { user } = useUser();
   const supabase = useMemo(() => createSupabaseClient(), []);
 
-  const [payments, setPayments] = useState<any[]>([]);
-  const [filteredPayments, setFilteredPayments] = useState<any[]>([]);
+  // 결제 데이터
+  const [payments, setPayments] = useState<Payment[]>([]);
 
-  // 커스텀 회원권 유형 및 결제방법
-  const [customMembershipTypes, setCustomMembershipTypes] = useState<any[]>([]);
-  const [customPaymentMethods, setCustomPaymentMethods] = useState<any[]>([]);
+  // 스태프 목록
+  const [staffList, setStaffList] = useState<Staff[]>([]);
 
-  // 전체 목록 (기본 + 커스텀)
-  const allMembershipTypes = [...DEFAULT_MEMBERSHIP_TYPES, ...customMembershipTypes];
-  const allPaymentMethods = [...DEFAULT_PAYMENT_METHODS, ...customPaymentMethods];
-
-  // 설정 모달
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [newMembershipType, setNewMembershipType] = useState("");
-  const [newPaymentMethod, setNewPaymentMethod] = useState({ name: "", code: "" });
-
-  // 새 행 추가 (엑셀 스타일)
-  const [newRows, setNewRows] = useState<NewRow[]>([]);
-
-  // 인라인 편집
-  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
-  const [editValue, setEditValue] = useState("");
-
-  // 필터 - 기본값: 최근 3개월 (회원 등록 시 매출이 바로 보이도록)
+  // 필터
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
-    return formatDate(new Date(date.getFullYear(), date.getMonth() - 2, 1));
+    date.setDate(1);
+    return date.toISOString().split("T")[0];
   });
-  const [endDate, setEndDate] = useState(() => {
-    const date = new Date();
-    return formatDate(new Date(date.getFullYear(), date.getMonth() + 1, 0));
-  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [methodFilter, setMethodFilter] = useState("all");
   const [membershipTypeFilter, setMembershipTypeFilter] = useState("all");
   const [registrationTypeFilter, setRegistrationTypeFilter] = useState("all");
-  const [quickSelect, setQuickSelect] = useState<string>("3months");
+  const [quickSelect, setQuickSelect] = useState("thisMonth");
+
+  // 커스텀 옵션들
+  const [customSaleTypes, setCustomSaleTypes] = useState<CustomOption[]>([]);           // 유형
+  const [customMembershipCategories, setCustomMembershipCategories] = useState<CustomOption[]>([]); // 회원권
+  const [customMembershipNames, setCustomMembershipNames] = useState<CustomOption[]>([]); // 회원권명
+  const [customPaymentMethods, setCustomPaymentMethods] = useState<CustomOption[]>([]);
+
+  // 설정 모달
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // 새 행 추가
+  const [newRows, setNewRows] = useState<any[]>([]);
+
+  // 인라인 편집
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   // 통계
   const [stats, setStats] = useState<Stats>({
@@ -120,330 +93,317 @@ export function useSalesPageData({
     count: 0
   });
 
-  // 필터 초기화 시 데이터 로드
+  // 기본 옵션들
+  const defaultSaleTypes = ["신규", "재등록", "연장", "양도", "환불"];
+  const defaultMembershipCategories = ["PT", "헬스", "필라테스", "요가", "수영", "골프", "GX"];
+  const defaultMembershipNames = ["1개월", "3개월", "6개월", "12개월", "1회", "10회", "20회", "30회", "50회"];
+  const defaultPaymentMethods = ["card", "cash", "transfer"];
+  const defaultInstallments = [1, 2, 3, 4, 5, 6, 10, 12];
+
+  // 전체 옵션 (기본 + 커스텀)
+  const allSaleTypes = useMemo(() => {
+    const custom = customSaleTypes.map(t => t.name);
+    return [...new Set([...defaultSaleTypes, ...custom])];
+  }, [customSaleTypes]);
+
+  const allMembershipCategories = useMemo(() => {
+    const custom = customMembershipCategories.map(t => t.name);
+    return [...new Set([...defaultMembershipCategories, ...custom])];
+  }, [customMembershipCategories]);
+
+  const allMembershipNames = useMemo(() => {
+    const custom = customMembershipNames.map(t => t.name);
+    return [...new Set([...defaultMembershipNames, ...custom])];
+  }, [customMembershipNames]);
+
+  const allPaymentMethods = useMemo(() => {
+    const custom = customPaymentMethods.map(m => m.name);
+    return [...new Set([...defaultPaymentMethods, ...custom])];
+  }, [customPaymentMethods]);
+
+  // 필터링된 결제 데이터
+  const filteredPayments = useMemo(() => {
+    return payments.filter(p => {
+      if (methodFilter !== "all" && p.method !== methodFilter) return false;
+      if (membershipTypeFilter !== "all" && p.membership_category !== membershipTypeFilter) return false;
+      if (registrationTypeFilter !== "all" && p.sale_type !== registrationTypeFilter) return false;
+      return true;
+    });
+  }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
+
+  // 데이터 로드
   useEffect(() => {
     if (filterInitialized && selectedGymId && selectedCompanyId) {
       fetchPayments(selectedGymId, selectedCompanyId);
       fetchCustomOptions(selectedGymId);
+      fetchStaffList(selectedGymId);
     }
   }, [filterInitialized, selectedGymId, selectedCompanyId]);
 
-  // 날짜 필터 변경 시 데이터 다시 불러오기
+  // 날짜 필터 변경 시
   useEffect(() => {
     if (selectedGymId && selectedCompanyId) {
       fetchPayments(selectedGymId, selectedCompanyId);
     }
   }, [startDate, endDate]);
 
-  // 클라이언트 사이드 필터링
-  useEffect(() => {
-    let filtered = [...payments];
+  const fetchPayments = async (gymId: string, companyId: string) => {
+    const { data, error } = await supabase
+      .from("member_payments")
+      .select("*")
+      .eq("gym_id", gymId)
+      .gte("created_at", `${startDate}T00:00:00`)
+      .lte("created_at", `${endDate}T23:59:59`)
+      .order("created_at", { ascending: false });
 
-    if (methodFilter !== "all") {
-      filtered = filtered.filter(p => p.method === methodFilter);
-    }
-    if (membershipTypeFilter !== "all") {
-      filtered = filtered.filter(p => p.membership_type === membershipTypeFilter);
-    }
-    if (registrationTypeFilter !== "all") {
-      filtered = filtered.filter(p => p.registration_type === registrationTypeFilter);
-    }
-
-    setFilteredPayments(filtered);
-
-    // 통계 계산
-    const newStats = filtered.reduce((acc, p) => {
-      const amount = parseFloat(p.amount || 0);
-      acc.total += amount;
-      acc.count += 1;
-
-      if (p.method === 'card') acc.card += amount;
-      else if (p.method === 'cash') acc.cash += amount;
-      else if (p.method === 'transfer') acc.transfer += amount;
-
-      return acc;
-    }, { total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
-
-    setStats(newStats);
-  }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
-
-  const fetchPayments = async (targetGymId: string, targetCompanyId: string) => {
-    try {
-      // API를 통해 매출 조회 (RLS 우회)
-      const params = new URLSearchParams({
-        gym_id: targetGymId,
-        company_id: targetCompanyId,
-      });
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-
-      const response = await fetch(`/api/admin/sales?${params.toString()}`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.error("결제 내역 조회 에러:", result.error);
-        return;
-      }
-
-      setPayments(result.payments || []);
-    } catch (error) {
-      console.error("결제 내역 조회 에러:", error);
+    if (!error && data) {
+      setPayments(data);
+      calculateStats(data);
     }
   };
 
-  const fetchCustomOptions = async (targetGymId: string) => {
-    const [typesRes, methodsRes] = await Promise.all([
-      supabase.from("membership_types").select("*").eq("gym_id", targetGymId).order("display_order"),
-      supabase.from("payment_methods").select("*").eq("gym_id", targetGymId).order("display_order")
+  const fetchStaffList = async (gymId: string) => {
+    const { data, error } = await supabase
+      .from("staffs")
+      .select("id, name, role")
+      .eq("gym_id", gymId)
+      .eq("status", "active")
+      .order("name");
+
+    if (!error && data) {
+      setStaffList(data);
+    }
+  };
+
+  const fetchCustomOptions = async (gymId: string) => {
+    const [saleTypesRes, categoriesRes, namesRes, methodsRes] = await Promise.all([
+      supabase.from("sale_types").select("*").eq("gym_id", gymId).order("display_order"),
+      supabase.from("membership_categories").select("*").eq("gym_id", gymId).order("display_order"),
+      supabase.from("membership_names").select("*").eq("gym_id", gymId).order("display_order"),
+      supabase.from("payment_methods").select("*").eq("gym_id", gymId).order("display_order")
     ]);
-    if (typesRes.data) setCustomMembershipTypes(typesRes.data);
+    if (saleTypesRes.data) setCustomSaleTypes(saleTypesRes.data);
+    if (categoriesRes.data) setCustomMembershipCategories(categoriesRes.data);
+    if (namesRes.data) setCustomMembershipNames(namesRes.data);
     if (methodsRes.data) setCustomPaymentMethods(methodsRes.data);
   };
 
-  // 회원권 유형 추가
-  const handleAddMembershipType = async () => {
-    if (!newMembershipType.trim() || !selectedGymId || !selectedCompanyId) return;
-    const { error } = await supabase.from("membership_types").insert({
-      gym_id: selectedGymId,
-      company_id: selectedCompanyId,
-      name: newMembershipType.trim(),
-      display_order: customMembershipTypes.length + 1
-    });
-    if (error) {
-      console.error("회원권 유형 추가 에러:", error);
-      toast.error(`추가 실패: ${error.message}`);
-    } else {
-      setNewMembershipType("");
-      fetchCustomOptions(selectedGymId);
+  const calculateStats = (data: Payment[]) => {
+    const stats = data.reduce((acc, p) => {
+      acc.total += p.amount;
+      acc.count += 1;
+      if (p.method === "card") acc.card += p.amount;
+      else if (p.method === "cash") acc.cash += p.amount;
+      else if (p.method === "transfer") acc.transfer += p.amount;
+      return acc;
+    }, { total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
+    setStats(stats);
+  };
+
+  const handleQuickSelect = (value: string) => {
+    setQuickSelect(value);
+    const today = new Date();
+    let start: Date, end: Date;
+
+    switch (value) {
+      case "today":
+        start = end = today;
+        break;
+      case "thisWeek":
+        start = new Date(today);
+        start.setDate(today.getDate() - today.getDay());
+        end = today;
+        break;
+      case "thisMonth":
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = today;
+        break;
+      case "lastMonth":
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0);
+        break;
+      default:
+        return;
     }
+
+    setStartDate(start.toISOString().split("T")[0]);
+    setEndDate(end.toISOString().split("T")[0]);
   };
 
-  // 결제방법 추가
-  const handleAddPaymentMethod = async () => {
-    if (!newPaymentMethod.name.trim() || !selectedGymId || !selectedCompanyId) return;
-    const code = newPaymentMethod.code.trim() || newPaymentMethod.name.trim().toLowerCase();
-    const { error } = await supabase.from("payment_methods").insert({
-      gym_id: selectedGymId,
-      company_id: selectedCompanyId,
-      name: newPaymentMethod.name.trim(),
-      code: code,
-      display_order: customPaymentMethods.length + 1
-    });
-    if (error) {
-      console.error("결제방법 추가 에러:", error);
-      toast.error(`추가 실패: ${error.message}`);
-    } else {
-      setNewPaymentMethod({ name: "", code: "" });
-      fetchCustomOptions(selectedGymId);
-    }
-  };
-
-  // 회원권 유형 삭제
-  const handleDeleteMembershipType = async (id: string) => {
-    if (!confirm("이 회원권 유형을 삭제하시겠습니까?") || !selectedGymId) return;
-    await supabase.from("membership_types").delete().eq("id", id);
-    fetchCustomOptions(selectedGymId);
-  };
-
-  // 결제방법 삭제
-  const handleDeletePaymentMethod = async (id: string) => {
-    if (!confirm("이 결제방법을 삭제하시겠습니까?") || !selectedGymId) return;
-    await supabase.from("payment_methods").delete().eq("id", id);
-    fetchCustomOptions(selectedGymId);
-  };
-
-  // 새 행 추가
+  // 새 행 관련
   const addNewRow = () => {
-    const newRow: NewRow = {
+    setNewRows(prev => [...prev, {
       id: `new-${Date.now()}`,
-      isNew: true,
-      paid_at: formatDate(new Date()),
-      customer_name: "",
-      customer_phone: "",
-      product_name: "",
+      member_name: "",
+      phone: "",
+      sale_type: "신규",
+      membership_category: "",
+      membership_name: "",
+      amount: 0,
       method: "card",
-      amount: "",
+      installment: 1,
+      trainer_id: "",
       memo: ""
-    };
-    setNewRows([...newRows, newRow]);
+    }]);
   };
 
-  // 새 행 값 변경
-  const updateNewRow = (rowId: string, field: string, value: any) => {
+  const updateNewRow = (id: string, field: string, value: any) => {
     setNewRows(prev => prev.map(row =>
-      row.id === rowId ? { ...row, [field]: value } : row
+      row.id === id ? { ...row, [field]: value } : row
     ));
   };
 
-  // 새 행 저장
-  const saveNewRow = async (rowId: string) => {
-    const row = newRows.find(r => r.id === rowId);
-    if (!row) return;
+  const saveNewRow = async (id: string) => {
+    const row = newRows.find(r => r.id === id);
+    if (!row || !selectedGymId || !selectedCompanyId) return;
 
-    if (!row.amount || parseFloat(row.amount) <= 0) {
-      toast.warning("금액을 입력해주세요.");
-      return;
-    }
-
-    const memoDetails = [
-      row.product_name,
-      row.customer_name ? `(${row.customer_name})` : null,
-      row.customer_phone ? `${row.customer_phone}` : null,
-      row.memo
-    ].filter(Boolean).join(" ");
+    const trainer = staffList.find(s => s.id === row.trainer_id);
 
     const { error } = await supabase.from("member_payments").insert({
       gym_id: selectedGymId,
       company_id: selectedCompanyId,
-      member_id: null,
-      amount: parseFloat(row.amount),
-      total_amount: parseFloat(row.amount),
+      member_name: row.member_name,
+      phone: row.phone,
+      sale_type: row.sale_type,
+      membership_category: row.membership_category,
+      membership_name: row.membership_name,
+      amount: row.amount,
       method: row.method,
-      membership_type: "부가상품",
-      registration_type: "회원 이외",
-      visit_route: null,
-      memo: memoDetails || null,
-      paid_at: row.paid_at || new Date().toISOString(),
-      installment_count: 1,
-      installment_current: 1,
-      created_by: user?.id || null
+      installment: row.installment,
+      trainer_id: row.trainer_id || null,
+      trainer_name: trainer?.name || null,
+      memo: row.memo
     });
 
-    if (error) {
-      console.error("저장 에러:", error);
-      toast.error(`저장 실패: ${error.message}`);
-    } else {
-      setNewRows(prev => prev.filter(r => r.id !== rowId));
-      if (selectedGymId && selectedCompanyId) {
-        fetchPayments(selectedGymId, selectedCompanyId);
-      }
+    if (!error) {
+      setNewRows(prev => prev.filter(r => r.id !== id));
+      fetchPayments(selectedGymId, selectedCompanyId);
     }
   };
 
-  // 새 행 삭제
-  const removeNewRow = (rowId: string) => {
-    setNewRows(prev => prev.filter(r => r.id !== rowId));
+  const removeNewRow = (id: string) => {
+    setNewRows(prev => prev.filter(r => r.id !== id));
   };
 
-  // 인라인 편집 시작
-  const startEditing = (id: string, field: string, currentValue: string) => {
-    setEditingCell({ id, field });
-    setEditValue(currentValue);
-  };
-
-  // 인라인 편집 저장
-  const saveEdit = async (paymentId: string, field: string) => {
-    let updateValue: any = editValue;
-
-    if (field === "amount") {
-      updateValue = parseFloat(editValue.replace(/[^0-9.-]/g, ""));
-      if (isNaN(updateValue)) {
-        toast.warning("올바른 금액을 입력해주세요.");
-        return;
-      }
-    }
-
+  // 결제 삭제
+  const deletePayment = async (id: string) => {
     const { error } = await supabase
       .from("member_payments")
-      .update({ [field]: updateValue })
-      .eq("id", paymentId);
+      .delete()
+      .eq("id", id);
 
-    if (error) {
-      console.error("수정 에러:", error);
-      toast.error(`수정 실패: ${error.message}`);
-    } else {
-      setPayments(prev => prev.map(p =>
-        p.id === paymentId ? { ...p, [field]: updateValue } : p
-      ));
+    if (!error && selectedGymId && selectedCompanyId) {
+      fetchPayments(selectedGymId, selectedCompanyId);
     }
-    setEditingCell(null);
-    setEditValue("");
   };
 
-  // 편집 취소
-  const cancelEdit = () => {
-    setEditingCell(null);
-    setEditValue("");
+  // 결제 수정
+  const updatePayment = async (id: string, updates: Partial<Payment>) => {
+    const { error } = await supabase
+      .from("member_payments")
+      .update(updates)
+      .eq("id", id);
+
+    if (!error && selectedGymId && selectedCompanyId) {
+      fetchPayments(selectedGymId, selectedCompanyId);
+    }
   };
 
-  // 빠른 선택 핸들러
-  const handleQuickSelect = (type: string) => {
-    const today = new Date();
+  // 커스텀 옵션 추가
+  const addCustomOption = async (type: "sale_type" | "membership_category" | "membership_name" | "payment_method", name: string) => {
+    if (!name.trim() || !selectedGymId || !selectedCompanyId) return;
 
-    switch (type) {
-      case "today":
-        const todayStr = formatDate(today);
-        setStartDate(todayStr);
-        setEndDate(todayStr);
-        break;
-      case "yesterday":
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = formatDate(yesterday);
-        setStartDate(yesterdayStr);
-        setEndDate(yesterdayStr);
-        break;
-      case "week":
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 7);
-        setStartDate(formatDate(weekAgo));
-        setEndDate(formatDate(today));
-        break;
-      case "month":
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        setStartDate(formatDate(monthStart));
-        setEndDate(formatDate(monthEnd));
-        break;
-      case "3months":
-        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-        const currentMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        setStartDate(formatDate(threeMonthsAgo));
-        setEndDate(formatDate(currentMonthEnd));
-        break;
-    }
-    setQuickSelect(type);
+    const tableMap = {
+      sale_type: "sale_types",
+      membership_category: "membership_categories",
+      membership_name: "membership_names",
+      payment_method: "payment_methods"
+    };
+
+    const countMap = {
+      sale_type: customSaleTypes.length,
+      membership_category: customMembershipCategories.length,
+      membership_name: customMembershipNames.length,
+      payment_method: customPaymentMethods.length
+    };
+
+    await supabase.from(tableMap[type]).insert({
+      gym_id: selectedGymId,
+      company_id: selectedCompanyId,
+      name: name.trim(),
+      display_order: countMap[type] + 1
+    });
+
+    fetchCustomOptions(selectedGymId);
+  };
+
+  const deleteCustomOption = async (type: "sale_type" | "membership_category" | "membership_name" | "payment_method", id: string) => {
+    const tableMap = {
+      sale_type: "sale_types",
+      membership_category: "membership_categories",
+      membership_name: "membership_names",
+      payment_method: "payment_methods"
+    };
+
+    await supabase.from(tableMap[type]).delete().eq("id", id);
+    if (selectedGymId) fetchCustomOptions(selectedGymId);
   };
 
   return {
-    // Data
-    payments,
+    // 데이터
     filteredPayments,
     stats,
-    allMembershipTypes,
+    staffList,
+
+    // 옵션들
+    allSaleTypes,
+    allMembershipCategories,
+    allMembershipNames,
     allPaymentMethods,
-    customMembershipTypes,
+    defaultInstallments,
+
+    // 커스텀 옵션 (설정용)
+    customSaleTypes,
+    customMembershipCategories,
+    customMembershipNames,
     customPaymentMethods,
 
-    // Settings modal
-    isSettingsOpen, setIsSettingsOpen,
-    newMembershipType, setNewMembershipType,
-    newPaymentMethod, setNewPaymentMethod,
-    handleAddMembershipType,
-    handleAddPaymentMethod,
-    handleDeleteMembershipType,
-    handleDeletePaymentMethod,
+    // 설정 모달
+    isSettingsOpen,
+    setIsSettingsOpen,
 
-    // Filters
-    startDate, setStartDate,
-    endDate, setEndDate,
-    methodFilter, setMethodFilter,
-    membershipTypeFilter, setMembershipTypeFilter,
-    registrationTypeFilter, setRegistrationTypeFilter,
-    quickSelect, handleQuickSelect,
+    // 필터
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
+    methodFilter,
+    setMethodFilter,
+    membershipTypeFilter,
+    setMembershipTypeFilter,
+    registrationTypeFilter,
+    setRegistrationTypeFilter,
+    quickSelect,
+    handleQuickSelect,
 
-    // New rows
+    // 새 행
     newRows,
     addNewRow,
     updateNewRow,
     saveNewRow,
     removeNewRow,
 
-    // Inline editing
-    editingCell,
-    editValue, setEditValue,
-    startEditing,
-    saveEdit,
-    cancelEdit,
+    // CRUD
+    deletePayment,
+    updatePayment,
+    addCustomOption,
+    deleteCustomOption,
+
+    // 새로고침
+    refreshData: () => {
+      if (selectedGymId && selectedCompanyId) {
+        fetchPayments(selectedGymId, selectedCompanyId);
+      }
+    }
   };
 }

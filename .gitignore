@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# pnpm
+.pnpm-store
+
+# temp files
+_archive/
+
+# claude
+.claude/
