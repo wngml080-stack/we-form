@@ -22,7 +22,6 @@ export type ReportStatus = "draft" | "submitted" | "approved" | "rejected";
 export interface Staff {
   id: string;
   user_id: string;
-  clerk_user_id?: string;
   company_id: string;
   gym_id: string | null;
   name: string;

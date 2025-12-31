@@ -2,18 +2,19 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Building2, Loader2 } from "lucide-react";
+import { createSupabaseClient } from "@/lib/supabase/client";
 
 export default function OnboardingCompanyPage() {
-  const { user } = useUser();
   const router = useRouter();
+  const supabase = useMemo(() => createSupabaseClient(), []);
+  const [email, setEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -25,6 +26,16 @@ export default function OnboardingCompanyPage() {
     branchCount: "",
     staffCount: "",
   });
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
+        router.push("/sign-in");
+      } else {
+        setEmail(session.user.email ?? null);
+      }
+    });
+  }, [supabase, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -41,8 +52,7 @@ export default function OnboardingCompanyPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          clerkUserId: user?.id,
-          email: user?.primaryEmailAddress?.emailAddress,
+          email,
         }),
       });
 
@@ -50,8 +60,9 @@ export default function OnboardingCompanyPage() {
       if (!res.ok) throw new Error(result.error);
 
       router.push("/onboarding/pending?type=company");
-    } catch (error: any) {
-      setErrorMsg(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "오류가 발생했습니다.";
+      setErrorMsg(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +84,7 @@ export default function OnboardingCompanyPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="p-3 bg-gray-50 rounded-lg text-center text-sm">
               <span className="text-gray-500">가입 이메일:</span>{" "}
-              <span className="font-medium">{user?.primaryEmailAddress?.emailAddress}</span>
+              <span className="font-medium">{email}</span>
             </div>
 
             <div className="space-y-2">

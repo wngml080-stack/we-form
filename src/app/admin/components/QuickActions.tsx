@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, CheckCircle2, Building2 } from "lucide-react";
+import { ShoppingCart, Dumbbell, Building2 } from "lucide-react";
 
 interface QuickActionProps {
   icon: any;
@@ -25,8 +25,8 @@ export function QuickActions() {
   return (
     <div className="flex gap-6 md:gap-8 overflow-x-auto pb-2 scrollbar-hide">
       <QuickAction icon={Building2} label="지점 관리" href="/admin/branch" color="bg-blue-100 text-blue-600" />
-      <QuickAction icon={Calendar} label="스케줄 관리" href="/admin/schedule" color="bg-purple-100 text-purple-600" />
-      <QuickAction icon={CheckCircle2} label="출석 체크" href="/admin/attendance" color="bg-orange-100 text-orange-600" />
+      <QuickAction icon={Dumbbell} label="PT회원관리" href="/admin/pt-members" color="bg-purple-100 text-purple-600" />
+      <QuickAction icon={ShoppingCart} label="매출 관리" href="/admin/sales" color="bg-green-100 text-green-600" />
     </div>
   );
 }

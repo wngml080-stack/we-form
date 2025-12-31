@@ -30,7 +30,7 @@
 |------|------|
 | Frontend | Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui |
 | Backend | Next.js API Routes, Supabase (PostgreSQL) |
-| 인증 | Clerk (OAuth) |
+| 인증 | Supabase Auth |
 | 보안 | Row Level Security (RLS) |
 | 배포 | Vercel |
 

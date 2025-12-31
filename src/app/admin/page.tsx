@@ -1,33 +1,22 @@
-import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { AdminDashboardContent } from "./components/AdminDashboardContent";
 
 // Server Component에서 사용자 이름을 미리 가져와서 LCP 최적화
 async function getUserName(): Promise<string> {
   try {
-    // Clerk에서 현재 사용자 가져오기 (서버 사이드)
-    const user = await currentUser();
+    // Supabase Auth에서 현재 사용자 가져오기 (서버 사이드)
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user?.primaryEmailAddress?.emailAddress) {
+    if (!user?.email) {
       return "관리자";
     }
-
-    const email = user.primaryEmailAddress.emailAddress;
 
     // Supabase에서 사용자 이름 조회
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return "관리자";
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const { data } = await supabase
       .from("staffs")
       .select("name")
-      .eq("email", email)
+      .eq("email", user.email)
       .single();
 
     return data?.name || "관리자";

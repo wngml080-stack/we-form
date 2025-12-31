@@ -2,25 +2,36 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Building2, Users, LogOut } from "lucide-react";
+import { createSupabaseClient } from "@/lib/supabase/client";
 
 export default function OnboardingPage() {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
   const router = useRouter();
+  const supabase = useMemo(() => createSupabaseClient(), []);
+  const [email, setEmail] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    if (isLoaded && !user) {
-      router.push("/sign-in");
-    }
-  }, [isLoaded, user, router]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
+        router.push("/sign-in");
+      } else {
+        setEmail(session.user.email ?? null);
+      }
+      setIsLoaded(true);
+    });
+  }, [supabase, router]);
 
-  if (!isLoaded || !user) {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/sign-in");
+  };
+
+  if (!isLoaded || !email) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700">
         <div className="text-white">로딩 중...</div>
@@ -36,7 +47,7 @@ export default function OnboardingPage() {
             We:form 가입
           </CardTitle>
           <CardDescription className="text-gray-600 mt-2">
-            {user.primaryEmailAddress?.emailAddress}님, 환영합니다!<br />
+            {email}님, 환영합니다!<br />
             가입 유형을 선택해주세요.
           </CardDescription>
         </CardHeader>
@@ -86,7 +97,7 @@ export default function OnboardingPage() {
             <Button
               variant="ghost"
               className="text-gray-500 hover:text-gray-700"
-              onClick={() => signOut({ redirectUrl: "/sign-in" })}
+              onClick={handleSignOut}
             >
               <LogOut className="w-4 h-4 mr-2" />
               다른 계정으로 로그인

@@ -1,12 +1,14 @@
-import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   try {
-    // Clerk 인증 확인
-    const { userId } = await auth();
-    if (!userId) {
+    // Supabase Auth 인증 확인
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
       return NextResponse.json(
         { error: "로그인이 필요합니다." },
         { status: 401 }
@@ -14,10 +16,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, phone, jobTitle, joinedAt, companyId, clerkUserId, email } = body;
+    const { name, phone, jobTitle, joinedAt, companyId, email } = body;
 
-    // clerkUserId 검증: 요청된 clerkUserId가 실제 로그인한 사용자와 일치하는지
-    if (clerkUserId !== userId) {
+    // 이메일 검증: 요청된 이메일이 실제 로그인한 사용자와 일치하는지
+    if (email !== user.email) {
       return NextResponse.json(
         { error: "인증 정보가 일치하지 않습니다." },
         { status: 403 }
@@ -29,17 +31,6 @@ export async function POST(request: Request) {
     }
 
     const supabaseAdmin = getSupabaseAdmin();
-
-    // 이미 등록된 사용자인지 확인 (clerk_user_id로)
-    const { data: existingByClerk } = await supabaseAdmin
-      .from("staffs")
-      .select("id")
-      .eq("clerk_user_id", userId)
-      .single();
-
-    if (existingByClerk) {
-      return NextResponse.json({ error: "이미 등록된 사용자입니다." }, { status: 400 });
-    }
 
     // 이미 등록된 이메일인지 확인
     const { data: existingStaff } = await supabaseAdmin
@@ -67,7 +58,6 @@ export async function POST(request: Request) {
     const { error: staffError } = await supabaseAdmin.from("staffs").insert({
       company_id: companyId,
       gym_id: null,
-      clerk_user_id: userId,
       email: email,
       name: name,
       phone: phone,
@@ -82,8 +72,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Staff onboarding error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : "오류가 발생했습니다.";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useUser } from "@clerk/nextjs";
 import { createSupabaseClient } from "@/lib/supabase/client";
 
 interface Payment {
@@ -47,7 +46,6 @@ interface UseSalesPageDataProps {
 }
 
 export function useSalesPageData({ selectedGymId, selectedCompanyId, filterInitialized }: UseSalesPageDataProps) {
-  const { user } = useUser();
   const supabase = useMemo(() => createSupabaseClient(), []);
 
   // 결제 데이터

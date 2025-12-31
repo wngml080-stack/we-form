@@ -3,9 +3,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessCompany, canAccessGym } from "@/lib/api/auth";
 
 /**
- * 직원 등록 API (Clerk 방식)
+ * 직원 등록 API (Supabase Auth 방식)
  * - staffs 테이블에만 직원 정보 등록
- * - 직원이 Clerk로 로그인하면 이메일로 매칭되어 clerk_user_id 자동 연결
+ * - 직원이 Supabase Auth로 로그인하면 이메일로 자동 매칭
  */
 export async function POST(request: Request) {
   try {
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "직원이 등록되었습니다. 해당 이메일로 Clerk 로그인 시 자동 연결됩니다."
+      message: "직원이 등록되었습니다. 해당 이메일로 로그인 시 자동 연결됩니다."
     });
 
   } catch (error: any) {

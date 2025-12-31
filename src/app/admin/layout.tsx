@@ -3,18 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useUser, useClerk } from "@clerk/nextjs";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminFilterProvider, useAdminFilter } from "@/contexts/AdminFilterContext";
 import {
   LayoutDashboard,
-  CalendarDays,
   Users,
   Building2,
   Settings,
   LogOut,
   ClipboardCheck,
-  FileCheck,
   DollarSign,
   ShoppingCart,
   Menu,
@@ -36,9 +33,7 @@ function AdminLayoutContent({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
-  const { signOut } = useClerk();
-  const { user, isLoading, isApproved, companyName: authCompanyName } = useAuth();
+  const { user, authUser, isLoading, isApproved, companyName: authCompanyName, signOut } = useAuth();
   const {
     selectedCompanyId,
     selectedGymId,
@@ -49,9 +44,7 @@ function AdminLayoutContent({
     setCompany,
     setGym,
     setStaff,
-    gymName,
     companyName: filterCompanyName,
-    staffName,
     isInitialized: filterInitialized,
   } = useAdminFilter();
   const userRole = user?.role || "";
@@ -61,10 +54,10 @@ function AdminLayoutContent({
 
   // 인증 체크 및 리다이렉트
   useEffect(() => {
-    if (!clerkLoaded || isLoading) return;
+    if (isLoading) return;
 
-    // Clerk 로그인 안됨
-    if (!clerkUser) {
+    // 로그인 안됨
+    if (!authUser) {
       router.push("/sign-in");
       return;
     }
@@ -80,14 +73,15 @@ function AdminLayoutContent({
         router.push(`/onboarding/pending?type=${pendingType}`);
       }
     }
-  }, [clerkLoaded, clerkUser, isLoading, isApproved, user, router]);
+  }, [authUser, isLoading, isApproved, user, router]);
 
   const handleLogout = async () => {
-    await signOut({ redirectUrl: "/sign-in" });
+    await signOut();
+    router.push("/sign-in");
   };
 
   // 로딩 중이거나 미승인이면 로딩 표시
-  if (!clerkLoaded || isLoading || !isApproved) {
+  if (isLoading || !isApproved) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#f0f4f8]">
         <div className="flex flex-col items-center gap-4">
@@ -114,7 +108,6 @@ function AdminLayoutContent({
           { name: "대시보드", href: "/admin", icon: LayoutDashboard },
         ],
         branch: [
-          { name: "내 스케줄", href: "/admin/schedule", icon: CalendarDays },
           { name: "급여 확인", href: "/admin/salary", icon: DollarSign },
         ],
         admin: []
@@ -124,14 +117,12 @@ function AdminLayoutContent({
       return {
         main: [
           { name: "대시보드", href: "/admin", icon: LayoutDashboard },
-          { name: "스케줄 관리", href: "/admin/schedule", icon: CalendarDays },
           { name: "PT회원관리", href: "/admin/pt-members", icon: Dumbbell },
         ],
         branch: [
           { name: "지점 관리", href: "/admin/branch", icon: Building2, isParent: true },
           { name: "매출 관리", href: "/admin/sales", icon: ShoppingCart, isChild: true },
           { name: "급여 관리", href: "/admin/salary", icon: DollarSign, isChild: true },
-          { name: "스케줄 승인", href: "/admin/reports", icon: FileCheck, isChild: true },
           { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck },
         ],
         admin: []

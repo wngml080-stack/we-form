@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Calendar, CheckCircle2, ChevronRight } from "lucide-react";
+import { Calendar, CheckCircle2 } from "lucide-react";
 
 interface TodaySchedulesCardProps {
   schedules: any[];
@@ -16,9 +15,6 @@ export function TodaySchedulesCard({ schedules, getStatusColor }: TodaySchedules
           <span className="text-[#2F80ED] text-2xl">●</span>
           나의 오늘 수업 <span className="text-[#2F80ED]">{schedules.length}</span>
         </h3>
-        <Link href="/admin/schedule">
-          <span className="text-xs font-bold text-gray-400 hover:text-[#2F80ED] cursor-pointer border px-2 py-1 rounded-md">전체보기</span>
-        </Link>
       </div>
 
       <div className="flex-1 overflow-auto space-y-3 custom-scrollbar pr-2">
@@ -29,10 +25,9 @@ export function TodaySchedulesCard({ schedules, getStatusColor }: TodaySchedules
           </div>
         ) : (
           schedules.map((schedule) => (
-            <Link
+            <div
               key={schedule.id}
-              href={`/admin/schedule?date=${new Date().toISOString().split('T')[0]}&highlight=${schedule.id}`}
-              className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-blue-50/50 border border-transparent hover:border-blue-100 transition-all group cursor-pointer"
+              className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 border border-transparent"
             >
               <div className="flex flex-col items-center min-w-[50px]">
                 <span className="text-xs font-bold text-[#2F80ED] bg-blue-100 px-2 py-1 rounded-md mb-1">
@@ -51,8 +46,7 @@ export function TodaySchedulesCard({ schedules, getStatusColor }: TodaySchedules
                   {schedule.staffs?.name} 강사
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
-            </Link>
+            </div>
           ))
         )}
       </div>

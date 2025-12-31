@@ -2,18 +2,34 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useUser, useClerk } from "@clerk/nextjs";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Building2, Users, LogOut } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useMemo, useState, useEffect } from "react";
+import { createSupabaseClient } from "@/lib/supabase/client";
 
 function PendingContent() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const router = useRouter();
+  const supabase = useMemo(() => createSupabaseClient(), []);
+  const [email, setEmail] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const type = searchParams.get("type");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
+        router.push("/sign-in");
+      } else {
+        setEmail(session.user.email ?? null);
+      }
+    });
+  }, [supabase, router]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/sign-in");
+  };
 
   const isCompany = type === "company";
 
@@ -35,7 +51,7 @@ function PendingContent() {
               </span>
             </div>
             <p className="text-sm text-gray-500">
-              {user?.primaryEmailAddress?.emailAddress}
+              {email}
             </p>
           </div>
 
@@ -66,7 +82,7 @@ function PendingContent() {
             <Button
               variant="ghost"
               className="w-full text-gray-500"
-              onClick={() => signOut({ redirectUrl: "/sign-in" })}
+              onClick={handleSignOut}
             >
               <LogOut className="w-4 h-4 mr-2" /> 로그아웃
             </Button>

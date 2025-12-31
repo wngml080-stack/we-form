@@ -4,7 +4,7 @@ import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    // 통합 인증 (clerk_user_id + 이메일 fallback)
+    // Supabase Auth 인증
     const { staff, error: authError } = await authenticateRequest();
     if (authError) return authError;
     if (!staff) {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // 통합 인증
+    // Supabase Auth 인증
     const { staff, error: authError } = await authenticateRequest();
     if (authError) return authError;
     if (!staff) {

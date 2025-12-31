@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
@@ -10,7 +10,6 @@ export interface AuthenticatedStaff {
   role: StaffRole;
   gym_id: string | null;
   company_id: string | null;
-  clerk_user_id: string;
 }
 
 export interface AuthResult {
@@ -20,15 +19,15 @@ export interface AuthResult {
 }
 
 /**
- * Clerk 인증 확인 및 직원 정보 조회
+ * Supabase Auth 인증 확인 및 직원 정보 조회
  * 인증 실패 시 적절한 에러 응답 반환
- * clerk_user_id로 조회 실패 시 이메일로 fallback 조회
  */
 export async function authenticateRequest(): Promise<AuthResult> {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const supabase = await createClient();
 
-  if (!userId) {
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
     return {
       staff: null,
       error: NextResponse.json(
@@ -39,64 +38,30 @@ export async function authenticateRequest(): Promise<AuthResult> {
     };
   }
 
-  const supabase = getSupabaseAdmin();
+  const supabaseAdmin = getSupabaseAdmin();
 
-  // 1. clerk_user_id로 조회
-  let { data: staff, error } = await supabase
+  // 이메일로 직원 조회
+  const { data: staff, error } = await supabaseAdmin
     .from("staffs")
-    .select("id, name, role, gym_id, company_id, clerk_user_id")
-    .eq("clerk_user_id", userId)
+    .select("id, name, role, gym_id, company_id")
+    .eq("email", user.email)
     .single();
 
-  // 2. clerk_user_id로 찾지 못한 경우, Clerk에서 이메일을 가져와 조회
   if (error || !staff) {
-    try {
-      // Clerk에서 사용자 정보 가져오기
-      const { clerkClient } = await import("@clerk/nextjs/server");
-      const client = await clerkClient();
-      const clerkUser = await client.users.getUser(userId);
-      const email = clerkUser.emailAddresses?.[0]?.emailAddress;
-
-      if (email) {
-        // 이메일로 직원 조회
-        const { data: staffByEmail, error: emailError } = await supabase
-          .from("staffs")
-          .select("id, name, role, gym_id, company_id, clerk_user_id")
-          .eq("email", email)
-          .single();
-
-        if (!emailError && staffByEmail) {
-          staff = staffByEmail;
-
-          // clerk_user_id가 없거나 다르면 업데이트
-          if (!staffByEmail.clerk_user_id || staffByEmail.clerk_user_id !== userId) {
-            await supabase
-              .from("staffs")
-              .update({ clerk_user_id: userId })
-              .eq("id", staffByEmail.id);
-          }
-        }
-      }
-    } catch (clerkError) {
-      console.error("[Auth] Clerk user lookup failed:", clerkError);
-    }
-  }
-
-  if (!staff) {
     return {
       staff: null,
       error: NextResponse.json(
         { error: "직원 정보를 찾을 수 없습니다. 관리자에게 문의하세요." },
         { status: 403 }
       ),
-      userId,
+      userId: user.id,
     };
   }
 
   return {
     staff: staff as AuthenticatedStaff,
     error: null,
-    userId,
+    userId: user.id,
   };
 }
 

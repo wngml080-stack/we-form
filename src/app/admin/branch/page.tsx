@@ -179,9 +179,9 @@ export default function BranchManagementPage() {
             color="text-blue-600 bg-blue-50"
           />
           <QuickLinkCard
-            title="스케줄 승인"
-            description="제출된 스케줄 검토"
-            href="/admin/reports"
+            title="직원 관리"
+            description="직원 정보 및 권한 관리"
+            href="/admin/staff"
             icon={Calendar}
             color="text-purple-600 bg-purple-50"
           />

@@ -84,7 +84,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         if (!memberMap.has(key)) {
           // 회원권명에서 횟수 추출 시도 (예: "10회", "20회")
           const sessionMatch = payment.membership_name?.match(/(\d+)회/);
-          const totalSessions = sessionMatch ? parseInt(sessionMatch[1]) : null;
+          const totalSessions = sessionMatch ? parseInt(sessionMatch[1]) : undefined;
 
           memberMap.set(key, {
             id: payment.id,

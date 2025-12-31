@@ -2,8 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,19 +10,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Users, Search, Building2, CheckCircle2, Loader2 } from "lucide-react";
+import { createSupabaseClient } from "@/lib/supabase/client";
 
 const JOB_TITLES = ["지점장", "팀장", "트레이너", "FC", "필라테스", "골프프로", "기타"];
 
 export default function OnboardingStaffPage() {
-  const { user } = useUser();
   const router = useRouter();
+  const supabase = useMemo(() => createSupabaseClient(), []);
+  const [email, setEmail] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   // 회사 검색
   const [bizNum, setBizNum] = useState("");
-  const [foundCompany, setFoundCompany] = useState<any>(null);
+  const [foundCompany, setFoundCompany] = useState<{id: string; name: string; representative_name: string} | null>(null);
 
   // 직원 정보
   const [formData, setFormData] = useState({
@@ -32,6 +33,16 @@ export default function OnboardingStaffPage() {
     jobTitle: "",
     joinedAt: "",
   });
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
+        router.push("/sign-in");
+      } else {
+        setEmail(session.user.email ?? null);
+      }
+    });
+  }, [supabase, router]);
 
   const handleSearchCompany = async () => {
     if (!bizNum) {
@@ -55,7 +66,7 @@ export default function OnboardingStaffPage() {
         setErrorMsg("등록된 회사가 없습니다. 사업자 번호를 확인해주세요.");
         setFoundCompany(null);
       }
-    } catch (e) {
+    } catch {
       setErrorMsg("검색 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
@@ -63,6 +74,7 @@ export default function OnboardingStaffPage() {
   };
 
   const handleSubmit = async () => {
+    if (!foundCompany) return;
     setIsLoading(true);
     setErrorMsg("");
 
@@ -73,8 +85,7 @@ export default function OnboardingStaffPage() {
         body: JSON.stringify({
           ...formData,
           companyId: foundCompany.id,
-          clerkUserId: user?.id,
-          email: user?.primaryEmailAddress?.emailAddress,
+          email,
         }),
       });
 
@@ -82,8 +93,9 @@ export default function OnboardingStaffPage() {
       if (!res.ok) throw new Error(result.error);
 
       router.push("/onboarding/pending?type=staff");
-    } catch (error: any) {
-      setErrorMsg(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "오류가 발생했습니다.";
+      setErrorMsg(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -111,7 +123,7 @@ export default function OnboardingStaffPage() {
             <>
               <div className="p-3 bg-gray-50 rounded-lg text-center text-sm">
                 <span className="text-gray-500">가입 이메일:</span>{" "}
-                <span className="font-medium">{user?.primaryEmailAddress?.emailAddress}</span>
+                <span className="font-medium">{email}</span>
               </div>
 
               <div className="space-y-2">
@@ -166,7 +178,7 @@ export default function OnboardingStaffPage() {
           {step === 2 && (
             <>
               <div className="p-2 bg-orange-50 rounded text-center text-sm">
-                소속: <span className="font-bold text-orange-600">{foundCompany.name}</span>
+                소속: <span className="font-bold text-orange-600">{foundCompany?.name}</span>
               </div>
 
               <div className="space-y-3">
