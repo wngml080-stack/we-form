@@ -122,17 +122,13 @@ export function useAdminDashboardData() {
   const gyms = dashboardFilter.gyms;
   const gymName = gyms.find(g => g.id === selectedGymId)?.name || authGymName || "We:form";
 
-  // 상품 목록 조회 (Supabase 직접 조회)
+  // 상품 목록 조회
   const fetchProducts = async (gymId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name, price, category")
-        .eq("gym_id", gymId)
-        .eq("is_active", true)
-        .order("name");
-      if (!error && data) {
-        setProducts(data);
+      const response = await fetch(`/api/admin/schedule/products?gym_id=${gymId}`);
+      const data = await response.json();
+      if (data.success) {
+        setProducts(data.products || []);
       }
     } catch (error) {
       console.error("상품 목록 조회 에러:", error);
@@ -235,20 +231,10 @@ export function useAdminDashboardData() {
       .then(data => data.announcements || [])
       .catch(() => []);
 
-    // 회사 일정 조회 (Supabase 직접 조회)
-    const fetchCompanyEventsPromise = (async () => {
-      try {
-        const { data } = await supabase
-          .from("company_events")
-          .select("*")
-          .eq("company_id", companyId)
-          .gte("event_date", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
-          .order("event_date");
-        return data || [];
-      } catch {
-        return [];
-      }
-    })();
+    const fetchCompanyEventsPromise = fetch(`/api/admin/schedule/events?company_id=${companyId}&gym_id=${gymId}`)
+      .then(res => res.json())
+      .then(data => data.events || [])
+      .catch(() => []);
 
     const [
       membersResult, schedulesResult, todayPaymentsResult, monthPaymentsResult,
@@ -357,24 +343,12 @@ export function useAdminDashboardData() {
 
   const fetchRecentLogs = async (gymId: string, companyId: string) => {
     try {
-      // 당일 매출 데이터 직접 조회
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from("member_payments")
-        .select("*")
-        .eq("gym_id", gymId)
-        .eq("company_id", companyId)
-        .gte("created_at", `${today}T00:00:00`)
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (!error && data) {
-        setRecentLogs(data);
-        const summary = {
-          total: data.reduce((sum, log) => sum + (log.amount || 0), 0),
-          count: data.length
-        };
-        setRecentLogsSummary(summary);
+      // today_only=true로 당일 매출만 조회
+      const response = await fetch(`/api/admin/schedule/logs?gym_id=${gymId}&company_id=${companyId}&today_only=true`);
+      const data = await response.json();
+      if (data.success) {
+        setRecentLogs(data.logs || []);
+        setRecentLogsSummary(data.summary || null);
       }
     } catch {
       // 조회 실패 시 빈 배열 유지
@@ -408,44 +382,27 @@ export function useAdminDashboardData() {
     }
     setIsSaving(true);
     try {
-      // 회원 생성
-      const { data: memberData, error: memberError } = await supabase
-        .from("members")
-        .insert({
+      const response = await fetch("/api/admin/schedule/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "new_member",
           gym_id: selectedGymId,
           company_id: selectedCompanyId,
-          name: newMemberForm.name,
-          phone: newMemberForm.phone,
-          status: "active"
+          staff_id: myStaffId,
+          data: newMemberForm
         })
-        .select()
-        .single();
-
-      if (memberError) throw memberError;
-
-      // 매출 기록
-      const { error: paymentError } = await supabase
-        .from("member_payments")
-        .insert({
-          gym_id: selectedGymId,
-          company_id: selectedCompanyId,
-          member_name: newMemberForm.name,
-          phone: newMemberForm.phone,
-          sale_type: "신규",
-          membership_category: newMemberForm.membership_type,
-          membership_name: newMemberForm.membership_name,
-          amount: parseFloat(newMemberForm.amount),
-          method: newMemberForm.payment_method,
-          memo: newMemberForm.memo
-        });
-
-      if (paymentError) throw paymentError;
-
-      toast.success("신규 회원이 등록되었습니다!");
-      setIsNewMemberModalOpen(false);
-      setNewMemberForm(initialNewMemberForm);
-      fetchRecentLogs(selectedGymId, selectedCompanyId);
-      fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("신규 회원이 등록되었습니다!");
+        setIsNewMemberModalOpen(false);
+        setNewMemberForm(initialNewMemberForm);
+        fetchRecentLogs(selectedGymId, selectedCompanyId);
+        fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+      } else {
+        toast.error(result.error || "등록에 실패했습니다.");
+      }
     } catch (error) {
       console.error("신규회원 등록 에러:", error);
       toast.error("등록 중 오류가 발생했습니다.");
@@ -461,31 +418,29 @@ export function useAdminDashboardData() {
     }
     setIsSaving(true);
     try {
-      // 매출 기록
-      const { error: paymentError } = await supabase
-        .from("member_payments")
-        .insert({
+      const response = await fetch("/api/admin/schedule/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "existing_member",
           gym_id: selectedGymId,
           company_id: selectedCompanyId,
-          member_name: existingMemberForm.member_name || existingMemberForm.name,
-          phone: existingMemberForm.phone,
-          sale_type: "재등록",
-          membership_category: existingMemberForm.membership_type,
-          membership_name: existingMemberForm.membership_name,
-          amount: parseFloat(existingMemberForm.amount),
-          method: existingMemberForm.payment_method,
-          memo: existingMemberForm.memo
-        });
-
-      if (paymentError) throw paymentError;
-
-      toast.success("회원권이 등록되었습니다!");
-      setIsExistingMemberModalOpen(false);
-      setExistingMemberForm(initialExistingMemberForm);
-      setMemberSearchQuery("");
-      setMemberSearchResults([]);
-      fetchRecentLogs(selectedGymId, selectedCompanyId);
-      fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+          staff_id: myStaffId,
+          data: existingMemberForm
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("회원권이 등록되었습니다!");
+        setIsExistingMemberModalOpen(false);
+        setExistingMemberForm(initialExistingMemberForm);
+        setMemberSearchQuery("");
+        setMemberSearchResults([]);
+        fetchRecentLogs(selectedGymId, selectedCompanyId);
+        fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+      } else {
+        toast.error(result.error || "등록에 실패했습니다.");
+      }
     } catch (error) {
       console.error("기존회원 등록 에러:", error);
       toast.error("등록 중 오류가 발생했습니다.");
@@ -501,29 +456,27 @@ export function useAdminDashboardData() {
     }
     setIsSaving(true);
     try {
-      // 부가상품 매출 기록
-      const { error: paymentError } = await supabase
-        .from("member_payments")
-        .insert({
+      const response = await fetch("/api/admin/schedule/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "addon",
           gym_id: selectedGymId,
           company_id: selectedCompanyId,
-          member_name: addonForm.customer_name,
-          phone: addonForm.customer_phone,
-          sale_type: "부가상품",
-          membership_category: "부가상품",
-          membership_name: addonForm.product_name,
-          amount: parseFloat(addonForm.amount),
-          method: addonForm.payment_method,
-          memo: addonForm.memo
-        });
-
-      if (paymentError) throw paymentError;
-
-      toast.success("부가상품이 등록되었습니다!");
-      setIsAddonModalOpen(false);
-      setAddonForm(initialAddonForm);
-      fetchRecentLogs(selectedGymId, selectedCompanyId);
-      fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+          staff_id: myStaffId,
+          data: addonForm
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success("부가상품이 등록되었습니다!");
+        setIsAddonModalOpen(false);
+        setAddonForm(initialAddonForm);
+        fetchRecentLogs(selectedGymId, selectedCompanyId);
+        fetchDashboardData(selectedGymId, selectedCompanyId, myStaffId);
+      } else {
+        toast.error(result.error || "등록에 실패했습니다.");
+      }
     } catch (error) {
       console.error("부가상품 등록 에러:", error);
       toast.error("등록 중 오류가 발생했습니다.");
