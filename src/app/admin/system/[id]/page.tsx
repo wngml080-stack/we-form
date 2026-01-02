@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { useRouter, useParams } from "next/navigation"; // params 사용
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { ArrowLeft } from "lucide-react";
 
 export default function CompanyDetailPage() {
   const router = useRouter();
-  const params = use(useParams()); // URL에서 회사 ID 가져오기
+  const params = useParams();
   const companyId = params?.id as string | undefined;
 
   const [company, setCompany] = useState<any>(null);

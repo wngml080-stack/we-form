@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { ReRegistrationConsultation } from "../types";
 import { StageChecklist } from "./StageChecklist";
 
@@ -132,13 +133,52 @@ export function TargetMembersView({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* 상단 액션 바 - 통합 헤더와 연결되는 디자인 */}
-      <div className={`p-6 ${
-        hideHeaderCard 
-          ? "bg-white rounded-b-3xl -mt-6 border-x border-b border-gray-100 shadow-sm mb-4" 
-          : "bg-white rounded-3xl shadow-sm border border-gray-100"
-      }`}>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* 상단 액션 바 */}
+      {!hideHeaderCard && (
+        <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 min-w-0 md:min-w-[300px]">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="회원명 또는 트레이너 검색"
+                  className="pl-11 h-11 bg-gray-50/50 border-gray-100 rounded-2xl focus:bg-white transition-all"
+                />
+              </div>
+              <div className="flex p-1 bg-gray-100 rounded-xl">
+                <button
+                  onClick={() => setShowAllMembers(false)}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    !showAllMembers ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  대상자만
+                </button>
+                <button
+                  onClick={() => setShowAllMembers(true)}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                    showAllMembers ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  전체보기
+                </button>
+              </div>
+            </div>
+            <Button
+              onClick={() => onOpenConsultation()}
+              className="w-full md:w-auto gap-2 bg-[#2F80ED] hover:bg-[#1c60b8] text-white h-11 px-6 rounded-2xl shadow-lg shadow-blue-100 font-bold"
+            >
+              <Plus className="w-5 h-5" />
+              <span>상담 기록 추가</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {hideHeaderCard && (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 min-w-0 md:min-w-[300px]">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
@@ -146,37 +186,39 @@ export function TargetMembersView({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="회원명 또는 트레이너 검색"
-                className="pl-11 h-11 bg-gray-50/50 border-gray-100 rounded-2xl focus:bg-white transition-all"
+                className="pl-11 h-11 bg-gray-50/50 border-gray-100 rounded-2xl focus:bg-white transition-all font-bold"
               />
             </div>
-            <div className="flex p-1 bg-gray-100 rounded-xl">
+            <div className="flex p-1.5 bg-slate-50 rounded-2xl border border-slate-100">
               <button
                 onClick={() => setShowAllMembers(false)}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                  !showAllMembers ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={cn(
+                  "px-5 py-2 text-xs font-black rounded-xl transition-all",
+                  !showAllMembers ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                )}
               >
-                대상자만
+                Focus
               </button>
               <button
                 onClick={() => setShowAllMembers(true)}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                  showAllMembers ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={cn(
+                  "px-5 py-2 text-xs font-black rounded-xl transition-all",
+                  showAllMembers ? "bg-white text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                )}
               >
-                전체보기
+                All
               </button>
             </div>
           </div>
           <Button
             onClick={() => onOpenConsultation()}
-            className="w-full md:w-auto gap-2 bg-[#2F80ED] hover:bg-[#1c60b8] text-white h-11 px-6 rounded-2xl shadow-lg shadow-blue-100 font-bold"
+            className="w-full md:w-auto gap-2 bg-slate-900 hover:bg-black text-white h-12 px-8 rounded-2xl shadow-xl shadow-slate-200 font-black transition-all hover:-translate-y-0.5"
           >
             <Plus className="w-5 h-5" />
             <span>상담 기록 추가</span>
           </Button>
         </div>
-      </div>
+      )}
 
       {/* 안내 배너 */}
       <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-6 text-white shadow-xl shadow-blue-100 relative overflow-hidden">

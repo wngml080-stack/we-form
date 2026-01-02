@@ -23,7 +23,7 @@ interface Props {
   hideHeaderCard?: boolean;
 }
 
-export function MonthlyStatsSection({ stats, getMonthlyStats }: Props) {
+export function MonthlyStatsSection({ stats, getMonthlyStats, hideHeaderCard }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -68,19 +68,19 @@ export function MonthlyStatsSection({ stats, getMonthlyStats }: Props) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* 월 선택 네비게이션 - 더 세련된 디자인 */}
-      <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+      {/* 월 선택 네비게이션 */}
+      <div className="flex items-center justify-between bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => navigateMonth("prev")}
-          className="hover:bg-blue-50 hover:text-blue-600 rounded-xl"
+          className="h-12 w-12 hover:bg-slate-50 rounded-2xl transition-all"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-6 h-6 text-slate-400" />
         </Button>
         <div className="flex flex-col items-center">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-0.5">분석 기간</span>
-          <span className="text-xl font-bold text-slate-900 tracking-tight">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Performance Month</span>
+          <span className="text-2xl font-black text-slate-900 tracking-tight">
             {formatMonth(selectedMonth)}
           </span>
         </div>
@@ -88,9 +88,9 @@ export function MonthlyStatsSection({ stats, getMonthlyStats }: Props) {
           variant="ghost"
           size="icon"
           onClick={() => navigateMonth("next")}
-          className="hover:bg-blue-50 hover:text-blue-600 rounded-xl"
+          className="h-12 w-12 hover:bg-slate-50 rounded-2xl transition-all"
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-6 h-6 text-slate-400" />
         </Button>
       </div>
 

@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { showSuccess } from "@/lib/utils/error-handler";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { X, CheckCircle2, AlertCircle, Clock, Calendar as CalendarIcon, User, Pencil, Trash2, Activity, Info, Zap } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface QuickStatusModalProps {
   isOpen: boolean;
@@ -62,36 +64,63 @@ export function QuickStatusModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-[#2F80ED]">상태 변경</DialogTitle>
+      <DialogContent className="max-w-md bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+        <DialogHeader className="px-8 py-6 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
+          <DialogTitle className="flex items-center gap-4 relative z-10">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight">상태 퀵 변경</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Quick Action Panel</p>
+            </div>
+          </DialogTitle>
           <DialogDescription className="sr-only">스케줄 상태를 변경합니다</DialogDescription>
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-8 w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl transition-all group z-10"
+          >
+            <X className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
+          </button>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* 스케줄 정보 */}
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <div className="font-semibold text-gray-900">
-              {selectedSchedule.member_name || selectedSchedule.title || '일정'}
+        <div className="p-8 space-y-8 bg-[#f8fafc]">
+          {/* 스케줄 간략 정보 */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+                <User className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-lg font-black text-slate-900 leading-tight">
+                  {selectedSchedule.member_name || selectedSchedule.title || '일정'}
+                </h4>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                    <CalendarIcon className="w-3 h-3" />
+                    {new Date(selectedSchedule.start_time).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' })}
+                  </span>
+                  <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {new Date(selectedSchedule.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="text-sm text-gray-500 mt-1">
-              {new Date(selectedSchedule.start_time).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' })}
-              {' '}
-              {new Date(selectedSchedule.start_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
-              {' - '}
-              {new Date(selectedSchedule.end_time).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}
-            </div>
-            {/* 개인일정이 아닌 경우에만 상태 배지 표시 */}
+
             {scheduleType !== 'personal' && selectedSchedule.type !== '개인' && (
-              <div className="mt-2">
-                <span className={`text-xs px-2 py-1 rounded ${
-                  selectedSchedule.status === 'completed' ? 'bg-green-100 text-green-700' :
-                  selectedSchedule.status === 'no_show_deducted' ? 'bg-red-100 text-red-700' :
-                  selectedSchedule.status === 'no_show' ? 'bg-gray-100 text-gray-700' :
-                  selectedSchedule.status === 'service' ? 'bg-blue-100 text-blue-700' :
-                  selectedSchedule.status === 'cancelled' ? 'bg-gray-100 text-gray-500' :
-                  'bg-yellow-100 text-yellow-700'
-                }`}>
+              <div className="flex items-center gap-2 pt-4 border-t border-slate-50">
+                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Current Status:</span>
+                <span className={cn(
+                  "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest",
+                  selectedSchedule.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
+                  selectedSchedule.status === 'no_show_deducted' ? 'bg-rose-50 text-rose-600' :
+                  selectedSchedule.status === 'no_show' ? 'bg-slate-100 text-slate-500' :
+                  selectedSchedule.status === 'service' ? 'bg-blue-50 text-blue-600' :
+                  selectedSchedule.status === 'cancelled' ? 'bg-slate-100 text-slate-300' :
+                  'bg-amber-50 text-amber-600'
+                )}>
                   {selectedSchedule.status === 'completed' ? '출석완료' :
                    selectedSchedule.status === 'no_show_deducted' ? '노쇼(차감)' :
                    selectedSchedule.status === 'no_show' ? '노쇼' :
@@ -103,262 +132,186 @@ export function QuickStatusModal({
             )}
           </div>
 
-          {/* 타입별 상태 변경 버튼 */}
-          {(() => {
-            // PT 상태 버튼
-            if (scheduleType === 'pt') {
-              return (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-500 font-medium">PT 상태 변경</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={selectedSchedule.status === 'reserved' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'reserved' ? 'bg-indigo-500 hover:bg-indigo-600' : 'hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300'}
-                      onClick={() => onStatusChange('reserved')}
-                      disabled={selectedSchedule.status === 'reserved'}
-                    >
-                      예약완료
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'completed' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'completed' ? 'bg-emerald-500 hover:bg-emerald-600' : 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'}
-                      onClick={() => onStatusChange('completed')}
-                      disabled={selectedSchedule.status === 'completed'}
-                    >
-                      수업완료
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'no_show_deducted' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'no_show_deducted' ? 'bg-red-500 hover:bg-red-600' : 'hover:bg-red-50 hover:text-red-700 hover:border-red-300'}
-                      onClick={() => onStatusChange('no_show_deducted')}
-                      disabled={selectedSchedule.status === 'no_show_deducted'}
-                    >
-                      노쇼(차감)
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'no_show' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'no_show' ? 'bg-gray-500 hover:bg-gray-600' : 'hover:bg-gray-100'}
-                      onClick={() => onStatusChange('no_show')}
-                      disabled={selectedSchedule.status === 'no_show'}
-                    >
-                      노쇼
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'service' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'service' ? 'bg-blue-500 hover:bg-blue-600' : 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'}
-                      onClick={() => onStatusChange('service')}
-                      disabled={selectedSchedule.status === 'service'}
-                    >
-                      서비스
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'cancelled' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'cancelled' ? 'bg-gray-400 hover:bg-gray-500' : 'hover:bg-gray-100'}
-                      onClick={() => onStatusChange('cancelled')}
-                      disabled={selectedSchedule.status === 'cancelled'}
-                    >
-                      취소
-                    </Button>
+          {/* 타입별 액션 버튼 */}
+          <div className="space-y-4">
+            {(() => {
+              if (scheduleType === 'pt') {
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Change PT Status</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { id: 'reserved', label: '예약완료', color: 'bg-indigo-600' },
+                        { id: 'completed', label: '수업완료', color: 'bg-emerald-500' },
+                        { id: 'no_show_deducted', label: '노쇼(차감)', color: 'bg-rose-500' },
+                        { id: 'no_show', label: '노쇼', color: 'bg-slate-500' },
+                        { id: 'service', label: '서비스', color: 'bg-blue-500' },
+                        { id: 'cancelled', label: '취소', color: 'bg-slate-300' },
+                      ].map((btn) => (
+                        <Button
+                          key={btn.id}
+                          onClick={() => onStatusChange(btn.id)}
+                          disabled={selectedSchedule.status === btn.id}
+                          className={cn(
+                            "h-14 rounded-2xl font-black transition-all",
+                            selectedSchedule.status === btn.id
+                              ? `${btn.color} text-white shadow-lg`
+                              : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50 hover:border-slate-200"
+                          )}
+                        >
+                          {btn.label}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
 
-            // OT 상태 버튼
-            if (scheduleType === 'ot') {
-              return (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-500 font-medium">OT 상태 변경</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={selectedSchedule.status === 'completed' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'completed' ? 'bg-emerald-500 hover:bg-emerald-600' : 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'}
-                      onClick={() => onStatusChange('completed')}
-                      disabled={selectedSchedule.status === 'completed'}
-                    >
-                      수업완료
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'no_show' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'no_show' ? 'bg-gray-500 hover:bg-gray-600' : 'hover:bg-gray-100'}
-                      onClick={() => onStatusChange('no_show')}
-                      disabled={selectedSchedule.status === 'no_show'}
-                    >
-                      노쇼
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'cancelled' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'cancelled' ? 'bg-gray-400 hover:bg-gray-500' : 'hover:bg-gray-100'}
-                      onClick={() => onStatusChange('cancelled')}
-                      disabled={selectedSchedule.status === 'cancelled'}
-                    >
-                      취소
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.status === 'converted' ? 'default' : 'outline'}
-                      className={selectedSchedule.status === 'converted' ? 'bg-blue-500 hover:bg-blue-600' : 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'}
-                      onClick={() => onStatusChange('converted')}
-                      disabled={selectedSchedule.status === 'converted'}
-                    >
-                      PT전환
-                    </Button>
-                  </div>
-                  {/* 인바디 체크 토글 */}
-                  <div className="mt-3 pt-3 border-t border-gray-200">
+              if (scheduleType === 'ot') {
+                return (
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Change OT Status</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { id: 'completed', label: '수업완료', color: 'bg-emerald-500' },
+                        { id: 'no_show', label: '노쇼', color: 'bg-slate-500' },
+                        { id: 'cancelled', label: '취소', color: 'bg-slate-300' },
+                        { id: 'converted', label: 'PT전환', color: 'bg-blue-600' },
+                      ].map((btn) => (
+                        <Button
+                          key={btn.id}
+                          onClick={() => onStatusChange(btn.id)}
+                          disabled={selectedSchedule.status === btn.id}
+                          className={cn(
+                            "h-14 rounded-2xl font-black transition-all",
+                            selectedSchedule.status === btn.id
+                              ? `${btn.color} text-white shadow-lg`
+                              : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50 hover:border-slate-200"
+                          )}
+                        >
+                          {btn.label}
+                        </Button>
+                      ))}
+                    </div>
                     <button
                       onClick={handleInbodyToggle}
-                      className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                      className={cn(
+                        "w-full h-14 flex items-center justify-center gap-3 rounded-2xl border-2 transition-all font-black",
                         selectedSchedule.inbody_checked
-                          ? 'bg-purple-100 border-purple-300 text-purple-700'
-                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-purple-50'
-                      }`}
+                          ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-100'
+                          : 'bg-white border-slate-100 text-slate-400 hover:border-purple-200 hover:text-purple-600'
+                      )}
                     >
-                      <span className={`w-4 h-4 rounded border flex items-center justify-center ${
-                        selectedSchedule.inbody_checked ? 'bg-purple-500 border-purple-500' : 'border-gray-300'
-                      }`}>
-                        {selectedSchedule.inbody_checked && (
-                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </span>
-                      <span className="text-sm font-medium">인바디 측정 완료</span>
+                      <CheckCircle2 className={cn("w-5 h-5", selectedSchedule.inbody_checked ? "text-white" : "text-slate-200")} />
+                      인바디 측정 완료
                     </button>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
 
-            // 상담 상태 버튼
-            if (scheduleType === 'consulting' || scheduleType === '상담') {
+              if (scheduleType === 'consulting' || scheduleType === '상담') {
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Consulting Category</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { id: 'sales', label: '세일즈', color: 'bg-orange-500' },
+                        { id: 'info', label: '안내상담', color: 'bg-blue-600' },
+                        { id: 'status', label: '현황상담', color: 'bg-purple-600' },
+                        { id: 'other', label: '기타', color: 'bg-slate-500' },
+                      ].map((btn) => (
+                        <Button
+                          key={btn.id}
+                          onClick={() => onSubTypeChange(btn.id)}
+                          className={cn(
+                            "h-14 rounded-2xl font-black transition-all",
+                            selectedSchedule.sub_type === btn.id
+                              ? `${btn.color} text-white shadow-lg`
+                              : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50 hover:border-slate-200"
+                          )}
+                        >
+                          {btn.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              if (scheduleType === '개인' || scheduleType === 'personal') {
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Personal Category</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'meal', label: '식사', color: 'bg-amber-500' },
+                        { id: 'conference', label: '회의', color: 'bg-indigo-600' },
+                        { id: 'meeting', label: '미팅', color: 'bg-blue-600' },
+                        { id: 'rest', label: '휴식', color: 'bg-purple-600' },
+                        { id: 'workout', label: '운동', color: 'bg-rose-500' },
+                        { id: 'other', label: '기타', color: 'bg-slate-500' },
+                      ].map((btn) => (
+                        <Button
+                          key={btn.id}
+                          onClick={() => onSubTypeChange(btn.id)}
+                          className={cn(
+                            "h-12 rounded-xl text-xs font-black transition-all",
+                            selectedSchedule.sub_type === btn.id
+                              ? `${btn.color} text-white shadow-lg`
+                              : "bg-white text-slate-500 border border-slate-100 hover:bg-slate-50 hover:border-slate-200"
+                          )}
+                        >
+                          {btn.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
               return (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-500 font-medium">상담 분류</div>
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Change Status</h3>
+                  <div className="grid grid-cols-2 gap-3">
                     <Button
-                      variant={selectedSchedule.sub_type === 'sales' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'sales' ? 'bg-orange-500 hover:bg-orange-600' : 'hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300'}
-                      onClick={() => onSubTypeChange('sales')}
+                      onClick={() => onStatusChange('completed')}
+                      disabled={selectedSchedule.status === 'completed'}
+                      className={cn(
+                        "h-14 rounded-2xl font-black transition-all",
+                        selectedSchedule.status === 'completed' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white text-slate-500 border border-slate-100'
+                      )}
                     >
-                      세일즈
+                      완료
                     </Button>
                     <Button
-                      variant={selectedSchedule.sub_type === 'info' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'info' ? 'bg-blue-500 hover:bg-blue-600' : 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'}
-                      onClick={() => onSubTypeChange('info')}
+                      onClick={() => onStatusChange('cancelled')}
+                      disabled={selectedSchedule.status === 'cancelled'}
+                      className={cn(
+                        "h-14 rounded-2xl font-black transition-all",
+                        selectedSchedule.status === 'cancelled' ? 'bg-slate-300 text-white shadow-lg' : 'bg-white text-slate-500 border border-slate-100'
+                      )}
                     >
-                      안내상담
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.sub_type === 'status' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'status' ? 'bg-purple-500 hover:bg-purple-600' : 'hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300'}
-                      onClick={() => onSubTypeChange('status')}
-                    >
-                      현황상담
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.sub_type === 'other' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'other' ? 'bg-gray-500 hover:bg-gray-600' : 'hover:bg-gray-100'}
-                      onClick={() => onSubTypeChange('other')}
-                    >
-                      기타
+                      취소
                     </Button>
                   </div>
                 </div>
               );
-            }
+            })()}
+          </div>
 
-            // 개인일정 분류 버튼
-            if (scheduleType === '개인' || scheduleType === 'personal') {
-              return (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-500 font-medium">개인일정 분류</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      variant={selectedSchedule.sub_type === 'meal' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'meal' ? 'bg-yellow-500 hover:bg-yellow-600' : 'hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-300'}
-                      onClick={() => onSubTypeChange('meal')}
-                    >
-                      식사
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.sub_type === 'conference' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'conference' ? 'bg-indigo-500 hover:bg-indigo-600' : 'hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300'}
-                      onClick={() => onSubTypeChange('conference')}
-                    >
-                      회의
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.sub_type === 'meeting' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'meeting' ? 'bg-blue-500 hover:bg-blue-600' : 'hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'}
-                      onClick={() => onSubTypeChange('meeting')}
-                    >
-                      미팅
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.sub_type === 'rest' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'rest' ? 'bg-purple-500 hover:bg-purple-600' : 'hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300'}
-                      onClick={() => onSubTypeChange('rest')}
-                    >
-                      휴식
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.sub_type === 'workout' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'workout' ? 'bg-orange-500 hover:bg-orange-600' : 'hover:bg-orange-50 hover:text-orange-700 hover:border-orange-300'}
-                      onClick={() => onSubTypeChange('workout')}
-                    >
-                      운동
-                    </Button>
-                    <Button
-                      variant={selectedSchedule.sub_type === 'other' ? 'default' : 'outline'}
-                      className={selectedSchedule.sub_type === 'other' ? 'bg-gray-500 hover:bg-gray-600' : 'hover:bg-gray-100'}
-                      onClick={() => onSubTypeChange('other')}
-                    >
-                      기타
-                    </Button>
-                  </div>
-                </div>
-              );
-            }
-
-            // 기타 타입 (기본 상태 버튼)
-            return (
-              <div className="space-y-2">
-                <div className="text-xs text-gray-500 font-medium">상태 변경</div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant={selectedSchedule.status === 'completed' ? 'default' : 'outline'}
-                    className={selectedSchedule.status === 'completed' ? 'bg-emerald-500 hover:bg-emerald-600' : 'hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'}
-                    onClick={() => onStatusChange('completed')}
-                    disabled={selectedSchedule.status === 'completed'}
-                  >
-                    완료
-                  </Button>
-                  <Button
-                    variant={selectedSchedule.status === 'cancelled' ? 'default' : 'outline'}
-                    className={selectedSchedule.status === 'cancelled' ? 'bg-gray-400 hover:bg-gray-500' : 'hover:bg-gray-100'}
-                    onClick={() => onStatusChange('cancelled')}
-                    disabled={selectedSchedule.status === 'cancelled'}
-                  >
-                    취소
-                  </Button>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* 하단 버튼 영역 */}
-          <div className="pt-2 border-t space-y-2">
+          {/* 하단 제어 영역 */}
+          <div className="flex flex-col gap-3 pt-6 border-t border-slate-50">
             <Button
               variant="ghost"
-              className="w-full text-gray-600 hover:text-[#2F80ED]"
+              className="h-12 w-full rounded-2xl font-black text-blue-600 hover:bg-blue-50 transition-all gap-2"
               onClick={onOpenEditModal}
             >
+              <Pencil className="w-4 h-4" />
               상세 수정 (시간/회원 변경)
             </Button>
             <Button
               variant="ghost"
-              className="w-full text-red-500 hover:text-red-700 hover:bg-red-50"
+              className="h-12 w-full rounded-2xl font-black text-rose-500 hover:bg-rose-50 transition-all gap-2"
               onClick={() => {
                 if (confirm('이 스케줄을 삭제하시겠습니까?')) {
                   onDelete();
@@ -366,6 +319,7 @@ export function QuickStatusModal({
                 }
               }}
             >
+              <Trash2 className="w-4 h-4" />
               스케줄 삭제
             </Button>
           </div>

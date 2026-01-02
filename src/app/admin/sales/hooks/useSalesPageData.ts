@@ -17,6 +17,12 @@ interface Payment {
   trainer_name?: string;
   memo?: string;
   created_at: string;
+  // 상세 필드
+  service_sessions?: number;      // 서비스 세션
+  validity_per_session?: number;  // 1회당 유효기간 (일)
+  membership_start_date?: string; // 회원권 시작일
+  visit_route?: string;           // 방문 경로 (신규용)
+  expiry_type?: string;           // 만기 구분 (재등록/리뉴용: 60일 이내/이외)
 }
 
 interface Staff {
@@ -165,16 +171,26 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
   };
 
   const fetchCustomOptions = async (gymId: string) => {
-    const [saleTypesRes, categoriesRes, namesRes, methodsRes] = await Promise.all([
-      supabase.from("sale_types").select("*").eq("gym_id", gymId).order("display_order"),
-      supabase.from("membership_categories").select("*").eq("gym_id", gymId).order("display_order"),
-      supabase.from("membership_names").select("*").eq("gym_id", gymId).order("display_order"),
-      supabase.from("payment_methods").select("*").eq("gym_id", gymId).order("display_order")
-    ]);
-    if (saleTypesRes.data) setCustomSaleTypes(saleTypesRes.data);
-    if (categoriesRes.data) setCustomMembershipCategories(categoriesRes.data);
-    if (namesRes.data) setCustomMembershipNames(namesRes.data);
-    if (methodsRes.data) setCustomPaymentMethods(methodsRes.data);
+    try {
+      const [saleTypesRes, categoriesRes, namesRes, methodsRes] = await Promise.all([
+        supabase.from("sale_types").select("*").eq("gym_id", gymId).order("display_order"),
+        supabase.from("membership_categories").select("*").eq("gym_id", gymId).order("display_order"),
+        supabase.from("membership_names").select("*").eq("gym_id", gymId).order("display_order"),
+        supabase.from("payment_methods").select("*").eq("gym_id", gymId).order("display_order")
+      ]);
+
+      if (saleTypesRes.error) console.error("sale_types 조회 오류:", saleTypesRes.error);
+      if (categoriesRes.error) console.error("membership_categories 조회 오류:", categoriesRes.error);
+      if (namesRes.error) console.error("membership_names 조회 오류:", namesRes.error);
+      if (methodsRes.error) console.error("payment_methods 조회 오류:", methodsRes.error);
+
+      if (saleTypesRes.data) setCustomSaleTypes(saleTypesRes.data);
+      if (categoriesRes.data) setCustomMembershipCategories(categoriesRes.data);
+      if (namesRes.data) setCustomMembershipNames(namesRes.data);
+      if (methodsRes.data) setCustomPaymentMethods(methodsRes.data);
+    } catch (error) {
+      console.error("커스텀 옵션 조회 중 오류:", error);
+    }
   };
 
   const calculateStats = (data: Payment[]) => {
@@ -232,7 +248,12 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
       method: "card",
       installment: 1,
       trainer_id: "",
-      memo: ""
+      memo: "",
+      service_sessions: 0,
+      validity_per_session: 0,
+      membership_start_date: new Date().toISOString().split("T")[0],
+      visit_route: "워크인",
+      expiry_type: "60일 이내"
     }]);
   };
 

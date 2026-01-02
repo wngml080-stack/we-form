@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
-import { ArrowRight, AlertTriangle, User, UserPlus } from "lucide-react";
+import { ArrowRight, AlertTriangle, User, UserPlus, X, Search, Calendar as CalendarIcon, Info, CheckCircle2, CreditCard, Banknote } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 interface Membership {
   id: string;
@@ -197,7 +199,6 @@ export function TransferMembershipModal({
   };
 
   const handleSubmit = async () => {
-    // 유효성 검사
     if (!fromMemberId) {
       toast.warning("양도자를 선택해주세요.");
       return;
@@ -312,328 +313,367 @@ export function TransferMembershipModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-white max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ArrowRight className="h-5 w-5 text-indigo-600" />
-            회원권 양도
+      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <DialogTitle className="flex items-center gap-5 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <ArrowRight className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-white tracking-tight">회원권 양도 처리</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                <p className="text-sm text-slate-400 font-bold">회원 간의 이용 권한을 안전하게 이관합니다</p>
+              </div>
+            </div>
           </DialogTitle>
-          <DialogDescription>
-            회원권을 다른 회원에게 양도합니다. 부분 양도도 가능합니다.
-          </DialogDescription>
+          <DialogDescription className="sr-only">회원권을 다른 회원에게 양도합니다</DialogDescription>
+          <button
+            onClick={handleClose}
+            className="absolute top-8 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10"
+          >
+            <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+          </button>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* 섹션 1: 양도자 선택 */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">1. 양도자 선택</h3>
-
-            {/* 회원 검색 */}
-            <div className="space-y-2">
-              <Label>양도자 회원 *</Label>
-              <Input
-                value={fromMemberSearch}
-                onChange={(e) => setFromMemberSearch(e.target.value)}
-                placeholder="회원 이름 또는 전화번호 검색..."
-                className="mb-2"
-              />
-              <Select value={fromMemberId} onValueChange={handleFromMemberSelect}>
-                <SelectTrigger>
-                  <SelectValue placeholder="양도자 선택" />
-                </SelectTrigger>
-                <SelectContent className="bg-white max-h-[200px]">
-                  {filteredFromMembers.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500 text-center">
-                      {fromMemberSearch ? "검색 결과가 없습니다." : "회원이 없습니다."}
-                    </div>
-                  ) : (
-                    filteredFromMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} ({member.phone})
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 회원권 선택 */}
-            {fromMemberId && (
-              <div className="space-y-2">
-                <Label>양도할 회원권 *</Label>
-                {fromMemberMemberships.length === 0 ? (
-                  <p className="text-sm text-red-500">활성 상태의 회원권이 없습니다.</p>
-                ) : (
-                  <Select value={fromMembershipId} onValueChange={handleFromMembershipSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="회원권 선택" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      {fromMemberMemberships.map((membership) => {
-                        const remaining = membership.total_sessions - membership.used_sessions;
-                        return (
-                          <SelectItem key={membership.id} value={membership.id}>
-                            {membership.name} (잔여 {remaining}회)
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            )}
-
-            {/* 선택된 회원권 정보 */}
-            {selectedMembership && (
-              <div className="bg-blue-50 p-3 rounded-lg text-sm">
-                <p className="font-semibold text-blue-900">{selectedMembership.name}</p>
-                <div className="text-blue-700 mt-1 space-y-0.5">
-                  <p>총 횟수: {selectedMembership.total_sessions}회 / 사용: {selectedMembership.used_sessions}회</p>
-                  <p className="font-medium">잔여: {remainingSessions}회</p>
-                  <p>종료일: {selectedMembership.end_date || "-"}</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 섹션 2: 양수인 선택 */}
-          {selectedMembership && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">2. 양수인 선택</h3>
-
-              {/* 양수인 유형 선택 */}
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="recipientType"
-                    checked={recipientType === "existing"}
-                    onChange={() => setRecipientType("existing")}
-                    className="w-4 h-4 text-indigo-600"
-                  />
-                  <User className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm">기존 회원</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="recipientType"
-                    checked={recipientType === "new"}
-                    onChange={() => setRecipientType("new")}
-                    className="w-4 h-4 text-indigo-600"
-                  />
-                  <UserPlus className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm">신규 회원 등록</span>
-                </label>
+        <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-[#f8fafc]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 섹션 1: 양도자 설정 */}
+            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">1</div>
+                <h3 className="text-lg font-black text-slate-900">양도자(보내는 분)</h3>
               </div>
 
-              {/* 기존 회원 선택 */}
-              {recipientType === "existing" && (
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label>양수인 회원 *</Label>
-                  <Input
-                    value={toMemberSearch}
-                    onChange={(e) => setToMemberSearch(e.target.value)}
-                    placeholder="회원 이름 또는 전화번호 검색..."
-                    className="mb-2"
-                  />
-                  <Select value={toMemberId} onValueChange={setToMemberId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="양수인 선택" />
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Search Member</Label>
+                  <div className="relative group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                    <Input
+                      value={fromMemberSearch}
+                      onChange={(e) => setFromMemberSearch(e.target.value)}
+                      placeholder="이름 또는 전화번호..."
+                      className="h-12 pl-11 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-blue-100 transition-all"
+                    />
+                  </div>
+                  <Select value={fromMemberId} onValueChange={handleFromMemberSelect}>
+                    <SelectTrigger className="h-12 bg-white border-slate-100 rounded-xl font-bold">
+                      <SelectValue placeholder="양도자 선택" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white max-h-[200px]">
-                      {filteredToMembers.length === 0 ? (
-                        <div className="p-4 text-sm text-gray-500 text-center">
-                          {toMemberSearch ? "검색 결과가 없습니다." : "선택 가능한 회원이 없습니다."}
-                        </div>
+                    <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2 max-h-[200px]">
+                      {filteredFromMembers.length === 0 ? (
+                        <div className="p-4 text-center text-slate-400 font-bold">결과 없음</div>
                       ) : (
-                        filteredToMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
+                        filteredFromMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id} className="rounded-xl font-bold py-2">
                             {member.name} ({member.phone})
                           </SelectItem>
                         ))
                       )}
                     </SelectContent>
                   </Select>
-
-                  {/* 같은 유형 회원권 보유 경고 */}
-                  {hasConflictingMembership && (
-                    <div className="flex items-start gap-2 p-2 bg-amber-50 rounded-lg">
-                      <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-amber-700">
-                        양수인이 같은 유형의 활성 회원권을 보유하고 있습니다. 기존 회원권에 횟수가 추가됩니다.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* 양도 이력 경고 */}
-                  {transferHistory.length > 0 && (
-                    <div className="flex items-start gap-2 p-2 bg-orange-50 rounded-lg">
-                      <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-orange-700">
-                        이 회원은 이전에 {transferHistory.length}건의 양도를 받은 이력이 있습니다.
-                      </p>
-                    </div>
-                  )}
                 </div>
-              )}
 
-              {/* 신규 회원 등록 */}
-              {recipientType === "new" && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newMemberName">이름 *</Label>
-                    <Input
-                      id="newMemberName"
-                      value={newMemberName}
-                      onChange={(e) => setNewMemberName(e.target.value)}
-                      placeholder="회원 이름"
-                    />
+                {fromMemberId && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Select Membership *</Label>
+                    {fromMemberMemberships.length === 0 ? (
+                      <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 flex items-center gap-3">
+                        <AlertTriangle className="w-5 h-5 text-rose-500" />
+                        <p className="text-xs font-black text-rose-600">활성 상태의 회원권이 없습니다</p>
+                      </div>
+                    ) : (
+                      <Select value={fromMembershipId} onValueChange={handleFromMembershipSelect}>
+                        <SelectTrigger className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-blue-100 transition-all">
+                          <SelectValue placeholder="양도할 회원권 선택" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
+                          {fromMemberMemberships.map((membership) => {
+                            const remaining = membership.total_sessions - membership.used_sessions;
+                            return (
+                              <SelectItem key={membership.id} value={membership.id} className="rounded-xl font-bold py-2">
+                                {membership.name} (잔여 {remaining}회)
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newMemberPhone">전화번호 *</Label>
-                    <Input
-                      id="newMemberPhone"
-                      value={newMemberPhone}
-                      onChange={(e) => setNewMemberPhone(e.target.value)}
-                      placeholder="010-0000-0000"
-                    />
+                )}
+
+                {selectedMembership && (
+                  <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-100 space-y-4 animate-in zoom-in-95">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                        <Info className="w-5 h-5 text-white" />
+                      </div>
+                      <h4 className="font-black">{selectedMembership.name}</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/10 p-3 rounded-2xl">
+                        <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Status</p>
+                        <p className="text-lg font-black">{remainingSessions}회 <span className="text-xs opacity-60">/ {selectedMembership.total_sessions}회</span></p>
+                      </div>
+                      <div className="bg-white/10 p-3 rounded-2xl">
+                        <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Expiry</p>
+                        <p className="text-lg font-black">{selectedMembership.end_date || "-"}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          )}
 
-          {/* 섹션 3: 양도 정보 */}
-          {selectedMembership && (recipientType === "new" || toMemberId) && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">3. 양도 정보</h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* 양도 횟수 */}
-                <div className="space-y-2">
-                  <Label htmlFor="transferSessions">양도 횟수 *</Label>
-                  <Input
-                    id="transferSessions"
-                    type="number"
-                    min="1"
-                    max={remainingSessions}
-                    value={transferSessions}
-                    onChange={(e) => setTransferSessions(e.target.value)}
-                    placeholder={`최대 ${remainingSessions}회`}
-                  />
-                  <p className="text-xs text-gray-500">
-                    잔여 횟수: {remainingSessions}회
-                  </p>
-                </div>
-
-                {/* 양도 시작일 */}
-                <div className="space-y-2">
-                  <Label htmlFor="transferDate">양도 시작일 *</Label>
-                  <Input
-                    id="transferDate"
-                    type="date"
-                    value={transferDate}
-                    onChange={(e) => setTransferDate(e.target.value)}
-                  />
-                </div>
+            {/* 섹션 2: 양수인 설정 */}
+            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black">2</div>
+                <h3 className="text-lg font-black text-slate-900">양수인(받는 분)</h3>
               </div>
 
-              {/* 양도 사유 */}
-              <div className="space-y-2">
-                <Label htmlFor="transferReason">양도 사유 (선택)</Label>
-                <Input
-                  id="transferReason"
-                  value={transferReason}
-                  onChange={(e) => setTransferReason(e.target.value)}
-                  placeholder="예: 가족 양도, 이사 등"
-                />
-              </div>
-
-              {/* 양도 수수료 */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="transferFee">양도 수수료 (선택)</Label>
-                  <Input
-                    id="transferFee"
-                    type="number"
-                    min="0"
-                    value={transferFee}
-                    onChange={(e) => setTransferFee(e.target.value)}
-                    placeholder="0"
-                  />
+              <div className="space-y-6">
+                <div className="flex p-1 bg-slate-50 rounded-2xl gap-1">
+                  <button
+                    onClick={() => setRecipientType("existing")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-black transition-all",
+                      recipientType === "existing" ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    <User className="w-4 h-4" /> 기존 회원
+                  </button>
+                  <button
+                    onClick={() => setRecipientType("new")}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-black transition-all",
+                      recipientType === "new" ? "bg-white text-indigo-600 shadow-sm shadow-indigo-100" : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    <UserPlus className="w-4 h-4" /> 신규 등록
+                  </button>
                 </div>
-                {parseFloat(transferFee) > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="paymentMethod">결제 방법</Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <SelectTrigger id="paymentMethod">
-                        <SelectValue />
+
+                {recipientType === "existing" ? (
+                  <div className="space-y-4 animate-in slide-in-from-right-2">
+                    <div className="relative group">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500" />
+                      <Input
+                        value={toMemberSearch}
+                        onChange={(e) => setToMemberSearch(e.target.value)}
+                        placeholder="이름 또는 전화번호..."
+                        className="h-12 pl-11 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
+                    <Select value={toMemberId} onValueChange={setToMemberId}>
+                      <SelectTrigger className="h-12 bg-white border-slate-100 rounded-xl font-bold">
+                        <SelectValue placeholder="양수인 선택" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="cash">현금</SelectItem>
-                        <SelectItem value="card">카드</SelectItem>
-                        <SelectItem value="transfer">계좌이체</SelectItem>
+                      <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2 max-h-[200px]">
+                        {filteredToMembers.length === 0 ? (
+                          <div className="p-4 text-center text-slate-400 font-bold">결과 없음</div>
+                        ) : (
+                          filteredToMembers.map((member) => (
+                            <SelectItem key={member.id} value={member.id} className="rounded-xl font-bold py-2">
+                              {member.name} ({member.phone})
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
+
+                    {hasConflictingMembership && (
+                      <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                        <p className="text-xs font-bold text-amber-700 leading-relaxed">
+                          양수인이 동일 유형의 회원권을 보유하고 있습니다. 기존 회원권에 횟수가 병합됩니다.
+                        </p>
+                      </div>
+                    )}
+
+                    {transferHistory.length > 0 && (
+                      <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex items-start gap-3">
+                        <Info className="w-5 h-5 text-indigo-500 shrink-0" />
+                        <p className="text-xs font-bold text-indigo-700 leading-relaxed">
+                          이 회원은 과거에 {transferHistory.length}번의 양도 이력이 있습니다.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 animate-in slide-in-from-left-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Name</Label>
+                      <Input
+                        value={newMemberName}
+                        onChange={(e) => setNewMemberName(e.target.value)}
+                        placeholder="성함 입력"
+                        className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Phone</Label>
+                      <Input
+                        value={newMemberPhone}
+                        onChange={(e) => setNewMemberPhone(e.target.value)}
+                        placeholder="010-0000-0000"
+                        className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-indigo-100"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-          )}
+          </div>
 
-          {/* 섹션 4: 미리보기 */}
-          {selectedMembership && (recipientType === "new" ? (newMemberName && newMemberPhone) : toMemberId) && parseInt(transferSessions) > 0 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700 border-b pb-2">4. 양도 결과 미리보기</h3>
+          {/* 섹션 3: 양도 상세 정보 */}
+          {selectedMembership && (recipientType === "new" || toMemberId) && (
+            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8 animate-in slide-in-from-bottom-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-black">3</div>
+                <h3 className="text-lg font-black text-slate-900">양도 상세 조건 및 미리보기</h3>
+              </div>
 
-              <div className="bg-indigo-50 p-4 rounded-lg space-y-3">
-                {/* 양도자 변경 */}
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-indigo-900">{selectedFromMember?.name}</span>
-                  <span className="text-indigo-700">
-                    &quot;{selectedMembership.name}&quot; 잔여 {remainingSessions}회 → {remainingSessions - parseInt(transferSessions)}회
-                  </span>
-                  {parseInt(transferSessions) === remainingSessions && (
-                    <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">종료</span>
-                  )}
-                </div>
-
-                {/* 양수인 변경 */}
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-indigo-900">
-                    {recipientType === "new" ? newMemberName : selectedToMember?.name}
-                  </span>
-                  <span className="text-indigo-700">
-                    &quot;{selectedMembership.name}&quot; {parseInt(transferSessions)}회
-                    {hasConflictingMembership ? " 추가" : " 생성"}
-                  </span>
-                  <span className="text-xs text-indigo-600">
-                    (예상 종료일: {calculateNewEndDate()})
-                  </span>
-                </div>
-
-                {/* 수수료 */}
-                {parseFloat(transferFee) > 0 && (
-                  <div className="text-sm text-indigo-700 pt-2 border-t border-indigo-200">
-                    양도 수수료: {parseInt(transferFee).toLocaleString()}원 ({paymentMethod === "cash" ? "현금" : paymentMethod === "card" ? "카드" : "계좌이체"})
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Transfer Sessions *</Label>
+                    <div className="relative group">
+                      <Input
+                        type="number"
+                        min="1"
+                        max={remainingSessions}
+                        value={transferSessions}
+                        onChange={(e) => setTransferSessions(e.target.value)}
+                        className="h-14 bg-slate-50 border-none rounded-2xl font-black text-xl pr-12 focus:ring-2 focus:ring-emerald-100"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-black">회</span>
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Max: {remainingSessions} sessions</p>
                   </div>
-                )}
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Start Date *</Label>
+                    <div className="relative group">
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                      <Input
+                        type="date"
+                        value={transferDate}
+                        onChange={(e) => setTransferDate(e.target.value)}
+                        className="h-12 pl-11 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Reason</Label>
+                    <Input
+                      value={transferReason}
+                      onChange={(e) => setTransferReason(e.target.value)}
+                      placeholder="가족 양도, 이사 등..."
+                      className="h-14 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Transfer Fee</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={transferFee}
+                        onChange={(e) => setTransferFee(e.target.value)}
+                        placeholder="0"
+                        className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100"
+                      />
+                    </div>
+                    {parseFloat(transferFee) > 0 && (
+                      <div className="space-y-2 animate-in zoom-in-95">
+                        <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Method</Label>
+                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                          <SelectTrigger className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
+                            <SelectItem value="cash" className="rounded-xl font-bold py-2"><div className="flex items-center gap-2"><Banknote className="w-4 h-4" /> 현금</div></SelectItem>
+                            <SelectItem value="card" className="rounded-xl font-bold py-2"><div className="flex items-center gap-2"><CreditCard className="w-4 h-4" /> 카드</div></SelectItem>
+                            <SelectItem value="transfer" className="rounded-xl font-bold py-2"><div className="flex items-center gap-2"><ArrowRight className="w-4 h-4" /> 이체</div></SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 결과 미리보기 카드 */}
+                <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl shadow-slate-200 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expected Result</span>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between group">
+                      <span className="text-xs font-bold text-slate-400">보내는 분</span>
+                      <div className="text-right">
+                        <p className="text-sm font-black">{selectedFromMember?.name}</p>
+                        <p className="text-[10px] font-bold text-rose-400">잔여: {remainingSessions - (parseInt(transferSessions) || 0)}회</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-center">
+                      <div className="h-px flex-1 bg-white/10" />
+                      <ArrowRight className="w-4 h-4 mx-3 text-slate-600" />
+                      <div className="h-px flex-1 bg-white/10" />
+                    </div>
+
+                    <div className="flex items-center justify-between group">
+                      <span className="text-xs font-bold text-slate-400">받는 분</span>
+                      <div className="text-right">
+                        <p className="text-sm font-black">{recipientType === "new" ? (newMemberName || "미입력") : (selectedToMember?.name || "미선택")}</p>
+                        <p className="text-[10px] font-bold text-emerald-400">신규: {transferSessions || 0}회 추가</p>
+                      </div>
+                    </div>
+
+                    {parseFloat(transferFee) > 0 && (
+                      <div className="pt-3 border-t border-white/10 flex justify-between items-center">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee</span>
+                        <span className="text-sm font-black text-amber-400">₩{parseFloat(transferFee).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+        <DialogFooter className="px-10 py-8 bg-white border-t flex items-center justify-end gap-3 flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isLoading}
+            className="h-14 px-8 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
+          >
             취소
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isLoading || !selectedMembership}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            disabled={isLoading || !selectedMembership || (!toMemberId && recipientType === "existing") || (recipientType === "new" && (!newMemberName || !newMemberPhone))}
+            className="h-14 px-10 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-black gap-3 shadow-xl shadow-indigo-100 hover:-translate-y-1 transition-all"
           >
-            {isLoading ? "처리 중..." : "양도하기"}
+            {isLoading ? (
+              <span className="flex items-center gap-2">처리 중...</span>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5" />
+                양도 승인 및 완료
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -132,7 +132,7 @@ export function MonthlyStatsSection({
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-700">{shortDate}</span>
-                            <Badge variant="ghost" className={`px-2 py-0 h-5 text-[10px] font-black rounded-md ${
+                            <Badge variant="secondary" className={`px-2 py-0 h-5 text-[10px] font-black rounded-md ${
                               isWeekend ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400'
                             }`}>
                               {dayOfWeek}

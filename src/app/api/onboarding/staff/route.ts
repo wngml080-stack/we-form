@@ -4,51 +4,65 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   try {
-    // Supabase Auth 인증 확인
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "로그인이 필요합니다." },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const { name, phone, jobTitle, joinedAt, companyId, email } = body;
 
-    // 이메일 검증: 요청된 이메일이 실제 로그인한 사용자와 일치하는지
-    if (email !== user.email) {
-      return NextResponse.json(
-        { error: "인증 정보가 일치하지 않습니다." },
-        { status: 403 }
-      );
+    if (!email) {
+      return NextResponse.json({ error: "이메일이 필요합니다." }, { status: 400 });
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // 먼저 세션 기반 인증 시도
+    const supabase = await createClient();
+    const { data: { user: sessionUser } } = await supabase.auth.getUser();
+
+    // 세션이 없으면 Admin API로 Supabase Auth에 이메일이 등록되어 있는지 확인
+    if (!sessionUser) {
+      const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+
+      if (listError) {
+        console.error("Auth user list error:", listError);
+        return NextResponse.json({ error: "인증 확인 중 오류가 발생했습니다." }, { status: 500 });
+      }
+
+      const authUser = users?.find(u => u.email === email);
+      if (!authUser) {
+        return NextResponse.json({ error: "회원가입이 완료되지 않았습니다. 먼저 계정을 생성해주세요." }, { status: 401 });
+      }
+    } else {
+      // 세션 사용자가 있으면 이메일 일치 확인
+      if (email !== sessionUser.email) {
+        return NextResponse.json({ error: "인증 정보가 일치하지 않습니다." }, { status: 403 });
+      }
     }
 
     if (!name || !phone || !companyId || !email) {
       return NextResponse.json({ error: "필수 정보가 누락되었습니다." }, { status: 400 });
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
-
     // 이미 등록된 이메일인지 확인
     const { data: existingStaff } = await supabaseAdmin
       .from("staffs")
       .select("id")
       .eq("email", email)
-      .single();
+      .maybeSingle();
 
     if (existingStaff) {
       return NextResponse.json({ error: "이미 등록된 이메일입니다." }, { status: 400 });
     }
 
     // 회사 존재 확인
-    const { data: company } = await supabaseAdmin
+    const { data: company, error: companyError } = await supabaseAdmin
       .from("companies")
       .select("id, status")
       .eq("id", companyId)
-      .single();
+      .maybeSingle();
+
+    if (companyError) {
+      console.error("Company lookup error:", companyError);
+      return NextResponse.json({ error: "회사 정보 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (!company) {
       return NextResponse.json({ error: "존재하지 않는 회사입니다." }, { status: 400 });

@@ -31,6 +31,7 @@ export function WeeklyRoutineSection({
   getCurrentWeekStart,
   getWeeklyRoutine,
   onUpdateRoutine,
+  hideHeaderCard,
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekStart);
 
@@ -108,28 +109,28 @@ export function WeeklyRoutineSection({
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* 주간 네비게이션 - 세련된 디자인 */}
-      <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+      {/* 주간 네비게이션 */}
+      <div className="flex items-center justify-between bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => navigateWeek("prev")}
-          className="hover:bg-blue-50 hover:text-blue-600 rounded-xl"
+          className="h-12 w-12 hover:bg-slate-50 rounded-2xl transition-all"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-6 h-6 text-slate-400" />
         </Button>
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-slate-400" />
+        <div className="flex items-center gap-6">
+          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center shadow-inner">
+            <Calendar className="w-7 h-7 text-slate-400" />
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">주간 스케줄</span>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold text-slate-900">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Management Routine</span>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black text-slate-900 tracking-tight">
                 {getWeekRange(selectedWeek)}
               </span>
               {isCurrentWeek && (
-                <Badge className="bg-blue-600 text-white border-none text-[10px] px-2 py-0">이번 주</Badge>
+                <Badge className="bg-blue-600 text-white border-none text-[10px] font-black px-3 py-1 rounded-lg shadow-lg shadow-blue-100">THIS WEEK</Badge>
               )}
             </div>
           </div>
@@ -138,9 +139,9 @@ export function WeeklyRoutineSection({
           variant="ghost"
           size="icon"
           onClick={() => navigateWeek("next")}
-          className="hover:bg-blue-50 hover:text-blue-600 rounded-xl"
+          className="h-12 w-12 hover:bg-slate-50 rounded-2xl transition-all"
         >
-          <ChevronRight className="w-5 h-5" />
+          <ChevronRight className="w-6 h-6 text-slate-400" />
         </Button>
       </div>
 

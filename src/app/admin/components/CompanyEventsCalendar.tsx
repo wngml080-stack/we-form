@@ -42,7 +42,7 @@ export function CompanyEventsCalendar({
           <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
             <Calendar className="w-5 h-5 text-purple-600" />
           </div>
-          전사 일정 및 행사
+          회사 공지사항
         </h3>
         <span className="bg-slate-50 text-slate-400 font-black text-[10px] px-3 py-1 rounded-lg border border-slate-100 tracking-widest uppercase">{companyEvents.length} Events</span>
       </div>

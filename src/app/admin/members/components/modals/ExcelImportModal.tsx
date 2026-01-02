@@ -14,6 +14,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
+import { FileDown, FileSpreadsheet, X, Info, CheckCircle2, Download, AlertCircle, FileUp, Sparkles, UserPlus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ParsedExcelRow {
   name: string;
@@ -25,7 +27,7 @@ interface ParsedExcelRow {
   additional_products: string[];
   membership_start_date: string;
   membership_end_date: string;
-  membership_name?: string; // 호환성을 위해
+  membership_name?: string;
 }
 
 interface ExcelImportModalProps {
@@ -60,19 +62,12 @@ export function ExcelImportModal({
     }
   };
 
-  // Excel 날짜를 YYYY-MM-DD 문자열로 변환
   const excelDateToString = (excelDate: any): string => {
     if (!excelDate) return "";
-
     if (typeof excelDate === "string") {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(excelDate)) {
-        return excelDate;
-      }
-      if (/^\d{4}[.\/]\d{2}[.\/]\d{2}$/.test(excelDate)) {
-        return excelDate.replace(/[.\/]/g, "-");
-      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(excelDate)) return excelDate;
+      if (/^\d{4}[.\/]\d{2}[.\/]\d{2}$/.test(excelDate)) return excelDate.replace(/[.\/]/g, "-");
     }
-
     if (typeof excelDate === "number") {
       const date = new Date((excelDate - 25569) * 86400 * 1000);
       const year = date.getFullYear();
@@ -80,38 +75,23 @@ export function ExcelImportModal({
       const day = String(date.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     }
-
     return "";
   };
 
-  // 상품명에서 membership_type 자동 감지
   const detectMembershipType = (productName: string): string => {
     const name = productName.toLowerCase();
-
     if (name.includes("ppt")) return "PPT";
     if (name.includes("gpt")) return "GPT";
     if (name.includes("pt")) return "PT";
-    if (name.includes("요가")) return "GX";
+    if (name.includes("요가") || name.includes("gx")) return "GX";
     if (name.includes("필라테스")) return "필라테스";
-    if (name.includes("gx")) return "GX";
     if (name.includes("골프")) return "골프";
-    if (name.includes("하이록스")) return "헬스";
-    if (name.includes("크로스핏")) return "헬스";
-    if (name.includes("헬스")) return "헬스";
-    if (name.includes("락커")) return "헬스";
-    if (name.includes("운동복")) return "헬스";
-    if (name.includes("러닝")) return "헬스";
-
     return "헬스";
   };
 
-  // Excel 파일 처리
-  const handleExcelFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setExcelFile(file);
 
     try {
@@ -137,38 +117,23 @@ export function ExcelImportModal({
           const matchedColumns = columns.filter((col) => col.includes(keyword));
           for (const col of matchedColumns) {
             const value = row[col];
-            if (value && String(value).trim()) {
-              matchedValues.push(String(value).trim());
-            }
+            if (value && String(value).trim()) matchedValues.push(String(value).trim());
           }
         }
         return matchedValues;
       };
 
       const mapped = jsonData.map((row: any) => {
-        const birthDate = excelDateToString(
-          findColumn(row, ["생년월일", "생일"])
-        );
+        const birthDate = excelDateToString(findColumn(row, ["생년월일", "생일"]));
         const startDate = excelDateToString(findColumn(row, ["등록", "시작"]));
         const endDate = excelDateToString(findColumn(row, ["만료", "종료"]));
-        const membershipNames = findAllColumns(row, [
-          "회원권",
-          "대여권",
-          "이용권",
-        ]);
+        const membershipNames = findAllColumns(row, ["회원권", "대여권", "이용권"]);
         const courseNames = findAllColumns(row, ["수강권", "횟수권"]);
         const additionalProducts = findAllColumns(row, ["부가상품"]);
         const name = findColumn(row, ["회원명", "이름", "성명"]) || "";
-        const phone =
-          findColumn(row, ["연락처", "전화번호", "휴대폰", "폰번호", "전화"]) ||
-          "";
+        const phone = findColumn(row, ["연락처", "전화번호", "휴대폰", "폰번호", "전화"]) || "";
         const genderValue = findColumn(row, ["성별"]);
-        const gender =
-          genderValue === "남성" || genderValue === "남"
-            ? "male"
-            : genderValue === "여성" || genderValue === "여"
-              ? "female"
-              : "";
+        const gender = genderValue === "남성" || genderValue === "남" ? "male" : genderValue === "여성" || genderValue === "여" ? "female" : "";
 
         return {
           name,
@@ -193,7 +158,6 @@ export function ExcelImportModal({
     }
   };
 
-  // Excel 데이터 일괄 등록
   const handleBulkImport = async () => {
     if (!parsedExcelData || parsedExcelData.length === 0) {
       toast.warning("가져올 데이터가 없습니다.");
@@ -205,9 +169,7 @@ export function ExcelImportModal({
       return;
     }
 
-    const confirmed = confirm(
-      `${parsedExcelData.length}명의 회원을 등록하시겠습니까?`
-    );
+    const confirmed = confirm(`${parsedExcelData.length}명의 회원을 등록하시겠습니까?`);
     if (!confirmed) return;
 
     setIsLoading(true);
@@ -240,68 +202,30 @@ export function ExcelImportModal({
 
           const today = new Date().toISOString().split("T")[0];
 
-          // 회원권 등록
-          if (
-            row.membership_names &&
-            row.membership_names.length > 0 &&
-            newMember
-          ) {
-            for (const membershipName of row.membership_names) {
-              await supabase.from("member_memberships").insert({
-                company_id: companyId,
-                gym_id: gymId,
-                member_id: newMember.id,
-                name: membershipName,
-                membership_type: detectMembershipType(membershipName),
-                total_sessions: null,
-                used_sessions: 0,
-                start_date: row.membership_start_date || today,
-                end_date: row.membership_end_date || null,
-                status: "active",
-                memo: "[엑셀 가져오기 - 회원권] 수정 불가",
-              });
-            }
-          }
+          // 회원권/수강권/부가상품 등록 로직 동일
+          const allProductNames = [
+            ...(row.membership_names || []),
+            ...(row.course_names || []),
+            ...(row.additional_products || [])
+          ];
 
-          // 수강권 등록
-          if (row.course_names && row.course_names.length > 0 && newMember) {
-            for (const courseName of row.course_names) {
-              await supabase.from("member_memberships").insert({
-                company_id: companyId,
-                gym_id: gymId,
-                member_id: newMember.id,
-                name: courseName,
-                membership_type: detectMembershipType(courseName),
-                total_sessions: null,
-                used_sessions: 0,
-                start_date: row.membership_start_date || today,
-                end_date: row.membership_end_date || null,
-                status: "active",
-                memo: "[엑셀 가져오기 - 수강권] 수정 불가",
-              });
-            }
-          }
+          for (const productName of allProductNames) {
+            const { error: membershipError } = await supabase.from("member_memberships").insert({
+              company_id: companyId,
+              gym_id: gymId,
+              member_id: newMember.id,
+              name: productName,
+              membership_type: detectMembershipType(productName),
+              total_sessions: null,
+              used_sessions: 0,
+              start_date: row.membership_start_date || today,
+              end_date: row.membership_end_date || null,
+              status: "active",
+              memo: "[엑셀 가져오기] 상세 정보 수정 필요",
+            });
 
-          // 부가상품 등록
-          if (
-            row.additional_products &&
-            row.additional_products.length > 0 &&
-            newMember
-          ) {
-            for (const additionalProduct of row.additional_products) {
-              await supabase.from("member_memberships").insert({
-                company_id: companyId,
-                gym_id: gymId,
-                member_id: newMember.id,
-                name: additionalProduct,
-                membership_type: detectMembershipType(additionalProduct),
-                total_sessions: null,
-                used_sessions: 0,
-                start_date: row.membership_start_date || today,
-                end_date: row.membership_end_date || null,
-                status: "active",
-                memo: "[엑셀 가져오기 - 부가상품] 수정 불가",
-              });
+            if (membershipError) {
+              console.error(`회원권 등록 실패 (${row.name} - ${productName}):`, membershipError);
             }
           }
 
@@ -326,134 +250,225 @@ export function ExcelImportModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-white max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Excel 회원 데이터 가져오기</DialogTitle>
-          <DialogDescription className="sr-only">
-            Excel 파일에서 회원 데이터를 가져옵니다
-          </DialogDescription>
+      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <DialogTitle className="flex items-center gap-5 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <FileSpreadsheet className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-white tracking-tight">회원 데이터 일괄 업로드</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <p className="text-sm text-slate-400 font-bold">Excel 파일을 통한 대규모 회원 정보 등록</p>
+              </div>
+            </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">기존 회원 데이터를 엑셀로 한 번에 가져옵니다</DialogDescription>
+          <button
+            onClick={handleClose}
+            className="absolute top-8 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10"
+          >
+            <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+          </button>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* 안내 메시지 */}
-          <div className="bg-blue-50 p-4 rounded-md">
-            <h4 className="font-semibold text-blue-900 mb-2">
-              Excel 파일 형식 안내
-            </h4>
-            <p className="text-sm text-blue-700 mb-2">
-              다음 컬럼명을 사용하여 Excel 파일을 준비해주세요:
-            </p>
-            <div className="text-sm text-blue-800">
-              <ul className="list-disc list-inside space-y-1">
-                <li>
-                  <strong>회원명</strong> (필수)
-                </li>
-                <li>
-                  <strong>연락처</strong> (필수)
-                </li>
-                <li>
-                  <strong>생년월일</strong> (선택, 예: 1990-01-01)
-                </li>
-                <li>
-                  <strong>성별</strong> (선택, "남성" 또는 "여성")
-                </li>
-                <li>
-                  <strong>회원권이름</strong> (선택)
-                </li>
-                <li>
-                  <strong>시작일</strong> (선택, 예: 2024-01-01)
-                </li>
-                <li>
-                  <strong>종료일</strong> (선택, 예: 2024-12-31)
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* 파일 업로드 */}
-          <div className="space-y-2">
-            <Label className="text-[#0F4C5C]">Excel 파일 선택</Label>
-            <input
-              type="file"
-              accept=".xlsx, .xls"
-              onChange={handleExcelFileChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {excelFile && (
-              <p className="text-sm text-gray-600">
-                선택된 파일: {excelFile.name}
-              </p>
-            )}
-          </div>
-
-          {/* 미리보기 테이블 */}
-          {parsedExcelData.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-semibold text-gray-900">
-                데이터 미리보기 ({parsedExcelData.length}명)
-              </h4>
-              <div className="border rounded-md overflow-x-auto max-h-[400px] overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b sticky top-0">
-                    <tr>
-                      <th className="px-3 py-2 text-left">회원명</th>
-                      <th className="px-3 py-2 text-left">연락처</th>
-                      <th className="px-3 py-2 text-left">생년월일</th>
-                      <th className="px-3 py-2 text-left">성별</th>
-                      <th className="px-3 py-2 text-left">회원권</th>
-                      <th className="px-3 py-2 text-left">시작일</th>
-                      <th className="px-3 py-2 text-left">종료일</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parsedExcelData.map((row, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="px-3 py-2">{row.name || "-"}</td>
-                        <td className="px-3 py-2">{row.phone || "-"}</td>
-                        <td className="px-3 py-2">{row.birth_date || "-"}</td>
-                        <td className="px-3 py-2">
-                          {row.gender === "male"
-                            ? "남성"
-                            : row.gender === "female"
-                              ? "여성"
-                              : "-"}
-                        </td>
-                        <td className="px-3 py-2">
-                          {row.membership_name || "-"}
-                        </td>
-                        <td className="px-3 py-2">
-                          {row.membership_start_date || "-"}
-                        </td>
-                        <td className="px-3 py-2">
-                          {row.membership_end_date || "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-[#f8fafc]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {/* 가이드 섹션 */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <Info className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">Excel 준비 가이드</h3>
               </div>
-              <p className="text-xs text-gray-500">
-                * 회원명과 연락처가 없는 행은 등록되지 않습니다.
-              </p>
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+                <p className="text-sm font-bold text-slate-500 leading-relaxed">
+                  원활한 업로드를 위해 아래 컬럼명이 포함된 엑셀 파일을 준비해주세요. 컬럼 순서는 상관없습니다.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "회원명", required: true },
+                    { label: "연락처", required: true },
+                    { label: "생년월일", required: false },
+                    { label: "성별", required: false },
+                    { label: "회원권이름", required: false },
+                    { label: "시작일", required: false },
+                    { label: "종료일", required: false },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className={cn("w-1.5 h-1.5 rounded-full", item.required ? "bg-rose-500" : "bg-slate-300")}></div>
+                      <span className="text-xs font-black text-slate-700">{item.label}</span>
+                      {item.required && <span className="text-[10px] font-black text-rose-500 uppercase ml-auto">Req</span>}
+                    </div>
+                  ))}
+                </div>
+                <Button variant="outline" className="w-full h-12 rounded-2xl font-black gap-2 border-slate-200">
+                  <Download className="w-4 h-4" />
+                  샘플 엑셀 다운로드
+                </Button>
+              </div>
             </div>
+
+            {/* 업로드 섹션 */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <FileUp className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">파일 업로드</h3>
+              </div>
+              <div className="bg-white rounded-[32px] p-10 border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group relative overflow-hidden flex flex-col items-center justify-center text-center">
+                {excelFile ? (
+                  <div className="space-y-4">
+                    <div className="w-20 h-20 rounded-3xl bg-emerald-100 flex items-center justify-center mx-auto shadow-xl shadow-emerald-100">
+                      <FileSpreadsheet className="w-10 h-10 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-black text-slate-900 truncate max-w-[200px]">{excelFile.name}</p>
+                      <p className="text-xs font-bold text-emerald-600">파일이 준비되었습니다.</p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setExcelFile(null)}
+                      className="text-slate-400 hover:text-rose-500 font-bold"
+                    >
+                      다른 파일 선택하기
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="w-20 h-20 rounded-3xl bg-slate-50 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                      <FileUp className="w-10 h-10 text-slate-300 group-hover:text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-black text-slate-900">클릭하여 파일 선택</p>
+                      <p className="text-xs font-bold text-slate-400">.xlsx 또는 .xls 파일만 가능합니다.</p>
+                    </div>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  onChange={handleExcelFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 미리보기 섹션 */}
+          {parsedExcelData.length > 0 && (
+            <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">데이터 미리보기</h3>
+                </div>
+                <div className="px-4 py-1.5 bg-emerald-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100">
+                  {parsedExcelData.length} Members Loaded
+                </div>
+              </div>
+
+              <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto max-h-[400px]">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/50 border-b border-slate-100">
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Member Name</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Birth</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Gender</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Membership</th>
+                        <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Period</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {parsedExcelData.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 font-black text-slate-900">{row.name || "-"}</td>
+                          <td className="px-6 py-4 font-bold text-slate-500 text-sm">{row.phone || "-"}</td>
+                          <td className="px-6 py-4 font-bold text-slate-500 text-sm">{row.birth_date || "-"}</td>
+                          <td className="px-6 py-4">
+                            {row.gender ? (
+                              <span className={cn(
+                                "px-3 py-1 rounded-full text-[10px] font-black uppercase",
+                                row.gender === "male" ? "bg-blue-50 text-blue-600" : "bg-rose-50 text-rose-600"
+                              )}>
+                                {row.gender === "male" ? "MALE" : "FEMALE"}
+                              </span>
+                            ) : "-"}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600 truncate max-w-[120px] inline-block">
+                              {row.membership_name || "-"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400">
+                              <span>{row.membership_start_date || "-"}</span>
+                              <ArrowRight className="w-3 h-3" />
+                              <span className="text-slate-900">{row.membership_end_date || "-"}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+        <DialogFooter className="px-10 py-8 bg-white border-t flex items-center justify-end gap-3 flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            className="h-14 px-8 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
+          >
             취소
           </Button>
           <Button
             onClick={handleBulkImport}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
             disabled={isLoading || parsedExcelData.length === 0}
+            className="h-14 px-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black gap-3 shadow-xl shadow-emerald-100 hover:-translate-y-1 transition-all text-white"
           >
-            {isLoading
-              ? "등록 중..."
-              : `${parsedExcelData.length}명 일괄 등록`}
+            {isLoading ? (
+              <span className="flex items-center gap-2">데이터 등록 중...</span>
+            ) : (
+              <>
+                <UserPlus className="w-5 h-5" />
+                {parsedExcelData.length}명 일괄 등록하기
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ArrowRight(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
   );
 }

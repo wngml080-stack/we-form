@@ -76,7 +76,12 @@ export default function SalesPage(props: {
       payment_date: new Date().toISOString().split("T")[0],
       sale_type: "신규",
       method: "card",
-      installment: 1
+      installment: 1,
+      service_sessions: 0,
+      validity_per_session: 0,
+      membership_start_date: new Date().toISOString().split("T")[0],
+      visit_route: "워크인",
+      expiry_type: "60일 이내"
     });
   };
 
@@ -121,7 +126,12 @@ export default function SalesPage(props: {
       method: payment.method,
       installment: payment.installment || 1,
       trainer_id: payment.trainer_id || "",
-      memo: payment.memo || ""
+      memo: payment.memo || "",
+      service_sessions: payment.service_sessions || 0,
+      validity_per_session: payment.validity_per_session || 0,
+      membership_start_date: payment.membership_start_date || payment.created_at?.split("T")[0] || "",
+      visit_route: payment.visit_route || "워크인",
+      expiry_type: payment.expiry_type || "60일 이내"
     });
   };
 
@@ -148,7 +158,12 @@ export default function SalesPage(props: {
       installment: editForm.installment,
       trainer_id: editForm.trainer_id || undefined,
       trainer_name: trainer?.name || undefined,
-      memo: editForm.memo
+      memo: editForm.memo,
+      service_sessions: editForm.service_sessions,
+      validity_per_session: editForm.validity_per_session,
+      membership_start_date: editForm.membership_start_date,
+      visit_route: editForm.visit_route,
+      expiry_type: editForm.expiry_type
     });
 
     setEditingId(null);

@@ -14,6 +14,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
+import { Package, X, Calendar as CalendarIcon, Info, Save, CreditCard, Banknote, History, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AddonPayment {
   id: string;
@@ -201,108 +203,194 @@ export function AddonEditModal({
     }
   };
 
+  const getMethodLabel = (method: string) => {
+    switch (method) {
+      case "card": return "카드";
+      case "cash": return "현금";
+      case "transfer": return "계좌이체";
+      default: return method;
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>부가상품 수정</DialogTitle>
-          <DialogDescription className="text-gray-500">
-            {memberName}님의 부가상품을 수정합니다
-          </DialogDescription>
+      <DialogContent className="max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <DialogTitle className="flex items-center gap-5 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <Package className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-white tracking-tight">부가상품 수정</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>
+                <p className="text-sm text-slate-400 font-bold">{memberName}님의 이용 정보 변경</p>
+              </div>
+            </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">부가상품의 이용 기간 및 정보를 수정합니다</DialogDescription>
+          <button
+            onClick={handleClose}
+            className="absolute top-8 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10"
+          >
+            <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+          </button>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          {/* 부가상품 유형 (수정 불가) */}
-          <div className="space-y-2">
-            <Label className="text-gray-500">부가상품 유형</Label>
-            <Input
-              value={formData.addon_type === "기타" ? formData.custom_addon_name : formData.addon_type}
-              disabled
-              className="bg-gray-100 text-gray-500"
-            />
-          </div>
 
-          {/* 락커 번호 (수정 가능) */}
-          {(formData.addon_type === "개인락커" ||
-            formData.addon_type === "물품락커") && (
-            <div className="space-y-2">
-              <Label>락커 번호</Label>
-              <Input
-                value={formData.locker_number}
-                onChange={(e) =>
-                  setFormData({ ...formData, locker_number: e.target.value })
-                }
-                placeholder="예: 15"
-              />
+        <div className="flex-1 overflow-y-auto p-10 space-y-8 bg-[#f8fafc]">
+          {/* 상품 정보 요약 카드 */}
+          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center">
+                <Info className="w-8 h-8 text-slate-400" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Product Type</p>
+                <h4 className="text-xl font-black text-slate-900">
+                  {formData.addon_type === "기타" ? formData.custom_addon_name : formData.addon_type}
+                </h4>
+              </div>
             </div>
-          )}
-
-          {/* 금액 (수정 불가) */}
-          <div className="space-y-2">
-            <Label className="text-gray-500">금액</Label>
-            <Input
-              type="text"
-              value={formData.amount ? `${Number(formData.amount).toLocaleString()}원` : ""}
-              disabled
-              className="bg-gray-100 text-gray-500"
-            />
-          </div>
-
-          {/* 결제방법 (수정 불가) */}
-          <div className="space-y-2">
-            <Label className="text-gray-500">결제방법</Label>
-            <Input
-              value={formData.method === "card" ? "카드" : formData.method === "cash" ? "현금" : formData.method === "transfer" ? "계좌이체" : formData.method}
-              disabled
-              className="bg-gray-100 text-gray-500"
-            />
-          </div>
-
-          {/* 시작일 / 종료일 (수정 가능) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>시작일</Label>
-              <Input
-                type="date"
-                value={formData.start_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, start_date: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>종료일</Label>
-              <Input
-                type="date"
-                value={formData.end_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, end_date: e.target.value })
-                }
-              />
+            <div className="text-right">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment Method</p>
+              <div className="flex items-center gap-2 justify-end">
+                {formData.method === "card" ? <CreditCard className="w-4 h-4 text-purple-500" /> : <Banknote className="w-4 h-4 text-emerald-500" />}
+                <span className="text-lg font-black text-slate-900">{getMethodLabel(formData.method)}</span>
+              </div>
             </div>
           </div>
 
-          {/* 메모 */}
-          <div className="space-y-2">
-            <Label>메모</Label>
-            <Input
-              value={formData.memo}
-              onChange={(e) =>
-                setFormData({ ...formData, memo: e.target.value })
-              }
-              placeholder="추가 메모"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-8">
+              {/* 기간 설정 섹션 */}
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black">
+                    <CalendarIcon className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">이용 기간 설정</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</Label>
+                    <div className="relative group">
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
+                      <Input
+                        type="date"
+                        value={formData.start_date}
+                        onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                        className="h-12 pl-11 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-indigo-100 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">End Date</Label>
+                    <div className="relative group">
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-rose-500 transition-colors" />
+                      <Input
+                        type="date"
+                        value={formData.end_date}
+                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        className="h-12 pl-11 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-rose-100 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 금액 정보 섹션 (읽기 전용 스타일) */}
+              <div className="bg-slate-900 rounded-[32px] p-8 text-white space-y-4 shadow-xl shadow-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Paid</span>
+                  <History className="w-4 h-4 text-slate-500" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-black text-white">{formData.amount ? Number(formData.amount).toLocaleString() : "0"}</span>
+                  <span className="text-xl font-black text-slate-500 tracking-tighter">KRW</span>
+                </div>
+                <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500">Fixed Value</span>
+                  <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">Read Only</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              {/* 상세 정보 섹션 */}
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xs font-black">
+                    <Save className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">추가 상세 정보</h3>
+                </div>
+
+                <div className="space-y-4">
+                  {(formData.addon_type === "개인락커" || formData.addon_type === "물품락커") && (
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Locker Number</Label>
+                      <div className="relative">
+                        <Input
+                          value={formData.locker_number}
+                          onChange={(e) => setFormData({ ...formData, locker_number: e.target.value })}
+                          placeholder="예: 15"
+                          className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-purple-100 pl-11"
+                        />
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-black text-xs">NO.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Notes / Memo</Label>
+                    <Input
+                      value={formData.memo}
+                      onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
+                      placeholder="추가 메모를 입력하세요"
+                      className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-purple-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 안내 팁 */}
+              <div className="bg-indigo-50 rounded-[32px] p-8 border border-indigo-100 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-indigo-600" />
+                  <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Quick Tip</span>
+                </div>
+                <p className="text-sm font-bold text-indigo-900 leading-relaxed">
+                  이용 기간은 반드시 <span className="text-indigo-600 underline underline-offset-4">종료일 기준으로 자동 계산되지 않으므로</span>, 직접 시작일과 종료일을 확인하여 수정해주세요.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+
+        <DialogFooter className="px-10 py-8 bg-white border-t flex items-center justify-end gap-3 flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            className="h-14 px-8 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
+          >
             취소
           </Button>
           <Button
             onClick={handleSubmit}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
             disabled={isLoading}
+            className="h-14 px-10 rounded-2xl bg-slate-900 hover:bg-black font-black gap-3 shadow-xl shadow-slate-100 hover:-translate-y-1 transition-all text-white"
           >
-            {isLoading ? "저장 중..." : "저장하기"}
+            {isLoading ? (
+              <span className="flex items-center gap-2">수정 중...</span>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                정보 수정 완료
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

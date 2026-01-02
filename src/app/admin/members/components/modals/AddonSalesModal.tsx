@@ -31,7 +31,8 @@ import {
   parseAddonInfo,
 } from "@/lib/utils/addon-utils";
 
-import { Package } from "lucide-react";
+import { Package, X, Search, User, CreditCard, Calendar as CalendarIcon, Info, Save, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ActiveAddon for this modal (simpler than the utility's version)
 interface ActiveAddon extends ParsedAddonInfo {
@@ -260,312 +261,340 @@ export function AddonSalesModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="bg-white max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>부가상품 매출등록</DialogTitle>
-          <DialogDescription className="text-gray-500">
-            기존 회원에게 부가상품을 판매합니다
-          </DialogDescription>
+      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <DialogTitle className="flex items-center gap-5 relative z-10">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
+              <Package className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-white tracking-tight">부가상품 매출 등록</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span>
+                <p className="text-sm text-slate-400 font-bold">회원의 부가 서비스를 신속하게 등록하세요</p>
+              </div>
+            </div>
+          </DialogTitle>
+          <DialogDescription className="sr-only">기존 회원에게 부가상품을 판매합니다</DialogDescription>
+          <button
+            onClick={handleClose}
+            className="absolute top-8 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10"
+          >
+            <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+          </button>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          {/* 회원 선택 */}
-          <div className="space-y-2">
-            <Label>
-              회원 선택 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              value={memberSearch}
-              onChange={(e) => setMemberSearch(e.target.value)}
-              placeholder="회원 이름 또는 전화번호 검색..."
-              className="mb-2"
-            />
-            <Select
-              value={formData.member_id}
-              onValueChange={handleMemberSelect}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="회원을 선택하세요" />
-              </SelectTrigger>
-              <SelectContent className="bg-white max-h-[200px]">
-                {filteredMembers.length === 0 ? (
-                  <div className="p-4 text-sm text-gray-500 text-center">
-                    {memberSearch ? "검색 결과가 없습니다." : "등록된 회원이 없습니다."}
-                  </div>
-                ) : (
-                  filteredMembers.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.name} ({member.phone})
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* 기존 활성 부가상품 표시 */}
-          {activeAddons.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-              <div className="flex items-center gap-2 text-amber-800 font-medium text-sm">
-                <Package className="w-4 h-4" />
-                현재 이용중인 부가상품
+        <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-[#f8fafc]">
+          {/* 회원 선택 섹션 */}
+          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">1</div>
+              <h3 className="text-lg font-black text-slate-900">회원 검색 및 선택</h3>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                <Input
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="회원 이름 또는 전화번호 검색..."
+                  className="h-14 pl-12 bg-slate-50 border-none rounded-2xl font-bold text-lg focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-300"
+                />
               </div>
-              <div className="flex flex-wrap gap-2">
-                {activeAddons.map((addon, idx) => {
-                  const colors = ADDON_TYPE_COLORS[addon.type] || ADDON_TYPE_COLORS["기타"];
-                  return (
-                    <div
-                      key={idx}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${colors.bg} border`}
-                    >
-                      <Badge className={`border-0 text-xs ${colors.badge}`}>
-                        {addon.type}
-                      </Badge>
-                      <span className={`text-xs font-medium ${colors.text}`}>
-                        {addon.lockerNumber ? `${addon.lockerNumber}번` : addon.displayName}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ~{addon.endDate}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-amber-700">
-                동일 유형의 부가상품은 기존 만료일 이후부터 등록 가능합니다.
-              </p>
-            </div>
-          )}
-
-          {/* 부가상품 유형 */}
-          <div className="space-y-2">
-            <Label>
-              부가상품 유형 <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={formData.addon_type}
-              onValueChange={(v) => {
-                let newStartDate = formData.start_date;
-                // 락커 유형인 경우 기존 락커 종료일 확인
-                if (v === "개인락커" || v === "물품락커") {
-                  const latestEndDate = getLatestLockerEndDate(memberPayments, v);
-                  if (latestEndDate) {
-                    const minStartDate = getNextDay(latestEndDate);
-                    newStartDate = minStartDate;
-                    toast.info(`기존 ${v}가 ${latestEndDate}까지 있어 ${minStartDate}부터 시작합니다.`);
-                  }
-                }
-                const newEndDate = calculateEndDate(newStartDate, formData.duration, formData.duration_type);
-                setFormData({
-                  ...formData,
-                  addon_type: v,
-                  custom_addon_name: "",
-                  locker_number: "",
-                  start_date: newStartDate,
-                  end_date: newEndDate,
-                });
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="유형 선택" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="개인락커">개인락커</SelectItem>
-                <SelectItem value="물품락커">물품락커</SelectItem>
-                <SelectItem value="운동복">운동복</SelectItem>
-                <SelectItem value="양말">양말</SelectItem>
-                <SelectItem value="기타">기타</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 락커 번호 */}
-          {(formData.addon_type === "개인락커" ||
-            formData.addon_type === "물품락커") && (
-            <div className="space-y-2">
-              <Label>락커 번호</Label>
-              <Input
-                value={formData.locker_number}
-                onChange={(e) =>
-                  setFormData({ ...formData, locker_number: e.target.value })
-                }
-                placeholder="예: 15"
-              />
-            </div>
-          )}
-
-          {/* 기타 선택 시 직접 입력 */}
-          {formData.addon_type === "기타" && (
-            <div className="space-y-2">
-              <Label>
-                상품명 직접 입력 <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                value={formData.custom_addon_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, custom_addon_name: e.target.value })
-                }
-                placeholder="상품명을 입력하세요"
-              />
-            </div>
-          )}
-
-          {/* 금액 */}
-          <div className="space-y-2">
-            <Label>
-              금액 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              type="number"
-              value={formData.amount}
-              onChange={(e) =>
-                setFormData({ ...formData, amount: e.target.value })
-              }
-              placeholder="50000"
-            />
-          </div>
-
-          {/* 결제방법 */}
-          <div className="space-y-2">
-            <Label>결제방법</Label>
-            <Select
-              value={formData.method}
-              onValueChange={(v) => setFormData({ ...formData, method: v })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="card">카드</SelectItem>
-                <SelectItem value="cash">현금</SelectItem>
-                <SelectItem value="transfer">계좌이체</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 기간 */}
-          <div className="space-y-2">
-            <Label>기간</Label>
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                value={formData.duration}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  const newEndDate = calculateEndDate(
-                    formData.start_date,
-                    value,
-                    formData.duration_type
-                  );
-                  setFormData({
-                    ...formData,
-                    duration: value,
-                    end_date: newEndDate,
-                  });
-                }}
-                placeholder="숫자 입력"
-                className="flex-1"
-              />
               <Select
-                value={formData.duration_type}
-                onValueChange={(v: "months" | "days") => {
-                  const newEndDate = calculateEndDate(
-                    formData.start_date,
-                    formData.duration,
-                    v
-                  );
-                  setFormData({
-                    ...formData,
-                    duration_type: v,
-                    end_date: newEndDate,
-                  });
-                }}
+                value={formData.member_id}
+                onValueChange={handleMemberSelect}
               >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
+                <SelectTrigger className="h-12 bg-white border-slate-100 rounded-xl font-bold">
+                  <SelectValue placeholder="검색 결과에서 회원을 선택하세요" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
-                  <SelectItem value="months">개월</SelectItem>
-                  <SelectItem value="days">일</SelectItem>
+                <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2 max-h-[300px]">
+                  {filteredMembers.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <User className="w-6 h-6 text-slate-200" />
+                      </div>
+                      <p className="text-sm font-black text-slate-400">검색 결과가 없습니다</p>
+                    </div>
+                  ) : (
+                    filteredMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id} className="rounded-xl font-bold py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-900">{member.name}</span>
+                          <span className="text-slate-400 font-medium text-xs">{member.phone}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 기존 활성 부가상품 표시 */}
+            {activeAddons.length > 0 && (
+              <div className="bg-amber-50 rounded-3xl p-6 border border-amber-100/50 space-y-4 animate-in slide-in-from-top-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <Package className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <span className="text-sm font-black text-amber-900">현재 이용 중인 부가상품</span>
+                  </div>
+                  <Badge className="bg-amber-200 text-amber-700 border-none font-black text-[10px] tracking-widest">{activeAddons.length} ACTIVE</Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {activeAddons.map((addon, idx) => {
+                    const colors = ADDON_TYPE_COLORS[addon.type] || ADDON_TYPE_COLORS["기타"];
+                    return (
+                      <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-amber-100 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className={cn("w-2 h-2 rounded-full", colors.badge.split(' ')[0])}></div>
+                          <div>
+                            <p className="text-xs font-black text-slate-900">{addon.lockerNumber ? `${addon.type} ${addon.lockerNumber}번` : addon.displayName}</p>
+                            <p className="text-[10px] font-bold text-slate-400">~ {addon.endDate}</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-200" />
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold text-amber-600">
+                  <Info className="w-3 h-3" /> 동일 유형은 기존 만료일 이후부터 등록 가능합니다
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* 결제일 */}
-          <div className="space-y-2">
-            <Label>결제일</Label>
-            <Input
-              type="date"
-              value={formData.payment_date}
-              onChange={(e) =>
-                setFormData({ ...formData, payment_date: e.target.value })
-              }
-            />
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 상품 정보 섹션 */}
+            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xs font-black">2</div>
+                <h3 className="text-lg font-black text-slate-900">상품 상세 정보</h3>
+              </div>
 
-          {/* 시작일 / 종료일 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>시작일</Label>
-              <Input
-                type="date"
-                value={formData.start_date}
-                min={getMinStartDate(formData.addon_type)}
-                onChange={(e) => {
-                  const newStartDate = e.target.value;
-                  // 락커 유형인 경우 시작일 검증
-                  const minStartDate = getMinStartDate(formData.addon_type);
-                  if (minStartDate && newStartDate < minStartDate) {
-                    toast.error(`기존 ${formData.addon_type}가 있어 ${minStartDate} 이후로만 설정 가능합니다.`);
-                    return;
-                  }
-                  const newEndDate = calculateEndDate(
-                    newStartDate,
-                    formData.duration,
-                    formData.duration_type
-                  );
-                  setFormData({
-                    ...formData,
-                    start_date: newStartDate,
-                    end_date: newEndDate,
-                  });
-                }}
-              />
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Addon Type *</Label>
+                  <Select
+                    value={formData.addon_type}
+                    onValueChange={(v) => {
+                      let newStartDate = formData.start_date;
+                      if (v === "개인락커" || v === "물품락커") {
+                        const latestEndDate = getLatestLockerEndDate(memberPayments, v);
+                        if (latestEndDate) {
+                          const minStartDate = getNextDay(latestEndDate);
+                          newStartDate = minStartDate;
+                          toast.info(`기존 ${v}가 ${latestEndDate}까지 있어 ${minStartDate}부터 시작합니다.`);
+                        }
+                      }
+                      const newEndDate = calculateEndDate(newStartDate, formData.duration, formData.duration_type);
+                      setFormData({
+                        ...formData,
+                        addon_type: v,
+                        custom_addon_name: "",
+                        locker_number: "",
+                        start_date: newStartDate,
+                        end_date: newEndDate,
+                      });
+                    }}
+                  >
+                    <SelectTrigger className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-purple-100">
+                      <SelectValue placeholder="유형 선택" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
+                      <SelectItem value="개인락커" className="rounded-xl font-bold py-2">개인락커</SelectItem>
+                      <SelectItem value="물품락커" className="rounded-xl font-bold py-2">물품락커</SelectItem>
+                      <SelectItem value="운동복" className="rounded-xl font-bold py-2">운동복</SelectItem>
+                      <SelectItem value="양말" className="rounded-xl font-bold py-2">양말</SelectItem>
+                      <SelectItem value="기타" className="rounded-xl font-bold py-2">기타 (직접입력)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(formData.addon_type === "개인락커" || formData.addon_type === "물품락커") && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Locker Number</Label>
+                    <Input
+                      value={formData.locker_number}
+                      onChange={(e) => setFormData({ ...formData, locker_number: e.target.value })}
+                      placeholder="예: 15"
+                      className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-purple-100"
+                    />
+                  </div>
+                )}
+
+                {formData.addon_type === "기타" && (
+                  <div className="space-y-2 animate-in slide-in-from-top-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Custom Name *</Label>
+                    <Input
+                      value={formData.custom_addon_name}
+                      onChange={(e) => setFormData({ ...formData, custom_addon_name: e.target.value })}
+                      placeholder="상품명을 입력하세요"
+                      className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-purple-100"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Amount *</Label>
+                  <div className="relative group">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-black">₩</span>
+                    <Input
+                      type="number"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      placeholder="0"
+                      className="h-14 pl-10 bg-slate-50 border-none rounded-2xl font-black text-xl focus:ring-2 focus:ring-purple-100 placeholder:text-slate-200"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Payment Method</Label>
+                  <Select
+                    value={formData.method}
+                    onValueChange={(v) => setFormData({ ...formData, method: v })}
+                  >
+                    <SelectTrigger className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-purple-100">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
+                      <SelectItem value="card" className="rounded-xl font-bold py-2 text-blue-600 bg-blue-50 mb-1">카드 (Card)</SelectItem>
+                      <SelectItem value="cash" className="rounded-xl font-bold py-2 text-emerald-600 bg-emerald-50 mb-1">현금 (Cash)</SelectItem>
+                      <SelectItem value="transfer" className="rounded-xl font-bold py-2 text-indigo-600 bg-indigo-50">계좌이체 (Transfer)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>종료일</Label>
-              <Input
-                type="date"
-                value={formData.end_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, end_date: e.target.value })
-                }
-              />
-            </div>
-          </div>
 
-          {/* 메모 */}
-          <div className="space-y-2">
-            <Label>메모</Label>
-            <Input
-              value={formData.memo}
-              onChange={(e) =>
-                setFormData({ ...formData, memo: e.target.value })
-              }
-              placeholder="추가 메모"
-            />
+            {/* 기간 정보 섹션 */}
+            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-black">3</div>
+                <h3 className="text-lg font-black text-slate-900">기간 및 일정 설정</h3>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Duration</Label>
+                  <div className="flex gap-3">
+                    <Input
+                      type="number"
+                      value={formData.duration}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const newEndDate = calculateEndDate(formData.start_date, value, formData.duration_type);
+                        setFormData({ ...formData, duration: value, end_date: newEndDate });
+                      }}
+                      placeholder="숫자"
+                      className="h-12 flex-1 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100"
+                    />
+                    <Select
+                      value={formData.duration_type}
+                      onValueChange={(v: "months" | "days") => {
+                        const newEndDate = calculateEndDate(formData.start_date, formData.duration, v);
+                        setFormData({ ...formData, duration_type: v, end_date: newEndDate });
+                      }}
+                    >
+                      <SelectTrigger className="h-12 w-28 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
+                        <SelectItem value="months" className="rounded-xl font-bold py-2">개월</SelectItem>
+                        <SelectItem value="days" className="rounded-xl font-bold py-2">일</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</Label>
+                    <div className="relative group">
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-emerald-500 transition-colors" />
+                      <Input
+                        type="date"
+                        value={formData.start_date}
+                        min={getMinStartDate(formData.addon_type)}
+                        onChange={(e) => {
+                          const newStartDate = e.target.value;
+                          const minStartDate = getMinStartDate(formData.addon_type);
+                          if (minStartDate && newStartDate < minStartDate) {
+                            toast.error(`기존 ${formData.addon_type}가 있어 ${minStartDate} 이후로만 설정 가능합니다.`);
+                            return;
+                          }
+                          const newEndDate = calculateEndDate(newStartDate, formData.duration, formData.duration_type);
+                          setFormData({ ...formData, start_date: newStartDate, end_date: newEndDate });
+                        }}
+                        className="h-12 pl-11 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">End Date</Label>
+                    <div className="relative">
+                      <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                      <Input
+                        type="date"
+                        value={formData.end_date}
+                        onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                        className="h-12 pl-11 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Payment Date</Label>
+                  <Input
+                    type="date"
+                    value={formData.payment_date}
+                    onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                    className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Memo</Label>
+                  <Input
+                    value={formData.memo}
+                    onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
+                    placeholder="추가적인 메모 사항이 있으면 입력하세요"
+                    className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+
+        <DialogFooter className="px-10 py-8 bg-white border-t flex items-center justify-end gap-3 flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isLoading}
+            className="h-14 px-8 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
+          >
             취소
           </Button>
           <Button
             onClick={handleSubmit}
-            className="bg-purple-600 hover:bg-purple-700 text-white"
             disabled={isLoading}
+            className="h-14 px-10 rounded-2xl bg-purple-600 hover:bg-purple-700 font-black gap-3 shadow-xl shadow-purple-100 hover:-translate-y-1 transition-all"
           >
-            {isLoading ? "등록 중..." : "등록하기"}
+            {isLoading ? (
+              <span className="flex items-center gap-2">등록 중...</span>
+            ) : (
+              <>
+                <Save className="w-5 h-5" />
+                매출 등록하기
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

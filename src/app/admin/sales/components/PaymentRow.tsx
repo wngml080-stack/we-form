@@ -4,7 +4,19 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, CreditCard, Banknote, X, Check, Edit2 } from "lucide-react";
-import { formatDate, formatCurrency, EditingCell } from "../hooks/useSalesPageData";
+
+interface EditingCell {
+  id: string;
+  field: string;
+}
+
+const formatDate = (date: Date): string => {
+  return date.toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" });
+};
+
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" }).format(amount);
+};
 
 // 회원권 유형별 색상
 const MEMBERSHIP_TYPE_COLORS: Record<string, string> = {
