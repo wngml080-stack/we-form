@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 import dynamicImport from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -107,7 +107,14 @@ function AdminMembersPageContent() {
   );
 }
 
-export default function AdminMembersPage() {
+export default function AdminMembersPage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
+  use(props.params);
+  use(props.searchParams);
+
   return (
     <Suspense fallback={
       <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto">

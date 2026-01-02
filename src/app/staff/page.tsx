@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import dynamic from "next/dynamic";
 import { Plus } from "lucide-react";
 import { MonthlySubmissionBanner } from "@/components/MonthlySubmissionBanner";
@@ -19,7 +20,14 @@ const AddMemberModal = dynamic(() => import("./components/modals/AddMemberModal"
 const StatusChangeModal = dynamic(() => import("./components/modals/StatusChangeModal").then(mod => ({ default: mod.StatusChangeModal })), { ssr: false });
 const EditClassModal = dynamic(() => import("./components/modals/EditClassModal").then(mod => ({ default: mod.EditClassModal })), { ssr: false });
 
-export default function StaffPage() {
+export default function StaffPage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
+  use(props.params);
+  use(props.searchParams);
+
   const {
     // Auth & Loading
     authLoading, isLoading,

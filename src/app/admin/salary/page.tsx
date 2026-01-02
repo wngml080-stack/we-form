@@ -1,87 +1,99 @@
 "use client";
 
+import { use } from "react";
 import dynamicImport from "next/dynamic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 
-// Dynamic imports for heavy tab components (코드 스플리팅으로 초기 로드 성능 개선)
-const SalaryTemplateManager = dynamicImport(
-  () => import("@/app/admin/salary/components/SalaryTemplateManager"),
-  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
-);
-const SalaryAssignmentManager = dynamicImport(
-  () => import("@/app/admin/salary/components/SalaryAssignmentManager"),
-  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
-);
-const MonthlyStatsViewer = dynamicImport(
-  () => import("@/app/admin/salary/components/MonthlyStatsViewer"),
-  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
-);
-const SalaryCalculator = dynamicImport(
-  () => import("@/app/admin/salary/components/SalaryCalculator"),
-  { ssr: false, loading: () => <div className="h-64 bg-gray-50 rounded-lg animate-pulse" /> }
-);
+// Components 동적 임포트 (초기 로딩 최적화)
+const MonthlyStatsViewer = dynamicImport(() => import("./components/MonthlyStatsViewer"), { ssr: false });
+const SalaryTemplateManager = dynamicImport(() => import("./components/SalaryTemplateManager"), { ssr: false });
+const SalaryAssignmentManager = dynamicImport(() => import("./components/SalaryAssignmentManager"), { ssr: false });
+const SalaryCalculator = dynamicImport(() => import("./components/SalaryCalculator"), { ssr: false });
 
-export default function AdminSalaryPage() {
+export default function AdminSalaryPage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
+  use(props.params);
+  use(props.searchParams);
+
   const { branchFilter } = useAdminFilter();
   const gymName = branchFilter.gyms.find(g => g.id === branchFilter.selectedGymId)?.name || "";
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
-      {/* 헤더 */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">급여 관리</h1>
-          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">
-            {gymName ? `${gymName}의 급여를 관리합니다.` : "직원별 급여 템플릿을 설정하고 월별 실적을 관리합니다."}
+    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-8 animate-in fade-in duration-700">
+      {/* 헤더 - 더 세련된 디자인 */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-[0.2em]">
+            <span className="w-8 h-[2px] bg-blue-600"></span>
+            Salary & Settlement
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter">
+            급여 관리
+          </h1>
+          <p className="text-slate-500 font-bold text-lg flex items-center gap-2">
+            {gymName ? (
+              <>
+                <span className="text-[#2F80ED] border-b-2 border-blue-100 px-1">{gymName}</span>의 투명한 급여 정산을 관리합니다.
+              </>
+            ) : (
+              "직원별 급여 템플릿을 설정하고 월별 실적을 효율적으로 관리합니다."
+            )}
           </p>
         </div>
       </div>
 
-      {/* 탭 UI */}
-      <Tabs defaultValue="stats" className="w-full space-y-6">
-        <TabsList className="grid w-full max-w-4xl grid-cols-4 bg-white border border-gray-100 shadow-sm h-12 p-1 rounded-xl">
-          <TabsTrigger
-            value="stats"
-            className="rounded-lg text-sm font-bold data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white transition-all"
-          >
-            월별 실적 집계
-          </TabsTrigger>
-          <TabsTrigger
-            value="templates"
-            className="rounded-lg text-sm font-bold data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white transition-all"
-          >
-            급여 템플릿 설계
-          </TabsTrigger>
-          <TabsTrigger
-            value="assignments"
-            className="rounded-lg text-sm font-bold data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white transition-all"
-          >
-            직원 급여 설정
-          </TabsTrigger>
-          <TabsTrigger
-            value="calculation"
-            className="rounded-lg text-sm font-bold data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white transition-all"
-          >
-            급여 정산
-          </TabsTrigger>
-        </TabsList>
+      {/* 탭 UI - 필 스타일로 변경 */}
+      <Tabs defaultValue="stats" className="w-full space-y-8">
+        <div className="bg-white/50 backdrop-blur-md p-1.5 rounded-[24px] border border-gray-100 shadow-sm inline-flex">
+          <TabsList className="bg-transparent h-12 gap-1">
+            <TabsTrigger
+              value="stats"
+              className="rounded-xl px-6 text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300"
+            >
+              월별 실적 집계
+            </TabsTrigger>
+            <TabsTrigger
+              value="templates"
+              className="rounded-xl px-6 text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300"
+            >
+              급여 템플릿 설계
+            </TabsTrigger>
+            <TabsTrigger
+              value="assignments"
+              className="rounded-xl px-6 text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300"
+            >
+              직원 급여 설정
+            </TabsTrigger>
+            <TabsTrigger
+              value="calculation"
+              className="rounded-xl px-6 text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300"
+            >
+              급여 정산
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="stats" className="animate-fade-in">
+        <div className="bg-transparent pt-2">
+          <TabsContent value="stats" className="animate-in fade-in slide-in-from-bottom-4 duration-700 m-0 outline-none">
             <MonthlyStatsViewer />
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="templates" className="animate-fade-in">
+          <TabsContent value="templates" className="animate-in fade-in slide-in-from-bottom-4 duration-700 m-0 outline-none">
             <SalaryTemplateManager />
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="assignments" className="animate-fade-in">
+          <TabsContent value="assignments" className="animate-in fade-in slide-in-from-bottom-4 duration-700 m-0 outline-none">
             <SalaryAssignmentManager />
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="calculation" className="animate-fade-in">
+          <TabsContent value="calculation" className="animate-in fade-in slide-in-from-bottom-4 duration-700 m-0 outline-none">
             <SalaryCalculator />
-        </TabsContent>
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

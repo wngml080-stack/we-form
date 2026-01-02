@@ -261,8 +261,11 @@ export function PhysicalDiagnosisSection({ formData, updateFormData }: Props) {
             <Input
               type="number"
               min={0}
-              value={formData.lifestylePattern.sittingHours || ""}
-              onChange={(e) => updateLifestyle("sittingHours", parseInt(e.target.value) || 0)}
+              value={formData.lifestylePattern.sittingHours ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateLifestyle("sittingHours", value === "" ? 0 : parseInt(value) || 0);
+              }}
               className="w-16 h-8 text-sm text-center"
             />
             <span className="text-sm text-gray-500">시간/일</span>
@@ -274,8 +277,11 @@ export function PhysicalDiagnosisSection({ formData, updateFormData }: Props) {
             <Input
               type="number"
               min={0}
-              value={formData.lifestylePattern.sleepHours || ""}
-              onChange={(e) => updateLifestyle("sleepHours", parseInt(e.target.value) || 0)}
+              value={formData.lifestylePattern.sleepHours ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateLifestyle("sleepHours", value === "" ? 0 : parseInt(value) || 0);
+              }}
               className="w-16 h-8 text-sm text-center"
             />
             <span className="text-sm text-gray-500">시간/일</span>
@@ -287,16 +293,22 @@ export function PhysicalDiagnosisSection({ formData, updateFormData }: Props) {
             <Input
               type="number"
               min={0}
-              value={formData.lifestylePattern.drinkingPerWeek || ""}
-              onChange={(e) => updateLifestyle("drinkingPerWeek", parseInt(e.target.value) || 0)}
+              value={formData.lifestylePattern.drinkingPerWeek ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateLifestyle("drinkingPerWeek", value === "" ? 0 : parseInt(value) || 0);
+              }}
               className="w-12 h-8 text-sm text-center"
             />
             <span className="text-sm text-gray-500">회 (1회 약</span>
             <Input
               type="number"
               min={0}
-              value={formData.lifestylePattern.drinksPerSession || ""}
-              onChange={(e) => updateLifestyle("drinksPerSession", parseInt(e.target.value) || 0)}
+              value={formData.lifestylePattern.drinksPerSession ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateLifestyle("drinksPerSession", value === "" ? 0 : parseInt(value) || 0);
+              }}
               className="w-12 h-8 text-sm text-center"
             />
             <span className="text-sm text-gray-500">잔)</span>
@@ -309,8 +321,11 @@ export function PhysicalDiagnosisSection({ formData, updateFormData }: Props) {
               type="number"
               min={0}
               step={0.1}
-              value={formData.lifestylePattern.waterIntake || ""}
-              onChange={(e) => updateLifestyle("waterIntake", parseFloat(e.target.value) || 0)}
+              value={formData.lifestylePattern.waterIntake ?? ""}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateLifestyle("waterIntake", value === "" ? 0 : parseFloat(value) || 0);
+              }}
               className="w-16 h-8 text-sm text-center"
             />
             <span className="text-sm text-gray-500">L/일</span>
@@ -344,8 +359,11 @@ export function PhysicalDiagnosisSection({ formData, updateFormData }: Props) {
                     type="number"
                     min={0}
                     step={0.5}
-                    value={formData.lifestylePattern.smokingAmount || ""}
-                    onChange={(e) => updateLifestyle("smokingAmount", parseFloat(e.target.value) || 0)}
+                    value={formData.lifestylePattern.smokingAmount ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      updateLifestyle("smokingAmount", value === "" ? 0 : parseFloat(value) || 0);
+                    }}
                     className="w-14 h-8 text-sm text-center"
                   />
                   <span className="text-sm text-gray-500">갑/일)</span>

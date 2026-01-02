@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Search, Filter, Zap, Maximize2, MoreHorizontal, FileText, Heart, RefreshCw, Book, Bot, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConsultationFormModal } from "@/app/admin/pt-members/components/ConsultationFormModal";
 
 interface BoardCard {
   id: string;
@@ -21,6 +22,9 @@ interface BoardColumn {
 }
 
 export default function MembersBoardPage() {
+  // 모달 상태
+  const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
+
   const [columns, setColumns] = useState<BoardColumn[]>([
     {
       id: "new",
@@ -132,6 +136,15 @@ export default function MembersBoardPage() {
     setColumns([...columns, newGroup]);
   };
 
+  // 카드 클릭 핸들러
+  const handleCardClick = (card: BoardCard) => {
+    // 신규 상담기록지 양식 클릭 시 모달 열기
+    if (card.id === "1" && card.title === "신규 상담기록지 양식") {
+      setIsConsultationModalOpen(true);
+    }
+    // TODO: 다른 카드들에 대한 처리 추가
+  };
+
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -187,6 +200,7 @@ export default function MembersBoardPage() {
               {column.cards.map((card) => (
                 <div
                   key={card.id}
+                  onClick={() => handleCardClick(card)}
                   className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 hover:shadow-md transition-shadow cursor-pointer"
                 >
                   <div className="flex items-start gap-3">
@@ -228,6 +242,12 @@ export default function MembersBoardPage() {
           <span className="text-sm text-slate-500">+ 신규 그룹</span>
         </button>
       </div>
+
+      {/* 신규 상담기록지 양식 모달 */}
+      <ConsultationFormModal
+        isOpen={isConsultationModalOpen}
+        onClose={() => setIsConsultationModalOpen(false)}
+      />
     </div>
   );
 }

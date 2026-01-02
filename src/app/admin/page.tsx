@@ -26,7 +26,14 @@ async function getUserName(): Promise<string> {
   }
 }
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 await해야 합니다.
+  await props.params;
+  await props.searchParams;
+
   // 서버에서 사용자 이름 미리 가져오기 (LCP 최적화)
   const serverUserName = await getUserName();
 

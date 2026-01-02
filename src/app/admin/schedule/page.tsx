@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import dynamicImport from "next/dynamic";
 import WeeklyTimetable from "@/components/WeeklyTimetable";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
@@ -28,7 +29,14 @@ const QuickStatusModal = dynamicImport(
   { ssr: false }
 );
 
-export default function AdminSchedulePage() {
+export default function AdminSchedulePage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
+  use(props.params);
+  use(props.searchParams);
+
   const pageData = useSchedulePageData();
   const {
     user, userRole, myStaffId, gymName,

@@ -122,17 +122,9 @@ export function useAdminDashboardData() {
   const gyms = dashboardFilter.gyms;
   const gymName = gyms.find(g => g.id === selectedGymId)?.name || authGymName || "We:form";
 
-  // 상품 목록 조회
-  const fetchProducts = async (gymId: string) => {
-    try {
-      const response = await fetch(`/api/admin/schedule/products?gym_id=${gymId}`);
-      const data = await response.json();
-      if (data.success) {
-        setProducts(data.products || []);
-      }
-    } catch (error) {
-      console.error("상품 목록 조회 에러:", error);
-    }
+  // 상품 목록 조회 - 임시 비활성화 (테이블 재연결 예정)
+  const fetchProducts = async (_gymId: string) => {
+    setProducts([]);
   };
 
   // 스태프 목록 조회

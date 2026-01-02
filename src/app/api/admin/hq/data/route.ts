@@ -55,23 +55,9 @@ export async function GET(request: Request) {
     // 미배정 직원 (gym_id가 null)
     const pendingStaffs = allStaffs?.filter(s => !s.gym_id) || [];
 
-    // 회원 데이터
-    const { data: members, error: membersError } = await supabaseAdmin
-      .from("members")
-      .select("id, name, phone, status, created_at, gym_id, gyms(name)")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-
-    if (membersError) throw membersError;
-
-    // 결제 데이터
-    const { data: payments, error: paymentsError } = await supabaseAdmin
-      .from("member_payments")
-      .select("id, member_id, amount, membership_type, registration_type, created_at, gym_id, visit_route")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-
-    if (paymentsError) throw paymentsError;
+    // 회원 데이터 - 임시 비활성화 (테이블 재연결 예정)
+    const members: any[] = [];
+    const payments: any[] = [];
 
     // 통계
     const { count: totalGymsCount } = await supabaseAdmin
@@ -84,21 +70,9 @@ export async function GET(request: Request) {
       .select("*", { count: "exact", head: true })
       .eq("company_id", companyId);
 
-    const { count: totalMembersCount } = await supabaseAdmin
-      .from("members")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", companyId);
-
-    // 이번 달 신규 회원
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const { count: newMembersThisMonth } = await supabaseAdmin
-      .from("members")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", companyId)
-      .gte("created_at", startOfMonth.toISOString());
+    // 회원 통계 - 임시 비활성화 (테이블 재연결 예정)
+    const totalMembersCount = 0;
+    const newMembersThisMonth = 0;
 
     // 회사 일정/행사
     const { data: events, error: eventsError } = await supabaseAdmin

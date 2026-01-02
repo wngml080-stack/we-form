@@ -13,7 +13,7 @@ function PendingContent() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseClient(), []);
   const [email, setEmail] = useState<string | null>(null);
-  const searchParams = use(useSearchParams());
+  const searchParams = useSearchParams();
   const type = searchParams.get("type");
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, MapPin, Calendar, User, Building2 } from "lucide-react";
@@ -22,72 +23,95 @@ export function GymList({
   getCategoryColor
 }: GymListProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-      <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Building2 className="w-4 h-4 text-blue-600" />
+    <div className="bg-white rounded-[32px] shadow-sm overflow-hidden border border-gray-100 flex flex-col h-full hover:shadow-md transition-all duration-500">
+      <div className="bg-white px-8 py-6 border-b border-gray-50 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center">
+            <Building2 className="w-6 h-6 text-blue-600" />
           </div>
-          <div className="flex items-center gap-3">
-            <h3 className="text-base font-semibold text-gray-900">운영 중인 센터</h3>
-            <span className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
-              {gyms.length}개
-            </span>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">운영 중인 센터</h3>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Branch Operations</p>
           </div>
+          <Badge className="ml-2 bg-blue-50 text-blue-600 border-none font-black text-xs px-3 py-1 rounded-lg">
+            {gyms.length}개 지점
+          </Badge>
         </div>
         <Button
           onClick={onCreateClick}
-          size="sm"
-          className="bg-gray-900 text-white hover:bg-gray-800"
+          className="bg-blue-600 text-white hover:bg-blue-700 font-black h-11 px-6 rounded-xl transition-all shadow-lg shadow-blue-100"
         >
-          <Plus className="mr-1 h-4 w-4" /> 지점 생성
+          <Plus className="mr-2 h-5 w-5" /> 지점 생성
         </Button>
       </div>
-      <div className="p-6 space-y-3 max-h-[500px] overflow-y-auto">
-        {gyms.map((gym) => {
-          const manager = gym.staffs?.find((s: any) => s.role === 'admin') || gym.staffs?.[0];
-          const categories = gym.category ? gym.category.split(", ") : [];
+      <div className="p-8 space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar">
+        {gyms.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-slate-300 py-20">
+            <Building2 className="w-16 h-16 opacity-20 mb-4" />
+            <p className="font-bold text-sm text-center">등록된 지점이 없습니다.</p>
+          </div>
+        ) : (
+          gyms.map((gym) => {
+            const manager = gym.staffs?.find((s: any) => s.role === 'admin') || gym.staffs?.[0];
+            const categories = gym.category ? gym.category.split(", ") : [];
 
-          return (
-            <div key={gym.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all bg-white">
-              <div className="flex justify-between items-start">
-                <div className="flex-1 cursor-pointer" onClick={() => onGymDetailClick(gym)}>
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span className="font-semibold text-gray-900">{gym.name}</span>
-                    {categories.map((cat: string) => (
-                      <Badge key={cat} variant="outline" className={getCategoryColor(cat)}>{cat}</Badge>
-                    ))}
-                    {gym.status === 'pending' && <Badge className="bg-amber-500">승인대기</Badge>}
+            return (
+              <div key={gym.id} className="group border border-gray-100 rounded-[24px] p-6 hover:shadow-xl hover:border-blue-100 transition-all duration-500 bg-slate-50/50 hover:bg-white relative overflow-hidden">
+                <div className="flex justify-between items-start relative z-10">
+                  <div className="flex-1 cursor-pointer" onClick={() => onGymDetailClick(gym)}>
+                    <div className="flex items-center gap-3 flex-wrap mb-4">
+                      <h4 className="font-black text-slate-900 text-xl tracking-tighter group-hover:text-blue-600 transition-colors">{gym.name}</h4>
+                      <div className="flex gap-1.5">
+                        {categories.map((cat: string) => (
+                          <Badge key={cat} className={cn("font-black text-[9px] tracking-widest px-2 py-0.5 rounded-md border-none", getCategoryColor(cat))}>
+                            {cat.toUpperCase()}
+                          </Badge>
+                        ))}
+                        {gym.status === 'pending' && (
+                          <Badge className="bg-amber-500 text-white font-black text-[9px] tracking-widest px-2 py-0.5 rounded-md border-none">PENDING</Badge>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="flex items-center gap-2 text-slate-500 bg-white/50 p-2 rounded-xl border border-gray-100/50">
+                        <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                        <span className="text-xs font-bold tracking-tight">{gym.size || '-'}평</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-500 bg-white/50 p-2 rounded-xl border border-gray-100/50">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-xs font-bold tracking-tight">{gym.open_date || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-500 bg-white/50 p-2 rounded-xl border border-gray-100/50">
+                        <User className="w-3.5 h-3.5 text-purple-500" />
+                        <span className="text-xs font-bold tracking-tight">{manager?.name || '미정'}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-600 flex gap-3 items-center flex-wrap">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {gym.size || '-'}평
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {gym.open_date || '-'}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3" /> {manager?.name || '미정'}
-                    </span>
+                  
+                  <div className="flex gap-2 ml-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all" onClick={(e) => { e.stopPropagation(); onEditClick(gym); }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all" onClick={(e) => { e.stopPropagation(); onDeleteClick(gym.id); }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-1 ml-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onEditClick(gym); }}>
-                    <Pencil className="h-4 w-4 text-gray-500" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-gray-100" onClick={(e) => { e.stopPropagation(); onDeleteClick(gym.id); }}>
-                    <Trash2 className="h-4 w-4 text-gray-500" />
-                  </Button>
-                </div>
+                
+                {gym.memo && (
+                  <div className="mt-5 text-xs bg-white/80 border border-gray-100 p-4 rounded-xl text-slate-500 font-medium leading-relaxed shadow-inner">
+                    <div className="flex items-center gap-2 mb-1 opacity-40">
+                      <div className="w-1 h-3 bg-slate-300 rounded-full"></div>
+                      <span className="font-black text-[10px] tracking-widest uppercase">Memo</span>
+                    </div>
+                    {gym.memo}
+                  </div>
+                )}
               </div>
-              {gym.memo && (
-                <div className="mt-3 text-xs bg-gray-50 border-l-2 border-gray-300 p-2 rounded text-gray-600">
-                  {gym.memo}
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

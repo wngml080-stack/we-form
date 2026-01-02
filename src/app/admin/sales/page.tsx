@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import dynamic from "next/dynamic";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { useSalesPageData } from "./hooks/useSalesPageData";
@@ -15,7 +15,14 @@ const SalesSettingsModal = dynamic(
   { ssr: false }
 );
 
-export default function SalesPage() {
+export default function SalesPage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
+  use(props.params);
+  use(props.searchParams);
+
   const { selectedGymId, gymName, selectedCompanyId, isInitialized } = useAdminFilter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});

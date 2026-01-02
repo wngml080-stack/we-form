@@ -10,48 +10,55 @@ interface BranchAnnouncementsCardProps {
 
 export function BranchAnnouncementsCard({ announcements, onAnnouncementClick }: BranchAnnouncementsCardProps) {
   const priorityColors: Record<string, string> = {
-    urgent: "bg-red-100 text-red-600",
-    normal: "bg-blue-100 text-blue-600",
-    low: "bg-gray-100 text-gray-600"
+    urgent: "bg-red-50 text-red-600 border-red-100",
+    normal: "bg-blue-50 text-blue-600 border-blue-100",
+    low: "bg-slate-50 text-slate-500 border-slate-100"
   };
   const priorityLabels: Record<string, string> = {
-    urgent: "긴급",
-    normal: "일반",
-    low: "참고"
+    urgent: "URGENT",
+    normal: "NOTICE",
+    low: "INFO"
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
-          <Bell className="w-5 h-5 text-[#2F80ED]" />
+    <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col h-full hover:shadow-md transition-all duration-500">
+      <div className="flex justify-between items-center mb-8">
+        <h3 className="font-black text-slate-900 text-xl tracking-tight flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+            <Bell className="w-5 h-5 text-blue-600" />
+          </div>
           지점 공지사항
         </h3>
-        <span className="text-xs text-gray-400">{announcements.length}개</span>
+        <span className="bg-slate-50 text-slate-400 font-black text-[10px] px-3 py-1 rounded-lg border border-slate-100 tracking-widest">{announcements.length}건</span>
       </div>
-      <div className="space-y-3">
+      
+      <div className="flex-1 space-y-4 overflow-y-auto pr-2 custom-scrollbar">
         {announcements.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-            <Bell className="w-8 h-8 mb-2 opacity-20" />
-            <p className="text-sm">등록된 지점 공지사항이 없습니다.</p>
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              <Bell className="w-8 h-8 opacity-20" />
+            </div>
+            <p className="font-bold text-sm">등록된 공지사항이 없습니다.</p>
           </div>
         ) : (
           announcements.map((announcement) => (
             <div
               key={announcement.id}
-              className="p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer border border-gray-100"
+              className="group p-5 bg-white hover:bg-slate-50 rounded-[24px] transition-all cursor-pointer border border-slate-50 hover:border-blue-100 hover:shadow-lg hover:shadow-blue-100/20"
               onClick={() => onAnnouncementClick(announcement)}
             >
-              <div className="flex items-start gap-3">
-                <span className={`px-2 py-0.5 rounded text-xs font-bold ${priorityColors[announcement.priority]}`}>
-                  {priorityLabels[announcement.priority]}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-gray-800 text-sm truncate">{announcement.title}</div>
-                  <div className="text-xs text-gray-500 mt-1 line-clamp-2">{announcement.content}</div>
-                  <div className="text-xs text-gray-400 mt-1">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black border tracking-tighter ${priorityColors[announcement.priority]}`}>
+                    {priorityLabels[announcement.priority]}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">
                     {new Date(announcement.created_at).toLocaleDateString('ko-KR')}
-                  </div>
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="font-black text-slate-800 text-base group-hover:text-blue-600 transition-colors truncate tracking-tight">{announcement.title}</div>
+                  <div className="text-sm text-slate-500 font-medium leading-relaxed line-clamp-2">{announcement.content}</div>
                 </div>
               </div>
             </div>

@@ -119,6 +119,26 @@ export interface StrengthGoal {
   exerciseYears: number;
 }
 
+export interface HabitGoal {
+  selected: boolean;
+  subGoals: {
+    regularExercise: boolean;
+    betterSleep: boolean;
+    healthyDiet: boolean;
+    stressManagement: boolean;
+    postureCorrection: boolean;
+    other: boolean;
+    otherText: string;
+  };
+  currentHabit: string;
+  targetHabit: string;
+}
+
+export interface OtherGoal {
+  selected: boolean;
+  description: string;
+}
+
 export interface GoalMotivation {
   hasEvent: boolean;
   eventDate: string;
@@ -165,6 +185,8 @@ export interface ConsultationFormData {
   dietGoal: DietGoal;
   rehabGoal: RehabGoal;
   strengthGoal: StrengthGoal;
+  habitGoal: HabitGoal;
+  otherGoal: OtherGoal;
   goalMotivation: GoalMotivation;
 
   // 5. 운동 가능 시간
@@ -301,6 +323,26 @@ export const initialFormData: ConsultationFormData = {
     currentDeadlift: 0,
     targetDeadlift: 0,
     exerciseYears: 0,
+  },
+
+  habitGoal: {
+    selected: false,
+    subGoals: {
+      regularExercise: false,
+      betterSleep: false,
+      healthyDiet: false,
+      stressManagement: false,
+      postureCorrection: false,
+      other: false,
+      otherText: "",
+    },
+    currentHabit: "",
+    targetHabit: "",
+  },
+
+  otherGoal: {
+    selected: false,
+    description: "",
   },
 
   goalMotivation: {

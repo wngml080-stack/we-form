@@ -1,17 +1,13 @@
 "use client";
 
+import { use } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
-// Hook
 import { useSystemData } from "./hooks/useSystemData";
-
-// Components
 import { StatsDashboard } from "./components/StatsDashboard";
 import { SystemAnnouncementSection } from "./components/SystemAnnouncementSection";
 import { CompanyList } from "./components/CompanyList";
-
-// Modals
 import { CompanyEditModal } from "./components/modals/CompanyEditModal";
 import { CompanyCreateModal } from "./components/modals/CompanyCreateModal";
 import { GymCreateModal } from "./components/modals/GymCreateModal";
@@ -20,7 +16,14 @@ import { StaffEditModal } from "./components/modals/StaffEditModal";
 import { AnnouncementCreateModal } from "./components/modals/AnnouncementCreateModal";
 import { AnnouncementEditModal } from "./components/modals/AnnouncementEditModal";
 
-export default function SystemAdminPage() {
+export default function SystemAdminPage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
+  use(props.params);
+  use(props.searchParams);
+
   const {
     // 로딩
     isLoading,
@@ -64,60 +67,69 @@ export default function SystemAdminPage() {
     getRoleBadge
   } = useSystemData();
 
-  if (isLoading) return <div className="p-10 text-center">데이터 로딩 중...</div>;
-
   return (
-    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
-      {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">시스템 관리</h1>
-          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">서비스를 이용 중인 고객사를 관리합니다</p>
+    <div className="min-h-full bg-[#f8fafc] animate-in fade-in duration-700">
+      <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-8 lg:space-y-10">
+        {/* 헤더 - 더 세련된 디자인 */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-[0.2em] animate-in slide-in-from-left duration-700">
+              <span className="w-8 h-[2px] bg-blue-600"></span>
+              SYSTEM ADMINISTRATION
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+              시스템 관리
+            </h1>
+            <p className="text-slate-500 text-base md:text-lg font-medium animate-in slide-in-from-left duration-700 delay-100">
+              서비스를 이용 중인 <span className="font-bold text-slate-700">모든 고객사</span>와 인프라를 관리합니다
+            </p>
+          </div>
+
+          <Button
+            onClick={openCreateCompany}
+            className="bg-[#2F80ED] hover:bg-[#1c6cd7] text-white font-black h-12 px-8 rounded-2xl transition-all shadow-lg shadow-blue-100 animate-in slide-in-from-right duration-700"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            고객사 추가
+          </Button>
         </div>
-        <Button
-          onClick={openCreateCompany}
-          className="bg-[#2F80ED] hover:bg-[#1c6cd7] text-white w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          고객사 추가
-        </Button>
+
+        {/* 통계 대시보드 */}
+        <StatsDashboard
+          totalCompanies={totalCompanies}
+          totalGymsCount={totalGymsCount}
+          totalStaffsCount={totalStaffsCount}
+          pendingCount={pendingCompanies.length}
+        />
+
+        {/* 시스템 공지사항 관리 */}
+        <SystemAnnouncementSection
+          announcements={systemAnnouncements}
+          onAddClick={() => setIsCreateAnnouncementOpen(true)}
+          onEditClick={openEditAnnouncement}
+          onDeleteClick={handleDeleteAnnouncement}
+          onToggleActive={toggleAnnouncementActive}
+        />
+
+        {/* 고객사 목록 */}
+        <CompanyList
+          companies={companies}
+          expandedCompanies={expandedCompanies}
+          expandedGyms={expandedGyms}
+          companyGyms={companyGyms}
+          gymStaffs={gymStaffs}
+          onToggleCompany={toggleCompany}
+          onToggleGym={toggleGym}
+          onStatusChange={handleStatusChange}
+          onEditCompany={openEdit}
+          onCreateGym={openCreateGym}
+          onEditGym={openEditGym}
+          onDeleteGym={handleDeleteGym}
+          onEditStaff={openEditStaff}
+          onDeleteStaff={handleDeleteStaff}
+          getRoleBadge={getRoleBadge}
+        />
       </div>
-
-      {/* 통계 대시보드 */}
-      <StatsDashboard
-        totalCompanies={totalCompanies}
-        totalGymsCount={totalGymsCount}
-        totalStaffsCount={totalStaffsCount}
-        pendingCount={pendingCompanies.length}
-      />
-
-      {/* 시스템 공지사항 관리 */}
-      <SystemAnnouncementSection
-        announcements={systemAnnouncements}
-        onAddClick={() => setIsCreateAnnouncementOpen(true)}
-        onEditClick={openEditAnnouncement}
-        onDeleteClick={handleDeleteAnnouncement}
-        onToggleActive={toggleAnnouncementActive}
-      />
-
-      {/* 고객사 목록 */}
-      <CompanyList
-        companies={companies}
-        expandedCompanies={expandedCompanies}
-        expandedGyms={expandedGyms}
-        companyGyms={companyGyms}
-        gymStaffs={gymStaffs}
-        onToggleCompany={toggleCompany}
-        onToggleGym={toggleGym}
-        onStatusChange={handleStatusChange}
-        onEditCompany={openEdit}
-        onCreateGym={openCreateGym}
-        onEditGym={openEditGym}
-        onDeleteGym={handleDeleteGym}
-        onEditStaff={openEditStaff}
-        onDeleteStaff={handleDeleteStaff}
-        getRoleBadge={getRoleBadge}
-      />
 
       {/* 모달들 */}
       <CompanyEditModal

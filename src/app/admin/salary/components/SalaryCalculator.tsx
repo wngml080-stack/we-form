@@ -463,175 +463,241 @@ export default function SalaryCalculator() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 animate-in fade-in duration-500">
             {/* 보고서 승인 상태 배너 */}
             {reportApprovalStatus.totalCount > 0 && (
-                reportApprovalStatus.allApproved ? (
-                    <Alert className="bg-emerald-50 border-emerald-200">
-                        <CheckCircle className="h-4 w-4 text-emerald-600" />
-                        <AlertTitle className="text-emerald-800">모든 보고서 승인됨</AlertTitle>
-                        <AlertDescription className="text-emerald-700">
-                            {selectedMonth} 월의 모든 직원 보고서가 승인되었습니다. 확정된 스케줄로 급여가 계산됩니다.
-                        </AlertDescription>
-                    </Alert>
-                ) : (
-                    <Alert className="bg-amber-50 border-amber-200">
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                        <AlertTitle className="text-amber-800">일부 보고서 미승인</AlertTitle>
-                        <AlertDescription className="text-amber-700">
-                            승인됨: {reportApprovalStatus.approvedCount} / {reportApprovalStatus.totalCount}명
-                            {" "}- 미승인 직원은 <strong>임시 계산</strong>으로 표시됩니다.
-                            모든 보고서 승인 후 최종 급여를 확정하세요.
-                        </AlertDescription>
-                    </Alert>
-                )
+                <div className="animate-in slide-in-from-top-4 duration-500">
+                    {reportApprovalStatus.allApproved ? (
+                        <div className="flex items-center gap-4 bg-emerald-50 border border-emerald-100 p-5 rounded-[24px] shadow-sm shadow-emerald-100/50">
+                            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200">
+                                <CheckCircle className="h-6 w-6 text-white" />
+                            </div>
+                            <div>
+                                <h4 className="font-black text-emerald-900 text-lg tracking-tight">모든 보고서 승인 완료</h4>
+                                <p className="text-emerald-700 font-bold text-sm">
+                                    {selectedMonth}월의 모든 직원 보고서가 승인되었습니다. 확정된 데이터로 정산이 가능합니다.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-4 bg-amber-50 border border-amber-100 p-5 rounded-[24px] shadow-sm shadow-amber-100/50">
+                            <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+                                <AlertTriangle className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-black text-amber-900 text-lg tracking-tight">일부 보고서 승인 대기 중</h4>
+                                <p className="text-amber-700 font-bold text-sm">
+                                    승인됨: <span className="text-amber-900 font-black">{reportApprovalStatus.approvedCount}</span> / {reportApprovalStatus.totalCount}명
+                                    <span className="mx-2 opacity-30">|</span>
+                                    정확한 급여 계산을 위해 모든 보고서 승인 후 <span className="text-amber-900 font-black">최종 확정</span>을 권장합니다.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
 
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-                <div>
-                    <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        💰 급여 정산
-                        {isSaved && <Badge className="bg-green-600">저장됨</Badge>}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+                <div className="space-y-1">
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                            <Calculator className="w-6 h-6 text-blue-600" />
+                        </div>
+                        월간 급여 정산
+                        {isSaved && <Badge className="bg-emerald-500 text-white border-none font-black text-[10px] tracking-widest px-2 py-0.5 rounded-lg shadow-sm">FINALIZED</Badge>}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                        설정된 템플릿과 근무 기록을 바탕으로 급여를 자동 계산합니다.
-                        {lastUpdated && <span className="ml-2 text-xs text-gray-400"> (마지막 저장: {lastUpdated})</span>}
-                    </p>
+                    <div className="flex items-center gap-2 ml-13">
+                        <p className="text-sm text-slate-400 font-bold">
+                            템플릿 설정과 실적 데이터를 바탕으로 최종 지급액을 산출합니다.
+                        </p>
+                        {lastUpdated && <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">Last: {lastUpdated}</span>}
+                    </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full md:w-auto">
                     <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                        <SelectTrigger className="w-[150px] bg-white">
+                        <SelectTrigger className="w-[140px] h-12 bg-slate-50 border-none rounded-2xl font-black text-slate-900 focus:ring-2 focus:ring-blue-100 transition-all">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
                             {Array.from({length: 12}, (_, i) => {
                                 const d = new Date();
                                 d.setMonth(d.getMonth() - i);
                                 const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                                return <SelectItem key={v} value={v}>{v}</SelectItem>;
+                                return <SelectItem key={v} value={v} className="rounded-xl font-bold py-3">{v}</SelectItem>;
                             })}
                         </SelectContent>
                     </Select>
-                    <Button onClick={calculateSalaries} className="bg-[#2F80ED] hover:bg-[#1c6cd7]">
-                        <Calculator className="w-4 h-4 mr-2" /> 급여 계산 실행
+                    <Button 
+                        onClick={calculateSalaries} 
+                        className="h-12 px-6 bg-[#2F80ED] hover:bg-[#1c6cd7] text-white rounded-2xl font-black shadow-lg shadow-blue-100 flex items-center gap-2 transition-all hover:-translate-y-1"
+                    >
+                        <Calculator className="w-4 h-4" /> 정산 실행
                     </Button>
-                    <Button onClick={handleSaveSalaries} className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={results.length === 0}>
-                        <Save className="w-4 h-4 mr-2" /> 결과 저장
+                    <Button 
+                        onClick={handleSaveSalaries} 
+                        className="h-12 px-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 flex items-center gap-2 transition-all hover:-translate-y-1 disabled:opacity-50 disabled:hover:translate-y-0"
+                        disabled={results.length === 0}
+                    >
+                        <Save className="w-4 h-4" /> 결과 저장
                     </Button>
-                    <Button onClick={handleDownloadExcel} variant="outline" disabled={results.length === 0}>
-                        <Download className="w-4 h-4 mr-2" /> 엑셀
+                    <Button 
+                        onClick={handleDownloadExcel} 
+                        variant="ghost" 
+                        className="h-12 w-12 p-0 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all"
+                        disabled={results.length === 0}
+                    >
+                        <Download className="w-5 h-5" />
                     </Button>
                 </div>
             </div>
 
-            {/* 매출 입력 */}
-            <Card>
-                <CardHeader className="flex flex-row justify-between items-center py-4">
-                    <CardTitle className="text-sm font-bold text-gray-600">월 매출 입력 (개인 매출)</CardTitle>
-                    <Button size="sm" variant="outline" onClick={handleSaveSales} className="h-8">
-                        매출 데이터 저장
-                    </Button>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {results.length === 0 && Object.keys(salesData).length === 0 && (
-                            <div className="text-sm text-gray-400 col-span-4">
-                                저장된 데이터가 없습니다. '급여 계산 실행'을 눌러 직원 목록을 불러오세요.
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* 매출 입력 섹션 - 좌측 1단 */}
+                <div className="lg:col-span-1 space-y-6">
+                    <Card className="rounded-[40px] border-none bg-white shadow-xl shadow-slate-100/50 overflow-hidden">
+                        <CardHeader className="p-8 pb-4 flex flex-row justify-between items-center border-b border-slate-50 bg-slate-50/30">
+                            <div className="space-y-1">
+                                <CardTitle className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                                    개인 매출 입력
+                                </CardTitle>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Personal Sales Data</p>
                             </div>
-                        )}
-                        {(results.length > 0 ? results : Object.keys(salesData).map(id => ({ staff_id: id, staff_name: "직원 " + id.substring(0,4) }))).map((item: any) => {
-                             // results가 있으면 그걸 쓰고, 없으면 salesData 키(ID)만이라도.. 
-                             // 하지만 results가 없으면 위에서 staffs를 로드하지 않으므로 이름 표시가 어렵다.
-                             // 따라서 results가 있을 때만 렌더링하도록 단순화.
-                             if (!item.staff_id) return null;
-                             return (
-                                <div key={item.staff_id} className="space-y-1">
-                                    <label className="text-xs text-gray-500">{item.staff_name}</label>
-                                    <div className="relative">
-                                        <Input 
-                                            type="number" 
-                                            placeholder="매출 입력"
-                                            value={salesData[item.staff_id] || ""}
-                                            onChange={(e) => setSalesData({...salesData, [item.staff_id]: Number(e.target.value)})}
-                                            className="h-9 pr-8"
-                                        />
-                                        <span className="absolute right-2 top-2.5 text-xs text-gray-400">원</span>
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={handleSaveSales} 
+                                className="h-9 rounded-xl border-blue-100 text-blue-600 font-black text-[11px] hover:bg-blue-50 transition-all"
+                            >
+                                데이터 임시 저장
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="p-8 space-y-6">
+                            {results.length === 0 && Object.keys(salesData).length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                                    <AlertTriangle className="w-10 h-10 mb-4 opacity-20" />
+                                    <p className="font-bold text-sm text-center">정산 실행 버튼을 눌러<br />직원 목록을 불러오세요.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-5">
+                                    {(results.length > 0 ? results : Object.keys(salesData).map(id => ({ staff_id: id, staff_name: "직원 " + id.substring(0,4) }))).map((item: any) => {
+                                        if (!item.staff_id) return null;
+                                        return (
+                                            <div key={item.staff_id} className="space-y-2 group">
+                                                <div className="flex justify-between items-center px-1">
+                                                    <label className="text-[13px] font-black text-slate-700 tracking-tight group-focus-within:text-blue-600 transition-colors">{item.staff_name}</label>
+                                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest opacity-0 group-focus-within:opacity-100 transition-all">Revenue</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <Input 
+                                                        type="number" 
+                                                        placeholder="0"
+                                                        value={salesData[item.staff_id] || ""}
+                                                        onChange={(e) => setSalesData({...salesData, [item.staff_id]: Number(e.target.value)})}
+                                                        className="h-12 bg-slate-50 border-none rounded-2xl px-5 font-black text-right pr-12 focus:ring-2 focus:ring-blue-100 transition-all shadow-inner"
+                                                    />
+                                                    <span className="absolute right-5 top-3.5 text-xs font-black text-slate-300 uppercase">KRW</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* 결과 테이블 - 우측 2단 */}
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white rounded-[40px] border border-gray-100 shadow-xl shadow-slate-100/50 overflow-hidden h-full flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/30">
+                        <div className="overflow-x-auto flex-1">
+                            <Table className="border-collapse">
+                                <TableHeader>
+                                    <TableRow className="bg-slate-50/50 border-b border-gray-100 hover:bg-slate-50/50">
+                                        <TableHead className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">직원 정보</TableHead>
+                                        <TableHead className="px-4 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">기본급</TableHead>
+                                        <TableHead className="px-4 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">수업료</TableHead>
+                                        <TableHead className="px-4 py-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">인센티브</TableHead>
+                                        <TableHead className="px-8 py-6 text-right text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">실수령액(예상)</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="px-8 py-40 text-center">
+                                                <div className="flex flex-col items-center justify-center animate-pulse">
+                                                    <Calculator className="w-12 h-12 text-blue-200 mb-4" />
+                                                    <p className="text-slate-400 font-black text-xs uppercase tracking-widest">Calculating...</p>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : results.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="px-8 py-40 text-center">
+                                                <div className="flex flex-col items-center justify-center text-slate-200">
+                                                    <Calculator className="w-16 h-16 mb-6 opacity-20" />
+                                                    <h4 className="text-lg font-black text-slate-400 tracking-tight mb-2">정산 데이터가 없습니다</h4>
+                                                    <p className="text-sm font-bold text-slate-300">상단 정산 실행 버튼을 클릭하여 정산을 시작하세요.</p>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : results.map((result) => (
+                                        <TableRow key={result.staff_id} className="group hover:bg-blue-50/30 transition-all duration-300">
+                                            <TableCell className="px-8 py-6">
+                                                <div className="flex flex-col gap-1.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-black text-slate-900 text-base tracking-tighter">{result.staff_name}</span>
+                                                        {result.reportStatus === 'approved' ? (
+                                                            <Badge className="bg-emerald-50 text-emerald-600 border border-emerald-100 font-black text-[9px] px-1.5 py-0 rounded-md">CONFIRMED</Badge>
+                                                        ) : (
+                                                            <Badge className="bg-slate-100 text-slate-400 border-none font-black text-[9px] px-1.5 py-0 rounded-md">PENDING</Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
+                                                        <span>{result.job_position || "Staff"}</span>
+                                                        <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                                                        <span className="text-blue-500 font-black uppercase tracking-tight">PT {result.stats.pt_total_count} sessions</span>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-6 text-right font-bold text-slate-500 text-sm">
+                                                {result.base_salary.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-6 text-right font-bold text-emerald-600 text-sm">
+                                                {result.class_salary.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-6 text-right font-bold text-orange-500 text-sm">
+                                                {result.incentive_salary.toLocaleString()}
+                                            </TableCell>
+                                            <TableCell className="px-8 py-6 text-right">
+                                                <div className="text-xl font-black text-slate-900 tracking-tighter group-hover:text-blue-600 transition-colors">
+                                                    {result.total_salary.toLocaleString()}
+                                                    <span className="text-[10px] ml-1 opacity-30 font-bold uppercase">KRW</span>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        
+                        {results.length > 0 && (
+                            <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Monthly Payroll</p>
+                                    <div className="text-3xl font-black text-slate-900 tracking-tighter">
+                                        {results.reduce((acc, curr) => acc + curr.total_salary, 0).toLocaleString()}
+                                        <span className="text-base ml-1 opacity-30 font-bold uppercase tracking-widest">KRW</span>
                                     </div>
                                 </div>
-                            );
-                        })}
+                                <p className="text-xs text-slate-400 font-bold text-right leading-relaxed">
+                                    위 금액은 세전 금액이며,<br />
+                                    정산 확정 시 각 직원의 실적으로 반영됩니다.
+                                </p>
+                            </div>
+                        )}
                     </div>
-                </CardContent>
-            </Card>
-
-            {/* 결과 테이블 */}
-            <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-                <Table>
-                    <TableHeader className="bg-gray-50">
-                        <TableRow>
-                            <TableHead className="font-bold">직원정보</TableHead>
-                            <TableHead className="text-right font-bold text-gray-600">기본급</TableHead>
-                            <TableHead className="text-right font-bold text-blue-600">수업료</TableHead>
-                            <TableHead className="text-right font-bold text-orange-600">인센티브</TableHead>
-                            <TableHead className="text-right font-bold text-black text-lg">실수령액 (예상)</TableHead>
-                            <TableHead className="text-center font-bold">상세내역</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12">계산 중...</TableCell>
-                            </TableRow>
-                        ) : results.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-12 text-gray-500">
-                                    '급여 계산 실행' 버튼을 눌러주세요.
-                                </TableCell>
-                            </TableRow>
-                        ) : results.map((result) => (
-                            <TableRow key={result.staff_id} className="hover:bg-gray-50">
-                                <TableCell>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-bold text-gray-800">{result.staff_name}</span>
-                                        {result.reportStatus === 'approved' ? (
-                                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0">확정</Badge>
-                                        ) : result.reportStatus === 'submitted' ? (
-                                            <Badge className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0">대기</Badge>
-                                        ) : result.reportStatus === 'rejected' ? (
-                                            <Badge className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0">반려</Badge>
-                                        ) : (
-                                            <Badge className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0">임시</Badge>
-                                        )}
-                                    </div>
-                                    <div className="text-xs text-gray-500">{result.job_position}</div>
-                                    <div className="text-xs text-blue-500 mt-1">
-                                        PT {result.stats.pt_total_count}회
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right">{result.base_salary.toLocaleString()}</TableCell>
-                                <TableCell className="text-right font-medium text-blue-600">
-                                    {result.class_salary.toLocaleString()}
-                                </TableCell>
-                                <TableCell className="text-right font-medium text-orange-600">
-                                    {result.incentive_salary.toLocaleString()}
-                                </TableCell>
-                                <TableCell className="text-right font-black text-lg">
-                                    {result.total_salary.toLocaleString()}
-                                </TableCell>
-                                <TableCell>
-                                    <div className="text-xs space-y-1 max-w-[300px] mx-auto text-gray-600">
-                                        {result.details.map((detail, idx) => (
-                                            <div key={idx} className="flex justify-between border-b border-gray-100 pb-0.5 last:border-0">
-                                                <span>{detail.rule_name}</span>
-                                                <span>{detail.amount.toLocaleString()}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                </div>
             </div>
         </div>
     );

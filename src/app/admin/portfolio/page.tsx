@@ -5,7 +5,6 @@ import { AboutMeSection } from "./components/AboutMeSection";
 import { RecommendationSection } from "./components/RecommendationSection";
 import { TaglineSection } from "./components/TaglineSection";
 import { BeforeAfterSection } from "./components/BeforeAfterSection";
-import { MembersBoardSection } from "./components/MembersBoardSection";
 
 // 임시 데이터 (나중에 DB에서 가져올 예정)
 const mockTrainerData = {
@@ -169,9 +168,6 @@ export default function PortfolioPage() {
         reviews={beforeAfterReviews}
         onUpdate={handleBeforeAfterUpdate}
       />
-
-      {/* 관리중인 회원 리스트 보드 */}
-      <MembersBoardSection />
     </div>
   );
 }

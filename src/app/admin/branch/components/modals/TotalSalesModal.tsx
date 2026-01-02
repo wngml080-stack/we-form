@@ -1,6 +1,8 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { TrendingUp, Target, Award, BarChart3, Search } from "lucide-react";
@@ -37,292 +39,247 @@ export function TotalSalesModal({
 }: TotalSalesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-white max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-purple-600" />
-            매출 현황
-          </DialogTitle>
-          <DialogDescription className="sr-only">전체 매출 현황을 확인합니다</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-5xl bg-[#f8fafc] max-h-[95vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
+        {/* 헤더 - 프리미엄 디자인 */}
+        <div className="bg-slate-900 p-10 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+          <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black tracking-tight">전체 매출 현황</h2>
+                  <p className="text-purple-200/60 text-xs font-black uppercase tracking-[0.2em] mt-0.5">Total Revenue Analytics</p>
+                </div>
+              </div>
+            </div>
 
-        {/* 기간 선택 */}
-        <div className="flex items-center gap-2 py-4 border-b">
-          <Button
-            variant={salesPeriod === "thisMonth" ? "default" : "outline"}
-            size="sm"
-            onClick={() => onPeriodChange("all", "thisMonth")}
-            className={salesPeriod === "thisMonth" ? "bg-purple-600 hover:bg-purple-700" : ""}
-          >
-            이번 달
-          </Button>
-          <Button
-            variant={salesPeriod === "lastMonth" ? "default" : "outline"}
-            size="sm"
-            onClick={() => onPeriodChange("all", "lastMonth")}
-            className={salesPeriod === "lastMonth" ? "bg-purple-600 hover:bg-purple-700" : ""}
-          >
-            지난 달
-          </Button>
-          <Button
-            variant={salesPeriod === "custom" ? "default" : "outline"}
-            size="sm"
-            onClick={() => onPeriodChange("all", "custom")}
-            className={salesPeriod === "custom" ? "bg-purple-600 hover:bg-purple-700" : ""}
-          >
-            날짜 지정
-          </Button>
+            {/* 기간 선택 - 필 스타일 */}
+            <div className="flex items-center gap-1.5 bg-white/10 p-1.5 rounded-2xl backdrop-blur-sm border border-white/10">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onPeriodChange("all", "thisMonth")}
+                className={cn("h-10 px-6 rounded-xl font-black transition-all", salesPeriod === "thisMonth" ? "bg-white text-slate-900 shadow-lg" : "text-white/60 hover:text-white hover:bg-white/5")}
+              >
+                이번 달
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onPeriodChange("all", "lastMonth")}
+                className={cn("h-10 px-6 rounded-xl font-black transition-all", salesPeriod === "lastMonth" ? "bg-white text-slate-900 shadow-lg" : "text-white/60 hover:text-white hover:bg-white/5")}
+              >
+                지난 달
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onPeriodChange("all", "custom")}
+                className={cn("h-10 px-6 rounded-xl font-black transition-all", salesPeriod === "custom" ? "bg-white text-slate-900 shadow-lg" : "text-white/60 hover:text-white hover:bg-white/5")}
+              >
+                날짜 지정
+              </Button>
+            </div>
+          </div>
+
           {salesPeriod === "custom" && (
-            <div className="flex items-center gap-2 ml-2">
+            <div className="mt-8 flex items-center gap-3 bg-white/5 p-4 rounded-3xl border border-white/5 animate-in slide-in-from-top-4 duration-500">
               <Input
                 type="date"
                 value={customDateRange.start}
                 onChange={(e) => setCustomDateRange({ ...customDateRange, start: e.target.value })}
-                className="w-36"
+                className="h-11 bg-white border-none rounded-xl font-bold text-slate-900"
               />
-              <span>~</span>
+              <span className="text-white/40 font-black">~</span>
               <Input
                 type="date"
                 value={customDateRange.end}
                 onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
-                className="w-36"
+                className="h-11 bg-white border-none rounded-xl font-bold text-slate-900"
               />
-              <Button size="sm" onClick={onCustomSearch} className="bg-purple-600 hover:bg-purple-700">
-                <Search className="w-4 h-4" />
+              <Button onClick={onCustomSearch} className="h-11 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black">
+                <Search className="w-5 h-5" />
               </Button>
             </div>
           )}
         </div>
 
-        {/* 전체 통계 */}
-        {isLoading ? (
-          <div className="text-center py-8 text-gray-500">로딩 중...</div>
-        ) : (
-          <div className="space-y-6 py-4">
-            {/* 총 매출 요약 */}
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-5 text-center">
-              <div className="text-sm text-purple-100 font-medium mb-1">총 매출 ({salesPeriod === "thisMonth" ? "이번 달" : salesPeriod === "lastMonth" ? "지난 달" : "지정 기간"})</div>
-              <div className="text-3xl font-bold text-white">{Math.round(salesSummary.totalRevenue / 10000).toLocaleString()}만원</div>
-              <div className="text-sm text-purple-200 mt-2">FC {salesSummary.fcCount}건 + PT {salesSummary.ptCount}건</div>
+        {/* 메인 콘텐츠 */}
+        <div className="p-10 space-y-10">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+              <TrendingUp className="w-16 h-16 text-purple-200 mb-4" />
+              <p className="text-slate-400 font-black text-xs uppercase tracking-widest">Loading Analytics...</p>
             </div>
-
-            {/* FC 회원권 / 부가상품 상세 DATA */}
-            <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/30">
-              <h4 className="font-bold text-blue-700 mb-3 flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                FC 회원권 / 부가상품 상세 DATA
-              </h4>
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                <div className="bg-white rounded-lg p-3 text-center border border-blue-100">
-                  <div className="text-xs text-blue-600 font-medium">FC BEP</div>
-                  <div className="text-lg font-bold text-blue-700">{Math.round(fcStats.bep / 10000).toLocaleString()}만원</div>
+          ) : (
+            <>
+              {/* 총 매출 요약 - 히어로 카드 */}
+              <div className="bg-white rounded-[40px] p-12 shadow-xl shadow-purple-100/50 border border-purple-50 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-50 rounded-full -mr-40 -mt-40 transition-transform duration-1000 group-hover:scale-110"></div>
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
+                  <div className="space-y-4 text-center md:text-left">
+                    <h3 className="text-sm font-black text-purple-600 uppercase tracking-[0.3em]">Total Performance</h3>
+                    <div className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">
+                      총 매출 <span className="text-purple-600">{Math.round(salesSummary.totalRevenue / 10000).toLocaleString()}</span>만원
+                    </div>
+                    <div className="flex items-center justify-center md:justify-start gap-4">
+                      <Badge className="bg-blue-50 text-blue-600 border-none font-black text-xs px-4 py-1.5 rounded-xl">
+                        FC {salesSummary.fcCount}건
+                      </Badge>
+                      <Badge className="bg-orange-50 text-orange-600 border-none font-black text-xs px-4 py-1.5 rounded-xl">
+                        PT {salesSummary.ptCount}건
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="w-40 h-40 bg-purple-600 rounded-[48px] flex items-center justify-center shadow-2xl shadow-purple-500/40 rotate-12 transition-transform duration-500 group-hover:rotate-0">
+                    <BarChart3 className="w-20 h-20 text-white" />
+                  </div>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-green-100">
-                  <div className="text-xs text-green-600 font-medium">FC 총 매출</div>
-                  <div className="text-lg font-bold text-green-700">{Math.round(fcStats.totalSales / 10000).toLocaleString()}만원</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-purple-100">
-                  <div className="text-xs text-purple-600 font-medium">BEP 달성률</div>
-                  <div className="text-lg font-bold text-purple-700">{Math.round(fcStats.bepRate)}%</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-indigo-100">
-                  <div className="text-xs text-indigo-600 font-medium">FC 객단가</div>
-                  <div className="text-lg font-bold text-indigo-700">{Math.round(fcStats.avgPrice / 10000).toLocaleString()}만원</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-5 gap-2">
-                <div className="bg-white rounded-lg p-2 text-center border border-gray-100">
-                  <div className="text-xs text-gray-500">총 등록</div>
-                  <div className="text-sm font-bold text-gray-700">{fcStats.totalCount}건</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center border border-cyan-100">
-                  <div className="text-xs text-cyan-600">워크인</div>
-                  <div className="text-sm font-bold text-cyan-700">{fcStats.walkinCount}건</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center border border-teal-100">
-                  <div className="text-xs text-teal-600">비대면</div>
-                  <div className="text-sm font-bold text-teal-700">{fcStats.onlineCount}건</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center border border-amber-100">
-                  <div className="text-xs text-amber-600">리뉴얼</div>
-                  <div className="text-sm font-bold text-amber-700">{fcStats.renewCount}건</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center border border-rose-100">
-                  <div className="text-xs text-rose-600">신규율</div>
-                  <div className="text-sm font-bold text-rose-700">{Math.round(fcStats.newRate)}%</div>
-                </div>
-              </div>
-              <div className="mt-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-3 text-center">
-                <div className="text-xs text-blue-100">FC 신규매출</div>
-                <div className="text-xl font-bold text-white">{Math.round(fcStats.newSales / 10000).toLocaleString()}만원</div>
-              </div>
-            </div>
-
-            {/* PT / PPT 상세 DATA */}
-            <div className="border border-orange-200 rounded-xl p-4 bg-orange-50/30">
-              <h4 className="font-bold text-orange-700 mb-3 flex items-center gap-2">
-                <Award className="w-5 h-5" />
-                PT / PPT 상세 DATA
-              </h4>
-              <div className="grid grid-cols-4 gap-2 mb-3">
-                <div className="bg-white rounded-lg p-3 text-center border border-orange-100">
-                  <div className="text-xs text-orange-600 font-medium">PT BEP</div>
-                  <div className="text-lg font-bold text-orange-700">{Math.round(ptStats.bep / 10000).toLocaleString()}만원</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-green-100">
-                  <div className="text-xs text-green-600 font-medium">PT 총 매출</div>
-                  <div className="text-lg font-bold text-green-700">{Math.round(ptStats.totalSales / 10000).toLocaleString()}만원</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-purple-100">
-                  <div className="text-xs text-purple-600 font-medium">BEP 달성률</div>
-                  <div className="text-lg font-bold text-purple-700">{Math.round(ptStats.bepRate)}%</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-indigo-100">
-                  <div className="text-xs text-indigo-600 font-medium">PT 객단가</div>
-                  <div className="text-lg font-bold text-indigo-700">{Math.round(ptStats.avgPrice / 10000).toLocaleString()}만원</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                <div className="bg-white rounded-lg p-2 text-center border border-gray-100">
-                  <div className="text-xs text-gray-500">PT 총 등록</div>
-                  <div className="text-sm font-bold text-gray-700">{ptStats.totalCount}건</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center border border-cyan-100">
-                  <div className="text-xs text-cyan-600">PT 신규</div>
-                  <div className="text-sm font-bold text-cyan-700">{ptStats.newCount}건</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center border border-amber-100">
-                  <div className="text-xs text-amber-600">PT 재등록</div>
-                  <div className="text-sm font-bold text-amber-700">{ptStats.renewCount}건</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center border border-rose-100">
-                  <div className="text-xs text-rose-600">재등록률</div>
-                  <div className="text-sm font-bold text-rose-700">{Math.round(ptStats.renewRate)}%</div>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-3 text-center">
-                  <div className="text-xs text-orange-100">신규 등록 매출</div>
-                  <div className="text-xl font-bold text-white">{Math.round(ptStats.newSales / 10000).toLocaleString()}만원</div>
-                </div>
-                <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-lg p-3 text-center">
-                  <div className="text-xs text-amber-100">재등록 매출</div>
-                  <div className="text-xl font-bold text-white">{Math.round(ptStats.renewSales / 10000).toLocaleString()}만원</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 전월/전년 대비 비교 */}
-            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
-              <h4 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                전월/전년 대비 비교
-              </h4>
-
-              {/* 비교 테이블 */}
-              <div className="bg-white rounded-lg overflow-hidden border border-gray-200">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-700">구분</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">현재</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">전월</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">전월대비</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">전년동월</th>
-                      <th className="px-4 py-3 text-right font-semibold text-gray-700">전년대비</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">총 매출</td>
-                      <td className="px-4 py-3 text-right font-bold text-purple-600">{Math.round(salesSummary.totalRevenue / 10000).toLocaleString()}만원</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{Math.round(comparisonData.prevMonth.totalSales / 10000).toLocaleString()}만원</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${comparisonData.prevMonth.totalSales > 0 ? (salesSummary.totalRevenue >= comparisonData.prevMonth.totalSales ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
-                        {comparisonData.prevMonth.totalSales > 0
-                          ? `${salesSummary.totalRevenue >= comparisonData.prevMonth.totalSales ? '▲' : '▼'} ${Math.abs(Math.round((salesSummary.totalRevenue - comparisonData.prevMonth.totalSales) / comparisonData.prevMonth.totalSales * 100))}%`
-                          : '-'
-                        }
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">{Math.round(comparisonData.prevYear.totalSales / 10000).toLocaleString()}만원</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${comparisonData.prevYear.totalSales > 0 ? (salesSummary.totalRevenue >= comparisonData.prevYear.totalSales ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
-                        {comparisonData.prevYear.totalSales > 0
-                          ? `${salesSummary.totalRevenue >= comparisonData.prevYear.totalSales ? '▲' : '▼'} ${Math.abs(Math.round((salesSummary.totalRevenue - comparisonData.prevYear.totalSales) / comparisonData.prevYear.totalSales * 100))}%`
-                          : '-'
-                        }
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-blue-700">FC 매출</td>
-                      <td className="px-4 py-3 text-right font-bold text-blue-600">{Math.round(fcStats.totalSales / 10000).toLocaleString()}만원</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{Math.round(comparisonData.prevMonth.fcSales / 10000).toLocaleString()}만원</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${comparisonData.prevMonth.fcSales > 0 ? (fcStats.totalSales >= comparisonData.prevMonth.fcSales ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
-                        {comparisonData.prevMonth.fcSales > 0
-                          ? `${fcStats.totalSales >= comparisonData.prevMonth.fcSales ? '▲' : '▼'} ${Math.abs(Math.round((fcStats.totalSales - comparisonData.prevMonth.fcSales) / comparisonData.prevMonth.fcSales * 100))}%`
-                          : '-'
-                        }
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">{Math.round(comparisonData.prevYear.fcSales / 10000).toLocaleString()}만원</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${comparisonData.prevYear.fcSales > 0 ? (fcStats.totalSales >= comparisonData.prevYear.fcSales ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
-                        {comparisonData.prevYear.fcSales > 0
-                          ? `${fcStats.totalSales >= comparisonData.prevYear.fcSales ? '▲' : '▼'} ${Math.abs(Math.round((fcStats.totalSales - comparisonData.prevYear.fcSales) / comparisonData.prevYear.fcSales * 100))}%`
-                          : '-'
-                        }
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-orange-700">PT 매출</td>
-                      <td className="px-4 py-3 text-right font-bold text-orange-600">{Math.round(ptStats.totalSales / 10000).toLocaleString()}만원</td>
-                      <td className="px-4 py-3 text-right text-gray-600">{Math.round(comparisonData.prevMonth.ptSales / 10000).toLocaleString()}만원</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${comparisonData.prevMonth.ptSales > 0 ? (ptStats.totalSales >= comparisonData.prevMonth.ptSales ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
-                        {comparisonData.prevMonth.ptSales > 0
-                          ? `${ptStats.totalSales >= comparisonData.prevMonth.ptSales ? '▲' : '▼'} ${Math.abs(Math.round((ptStats.totalSales - comparisonData.prevMonth.ptSales) / comparisonData.prevMonth.ptSales * 100))}%`
-                          : '-'
-                        }
-                      </td>
-                      <td className="px-4 py-3 text-right text-gray-600">{Math.round(comparisonData.prevYear.ptSales / 10000).toLocaleString()}만원</td>
-                      <td className={`px-4 py-3 text-right font-semibold ${comparisonData.prevYear.ptSales > 0 ? (ptStats.totalSales >= comparisonData.prevYear.ptSales ? 'text-green-600' : 'text-red-600') : 'text-gray-400'}`}>
-                        {comparisonData.prevYear.ptSales > 0
-                          ? `${ptStats.totalSales >= comparisonData.prevYear.ptSales ? '▲' : '▼'} ${Math.abs(Math.round((ptStats.totalSales - comparisonData.prevYear.ptSales) / comparisonData.prevYear.ptSales * 100))}%`
-                          : '-'
-                        }
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
               </div>
 
-              {/* 비교 바 차트 */}
-              <div className="mt-4 grid grid-cols-3 gap-4">
-                {/* 총 매출 차트 */}
-                <ComparisonChart
-                  title="총 매출 비교"
-                  current={salesSummary.totalRevenue}
-                  prevMonth={comparisonData.prevMonth.totalSales}
-                  prevYear={comparisonData.prevYear.totalSales}
-                  color="purple"
-                />
-                {/* FC 매출 차트 */}
-                <ComparisonChart
-                  title="FC 매출 비교"
-                  current={fcStats.totalSales}
-                  prevMonth={comparisonData.prevMonth.fcSales}
-                  prevYear={comparisonData.prevYear.fcSales}
-                  color="blue"
-                />
-                {/* PT 매출 차트 */}
-                <ComparisonChart
-                  title="PT 매출 비교"
-                  current={ptStats.totalSales}
-                  prevMonth={comparisonData.prevMonth.ptSales}
-                  prevYear={comparisonData.prevYear.ptSales}
-                  color="orange"
-                />
+              {/* FC vs PT 상세 그리드 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* FC 상세 */}
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
+                  <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
+                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                      <Target className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <h4 className="text-lg font-black text-slate-900">FC 회원권 상세</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <DetailItem label="FC BEP" value={`${Math.round(fcStats.bep / 10000).toLocaleString()}만원`} color="blue" />
+                    <DetailItem label="FC TOTAL" value={`${Math.round(fcStats.totalSales / 10000).toLocaleString()}만원`} color="green" />
+                    <DetailItem label="BEP RATE" value={`${Math.round(fcStats.bepRate)}%`} color="purple" />
+                    <DetailItem label="UNIT PRICE" value={`${Math.round(fcStats.avgPrice / 10000).toLocaleString()}만원`} color="indigo" />
+                  </div>
+                  <div className="bg-blue-600 rounded-2xl p-5 text-center shadow-lg shadow-blue-100">
+                    <div className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">FC NEW SALES</div>
+                    <div className="text-2xl font-black text-white">{Math.round(fcStats.newSales / 10000).toLocaleString()}만원</div>
+                  </div>
+                </div>
+
+                {/* PT 상세 */}
+                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
+                  <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
+                    <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
+                      <Award className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <h4 className="text-lg font-black text-slate-900">PT 트레이닝 상세</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <DetailItem label="PT BEP" value={`${Math.round(ptStats.bep / 10000).toLocaleString()}만원`} color="orange" />
+                    <DetailItem label="PT TOTAL" value={`${Math.round(ptStats.totalSales / 10000).toLocaleString()}만원`} color="green" />
+                    <DetailItem label="BEP RATE" value={`${Math.round(ptStats.bepRate)}%`} color="purple" />
+                    <DetailItem label="UNIT PRICE" value={`${Math.round(ptStats.avgPrice / 10000).toLocaleString()}만원`} color="indigo" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-orange-500 rounded-2xl p-4 text-center shadow-lg shadow-orange-100">
+                      <div className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">NEW PT</div>
+                      <div className="text-xl font-black text-white">{Math.round(ptStats.newSales / 10000).toLocaleString()}만원</div>
+                    </div>
+                    <div className="bg-amber-500 rounded-2xl p-4 text-center shadow-lg shadow-amber-100">
+                      <div className="text-[9px] font-black text-white/60 uppercase tracking-widest mb-1">RE-JOIN</div>
+                      <div className="text-xl font-black text-white">{Math.round(ptStats.renewSales / 10000).toLocaleString()}만원</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+
+              {/* 전월/전년 대비 비교 테이블 */}
+              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-slate-600" />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900">전월/전년 대비 성장률</h4>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-50">
+                        <th className="px-4 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">구분</th>
+                        <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">현재</th>
+                        <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">전월</th>
+                        <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">전월대비</th>
+                        <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">전년동월</th>
+                        <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">전년대비</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      <GrowthRow label="총 매출" current={salesSummary.totalRevenue} prevMonth={comparisonData.prevMonth.totalSales} prevYear={comparisonData.prevYear.totalSales} isTotal />
+                      <GrowthRow label="FC 매출" current={fcStats.totalSales} prevMonth={comparisonData.prevMonth.fcSales} prevYear={comparisonData.prevYear.fcSales} color="blue" />
+                      <GrowthRow label="PT 매출" current={ptStats.totalSales} prevMonth={comparisonData.prevMonth.ptSales} prevYear={comparisonData.prevYear.ptSales} color="orange" />
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="p-10 pt-0 flex justify-end">
+          <Button onClick={() => onOpenChange(false)} variant="ghost" className="h-14 px-10 rounded-2xl font-black text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all">
+            CLOSE
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DetailItem({ label, value, color }: { label: string, value: string, color: string }) {
+  const colorMap: Record<string, string> = {
+    blue: "text-blue-600 bg-blue-50",
+    green: "text-emerald-600 bg-emerald-50",
+    purple: "text-purple-600 bg-purple-50",
+    indigo: "text-indigo-600 bg-indigo-50",
+    orange: "text-orange-600 bg-orange-50"
+  };
+
+  return (
+    <div className={cn("p-4 rounded-2xl border border-gray-100 shadow-sm", colorMap[color])}>
+      <div className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-60">{label}</div>
+      <div className="text-lg font-black tracking-tight">{value}</div>
+    </div>
+  );
+}
+
+function GrowthRow({ label, current, prevMonth, prevYear, isTotal, color }: { label: string, current: number, prevMonth: number, prevYear: number, isTotal?: boolean, color?: string }) {
+  const calculateChange = (cur: number, prev: number) => {
+    if (prev <= 0) return null;
+    const diff = ((cur - prev) / prev) * 100;
+    return Math.round(diff);
+  };
+
+  const monthChange = calculateChange(current, prevMonth);
+  const yearChange = calculateChange(current, prevYear);
+
+  return (
+    <tr className="group hover:bg-slate-50/50 transition-colors">
+      <td className={cn("px-4 py-5 font-black text-sm", isTotal ? "text-slate-900" : (color === 'blue' ? "text-blue-600" : "text-orange-600"))}>{label}</td>
+      <td className="px-4 py-5 text-right font-black text-sm">{Math.round(current / 10000).toLocaleString()}만</td>
+      <td className="px-4 py-5 text-right font-bold text-slate-400 text-xs">{Math.round(prevMonth / 10000).toLocaleString()}만</td>
+      <td className="px-4 py-5 text-right font-black text-xs">
+        {monthChange !== null ? (
+          <span className={monthChange >= 0 ? "text-emerald-500" : "text-rose-500"}>
+            {monthChange >= 0 ? '▲' : '▼'} {Math.abs(monthChange)}%
+          </span>
+        ) : '-'}
+      </td>
+      <td className="px-4 py-5 text-right font-bold text-slate-400 text-xs">{Math.round(prevYear / 10000).toLocaleString()}만</td>
+      <td className="px-4 py-5 text-right font-black text-xs">
+        {yearChange !== null ? (
+          <span className={yearChange >= 0 ? "text-emerald-500" : "text-rose-500"}>
+            {yearChange >= 0 ? '▲' : '▼'} {Math.abs(yearChange)}%
+          </span>
+        ) : '-'}
+      </td>
+    </tr>
   );
 }
 

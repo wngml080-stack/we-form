@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, BarChart3, Download } from "lucide-react";
 import { calculateMonthlyStats } from "@/lib/schedule-utils";
 
 interface StaffStats {
@@ -195,46 +195,62 @@ export default function MonthlyStatsViewer() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* 보고서 승인 상태 배너 */}
+    <div className="space-y-8">
+      {/* 보고서 승인 상태 배너 - 더 세련되게 */}
       {reportApprovalStatus.totalCount > 0 && (
-        reportApprovalStatus.allApproved ? (
-          <Alert className="bg-emerald-50 border-emerald-200">
-            <CheckCircle className="h-4 w-4 text-emerald-600" />
-            <AlertTitle className="text-emerald-800">모든 보고서 승인됨</AlertTitle>
-            <AlertDescription className="text-emerald-700">
-              {selectedMonth} 월의 모든 직원 보고서가 승인되었습니다. 확정된 스케줄로 통계가 집계됩니다.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <Alert className="bg-amber-50 border-amber-200">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertTitle className="text-amber-800">일부 보고서 미승인</AlertTitle>
-            <AlertDescription className="text-amber-700">
-              승인됨: {reportApprovalStatus.approvedCount} / {reportApprovalStatus.totalCount}명
-              {" "}- 미승인 직원은 <strong>임시 집계</strong>로 표시됩니다.
-            </AlertDescription>
-          </Alert>
-        )
+        <div className="animate-in slide-in-from-top-4 duration-500">
+          {reportApprovalStatus.allApproved ? (
+            <div className="flex items-center gap-4 bg-emerald-50 border border-emerald-100 p-5 rounded-[24px] shadow-sm shadow-emerald-100/50">
+              <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200">
+                <CheckCircle className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h4 className="font-black text-emerald-900 text-lg tracking-tight">모든 보고서 승인 완료</h4>
+                <p className="text-emerald-700 font-bold text-sm">
+                  {selectedMonth}월의 모든 직원 보고서가 승인되었습니다. 확정된 데이터로 급여가 집계됩니다.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 bg-amber-50 border border-amber-100 p-5 rounded-[24px] shadow-sm shadow-amber-100/50">
+              <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+                <AlertTriangle className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-black text-amber-900 text-lg tracking-tight">일부 보고서 승인 대기 중</h4>
+                <p className="text-amber-700 font-bold text-sm">
+                  승인됨: <span className="text-amber-900 font-black">{reportApprovalStatus.approvedCount}</span> / {reportApprovalStatus.totalCount}명
+                  <span className="mx-2 opacity-30">|</span>
+                  미승인 직원은 <span className="text-amber-900 font-black underline decoration-2 underline-offset-4">임시 집계</span> 상태입니다.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* 헤더 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h3 className="text-2xl font-bold text-gray-800">📊 월별 PT 실적 집계</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            직원별 PT 횟수를 근무내/근무외/주말/공휴일로 구분하여 집계합니다.
+      {/* 액션 헤더 */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+        <div className="space-y-1">
+          <h3 className="text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+              <BarChart3 className="w-6 h-6 text-blue-600" />
+            </div>
+            월별 PT 실적 집계
+          </h3>
+          <p className="text-sm text-slate-400 font-bold ml-13">
+            직원별 PT 횟수를 근무 시간대에 맞춰 자동으로 분류하여 집계합니다.
           </p>
         </div>
 
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex gap-3 w-full md:w-auto">
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-full md:w-[180px]">
+            <SelectTrigger className="w-full md:w-[180px] h-12 bg-slate-50 border-none rounded-2xl font-black text-slate-900 focus:ring-2 focus:ring-blue-100 transition-all">
               <SelectValue placeholder="월 선택" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
               {monthOptions.map((month) => (
-                <SelectItem key={month} value={month}>
+                <SelectItem key={month} value={month} className="rounded-xl font-bold py-3">
                   {month.replace('-', '년 ')}월
                 </SelectItem>
               ))}
@@ -243,78 +259,89 @@ export default function MonthlyStatsViewer() {
 
           <Button
             onClick={handleExcelDownload}
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="h-12 px-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 flex items-center gap-2 transition-all hover:-translate-y-1"
           >
-            📊 엑셀 다운로드
+            <Download className="w-4 h-4" /> 엑셀 다운로드
           </Button>
         </div>
       </div>
 
-      {/* 통계 카드 */}
+      {/* 실적 리스트 */}
       {isLoading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">데이터를 불러오는 중...</p>
+        <div className="flex flex-col items-center justify-center py-40 animate-pulse">
+          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+            <BarChart3 className="w-8 h-8 text-blue-300" />
+          </div>
+          <p className="text-slate-400 font-black tracking-widest uppercase text-xs">Loading data...</p>
         </div>
       ) : staffStats.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">해당 월의 실적 데이터가 없습니다.</p>
+        <div className="flex flex-col items-center justify-center py-40 bg-slate-50 rounded-[40px] border border-dashed border-slate-200">
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-sm">
+            <BarChart3 className="w-10 h-10 text-slate-200" />
+          </div>
+          <h4 className="text-lg font-black text-slate-900 mb-2">실적 데이터가 없습니다</h4>
+          <p className="text-slate-400 font-bold">선택하신 월의 수업 기록이 아직 생성되지 않았습니다.</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
           {staffStats.map((stat) => (
-            <Card key={stat.staff_id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-xl">{stat.staff_name}</CardTitle>
-                      {stat.reportStatus === 'approved' ? (
-                        <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0">확정</Badge>
-                      ) : stat.reportStatus === 'submitted' ? (
-                        <Badge className="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0">대기</Badge>
-                      ) : stat.reportStatus === 'rejected' ? (
-                        <Badge className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0">반려</Badge>
-                      ) : (
-                        <Badge className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0">임시</Badge>
-                      )}
+            <Card key={stat.staff_id} className="group hover:shadow-2xl hover:shadow-blue-100 transition-all duration-500 border-none rounded-[40px] overflow-hidden bg-white shadow-lg shadow-slate-100/50 flex flex-col h-full">
+              <CardHeader className="p-8 pb-4">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 bg-slate-100 rounded-[22px] flex items-center justify-center text-xl font-black text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                        {stat.staff_name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-2xl font-black text-slate-900 tracking-tighter">{stat.staff_name}</CardTitle>
+                          {stat.reportStatus === 'approved' ? (
+                            <Badge className="bg-emerald-500 text-white border-none font-black text-[10px] px-2 py-0.5 rounded-lg shadow-sm shadow-emerald-100">CONFIRMED</Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-700 border-none font-black text-[10px] px-2 py-0.5 rounded-lg">PENDING</Badge>
+                          )}
+                        </div>
+                        {stat.job_position && (
+                          <div className="text-blue-600 font-black text-xs uppercase tracking-widest mt-1 opacity-60">
+                            {stat.job_position}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {stat.job_position && (
-                      <Badge variant="outline" className="mt-1">
-                        {stat.job_position}
-                      </Badge>
-                    )}
                   </div>
-                  <div className="text-right">
-                    <div className="text-3xl font-bold text-[#2F80ED]">
-                      {stat.pt_total_count}
+                  
+                  <div className="text-right bg-slate-50 p-4 rounded-[28px] border border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-all duration-500">
+                    <div className="text-4xl font-black text-slate-900 tracking-tighter group-hover:text-blue-600 transition-colors">
+                      {stat.pt_total_count}<span className="text-base ml-1 opacity-30 font-bold uppercase tracking-widest">PT</span>
                     </div>
-                    <div className="text-xs text-gray-500">총 PT 횟수</div>
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Total Stats</div>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-600 mb-1">근무내</div>
-                    <div className="text-2xl font-bold text-blue-600">
+              <CardContent className="p-8 pt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="bg-blue-50/50 p-5 rounded-[28px] border border-blue-50/50 group-hover:bg-white group-hover:border-blue-100 group-hover:shadow-lg group-hover:shadow-blue-100/30 transition-all duration-500 text-center">
+                    <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">PT IN</div>
+                    <div className="text-2xl font-black text-blue-600 tracking-tighter">
                       {stat.pt_inside_count}
                     </div>
                   </div>
-                  <div className="bg-orange-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-600 mb-1">근무외</div>
-                    <div className="text-2xl font-bold text-orange-600">
+                  <div className="bg-orange-50/50 p-5 rounded-[28px] border border-orange-50/50 group-hover:bg-white group-hover:border-orange-100 group-hover:shadow-lg group-hover:shadow-orange-100/30 transition-all duration-500 text-center">
+                    <div className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-2">PT OUT</div>
+                    <div className="text-2xl font-black text-orange-600 tracking-tighter">
                       {stat.pt_outside_count}
                     </div>
                   </div>
-                  <div className="bg-purple-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-600 mb-1">주말</div>
-                    <div className="text-2xl font-bold text-purple-600">
+                  <div className="bg-purple-50/50 p-5 rounded-[28px] border border-purple-50/50 group-hover:bg-white group-hover:border-purple-100 group-hover:shadow-lg group-hover:shadow-purple-100/30 transition-all duration-500 text-center">
+                    <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">Weekend</div>
+                    <div className="text-2xl font-black text-purple-600 tracking-tighter">
                       {stat.pt_weekend_count}
                     </div>
                   </div>
-                  <div className="bg-red-50 p-3 rounded-lg">
-                    <div className="text-xs text-gray-600 mb-1">공휴일</div>
-                    <div className="text-2xl font-bold text-red-600">
+                  <div className="bg-red-50/50 p-5 rounded-[28px] border border-red-50/50 group-hover:bg-white group-hover:border-red-100 group-hover:shadow-lg group-hover:shadow-red-100/30 transition-all duration-500 text-center">
+                    <div className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-2">Holiday</div>
+                    <div className="text-2xl font-black text-red-600 tracking-tighter">
                       {stat.pt_holiday_count}
                     </div>
                   </div>

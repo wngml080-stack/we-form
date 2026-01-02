@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { FileText, Save, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConsultationFormData, initialFormData } from "./types";
@@ -11,7 +11,14 @@ import { PhysicalDiagnosisSection } from "./components/PhysicalDiagnosisSection"
 import { GoalSettingSection } from "./components/GoalSettingSection";
 import { AvailableTimeSection } from "./components/AvailableTimeSection";
 
-export default function ConsultationFormPage() {
+export default function ConsultationFormPage(props: {
+  params: Promise<any>;
+  searchParams: Promise<any>;
+}) {
+  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
+  use(props.params);
+  use(props.searchParams);
+
   const [formData, setFormData] = useState<ConsultationFormData>(initialFormData);
   const [isSaving, setIsSaving] = useState(false);
 
