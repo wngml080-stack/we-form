@@ -175,11 +175,17 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     const fetchCurrentStaff = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("staffs")
           .select("id")
           .eq("auth_user_id", user.id)
-          .single();
+          .maybeSingle();
+
+        if (error) {
+          console.error("현재 스태프 조회 오류:", error);
+          return;
+        }
+
         if (data) {
           setCurrentStaffId(data.id);
         }
@@ -276,7 +282,12 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       .eq("status", "active")
       .order("name");
 
-    if (!error && data) {
+    if (error) {
+      console.error("스태프 목록 조회 오류:", error);
+      return;
+    }
+
+    if (data) {
       setStaffList(data);
     }
   };
@@ -354,69 +365,82 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       const sixMonthsAgo = new Date(now);
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-      // 3개월 매출
-      const { data: sales3m } = await supabase
-        .from("member_payments")
-        .select("amount")
-        .eq("gym_id", gymId)
-        .eq("trainer_id", currentStaffId)
-        .gte("paid_at", threeMonthsAgo.toISOString().split("T")[0])
-        .lte("paid_at", now.toISOString().split("T")[0]);
+      // currentStaffId가 있을 때만 개인 매출 통계 조회
+      if (currentStaffId) {
+        // 3개월 매출
+        const { data: sales3m, error: sales3mError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("paid_at", threeMonthsAgo.toISOString().split("T")[0])
+          .lte("paid_at", now.toISOString().split("T")[0]);
 
-      if (sales3m) {
-        const total3m = sales3m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-        rankings.avg3Months = Math.round(total3m / 3);
-      }
+        if (sales3mError) {
+          console.error("3개월 매출 조회 오류:", sales3mError);
+        } else if (sales3m) {
+          const total3m = sales3m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+          rankings.avg3Months = Math.round(total3m / 3);
+        }
 
-      // 6개월 매출
-      const { data: sales6m } = await supabase
-        .from("member_payments")
-        .select("amount")
-        .eq("gym_id", gymId)
-        .eq("trainer_id", currentStaffId)
-        .gte("paid_at", sixMonthsAgo.toISOString().split("T")[0])
-        .lte("paid_at", now.toISOString().split("T")[0]);
+        // 6개월 매출
+        const { data: sales6m, error: sales6mError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("paid_at", sixMonthsAgo.toISOString().split("T")[0])
+          .lte("paid_at", now.toISOString().split("T")[0]);
 
-      if (sales6m) {
-        const total6m = sales6m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-        rankings.avg6Months = Math.round(total6m / 6);
-      }
+        if (sales6mError) {
+          console.error("6개월 매출 조회 오류:", sales6mError);
+        } else if (sales6m) {
+          const total6m = sales6m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+          rankings.avg6Months = Math.round(total6m / 6);
+        }
 
-      // 상반기 (1~6월)
-      const { data: firstHalfData } = await supabase
-        .from("member_payments")
-        .select("amount")
-        .eq("gym_id", gymId)
-        .eq("trainer_id", currentStaffId)
-        .gte("paid_at", `${currentYear}-01-01`)
-        .lte("paid_at", `${currentYear}-06-30`);
+        // 상반기 (1~6월)
+        const { data: firstHalfData, error: firstHalfError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("paid_at", `${currentYear}-01-01`)
+          .lte("paid_at", `${currentYear}-06-30`);
 
-      if (firstHalfData) {
-        rankings.firstHalf = firstHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-      }
+        if (firstHalfError) {
+          console.error("상반기 매출 조회 오류:", firstHalfError);
+        } else if (firstHalfData) {
+          rankings.firstHalf = firstHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+        }
 
-      // 하반기 (7~12월)
-      const { data: secondHalfData } = await supabase
-        .from("member_payments")
-        .select("amount")
-        .eq("gym_id", gymId)
-        .eq("trainer_id", currentStaffId)
-        .gte("paid_at", `${currentYear}-07-01`)
-        .lte("paid_at", `${currentYear}-12-31`);
+        // 하반기 (7~12월)
+        const { data: secondHalfData, error: secondHalfError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("paid_at", `${currentYear}-07-01`)
+          .lte("paid_at", `${currentYear}-12-31`);
 
-      if (secondHalfData) {
-        rankings.secondHalf = secondHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+        if (secondHalfError) {
+          console.error("하반기 매출 조회 오류:", secondHalfError);
+        } else if (secondHalfData) {
+          rankings.secondHalf = secondHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+        }
       }
 
       // 순위 계산 (지점 내)
-      const { data: branchTrainers } = await supabase
+      const { data: branchTrainers, error: branchError } = await supabase
         .from("member_payments")
         .select("trainer_id, amount")
         .eq("gym_id", gymId)
         .gte("paid_at", dateRange.start)
         .lte("paid_at", dateRange.end);
 
-      if (branchTrainers) {
+      if (branchError) {
+        console.error("지점 순위 조회 오류:", branchError);
+      } else if (branchTrainers) {
         // 트레이너별 매출 집계
         const trainerSales: Record<string, number> = {};
         branchTrainers.forEach((t: any) => {
@@ -434,14 +458,16 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       }
 
       // 회사 순위 계산
-      const { data: companyTrainers } = await supabase
+      const { data: companyTrainers, error: companyError } = await supabase
         .from("member_payments")
         .select("trainer_id, amount")
         .eq("company_id", companyId)
         .gte("paid_at", dateRange.start)
         .lte("paid_at", dateRange.end);
 
-      if (companyTrainers) {
+      if (companyError) {
+        console.error("회사 순위 조회 오류:", companyError);
+      } else if (companyTrainers) {
         const trainerSales: Record<string, number> = {};
         companyTrainers.forEach((t: any) => {
           if (t.trainer_id) {

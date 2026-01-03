@@ -300,12 +300,17 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
       payment_method: customPaymentMethods.length
     };
 
-    await supabase.from(tableMap[type]).insert({
+    const { error } = await supabase.from(tableMap[type]).insert({
       gym_id: selectedGymId,
       company_id: selectedCompanyId,
       name: name.trim(),
       display_order: countMap[type] + 1
     });
+
+    if (error) {
+      console.error(`${type} 추가 오류:`, error);
+      return;
+    }
 
     fetchCustomOptions(selectedGymId);
   };
@@ -318,7 +323,13 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
       payment_method: "payment_methods"
     };
 
-    await supabase.from(tableMap[type]).delete().eq("id", id);
+    const { error } = await supabase.from(tableMap[type]).delete().eq("id", id);
+
+    if (error) {
+      console.error(`${type} 삭제 오류:`, error);
+      return;
+    }
+
     if (selectedGymId) fetchCustomOptions(selectedGymId);
   };
 
