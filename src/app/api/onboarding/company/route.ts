@@ -64,10 +64,15 @@ export async function POST(request: Request) {
         status: "pending",
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (companyError) {
+      console.error("[Onboarding] 회사 등록 오류:", companyError);
       throw new Error("회사 등록 실패: " + companyError.message);
+    }
+
+    if (!company) {
+      throw new Error("회사 등록에 실패했습니다.");
     }
 
     // 2. 기본 지점 생성 (본사)
@@ -79,11 +84,17 @@ export async function POST(request: Request) {
         status: "active",
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (gymError) {
+      console.error("[Onboarding] 지점 등록 오류:", gymError);
       await supabaseAdmin.from("companies").delete().eq("id", company.id);
       throw new Error("지점 등록 실패: " + gymError.message);
+    }
+
+    if (!gym) {
+      await supabaseAdmin.from("companies").delete().eq("id", company.id);
+      throw new Error("지점 등록에 실패했습니다.");
     }
 
     // 3. 대표자 staff 등록

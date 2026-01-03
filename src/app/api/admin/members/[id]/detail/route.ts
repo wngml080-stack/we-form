@@ -29,9 +29,14 @@ export async function GET(
       .from("members")
       .select("id, gym_id, company_id")
       .eq("id", memberId)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !member) {
+    if (memberError) {
+      console.error("[MemberDetail] 회원 조회 오류:", memberError);
+      return NextResponse.json({ error: "회원 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!member) {
       return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
     }
 

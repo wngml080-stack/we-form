@@ -93,11 +93,19 @@ export async function DELETE(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     // 이벤트의 회사 확인
-    const { data: event } = await supabaseAdmin
+    const { data: event, error: eventError } = await supabaseAdmin
       .from("company_events")
       .select("company_id")
       .eq("id", eventId)
-      .single();
+      .maybeSingle();
+
+    if (eventError) {
+      console.error("[HQEvents] 이벤트 조회 오류:", eventError);
+      return NextResponse.json(
+        { error: "이벤트 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     if (event?.company_id && !canAccessCompany(staff, event.company_id)) {
       return NextResponse.json(
@@ -149,11 +157,19 @@ export async function PATCH(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     // 이벤트의 회사 확인
-    const { data: event } = await supabaseAdmin
+    const { data: event, error: eventError } = await supabaseAdmin
       .from("company_events")
       .select("company_id")
       .eq("id", eventId)
-      .single();
+      .maybeSingle();
+
+    if (eventError) {
+      console.error("[HQEvents] 이벤트 토글 조회 오류:", eventError);
+      return NextResponse.json(
+        { error: "이벤트 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     if (event?.company_id && !canAccessCompany(staff, event.company_id)) {
       return NextResponse.json(

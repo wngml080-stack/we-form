@@ -19,11 +19,16 @@ export async function PATCH(
     const { id } = await params;
 
     // 해당 기록 조회
-    const { data: existingRecord } = await supabase
+    const { data: existingRecord, error: existingError } = await supabase
       .from("attendances")
       .select("id, gym_id, staff_id")
       .eq("id", id)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[Attendance] 출석 기록 조회 오류:", existingError);
+      return NextResponse.json({ error: "출석 기록 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (!existingRecord) {
       return NextResponse.json({ error: "출석 기록을 찾을 수 없습니다." }, { status: 404 });
@@ -54,9 +59,16 @@ export async function PATCH(
         schedule:schedules(id, title, start_time, end_time),
         status:attendance_statuses(code, label, color)
       `)
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[Attendance] 출석 기록 수정 오류:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "출석 기록 수정에 실패했습니다." }, { status: 500 });
+    }
 
     return NextResponse.json({ data });
   } catch (error: any) {
@@ -82,11 +94,16 @@ export async function DELETE(
     const { id } = await params;
 
     // 해당 기록 조회
-    const { data: existingRecord } = await supabase
+    const { data: existingRecord, error: existingError } = await supabase
       .from("attendances")
       .select("id, gym_id, staff_id")
       .eq("id", id)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[Attendance] 삭제용 출석 기록 조회 오류:", existingError);
+      return NextResponse.json({ error: "출석 기록 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (!existingRecord) {
       return NextResponse.json({ error: "출석 기록을 찾을 수 없습니다." }, { status: 404 });

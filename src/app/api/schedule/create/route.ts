@@ -64,10 +64,15 @@ export async function POST(request: Request) {
         counted_for_salary: true,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (insertError) {
-      throw insertError;
+      console.error("[ScheduleCreate] 스케줄 생성 오류:", insertError);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
+
+    if (!schedule) {
+      return NextResponse.json({ error: "스케줄 생성에 실패했습니다." }, { status: 500 });
     }
 
     // PT/OT인 경우 회원권 1회 차감 (선차감)

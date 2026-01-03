@@ -9,6 +9,8 @@ import { useAdminDashboardData } from "../hooks/useAdminDashboardData";
 import { SystemAnnouncementBanner } from "./SystemAnnouncementBanner";
 import { QuickActions } from "./QuickActions";
 import { BannerWidget } from "./BannerWidget";
+import { AiInsightsWidget } from "./AiInsightsWidget";
+import { AiCommandCenter } from "./AiCommandCenter";
 
 // Components - 지연 로드 가능한 컴포넌트 (로딩 후 표시)
 const BranchAnnouncementsCard = dynamic(() => import("./BranchAnnouncementsCard").then(mod => ({ default: mod.BranchAnnouncementsCard })), { ssr: false });
@@ -50,6 +52,10 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     // 유틸리티
     getStatusColor
   } = useAdminDashboardData();
+
+  const stats = {
+    // 필요한 경우 stats 객체 구성
+  };
 
   // 서버에서 가져온 이름 우선 사용 (LCP 최적화)
   const userName = serverUserName || clientUserName;
@@ -104,6 +110,11 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
           </div>
         </div>
 
+        {/* AI Command Center - 자연어 검색바 */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-250">
+          <AiCommandCenter />
+        </div>
+
         {/* 로딩 중일 때 나머지 콘텐츠만 스켈레톤 표시 */}
         {isLoading ? (
           <div className="space-y-8">
@@ -125,6 +136,11 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
             {/* Banner Widget */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400">
               <BannerWidget />
+            </div>
+
+            {/* AI Insights Widget */}
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-450">
+              <AiInsightsWidget stats={stats} gymName={gymName} />
             </div>
 
             {/* Grid Layout - 입체감 있는 3단 구성 */}

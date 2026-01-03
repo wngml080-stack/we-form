@@ -48,6 +48,7 @@ export function PTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
   const [initialData, setInitialData] = useState<PTFormData>(formData);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +75,64 @@ export function PTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
     value: PTFormData[K]
   ) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleAiAnalysis = async () => {
+    if (formData.sessionRecords.length === 0 && !formData.comments) {
+      alert("분석할 세션 기록이나 코칭 메모가 없습니다. 내용을 먼저 입력해주세요.");
+      return;
+    }
+
+    setIsAiAnalyzing(true);
+    try {
+      // 실제 구현 시에는 API 호출
+      // const response = await fetch("/api/ai/analyze-pt", { ... });
+      
+      // 시뮬레이션: 1.5초 대기
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const memberName = formData.basicInfo.memberName || "회원";
+      const sessionCount = formData.sessionRecords.length;
+      const goals = formData.basicInfo.goalTypes.join(", ") || "일반 관리";
+      
+      // 세션 기록 요약
+      const recentExercises = formData.sessionRecords
+        .slice(-3)
+        .map(s => s.exerciseContent)
+        .filter(Boolean)
+        .join(", ");
+      
+      const lastFeedback = formData.sessionRecords.length > 0 
+        ? formData.sessionRecords[formData.sessionRecords.length - 1].memberFeedback 
+        : "";
+
+      const mockAnalysis = `[AI 코칭 분석 리포트 - ${new Date().toLocaleDateString()}]
+● 회원 현황: ${memberName}님 (${goals})
+● 진행 상황: 총 ${sessionCount}회차 세션 완료. 
+● 최근 운동 트렌드: ${recentExercises || "기록된 운동 내용이 적습니다."}
+● 회원 컨디션 체크: ${lastFeedback ? `"${lastFeedback}"` : "최근 피드백 기록 없음."}
+
+● AI 인사이트:
+1. ${sessionCount > 5 ? "안정적인 운동 습관이 형성되고 있습니다." : "초기 적응 단계로 기초 체력 확보에 집중하고 있습니다."}
+2. 최근 수행하신 운동들을 분석했을 때, 하체 근지구력이 향상된 것으로 보입니다.
+3. ${lastFeedback.includes("힘들") ? "회원님이 피로도를 느끼고 있으니 다음 세션은 컨디셔닝 위주로 진행하는 것을 권장합니다." : "컨디션이 양호하므로 다음 세션에서는 중량을 5% 상향해도 무방할 것으로 판단됩니다."}
+
+● 추천 다음 행동:
+- 다음 세션 메인 타겟: ${goals.includes("근력") ? "대근육 위주의 중량 훈련" : "기초 대사량 증진을 위한 서킷 트레이닝"}
+- 회원님께 보낼 칭찬 메시지: "${memberName}님, 최근 수업에서 보여주신 집중력이 정말 좋았습니다! 특히 하체 밸런스가 많이 좋아지셨네요. 다음 시간에도 화이팅입니다!"`;
+
+      const newComments = formData.comments 
+        ? `${formData.comments}\n\n---\n${mockAnalysis}`
+        : mockAnalysis;
+      
+      updateFormData("comments", newComments);
+      alert("AI 분석이 완료되었습니다. 코칭 메모 섹션에서 확인하실 수 있습니다.");
+    } catch (error) {
+      console.error("AI 분석 실패:", error);
+      alert("AI 분석 중 오류가 발생했습니다.");
+    } finally {
+      setIsAiAnalyzing(false);
+    }
   };
 
   const handleSave = async () => {
@@ -188,6 +247,19 @@ export function PTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
                     <div className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></div>
                     <span className="text-[10px] font-black text-rose-200">DATA READY {completionRate}%</span>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAiAnalysis();
+                    }}
+                    disabled={isAiAnalyzing}
+                    className="h-7 px-2 bg-rose-500 hover:bg-rose-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ml-2 transition-all border-none"
+                  >
+                    <Sparkles className={cn("w-3 h-3", isAiAnalyzing && "animate-pulse")} />
+                    {isAiAnalyzing ? "Analyzing..." : "AI Assist"}
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   {selectedGoalLabels.length > 0 ? (

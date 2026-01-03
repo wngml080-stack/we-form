@@ -51,9 +51,16 @@ export async function POST(request: Request) {
         memo
       })
       .select()
-      .single();
+      .maybeSingle();
 
-    if (gymError) throw new Error("지점 생성 실패: " + gymError.message);
+    if (gymError) {
+      console.error("[CreateBranch] 지점 생성 오류:", gymError);
+      throw new Error("지점 생성 실패: " + gymError.message);
+    }
+
+    if (!gymData) {
+      throw new Error("지점 생성에 실패했습니다.");
+    }
 
     // 지점장 연결
     const { error: updateError } = await supabaseAdmin

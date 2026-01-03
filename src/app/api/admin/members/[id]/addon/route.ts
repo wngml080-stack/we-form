@@ -27,12 +27,21 @@ export async function PUT(
     const supabase = getSupabaseAdmin();
 
     // 기존 데이터 조회 (로그용)
-    const { data: beforeData } = await supabase
+    const { data: beforeData, error: beforeError } = await supabase
       .from("member_payments")
       .select("amount, method, memo, start_date, end_date, gym_id, company_id")
       .eq("id", paymentId)
       .eq("member_id", memberId)
-      .single();
+      .maybeSingle();
+
+    if (beforeError) {
+      console.error("[AddonUpdate] 기존 데이터 조회 오류:", beforeError);
+      return NextResponse.json({ error: "결제 정보 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!beforeData) {
+      return NextResponse.json({ error: "결제 정보를 찾을 수 없습니다." }, { status: 404 });
+    }
 
     // 결제 정보 업데이트
     const { data, error } = await supabase
@@ -48,11 +57,15 @@ export async function PUT(
       .eq("id", paymentId)
       .eq("member_id", memberId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[AddonUpdate] 수정 에러:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "부가상품 수정에 실패했습니다." }, { status: 500 });
     }
 
     // 활동 로그 기록

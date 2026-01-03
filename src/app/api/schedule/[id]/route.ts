@@ -19,11 +19,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     const supabase = getSupabaseAdmin();
 
     // 퇴사 상태 확인
-    const { data: staffDetail } = await supabase
+    const { data: staffDetail, error: staffDetailError } = await supabase
       .from("staffs")
       .select("employment_status")
       .eq("id", staff.id)
-      .single();
+      .maybeSingle();
+
+    if (staffDetailError) {
+      console.error("[ScheduleDelete] 직원 상태 조회 오류:", staffDetailError);
+      return NextResponse.json({ error: "직원 상태 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (staffDetail?.employment_status === "퇴사") {
       return NextResponse.json({ error: "퇴사한 계정은 사용할 수 없습니다." }, { status: 403 });
@@ -34,9 +39,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       .from("schedules")
       .select("id, staff_id, gym_id, is_locked, report_id, member_id, type, status")
       .eq("id", scheduleId)
-      .single();
+      .maybeSingle();
 
-    if (scheduleError || !schedule) {
+    if (scheduleError) {
+      console.error("[ScheduleDelete] 스케줄 조회 오류:", scheduleError);
+      return NextResponse.json({ error: "스케줄 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!schedule) {
       return NextResponse.json({ error: "스케줄을 찾을 수 없습니다." }, { status: 404 });
     }
 

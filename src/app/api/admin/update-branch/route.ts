@@ -29,11 +29,19 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     // 지점의 회사 확인
-    const { data: gym } = await supabaseAdmin
+    const { data: gym, error: gymError } = await supabaseAdmin
       .from("gyms")
       .select("company_id")
       .eq("id", gymId)
-      .single();
+      .maybeSingle();
+
+    if (gymError) {
+      console.error("[UpdateBranch] 지점 조회 오류:", gymError);
+      return NextResponse.json(
+        { error: "지점 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     if (gym?.company_id && !canAccessCompany(staff, gym.company_id)) {
       return NextResponse.json(
@@ -43,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     // 지점 정보 업데이트
-    const { error: gymError } = await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from("gyms")
       .update({
         name: gymName,
@@ -55,7 +63,7 @@ export async function POST(request: Request) {
       })
       .eq("id", gymId);
 
-    if (gymError) throw new Error("지점 수정 실패: " + gymError.message);
+    if (updateError) throw new Error("지점 수정 실패: " + updateError.message);
 
     // 관리자 변경 로직
     if (newManagerId && newManagerId !== "none") {

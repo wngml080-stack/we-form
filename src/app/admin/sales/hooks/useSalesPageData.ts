@@ -151,10 +151,46 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     }
   }, [startDate, endDate]);
 
-  // 결제 데이터 조회 - 임시 비활성화 (테이블 재연결 예정)
-  const fetchPayments = async (_gymId: string, _companyId: string) => {
-    setPayments([]);
-    setStats({ total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
+  // 결제 데이터 조회
+  const fetchPayments = async (gymId: string, companyId: string) => {
+    try {
+      const response = await fetch(
+        `/api/admin/sales?gym_id=${gymId}&company_id=${companyId}&start_date=${startDate}&end_date=${endDate}`
+      );
+      const result = await response.json();
+
+      if (result.success && result.payments) {
+        const formattedPayments: Payment[] = result.payments.map((p: any) => ({
+          id: p.id,
+          member_name: p.member_name || p.members?.name || "",
+          phone: p.phone || p.members?.phone || "",
+          sale_type: p.sale_type || p.registration_type || "",
+          membership_category: p.membership_category || p.membership_type || "",
+          membership_name: p.membership_name || p.member_memberships?.name || "",
+          amount: p.amount || 0,
+          method: p.method || "card",
+          installment: p.installment || p.installment_count || 1,
+          trainer_id: p.trainer_id || "",
+          trainer_name: "",
+          memo: p.memo || "",
+          created_at: p.paid_at || p.created_at,
+          service_sessions: p.service_sessions || 0,
+          validity_per_session: p.validity_per_session || 0,
+          membership_start_date: p.start_date || "",
+          visit_route: p.visit_route || "",
+          expiry_type: p.expiry_type || "",
+        }));
+        setPayments(formattedPayments);
+        calculateStats(formattedPayments);
+      } else {
+        setPayments([]);
+        setStats({ total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
+      }
+    } catch (error) {
+      console.error("매출 조회 중 오류:", error);
+      setPayments([]);
+      setStats({ total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
+    }
   };
 
   const fetchStaffList = async (gymId: string) => {
@@ -263,23 +299,104 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     ));
   };
 
-  // 새 행 저장 - 임시 비활성화 (테이블 재연결 예정)
+  // 새 행 저장
   const saveNewRow = async (id: string) => {
-    setNewRows(prev => prev.filter(r => r.id !== id));
+    const row = newRows.find(r => r.id === id);
+    if (!row || !selectedGymId || !selectedCompanyId) return;
+
+    try {
+      const response = await fetch("/api/admin/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_id: selectedCompanyId,
+          gym_id: selectedGymId,
+          member_name: row.member_name,
+          phone: row.phone,
+          sale_type: row.sale_type,
+          membership_category: row.membership_category,
+          membership_name: row.membership_name,
+          amount: row.amount,
+          method: row.method,
+          installment: row.installment,
+          trainer_id: row.trainer_id,
+          memo: row.memo,
+          service_sessions: row.service_sessions,
+          validity_per_session: row.validity_per_session,
+          membership_start_date: row.membership_start_date,
+          visit_route: row.visit_route,
+          expiry_type: row.expiry_type,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setNewRows(prev => prev.filter(r => r.id !== id));
+        // 저장 후 데이터 새로고침
+        fetchPayments(selectedGymId, selectedCompanyId);
+      } else {
+        console.error("매출 저장 실패:", result.error);
+        alert(`저장 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("매출 저장 중 오류:", error);
+      alert("매출 저장 중 오류가 발생했습니다.");
+    }
   };
 
   const removeNewRow = (id: string) => {
     setNewRows(prev => prev.filter(r => r.id !== id));
   };
 
-  // 결제 삭제 - 임시 비활성화 (테이블 재연결 예정)
-  const deletePayment = async (_id: string) => {
-    // 비활성화됨
+  // 결제 삭제
+  const deletePayment = async (id: string) => {
+    if (!selectedGymId || !selectedCompanyId) return;
+
+    try {
+      const response = await fetch(`/api/admin/sales?id=${id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 삭제 후 데이터 새로고침
+        fetchPayments(selectedGymId, selectedCompanyId);
+      } else {
+        console.error("매출 삭제 실패:", result.error);
+        alert(`삭제 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("매출 삭제 중 오류:", error);
+      alert("매출 삭제 중 오류가 발생했습니다.");
+    }
   };
 
-  // 결제 수정 - 임시 비활성화 (테이블 재연결 예정)
-  const updatePayment = async (_id: string, _updates: Partial<Payment>) => {
-    // 비활성화됨
+  // 결제 수정
+  const updatePayment = async (id: string, updates: Partial<Payment>) => {
+    if (!selectedGymId || !selectedCompanyId) return;
+
+    try {
+      const response = await fetch("/api/admin/sales", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, updates }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 수정 후 데이터 새로고침
+        fetchPayments(selectedGymId, selectedCompanyId);
+      } else {
+        console.error("매출 수정 실패:", result.error);
+        alert(`수정 실패: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("매출 수정 중 오류:", error);
+      alert("매출 수정 중 오류가 발생했습니다.");
+    }
   };
 
   // 커스텀 옵션 추가

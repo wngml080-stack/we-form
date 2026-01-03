@@ -52,9 +52,14 @@ export async function POST(
       .from("members")
       .select("id, name, member_memberships(id, name, total_sessions, used_sessions, end_date, status)")
       .eq("id", memberId)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !member) {
+    if (memberError) {
+      console.error("[MemberSales] 회원 조회 오류:", memberError);
+      return NextResponse.json({ error: "회원 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!member) {
       return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -78,9 +83,12 @@ export async function POST(
           status: "active",
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (membershipError) throw membershipError;
+      if (membershipError) {
+        console.error("[MemberSales] 회원권 리뉴 생성 오류:", membershipError);
+        throw membershipError;
+      }
 
       // 회원 상태 활성화
       await supabase.from("members").update({ status: "active" }).eq("id", memberId);
@@ -142,9 +150,12 @@ export async function POST(
             status: "active",
           })
           .select()
-          .single();
+          .maybeSingle();
 
-        if (membershipError) throw membershipError;
+        if (membershipError) {
+          console.error("[MemberSales] 회원권 기간변경 생성 오류:", membershipError);
+          throw membershipError;
+        }
 
         // 활동 로그
         await supabase.from("member_activity_logs").insert({
@@ -176,9 +187,12 @@ export async function POST(
           status: "active",
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (membershipError) throw membershipError;
+      if (membershipError) {
+        console.error("[MemberSales] 회원권 신규/재등록 생성 오류:", membershipError);
+        throw membershipError;
+      }
 
       // 회원 상태 활성화
       await supabase.from("members").update({ status: "active" }).eq("id", memberId);
@@ -294,15 +308,15 @@ export async function POST(
             status: "active",
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (membershipError) {
-          console.error("추가 회원권 등록 오류:", membershipError);
+          console.error("[MemberSales] 추가 회원권 등록 오류:", membershipError);
           continue;
         }
 
         // 결제 기록 (결제일은 오늘 날짜 사용)
-        await supabase.from("member_payments").insert({
+        const { error: addPaymentError } = await supabase.from("member_payments").insert({
           company_id,
           gym_id,
           member_id: memberId,
@@ -318,8 +332,12 @@ export async function POST(
           created_by: staff.id,
         });
 
+        if (addPaymentError) {
+          console.error("[MemberSales] 추가 회원권 결제 등록 오류:", addPaymentError);
+        }
+
         // 매출 로그
-        await supabase.from("sales_logs").insert({
+        const { error: addSalesError } = await supabase.from("sales_logs").insert({
           company_id,
           gym_id,
           member_id: memberId,
@@ -331,8 +349,12 @@ export async function POST(
           occurred_at: paymentDate,
         });
 
+        if (addSalesError) {
+          console.error("[MemberSales] 추가 회원권 매출 로그 등록 오류:", addSalesError);
+        }
+
         // 활동 로그
-        await supabase.from("member_activity_logs").insert({
+        const { error: addLogError } = await supabase.from("member_activity_logs").insert({
           gym_id,
           company_id,
           member_id: memberId,
@@ -341,6 +363,10 @@ export async function POST(
           description: `추가 회원권: ${membership.membership_name} (${membershipSessions}회)`,
           created_by: staff.id
         });
+
+        if (addLogError) {
+          console.error("[MemberSales] 추가 회원권 활동 로그 등록 오류:", addLogError);
+        }
       }
     }
 
@@ -352,7 +378,7 @@ export async function POST(
         const addonAmount = parseFloat(addon.amount);
 
         // 결제 기록 (결제일은 오늘 날짜 사용)
-        await supabase.from("member_payments").insert({
+        const { error: addonPaymentError } = await supabase.from("member_payments").insert({
           company_id,
           gym_id,
           member_id: memberId,
@@ -368,8 +394,12 @@ export async function POST(
           created_by: staff.id,
         });
 
+        if (addonPaymentError) {
+          console.error("[MemberSales] 부가상품 결제 등록 오류:", addonPaymentError);
+        }
+
         // 매출 로그
-        await supabase.from("sales_logs").insert({
+        const { error: addonSalesError } = await supabase.from("sales_logs").insert({
           company_id,
           gym_id,
           member_id: memberId,
@@ -380,6 +410,10 @@ export async function POST(
           memo: `부가상품: ${addon.memo}`,
           occurred_at: paymentDate,
         });
+
+        if (addonSalesError) {
+          console.error("[MemberSales] 부가상품 매출 로그 등록 오류:", addonSalesError);
+        }
       }
     }
 

@@ -42,9 +42,14 @@ export async function POST(request: NextRequest) {
       .from("members")
       .select("id, name")
       .eq("id", member_id)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !member) {
+    if (memberError) {
+      console.error("[AddonSales] 회원 조회 오류:", memberError);
+      return NextResponse.json({ error: "회원 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!member) {
       return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -67,11 +72,15 @@ export async function POST(request: NextRequest) {
         created_by: staff.id,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (paymentError) {
-      console.error("부가상품 결제 등록 오류:", paymentError);
+      console.error("[AddonSales] 결제 등록 오류:", paymentError);
       return NextResponse.json({ error: paymentError.message }, { status: 500 });
+    }
+
+    if (!paymentData) {
+      return NextResponse.json({ error: "결제 등록에 실패했습니다." }, { status: 500 });
     }
 
     // 매출 로그 생성

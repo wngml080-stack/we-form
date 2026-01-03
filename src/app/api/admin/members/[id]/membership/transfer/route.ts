@@ -62,9 +62,14 @@ export async function POST(
       .from("members")
       .select("id, gym_id, company_id, name")
       .eq("id", fromMemberId)
-      .single();
+      .maybeSingle();
 
-    if (fromMemberError || !fromMember) {
+    if (fromMemberError) {
+      console.error("[Transfer] 양도자 조회 오류:", fromMemberError);
+      return NextResponse.json({ error: "양도자 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!fromMember) {
       return NextResponse.json({ error: "양도자 회원을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -79,9 +84,14 @@ export async function POST(
       .select("id, name, membership_type, start_date, end_date, status, total_sessions, used_sessions")
       .eq("id", from_membership_id)
       .eq("member_id", fromMemberId)
-      .single();
+      .maybeSingle();
 
-    if (fromMembershipError || !fromMembership) {
+    if (fromMembershipError) {
+      console.error("[Transfer] 회원권 조회 오류:", fromMembershipError);
+      return NextResponse.json({ error: "회원권 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!fromMembership) {
       return NextResponse.json({ error: "회원권을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -112,9 +122,14 @@ export async function POST(
           status: "active",
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (newMemberError || !newMemberData) {
+      if (newMemberError) {
+        console.error("[Transfer] 신규 회원 등록 오류:", newMemberError);
+        return NextResponse.json({ error: "신규 회원 등록에 실패했습니다." }, { status: 500 });
+      }
+
+      if (!newMemberData) {
         return NextResponse.json({ error: "신규 회원 등록에 실패했습니다." }, { status: 500 });
       }
 
@@ -141,9 +156,14 @@ export async function POST(
       .from("members")
       .select("id, gym_id, company_id, name")
       .eq("id", toMemberId)
-      .single();
+      .maybeSingle();
 
-    if (toMemberError || !toMember) {
+    if (toMemberError) {
+      console.error("[Transfer] 양수인 조회 오류:", toMemberError);
+      return NextResponse.json({ error: "양수인 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!toMember) {
       return NextResponse.json({ error: "양수인 회원을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -159,13 +179,17 @@ export async function POST(
 
     // 4. 양수인의 기존 회원권 확인 (같은 유형)
     const membershipType = fromMembership.membership_type || "PT";
-    const { data: existingMembership } = await supabase
+    const { data: existingMembership, error: existingMembershipError } = await supabase
       .from("member_memberships")
       .select("id, name, total_sessions, used_sessions, end_date, status")
       .eq("member_id", toMemberId)
       .eq("membership_type", membershipType)
       .eq("status", "active")
-      .single();
+      .maybeSingle();
+
+    if (existingMembershipError) {
+      console.error("[Transfer] 기존 회원권 조회 오류:", existingMembershipError);
+    }
 
     let toMembershipId: string;
     let toMembershipAction: "created" | "merged" = "created";
@@ -213,9 +237,14 @@ export async function POST(
           status: "active",
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (createError || !newMembership) {
+      if (createError) {
+        console.error("[Transfer] 양수인 회원권 생성 오류:", createError);
+        return NextResponse.json({ error: "양수인 회원권 생성에 실패했습니다." }, { status: 500 });
+      }
+
+      if (!newMembership) {
         return NextResponse.json({ error: "양수인 회원권 생성에 실패했습니다." }, { status: 500 });
       }
 

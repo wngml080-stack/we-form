@@ -23,11 +23,16 @@ export async function PATCH(
     const { id } = await context.params;
 
     // 해당 설정의 gym_id 조회하여 권한 확인
-    const { data: existingSetting } = await supabase
+    const { data: existingSetting, error: existingError } = await supabase
       .from("salary_settings")
       .select("gym_id")
       .eq("id", id)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[SalarySettings] 조회 오류:", existingError);
+      return NextResponse.json({ error: "급여 설정 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (!existingSetting) {
       return NextResponse.json({ error: "급여 설정을 찾을 수 없습니다." }, { status: 404 });
@@ -53,9 +58,16 @@ export async function PATCH(
       .update(updateData)
       .eq("id", id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[SalarySettings] 수정 오류:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "급여 설정 수정에 실패했습니다." }, { status: 500 });
+    }
 
     return NextResponse.json({ data });
   } catch (error: any) {
@@ -85,11 +97,16 @@ export async function DELETE(
     const { id } = await context.params;
 
     // 해당 설정의 gym_id 조회하여 권한 확인
-    const { data: existingSetting } = await supabase
+    const { data: existingSetting, error: existingError } = await supabase
       .from("salary_settings")
       .select("gym_id")
       .eq("id", id)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[SalarySettings] 삭제용 조회 오류:", existingError);
+      return NextResponse.json({ error: "급여 설정 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (!existingSetting) {
       return NextResponse.json({ error: "급여 설정을 찾을 수 없습니다." }, { status: 404 });

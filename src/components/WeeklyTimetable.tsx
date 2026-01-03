@@ -211,40 +211,57 @@ export default function WeeklyTimetable({
   };
 
   return (
-    <div className="w-full h-full overflow-hidden bg-white rounded-lg shadow border md:mx-0 relative flex flex-col">
+    <div className="w-full h-full overflow-hidden bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100 md:mx-0 relative flex flex-col animate-in fade-in duration-1000">
       {/* 근무시간 정보 표시 */}
       {selectedStaffId && selectedStaffId !== "all" && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 px-4 py-2.5">
-          <div className="flex items-center justify-center gap-2 text-sm">
-            <span className="font-semibold text-gray-700">
-              {staffs?.find(s => s.id === selectedStaffId)?.name || '선택된 강사'}의 근무시간:
-            </span>
-            <span className="font-bold text-[#2F80ED]">
-              {workStartTime ? workStartTime.substring(0, 5) : '--:--'} ~ {workEndTime ? workEndTime.substring(0, 5) : '--:--'}
-            </span>
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 shadow-lg z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <Clock className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-black text-white tracking-tight">
+                {staffs?.find(s => s.id === selectedStaffId)?.name || '선택된 강사'} 코치 근무시간
+              </span>
+            </div>
+            <div className="px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+              <span className="font-black text-white text-xs tracking-widest uppercase">
+                {workStartTime ? workStartTime.substring(0, 5) : '--:--'} - {workEndTime ? workEndTime.substring(0, 5) : '--:--'}
+              </span>
+            </div>
           </div>
         </div>
       )}
-      <div className="flex-1 overflow-auto relative">
-        <table className={cn("w-full border-collapse", viewType === 'day' ? 'min-w-full' : 'min-w-[700px] md:min-w-full')}>
+      <div className="flex-1 overflow-auto relative custom-scrollbar">
+        <table className={cn("w-full border-collapse", viewType === 'day' ? 'min-w-full' : 'min-w-[800px] md:min-w-full')}>
           {/* 헤더 */}
           <thead className="sticky top-0 z-40">
-            <tr className="bg-[#2F80ED] text-white shadow-sm">
-              <th className="border border-[#1c6cd7] p-2 w-16 md:w-20 sticky left-0 bg-[#2F80ED] z-50 text-xs font-bold h-10 md:h-12 align-middle">
-                시간
+            <tr className="bg-white border-b border-slate-100">
+              <th className="p-3 w-16 md:w-24 sticky left-0 bg-slate-50/90 backdrop-blur-md z-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] h-14 border-r border-slate-100">
+                Time
               </th>
               {weekDates.map((date, idx) => {
                 const isToday = new Date().toDateString() === date.toDateString();
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                 return (
                   <th key={idx} className={cn(
-                    "border border-[#1c6cd7] p-2 min-w-[100px] h-10 md:h-12 align-middle",
-                    isToday && "bg-[#1c6cd7]"
+                    "p-3 min-w-[120px] h-14 align-middle border-r border-slate-50 last:border-r-0",
+                    isToday ? "bg-blue-50/50" : "bg-white/90 backdrop-blur-md"
                   )}>
-                    <div className="flex flex-col items-center justify-center h-full gap-0.5">
-                      <span className="text-sm font-bold">{DAYS[date.getDay()]}</span>
-                      <span className="text-[10px] md:text-xs bg-white/20 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
-                        {date.getMonth() + 1}.{date.getDate()}
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <span className={cn(
+                        "text-[11px] font-black uppercase tracking-widest",
+                        isToday ? "text-blue-600" : isWeekend ? "text-rose-500" : "text-slate-500"
+                      )}>
+                        {DAYS[date.getDay()]}
                       </span>
+                      <span className={cn(
+                        "text-lg font-black tracking-tighter",
+                        isToday ? "text-blue-600" : "text-slate-900"
+                      )}>
+                        {date.getDate()}
+                      </span>
+                      {isToday && <div className="w-1 h-1 bg-blue-600 rounded-full mt-1"></div>}
                     </div>
                   </th>
                 );
@@ -253,30 +270,25 @@ export default function WeeklyTimetable({
           </thead>
 
           {/* 바디 */}
-          <tbody>
+          <tbody className="divide-y divide-slate-50">
             {timeSlots.map((timeSlot, timeIdx) => (
-              <tr key={timeSlot} className={cn(timeIdx % 2 === 0 ? 'bg-gray-50' : 'bg-white')}>
+              <tr key={timeSlot} className="group">
                 {/* 시간 컬럼 */}
-                <td className="border border-gray-200 p-2 text-center text-xs md:text-sm font-medium sticky left-0 bg-gray-50 z-30 border-r-2 border-r-gray-300">
+                <td className="p-3 text-center text-[11px] font-black text-slate-400 sticky left-0 bg-slate-50/80 backdrop-blur-sm z-30 border-r border-slate-100 group-hover:text-blue-500 transition-colors">
                   {timeSlot}
                 </td>
 
                 {/* 요일별 셀 */}
                 {weekDates.map((date, dayIdx) => {
-                  // 로컬 시간 기준으로 날짜 문자열 생성
                   const year = date.getFullYear();
                   const month = String(date.getMonth() + 1).padStart(2, '0');
                   const day = String(date.getDate()).padStart(2, '0');
                   const dateStr = `${year}-${month}-${day}`;
                   const key = `${dateStr}-${timeSlot}`;
 
-                  // 이 슬롯이 다른 스케줄에 의해 차지되어 있으면 td를 렌더링하지 않음
-                  if (occupiedSlots.has(key)) {
-                    return null;
-                  }
+                  if (occupiedSlots.has(key)) return null;
 
                   const schedulesInSlot = scheduleGrid.get(key) || [];
-                  // 같은 셀에 여러 스케줄이 있을 때, 최대 rowSpan을 사용
                   const cellRowSpan = schedulesInSlot.length > 0
                     ? Math.max(...schedulesInSlot.map(s => s.rowSpan))
                     : 1;
@@ -286,8 +298,8 @@ export default function WeeklyTimetable({
                       key={dayIdx}
                       rowSpan={cellRowSpan}
                       className={cn(
-                        "p-0 align-top cursor-pointer transition-colors relative h-[50px]",
-                        schedulesInSlot.length === 0 && "border border-gray-200 hover:bg-blue-50"
+                        "p-0.5 align-top cursor-pointer transition-all relative h-[54px] border-r border-slate-50 last:border-r-0",
+                        schedulesInSlot.length === 0 && "hover:bg-blue-50/30"
                       )}
                       onClick={() => {
                         if (schedulesInSlot.length === 0) {
@@ -295,7 +307,7 @@ export default function WeeklyTimetable({
                         }
                       }}
                     >
-                      <div className="flex flex-col w-full h-full">
+                      <div className="flex flex-col w-full h-full gap-0.5">
                         {schedulesInSlot.map((schedule, sIdx) => (
                           <div
                             key={schedule.id}
@@ -304,99 +316,30 @@ export default function WeeklyTimetable({
                               onScheduleClick?.(schedule);
                             }}
                             className={cn(
-                              "px-1.5 py-1 border-l-[3px] text-[10px] md:text-xs font-medium cursor-pointer hover:brightness-95 transition-all w-full overflow-hidden flex flex-col justify-center",
+                              "group/item px-3 py-2 rounded-2xl border-2 transition-all w-full overflow-hidden flex flex-col justify-center shadow-sm hover:shadow-md hover:scale-[1.02] hover:z-10",
                               getScheduleColor(schedule)
                             )}
                             style={{
-                              height: `${schedule.rowSpan * 50}px`,
-                              minHeight: `${schedule.rowSpan * 50}px`
+                              height: `${schedule.rowSpan * 54 - 4}px`,
+                              minHeight: `${schedule.rowSpan * 54 - 4}px`
                             }}
                           >
-                            <div className="font-bold truncate leading-tight">
-                              {(() => {
-                                const scheduleType = schedule.type?.toLowerCase();
-                                // Consulting → "상담 | 분류"
-                                if (scheduleType === 'consulting' || scheduleType === '상담') {
-                                  const subTypeLabel = schedule.sub_type === 'sales' ? '세일즈' :
-                                    schedule.sub_type === 'info' ? '안내상담' :
-                                    schedule.sub_type === 'status' ? '현황상담' :
-                                    schedule.sub_type === 'other' ? '기타' : null;
-                                  return subTypeLabel ? `상담 | ${subTypeLabel}` : '상담';
-                                }
-                                // PT → "PT 30회/5회차" 또는 "PT 30회/노쇼"
-                                if (scheduleType === 'pt') {
-                                  // 미진행 상태 (회차 카운트 안됨: no_show, cancelled, reserved)
-                                  const statusLabel = schedule.status === 'no_show' ? '노쇼' :
-                                    schedule.status === 'cancelled' ? '취소' :
-                                    schedule.status === 'reserved' ? '예약' : null;
-
-                                  if (schedule.total_sessions) {
-                                    // 미진행 수업은 상태 표시
-                                    if (statusLabel && schedule.is_not_completed) {
-                                      return `PT ${schedule.total_sessions}회/${statusLabel}`;
-                                    }
-                                    // 노쇼(차감) 수업은 "노쇼차감 N회차" 표시
-                                    if (schedule.status === 'no_show_deducted' && schedule.session_number) {
-                                      return `PT ${schedule.total_sessions}회/노쇼차감 ${schedule.session_number}회차`;
-                                    }
-                                    // 진행된 수업은 회차 표시
-                                    if (schedule.session_number) {
-                                      return `PT ${schedule.total_sessions}회/${schedule.session_number}회차`;
-                                    }
-                                    return `PT ${schedule.total_sessions}회`;
-                                  }
-                                  return 'PT';
-                                }
-                                // OT → "OT 2회차" 또는 "OT 노쇼"
-                                if (scheduleType === 'ot') {
-                                  const statusLabel = schedule.status === 'no_show' ? '노쇼' :
-                                    schedule.status === 'cancelled' ? '취소' :
-                                    schedule.status === 'converted' ? 'PT전환' : null;
-
-                                  // 미진행 수업은 상태 표시
-                                  if (statusLabel && schedule.is_not_completed) {
-                                    return `OT ${statusLabel}`;
-                                  }
-                                  // 노쇼(차감) 수업은 "노쇼차감 N회차" 표시
-                                  if (schedule.status === 'no_show_deducted' && schedule.session_number) {
-                                    return `OT 노쇼차감 ${schedule.session_number}회차`;
-                                  }
-                                  // 진행된 수업은 회차 표시
-                                  if (schedule.session_number) {
-                                    return `OT ${schedule.session_number}회차`;
-                                  }
-                                  return 'OT';
-                                }
-                                // Personal → "개인일정"
-                                if (scheduleType === 'personal' || schedule.type === '개인') {
-                                  return '개인일정';
-                                }
-                                return schedule.type;
-                              })()}
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[9px] font-black uppercase tracking-tighter opacity-70">
+                                {schedule.type}
+                              </span>
+                              <div className="w-1.5 h-1.5 rounded-full bg-current opacity-30"></div>
                             </div>
-                            <div className="truncate leading-tight">
-                              {(schedule.type === '개인' || schedule.type?.toLowerCase() === 'personal')
-                                ? (schedule.sub_type === 'meal' ? '식사시간' :
-                                   schedule.sub_type === 'conference' ? '회의시간' :
-                                   schedule.sub_type === 'meeting' ? '미팅시간' :
-                                   schedule.sub_type === 'rest' ? '휴식시간' :
-                                   schedule.sub_type === 'workout' ? '운동시간' :
-                                   schedule.sub_type === 'other' ? '기타' :
-                                   schedule.member_name || '개인일정')
-                                : schedule.member_name}
+                            <div className="font-black text-[13px] truncate leading-none tracking-tight mb-1">
+                              {schedule.member_name || '개인일정'}
                             </div>
-                            {/* 모바일에서는 시간 숨기거나 간소화 */}
-                            <div className="hidden md:block text-[9px] opacity-80 mt-0.5">
+                            <div className="text-[10px] font-bold opacity-80 flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
                               {new Date(schedule.start_time).toLocaleTimeString('ko-KR', {
                                 hour: '2-digit',
                                 minute: '2-digit',
                                 hour12: false
                               })}
-                              {schedule.rowSpan > 1 && ` - ${new Date(schedule.end_time).toLocaleTimeString('ko-KR', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                hour12: false
-                              })}`}
                             </div>
                           </div>
                         ))}

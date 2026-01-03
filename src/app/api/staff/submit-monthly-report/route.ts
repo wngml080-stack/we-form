@@ -30,12 +30,17 @@ export async function POST(request: Request) {
     }
 
     // Check if report already exists
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from("monthly_schedule_reports")
       .select("id, status")
       .eq("staff_id", staff_id)
       .eq("year_month", year_month)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[SubmitReport] 기존 보고서 조회 오류:", existingError);
+      return NextResponse.json({ error: "보고서 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (existing) {
       if (existing.status === "approved") {

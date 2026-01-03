@@ -21,11 +21,16 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     // 퇴사 상태 확인
-    const { data: staffDetail } = await supabase
+    const { data: staffDetail, error: staffDetailError } = await supabase
       .from("staffs")
       .select("employment_status")
       .eq("id", adminStaff.id)
-      .single();
+      .maybeSingle();
+
+    if (staffDetailError) {
+      console.error("[ScheduleApprove] 직원 상태 조회 오류:", staffDetailError);
+      return NextResponse.json({ error: "직원 상태 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (staffDetail?.employment_status === "퇴사") {
       return NextResponse.json({ error: "퇴사한 계정은 사용할 수 없습니다." }, { status: 403 });
@@ -41,9 +46,14 @@ export async function POST(req: NextRequest) {
       .from("monthly_schedule_reports")
       .select("id, staff_id, gym_id, company_id, status")
       .eq("id", reportId)
-      .single();
+      .maybeSingle();
 
-    if (reportError || !report) {
+    if (reportError) {
+      console.error("[ScheduleApprove] 보고서 조회 오류:", reportError);
+      return NextResponse.json({ error: "보고서 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!report) {
       return NextResponse.json({ error: "보고서를 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -68,10 +78,15 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", report.id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (updateReportError || !updatedReport) {
+    if (updateReportError) {
+      console.error("[ScheduleApprove] 보고서 업데이트 오류:", updateReportError);
       return NextResponse.json({ error: "보고서 업데이트 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!updatedReport) {
+      return NextResponse.json({ error: "보고서 업데이트에 실패했습니다." }, { status: 500 });
     }
 
     // 5) 스케줄 잠금/해제 처리

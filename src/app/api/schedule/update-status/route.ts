@@ -25,9 +25,14 @@ export async function POST(request: Request) {
       .from("schedules")
       .select("id, gym_id, staff_id, member_id, member_name, type, status")
       .eq("id", scheduleId)
-      .single();
+      .maybeSingle();
 
-    if (scheduleError || !schedule) {
+    if (scheduleError) {
+      console.error("[ScheduleUpdateStatus] 스케줄 조회 오류:", scheduleError);
+      return NextResponse.json({ error: "스케줄 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!schedule) {
       return NextResponse.json({ error: "스케줄을 찾을 수 없습니다." }, { status: 404 });
     }
 

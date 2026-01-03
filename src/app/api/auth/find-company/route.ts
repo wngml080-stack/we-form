@@ -17,9 +17,14 @@ export async function POST(request: Request) {
       .from("companies")
       .select("id, name, representative_name")
       .eq("business_number", businessNumber)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      console.error("[FindCompany] 회사 검색 오류:", error);
+      return NextResponse.json({ found: false });
+    }
+
+    if (!data) {
       return NextResponse.json({ found: false });
     }
 

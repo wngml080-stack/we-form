@@ -126,9 +126,16 @@ export async function POST(request: Request) {
         schedule:schedules(id, title, start_time, end_time),
         status:attendance_statuses(code, label, color)
       `)
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[Attendance] 출석 기록 생성 오류:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "출석 기록 생성에 실패했습니다." }, { status: 500 });
+    }
 
     return NextResponse.json({ data });
   } catch (error: any) {

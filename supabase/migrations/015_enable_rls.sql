@@ -20,7 +20,7 @@ STABLE
 AS $$
   SELECT s.id, s.company_id, s.gym_id, s.role
   FROM staffs s
-  WHERE s.auth_user_id = auth.uid()
+  WHERE s.user_id = auth.uid()
   LIMIT 1;
 $$;
 
@@ -31,7 +31,7 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 AS $$
-  SELECT company_id FROM staffs WHERE auth_user_id = auth.uid() LIMIT 1;
+  SELECT company_id FROM staffs WHERE user_id = auth.uid() LIMIT 1;
 $$;
 
 CREATE OR REPLACE FUNCTION get_my_gym_id()
@@ -40,7 +40,7 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 AS $$
-  SELECT gym_id FROM staffs WHERE auth_user_id = auth.uid() LIMIT 1;
+  SELECT gym_id FROM staffs WHERE user_id = auth.uid() LIMIT 1;
 $$;
 
 CREATE OR REPLACE FUNCTION get_my_role()
@@ -49,7 +49,7 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 AS $$
-  SELECT role FROM staffs WHERE auth_user_id = auth.uid() LIMIT 1;
+  SELECT role FROM staffs WHERE user_id = auth.uid() LIMIT 1;
 $$;
 
 CREATE OR REPLACE FUNCTION get_my_staff_id()
@@ -58,7 +58,7 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 AS $$
-  SELECT id FROM staffs WHERE auth_user_id = auth.uid() LIMIT 1;
+  SELECT id FROM staffs WHERE user_id = auth.uid() LIMIT 1;
 $$;
 
 -- 권한 체크 함수
@@ -70,7 +70,7 @@ STABLE
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM staffs
-    WHERE auth_user_id = auth.uid()
+    WHERE user_id = auth.uid()
     AND role = 'system_admin'
   );
 $$;
@@ -83,7 +83,7 @@ STABLE
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM staffs
-    WHERE auth_user_id = auth.uid()
+    WHERE user_id = auth.uid()
     AND role IN ('system_admin', 'company_admin')
   );
 $$;
@@ -96,7 +96,7 @@ STABLE
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM staffs
-    WHERE auth_user_id = auth.uid()
+    WHERE user_id = auth.uid()
     AND role IN ('system_admin', 'company_admin', 'admin')
   );
 $$;
@@ -573,7 +573,7 @@ CREATE POLICY "attendance_statuses_all" ON attendance_statuses FOR ALL USING (
 -- =====================================================
 
 -- staffs 테이블 인덱스
-CREATE INDEX IF NOT EXISTS idx_staffs_auth_user_id ON staffs(auth_user_id);
+CREATE INDEX IF NOT EXISTS idx_staffs_user_id ON staffs(user_id);
 CREATE INDEX IF NOT EXISTS idx_staffs_company_id ON staffs(company_id);
 CREATE INDEX IF NOT EXISTS idx_staffs_gym_id ON staffs(gym_id);
 

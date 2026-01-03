@@ -178,7 +178,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         const { data, error } = await supabase
           .from("staffs")
           .select("id")
-          .eq("auth_user_id", user.id)
+          .eq("user_id", user.id)
           .maybeSingle();
 
         if (error) {
@@ -214,14 +214,15 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           amount,
           paid_at,
           membership_type,
+          membership_category,
+          membership_name,
           registration_type,
           memo,
           trainer_id,
-          members (id, name, phone, status),
-          member_memberships (
-            id, name, total_sessions, used_sessions, start_date, end_date, status
-          ),
-          staffs (id, name)
+          trainer_name,
+          member_name,
+          phone,
+          sale_type
         `)
         .eq("gym_id", gymId)
         .eq("company_id", companyId)
@@ -231,33 +232,28 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         .order("paid_at", { ascending: false });
 
       if (error) {
-        console.error("PT 회원 조회 오류:", error);
+        console.error("PT 회원 조회 오류 상세:", JSON.stringify(error, null, 2));
         setPTMembers([]);
         return;
       }
 
       // 데이터 변환
       const members: PTMember[] = (payments || []).map((p: any) => {
-        const membership = p.member_memberships;
-        const remaining = membership
-          ? (membership.total_sessions || 0) - (membership.used_sessions || 0)
-          : undefined;
-
         return {
           id: p.id,
-          member_name: p.members?.name || "Unknown",
-          phone: p.members?.phone,
-          membership_category: p.membership_type || "",
-          membership_name: membership?.name || "",
-          sale_type: p.registration_type || "",
+          member_name: p.member_name || "Unknown",
+          phone: p.phone,
+          membership_category: p.membership_category || p.membership_type || "",
+          membership_name: p.membership_name || "",
+          sale_type: p.sale_type || p.registration_type || "",
           amount: parseFloat(p.amount) || 0,
           trainer_id: p.trainer_id,
-          trainer_name: p.staffs?.name || "",
-          remaining_sessions: remaining,
-          total_sessions: membership?.total_sessions,
-          start_date: membership?.start_date,
-          end_date: membership?.end_date,
-          status: p.members?.status || "active",
+          trainer_name: p.trainer_name || "",
+          remaining_sessions: undefined,
+          total_sessions: undefined,
+          start_date: undefined,
+          end_date: undefined,
+          status: "active" as const,
           created_at: p.paid_at,
           memo: p.memo,
           registration_type: p.registration_type

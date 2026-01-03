@@ -11,7 +11,7 @@ async function getProductName(supabaseAdmin: any, productId: string, fallbackNam
       .from("membership_products")
       .select("name")
       .eq("id", productId)
-      .single();
+      .maybeSingle();
 
     if (product?.name) {
       return product.name;
@@ -64,9 +64,16 @@ export async function POST(request: Request) {
           created_at: now
         })
         .select()
-        .single();
+        .maybeSingle();
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error("[Register] 회원 생성 오류:", memberError);
+        throw memberError;
+      }
+
+      if (!member) {
+        throw new Error("회원 생성에 실패했습니다.");
+      }
 
       // 2. 회원권 생성
       const { error: membershipError } = await supabaseAdmin

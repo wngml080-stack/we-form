@@ -33,9 +33,14 @@ export async function POST(
       .from("members")
       .select("id, gym_id, company_id, name")
       .eq("id", memberId)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !member) {
+    if (memberError) {
+      console.error("[MembershipHold] 회원 조회 오류:", memberError);
+      return NextResponse.json({ error: "회원 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!member) {
       return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -50,9 +55,14 @@ export async function POST(
       .select("id, name, start_date, end_date, status, total_sessions, used_sessions")
       .eq("id", membershipId)
       .eq("member_id", memberId)
-      .single();
+      .maybeSingle();
 
-    if (membershipError || !membership) {
+    if (membershipError) {
+      console.error("[MembershipHold] 회원권 조회 오류:", membershipError);
+      return NextResponse.json({ error: "회원권 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!membership) {
       return NextResponse.json({ error: "회원권을 찾을 수 없습니다." }, { status: 404 });
     }
 

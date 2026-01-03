@@ -77,9 +77,16 @@ export async function POST(request: NextRequest) {
         memo: memo || null,
       })
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[SalarySettings] 생성 오류:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "급여 설정 생성에 실패했습니다." }, { status: 500 });
+    }
 
     return NextResponse.json({ data });
   } catch (error: any) {

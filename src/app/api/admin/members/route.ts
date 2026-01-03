@@ -93,11 +93,15 @@ export async function POST(request: NextRequest) {
       .from("members")
       .insert(memberInsertData)
       .select()
-      .single();
+      .maybeSingle();
 
     if (memberError) {
       console.error("회원 등록 오류:", memberError);
       return NextResponse.json({ error: memberError.message, code: memberError.code }, { status: 500 });
+    }
+
+    if (!newMember) {
+      return NextResponse.json({ error: "회원 등록에 실패했습니다." }, { status: 500 });
     }
 
     // 2. 회원권 등록 (있는 경우)
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
           status: "active"
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (membershipError) {
         console.error("회원권 등록 오류:", membershipError);
@@ -169,7 +173,7 @@ export async function POST(request: NextRequest) {
           memo: payment.memo || null
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (paymentError) {
         console.error("[Members API POST] ❌ 결제 정보 등록 오류:", paymentError);
@@ -238,10 +242,15 @@ export async function POST(request: NextRequest) {
             status: "active"
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (addMembershipError) {
           console.error("추가 회원권 등록 오류:", addMembershipError);
+          continue;
+        }
+
+        if (!addMembershipData) {
+          console.error("추가 회원권 등록 실패: 데이터 없음");
           continue;
         }
 
@@ -255,7 +264,7 @@ export async function POST(request: NextRequest) {
             ? new Date(addMembership.registered_at || created_at).toISOString()
             : new Date().toISOString();
 
-          await supabase.from("member_payments").insert({
+          const { error: addPaymentError } = await supabase.from("member_payments").insert({
             company_id,
             gym_id,
             member_id: newMember.id,
@@ -270,8 +279,12 @@ export async function POST(request: NextRequest) {
             created_by: staff.id
           });
 
+          if (addPaymentError) {
+            console.error("추가 회원권 결제 등록 오류:", addPaymentError);
+          }
+
           // 추가 회원권 매출 로그 등록
-          await supabase.from("sales_logs").insert({
+          const { error: addSalesError } = await supabase.from("sales_logs").insert({
             company_id,
             gym_id,
             member_id: newMember.id,
@@ -282,6 +295,10 @@ export async function POST(request: NextRequest) {
             memo: `${name} - ${addMembership.membership_name} 신규 등록 (추가)`,
             occurred_at: addPaymentDate
           });
+
+          if (addSalesError) {
+            console.error("추가 회원권 매출 로그 등록 오류:", addSalesError);
+          }
         }
       }
     }
@@ -298,7 +315,7 @@ export async function POST(request: NextRequest) {
           : new Date().toISOString();
 
         // 부가상품 결제 정보 등록
-        await supabase.from("member_payments").insert({
+        const { error: addonPaymentError } = await supabase.from("member_payments").insert({
           company_id,
           gym_id,
           member_id: newMember.id,
@@ -314,8 +331,12 @@ export async function POST(request: NextRequest) {
           created_by: staff.id
         });
 
+        if (addonPaymentError) {
+          console.error("부가상품 결제 등록 오류:", addonPaymentError);
+        }
+
         // 부가상품 매출 로그 등록
-        await supabase.from("sales_logs").insert({
+        const { error: addonSalesError } = await supabase.from("sales_logs").insert({
           company_id,
           gym_id,
           member_id: newMember.id,
@@ -326,6 +347,10 @@ export async function POST(request: NextRequest) {
           memo: `부가상품: ${addon.memo || '부가상품'}`,
           occurred_at: addonPaymentDate
         });
+
+        if (addonSalesError) {
+          console.error("부가상품 매출 로그 등록 오류:", addonSalesError);
+        }
       }
     }
 
@@ -373,11 +398,19 @@ export async function GET(request: Request) {
 
     // 권한 확인
     if (gymId) {
-      const { data: gym } = await supabase
+      const { data: gym, error: gymError } = await supabase
         .from("gyms")
         .select("company_id")
         .eq("id", gymId)
-        .single();
+        .maybeSingle();
+
+      if (gymError) {
+        console.error("지점 조회 오류:", gymError);
+        return NextResponse.json(
+          { error: "지점 정보 조회 중 오류가 발생했습니다." },
+          { status: 500 }
+        );
+      }
 
       if (!canAccessGym(staff, gymId, gym?.company_id)) {
         return NextResponse.json(

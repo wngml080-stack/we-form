@@ -28,9 +28,14 @@ export async function PUT(
       .from("members")
       .select("id, gym_id, company_id, name, phone, birth_date, gender, exercise_goal, memo, weight, body_fat_mass, skeletal_muscle_mass, trainer_id")
       .eq("id", memberId)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !member) {
+    if (memberError) {
+      console.error("[MemberUpdate] 회원 조회 오류:", memberError);
+      return NextResponse.json({ error: "회원 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!member) {
       return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -58,11 +63,15 @@ export async function PUT(
       .update(updateData)
       .eq("id", memberId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       console.error("[MemberUpdate] 수정 에러:", updateError);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    if (!updatedMember) {
+      return NextResponse.json({ error: "회원 정보 수정에 실패했습니다." }, { status: 500 });
     }
 
     // 변경 이력 로그 기록
@@ -128,9 +137,14 @@ export async function DELETE(
       .from("members")
       .select("id, name, gym_id, company_id")
       .eq("id", memberId)
-      .single();
+      .maybeSingle();
 
-    if (memberError || !member) {
+    if (memberError) {
+      console.error("[MemberDelete] 회원 조회 오류:", memberError);
+      return NextResponse.json({ error: "회원 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
+
+    if (!member) {
       return NextResponse.json({ error: "회원을 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -141,16 +155,28 @@ export async function DELETE(
 
     // 관련 데이터 삭제 (CASCADE가 설정되어 있지 않은 경우를 대비)
     // 1. 회원권 삭제
-    await supabase.from("member_memberships").delete().eq("member_id", memberId);
+    const { error: membershipDeleteError } = await supabase.from("member_memberships").delete().eq("member_id", memberId);
+    if (membershipDeleteError) {
+      console.error("[MemberDelete] 회원권 삭제 오류:", membershipDeleteError);
+    }
 
     // 2. 결제 내역 삭제
-    await supabase.from("member_payments").delete().eq("member_id", memberId);
+    const { error: paymentDeleteError } = await supabase.from("member_payments").delete().eq("member_id", memberId);
+    if (paymentDeleteError) {
+      console.error("[MemberDelete] 결제 내역 삭제 오류:", paymentDeleteError);
+    }
 
     // 3. 활동 로그 삭제
-    await supabase.from("member_activity_logs").delete().eq("member_id", memberId);
+    const { error: logDeleteError } = await supabase.from("member_activity_logs").delete().eq("member_id", memberId);
+    if (logDeleteError) {
+      console.error("[MemberDelete] 활동 로그 삭제 오류:", logDeleteError);
+    }
 
     // 4. 스케줄 삭제
-    await supabase.from("schedules").delete().eq("member_id", memberId);
+    const { error: scheduleDeleteError } = await supabase.from("schedules").delete().eq("member_id", memberId);
+    if (scheduleDeleteError) {
+      console.error("[MemberDelete] 스케줄 삭제 오류:", scheduleDeleteError);
+    }
 
     // 5. 회원 삭제
     const { error: deleteError } = await supabase

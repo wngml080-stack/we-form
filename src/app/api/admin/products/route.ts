@@ -72,10 +72,15 @@ export async function POST(request: NextRequest) {
         display_order: display_order || 0,
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error("[Products] 상품 등록 오류:", error);
       return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "상품 등록에 실패했습니다." }, { status: 500 });
     }
 
     return NextResponse.json({ data });
@@ -123,10 +128,15 @@ export async function PUT(request: NextRequest) {
       .eq("id", id)
       .eq("gym_id", gym_id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
+      console.error("[Products] 상품 수정 오류:", error);
       return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "상품을 찾을 수 없거나 수정에 실패했습니다." }, { status: 404 });
     }
 
     return NextResponse.json({ data });

@@ -27,11 +27,19 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     // 대상 직원의 회사 확인
-    const { data: targetStaff } = await supabaseAdmin
+    const { data: targetStaff, error: targetStaffError } = await supabaseAdmin
       .from("staffs")
       .select("company_id")
       .eq("id", staffId)
-      .single();
+      .maybeSingle();
+
+    if (targetStaffError) {
+      console.error("[UpdateStaff] 직원 조회 오류:", targetStaffError);
+      return NextResponse.json(
+        { error: "직원 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     if (targetStaff?.company_id && !canAccessCompany(staff, targetStaff.company_id)) {
       return NextResponse.json(

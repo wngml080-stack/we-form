@@ -25,12 +25,17 @@ export async function DELETE(
     const supabase = getSupabaseAdmin();
 
     // 삭제 전 데이터 조회 (로그용)
-    const { data: membershipData } = await supabase
+    const { data: membershipData, error: membershipError } = await supabase
       .from("member_memberships")
       .select("name, member_id, gym_id, total_sessions, used_sessions, start_date, end_date")
       .eq("id", membershipId)
       .eq("member_id", memberId)
-      .single();
+      .maybeSingle();
+
+    if (membershipError) {
+      console.error("[MembershipDelete] 회원권 조회 오류:", membershipError);
+      return NextResponse.json({ error: "회원권 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (!membershipData) {
       return NextResponse.json({ error: "회원권을 찾을 수 없습니다." }, { status: 404 });
@@ -49,11 +54,15 @@ export async function DELETE(
     }
 
     // 회원의 company_id 조회
-    const { data: memberData } = await supabase
+    const { data: memberData, error: memberDataError } = await supabase
       .from("members")
       .select("company_id")
       .eq("id", memberId)
-      .single();
+      .maybeSingle();
+
+    if (memberDataError) {
+      console.error("[MembershipDelete] 회원 조회 오류:", memberDataError);
+    }
 
     // 활동 로그 기록
     try {
@@ -101,12 +110,17 @@ export async function PUT(
     const supabase = getSupabaseAdmin();
 
     // 기존 데이터 조회 (로그용)
-    const { data: beforeData } = await supabase
+    const { data: beforeData, error: beforeDataError } = await supabase
       .from("member_memberships")
       .select("name, start_date, end_date, total_sessions, used_sessions, gym_id")
       .eq("id", membershipId)
       .eq("member_id", memberId)
-      .single();
+      .maybeSingle();
+
+    if (beforeDataError) {
+      console.error("[MembershipUpdate] 회원권 조회 오류:", beforeDataError);
+      return NextResponse.json({ error: "회원권 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (!beforeData) {
       return NextResponse.json({ error: "회원권을 찾을 수 없습니다." }, { status: 404 });
@@ -126,19 +140,27 @@ export async function PUT(
       .eq("id", membershipId)
       .eq("member_id", memberId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("[MembershipUpdate] 수정 에러:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    if (!data) {
+      return NextResponse.json({ error: "회원권 수정에 실패했습니다." }, { status: 500 });
+    }
+
     // 회원의 company_id 조회
-    const { data: memberData } = await supabase
+    const { data: memberData, error: memberDataError } = await supabase
       .from("members")
       .select("company_id")
       .eq("id", memberId)
-      .single();
+      .maybeSingle();
+
+    if (memberDataError) {
+      console.error("[MembershipUpdate] 회원 조회 오류:", memberDataError);
+    }
 
     // 활동 로그 기록
     const changes: string[] = [];

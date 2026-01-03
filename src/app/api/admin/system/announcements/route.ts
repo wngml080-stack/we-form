@@ -71,9 +71,16 @@ export async function POST(request: Request) {
         author_id: staff.id,
       })
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[Announcements] 공지 생성 오류:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "공지 생성에 실패했습니다." }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, announcement: data });
   } catch (error: any) {
@@ -114,9 +121,16 @@ export async function PATCH(request: Request) {
       .update(updateData)
       .eq("id", id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[Announcements] 공지 수정 오류:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "공지를 찾을 수 없거나 수정에 실패했습니다." }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, announcement: data });
   } catch (error: any) {

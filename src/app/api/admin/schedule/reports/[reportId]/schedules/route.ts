@@ -41,9 +41,17 @@ export async function GET(
       .from("monthly_schedule_reports")
       .select("id, staff_id, gym_id, year_month, status")
       .eq("id", reportId)
-      .single();
+      .maybeSingle();
 
-    if (reportError || !report) {
+    if (reportError) {
+      console.error("[ReportSchedules] 보고서 조회 오류:", reportError);
+      return NextResponse.json(
+        { error: "보고서 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
+
+    if (!report) {
       return NextResponse.json(
         { error: "보고서를 찾을 수 없습니다." },
         { status: 404 }

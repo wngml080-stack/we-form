@@ -28,9 +28,17 @@ export async function POST(request: Request) {
 
     // 대상 직원과 지점의 회사 확인
     const [staffResult, gymResult] = await Promise.all([
-      supabaseAdmin.from("staffs").select("company_id").eq("id", staffId).single(),
-      supabaseAdmin.from("gyms").select("company_id").eq("id", gymId).single(),
+      supabaseAdmin.from("staffs").select("company_id").eq("id", staffId).maybeSingle(),
+      supabaseAdmin.from("gyms").select("company_id").eq("id", gymId).maybeSingle(),
     ]);
+
+    if (staffResult.error || gymResult.error) {
+      console.error("[AssignStaff] 조회 오류:", staffResult.error || gymResult.error);
+      return NextResponse.json(
+        { error: "직원 또는 지점 정보 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     // 권한 확인: 같은 회사 소속인지
     const targetCompanyId = staffResult.data?.company_id || gymResult.data?.company_id;

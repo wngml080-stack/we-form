@@ -53,11 +53,19 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     // 이메일 중복 확인
-    const { data: existingStaff } = await supabaseAdmin
+    const { data: existingStaff, error: existingError } = await supabaseAdmin
       .from("staffs")
       .select("id")
       .eq("email", email)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[CreateStaff] 이메일 중복 확인 오류:", existingError);
+      return NextResponse.json(
+        { error: "이메일 확인 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     if (existingStaff) {
       return NextResponse.json(

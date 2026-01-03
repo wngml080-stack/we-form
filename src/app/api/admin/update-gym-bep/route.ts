@@ -27,11 +27,19 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     // 지점의 회사 확인 및 권한 체크
-    const { data: gym } = await supabaseAdmin
+    const { data: gym, error: gymError } = await supabaseAdmin
       .from("gyms")
       .select("company_id")
       .eq("id", gym_id)
-      .single();
+      .maybeSingle();
+
+    if (gymError) {
+      console.error("[UpdateGymBEP] 지점 조회 오류:", gymError);
+      return NextResponse.json(
+        { error: "지점 조회 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     if (!canAccessGym(staff, gym_id, gym?.company_id)) {
       return NextResponse.json(

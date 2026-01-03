@@ -30,11 +30,19 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     // 회사명 중복 체크
-    const { data: existingCompany } = await supabaseAdmin
+    const { data: existingCompany, error: existingError } = await supabaseAdmin
       .from("companies")
       .select("id")
       .eq("name", name)
-      .single();
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[CreateCompany] 회사명 중복 체크 오류:", existingError);
+      return NextResponse.json(
+        { error: "회사명 확인 중 오류가 발생했습니다." },
+        { status: 500 }
+      );
+    }
 
     if (existingCompany) {
       return NextResponse.json(
@@ -53,9 +61,16 @@ export async function POST(request: Request) {
         status: status || "pending",
       })
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error("[CreateCompany] 회사 생성 오류:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "회사 생성에 실패했습니다." }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

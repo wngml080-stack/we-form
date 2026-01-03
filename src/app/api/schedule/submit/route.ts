@@ -95,11 +95,16 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     // 퇴사 상태 및 추가 정보 확인
-    const { data: staffDetail } = await supabase
+    const { data: staffDetail, error: staffDetailError } = await supabase
       .from("staffs")
       .select("employment_status, company_id")
       .eq("id", staff.id)
-      .single();
+      .maybeSingle();
+
+    if (staffDetailError) {
+      console.error("[ScheduleSubmit] 직원 상태 조회 오류:", staffDetailError);
+      return NextResponse.json({ error: "직원 상태 조회 중 오류가 발생했습니다." }, { status: 500 });
+    }
 
     if (staffDetail?.employment_status === "퇴사") {
       return NextResponse.json({ error: "퇴사한 계정은 사용할 수 없습니다." }, { status: 403 });
@@ -139,11 +144,15 @@ export async function POST(req: NextRequest) {
         { onConflict: "staff_id,year_month" }
       )
       .select()
-      .single();
+      .maybeSingle();
 
-    if (reportError || !report) {
-      console.error("보고서 생성 에러:", reportError);
-      return NextResponse.json({ error: `보고서 생성 중 오류: ${reportError?.message || "알 수 없는 오류"}` }, { status: 500 });
+    if (reportError) {
+      console.error("[ScheduleSubmit] 보고서 생성 에러:", reportError);
+      return NextResponse.json({ error: `보고서 생성 중 오류: ${reportError.message}` }, { status: 500 });
+    }
+
+    if (!report) {
+      return NextResponse.json({ error: "보고서 생성에 실패했습니다." }, { status: 500 });
     }
 
     // 해당 월 스케줄에 report_id 설정 및 잠금
