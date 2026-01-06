@@ -171,7 +171,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
           method: p.method || "card",
           installment: p.installment || p.installment_count || 1,
           trainer_id: p.trainer_id || "",
-          trainer_name: "",
+          trainer_name: p.trainer_name || "",
           memo: p.memo || "",
           created_at: p.paid_at || p.created_at,
           service_sessions: p.service_sessions || 0,
