@@ -16,6 +16,7 @@ import {
 import { showSuccess, showError } from "@/lib/utils/error-handler";
 import { FileDown, FileSpreadsheet, X, Info, CheckCircle2, Download, AlertCircle, FileUp, Sparkles, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
 interface ParsedExcelRow {
   name: string;
@@ -391,7 +392,7 @@ export function ExcelImportModal({
                       {parsedExcelData.map((row, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 font-black text-slate-900">{row.name || "-"}</td>
-                          <td className="px-6 py-4 font-bold text-slate-500 text-sm">{row.phone || "-"}</td>
+                          <td className="px-6 py-4 font-bold text-slate-500 text-sm">{row.phone ? formatPhoneNumber(row.phone) : "-"}</td>
                           <td className="px-6 py-4 font-bold text-slate-500 text-sm">{row.birth_date || "-"}</td>
                           <td className="px-6 py-4">
                             {row.gender ? (

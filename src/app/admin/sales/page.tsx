@@ -191,16 +191,16 @@ export default function SalesPage(props: {
     exportSalesToExcel(exportData, gymName || "매출");
   };
 
-  // 페이먼트 데이터를 테이블 형식으로 변환
+  // 페이먼트 데이터를 테이블 형식으로 변환 (기존 데이터 먼저, 새 행은 아래에)
   const tablePayments = [
+    ...filteredPayments.map(p => ({
+      ...p,
+      payment_date: p.created_at?.split("T")[0] || ""
+    })),
     ...newRows.map(row => ({
       ...row,
       payment_date: new Date().toISOString().split("T")[0],
       isNew: true
-    })),
-    ...filteredPayments.map(p => ({
-      ...p,
-      payment_date: p.created_at?.split("T")[0] || ""
     }))
   ];
 

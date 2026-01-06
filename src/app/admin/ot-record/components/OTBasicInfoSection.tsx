@@ -4,6 +4,7 @@ import { User, Phone, Calendar, Users, Target } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OTFormData } from "../types";
+import { formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 
 interface Props {
   formData: OTFormData;
@@ -44,7 +45,7 @@ export function OTBasicInfoSection({ formData, updateFormData }: Props) {
             type="tel"
             placeholder="010-0000-0000"
             value={formData.basicInfo.phoneNumber}
-            onChange={(e) => updateBasicInfo("phoneNumber", e.target.value)}
+            onChange={(e) => updateBasicInfo("phoneNumber", formatPhoneNumberOnChange(e.target.value))}
             className="h-10"
           />
         </div>

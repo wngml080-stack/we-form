@@ -17,6 +17,7 @@ import {
 import { MemberKanbanBoard } from "./components/MemberKanbanBoard";
 import { ReRegistrationTab } from "./re-registration/components";
 import { cn } from "@/lib/utils";
+import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
 export default function PTMembersPage(props: {
   params: Promise<any>;
@@ -174,7 +175,7 @@ export default function PTMembersPage(props: {
                   {ptMembers.map((member) => (
                     <tr key={member.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold">{member.member_name}</td>
-                      <td className="px-6 py-4 text-slate-500">{member.phone || "-"}</td>
+                      <td className="px-6 py-4 text-slate-500">{member.phone ? formatPhoneNumber(member.phone) : "-"}</td>
                       <td className="px-6 py-4">{member.membership_category}</td>
                       <td className="px-6 py-4">
                         <Select

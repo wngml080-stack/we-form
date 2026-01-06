@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Plus, CheckCircle, Users } from "lucide-react";
-import { formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
+import { formatPhoneNumber, formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 
 const JOB_TITLES = ["대표", "이사", "실장", "지점장", "FC사원", "FC주임", "FC팀장", "PT팀장", "트레이너", "프리랜서", "필라팀장", "필라전임", "필라파트", "골프프로", "기타"];
 
@@ -273,7 +273,7 @@ export default function AdminStaffPage(props: {
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6 text-slate-600 font-bold tracking-tight">{staff.phone || "-"}</td>
+                  <td className="px-8 py-6 text-slate-600 font-bold tracking-tight">{staff.phone ? formatPhoneNumber(staff.phone) : "-"}</td>
                   <td className="px-8 py-6">
                     <div className="space-y-1.5">
                       <div className="font-black text-slate-900 text-sm">{staff.job_title}</div>

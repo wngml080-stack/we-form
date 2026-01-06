@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatPhoneNumber } from "@/lib/utils/phone-format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -82,7 +83,7 @@ export function CompanyList({
                       </div>
                       <div className="flex items-center gap-2 text-slate-400">
                         <Phone className="w-3.5 h-3.5 text-slate-300" />
-                        <span className="text-xs font-bold tracking-tight">{comp.contact_phone || "-"}</span>
+                        <span className="text-xs font-bold tracking-tight">{comp.contact_phone ? formatPhoneNumber(comp.contact_phone) : "-"}</span>
                       </div>
                     </div>
                   </div>

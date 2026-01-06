@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpDown, Eye } from "lucide-react";
 import { getStatusBadge } from "../hooks/useMemberOperations";
+import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
 interface MembersLegacyTableProps {
   members: any[];
@@ -84,7 +85,7 @@ export function MembersLegacyTable({
                 return (
                   <tr key={member.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium">{member.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{member.phone || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{member.phone ? formatPhoneNumber(member.phone) : "-"}</td>
                     <td className="px-4 py-3 text-gray-600">{member.birth_date || "-"}</td>
                     <td className="px-4 py-3 text-gray-600">{member.gender || "-"}</td>
                     <td className="px-4 py-3 text-gray-600">

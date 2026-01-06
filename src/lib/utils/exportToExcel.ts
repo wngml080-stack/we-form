@@ -1,4 +1,5 @@
 import { Member } from "@/app/admin/members/components/columns";
+import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
 /**
  * 회원 데이터를 Excel 파일로 내보내기
@@ -19,7 +20,7 @@ export async function exportMembersToExcel(members: Member[], filename?: string)
   const excelData = members.map((member, index) => ({
     "번호": index + 1,
     "이름": member.name,
-    "연락처": member.phone || "-",
+    "연락처": member.phone ? formatPhoneNumber(member.phone) : "-",
     "생년월일": member.birth_date || "-",
     "성별": member.gender || "-",
     "활성 회원권": member.activeMembership?.name || "-",

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConsultationFormData } from "../types";
+import { formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 
 interface Props {
   formData: ConsultationFormData;
@@ -48,7 +49,7 @@ export function BasicInfoSection({ formData, updateFormData }: Props) {
             type="tel"
             placeholder="010-0000-0000"
             value={formData.phoneNumber}
-            onChange={(e) => updateFormData("phoneNumber", e.target.value)}
+            onChange={(e) => updateFormData("phoneNumber", formatPhoneNumberOnChange(e.target.value))}
             className="w-full"
           />
         </div>

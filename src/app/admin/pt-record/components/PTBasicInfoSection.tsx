@@ -4,6 +4,7 @@ import { User, Phone, Calendar, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PTFormData, goalTypeOptions } from "../types";
+import { formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 
 interface Props {
   formData: PTFormData;
@@ -54,7 +55,7 @@ export function PTBasicInfoSection({ formData, updateFormData }: Props) {
           <Input
             type="tel"
             value={formData.basicInfo.phoneNumber}
-            onChange={(e) => updateBasicInfo("phoneNumber", e.target.value)}
+            onChange={(e) => updateBasicInfo("phoneNumber", formatPhoneNumberOnChange(e.target.value))}
             placeholder="010-0000-0000"
             className="h-10"
           />

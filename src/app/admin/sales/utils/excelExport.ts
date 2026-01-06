@@ -1,5 +1,6 @@
 // 매출 엑셀 내보내기 유틸리티
 import { toast } from "@/lib/toast";
+import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
 interface PaymentData {
   payment_date: string;
@@ -33,7 +34,7 @@ export async function exportSalesToExcel(payments: PaymentData[], gymName: strin
   const excelData = payments.map((payment) => ({
     "날짜": formatDate(payment.payment_date),
     "회원명": payment.member_name || "-",
-    "휴대폰번호": payment.phone || "-",
+    "휴대폰번호": payment.phone ? formatPhoneNumber(payment.phone) : "-",
     "유형": payment.sale_type || "-",
     "회원권": payment.membership_category || "-",
     "회원권명": payment.membership_name || "-",

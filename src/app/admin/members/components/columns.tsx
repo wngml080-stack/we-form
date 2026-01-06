@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, ArrowUpDown } from "lucide-react";
+import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
 // 회원 데이터 타입
 export interface Member {
@@ -129,7 +130,7 @@ export function getMemberColumns(actions: MemberActionsProps): ColumnDef<Member>
       header: "연락처",
       cell: ({ row }) => {
         const phone = row.getValue("phone") as string | null;
-        return <span className="text-gray-600">{phone || "-"}</span>;
+        return <span className="text-gray-600">{phone ? formatPhoneNumber(phone) : "-"}</span>;
       },
       enableSorting: false,
     },
