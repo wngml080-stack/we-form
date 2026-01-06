@@ -24,7 +24,7 @@ export function ScheduleControls({
   const weekOfMonth = getWeekOfMonth(currentDate);
 
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-[32px] p-2 shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+    <div className="bg-white/80 backdrop-blur-md rounded-[32px] p-2 shadow-sm border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150 mb-6">
       <div className="flex flex-col lg:flex-row gap-4 items-center justify-between p-2">
         {/* 날짜 네비게이션 */}
         <div className="flex items-center bg-slate-100/50 p-1.5 rounded-[24px] border border-slate-100">
@@ -37,14 +37,14 @@ export function ScheduleControls({
             <ChevronLeft className="h-5 w-5" />
           </Button>
           
-          <div className="relative group flex items-center justify-center min-w-[200px] px-4">
+          <div className="relative group flex items-center justify-center min-w-[200px]">
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => onDateChange(e.target.value)}
               className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
             />
-            <div className="text-base font-black text-slate-900 flex items-center gap-3">
+            <div className="px-4 text-base font-black text-slate-900 flex items-center gap-3">
               <Calendar className="w-4 h-4 text-blue-500" />
               <span className="tracking-tight">
                 {viewType === 'day' && `${year}년 ${month}월 ${currentDate.getDate()}일`}

@@ -44,7 +44,7 @@ export function FcSalesModal({
                   <Target className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black tracking-tight">FC (회원권) 매출 현황</h2>
+                  <h2 className="text-2xl font-black tracking-tight text-white" style={{ color: 'white' }}>FC (회원권) 매출 현황</h2>
                   <p className="text-blue-200/60 text-xs font-black uppercase tracking-[0.2em] mt-0.5">Membership Sales Dashboard</p>
                 </div>
               </div>

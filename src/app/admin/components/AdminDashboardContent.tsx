@@ -5,17 +5,15 @@ import dynamic from "next/dynamic";
 // Custom Hook
 import { useAdminDashboardData } from "../hooks/useAdminDashboardData";
 
-// Components - 필수 컴포넌트만 정적 import
-import { SystemAnnouncementBanner } from "./SystemAnnouncementBanner";
-import { QuickActions } from "./QuickActions";
-import { BannerWidget } from "./BannerWidget";
-import { AiInsightsWidget } from "./AiInsightsWidget";
-import { AiCommandCenter } from "./AiCommandCenter";
-
 // Components - 지연 로드 가능한 컴포넌트 (로딩 후 표시)
 const BranchAnnouncementsCard = dynamic(() => import("./BranchAnnouncementsCard").then(mod => ({ default: mod.BranchAnnouncementsCard })), { ssr: false });
 const TodaySchedulesCard = dynamic(() => import("./TodaySchedulesCard").then(mod => ({ default: mod.TodaySchedulesCard })), { ssr: false });
 const CompanyEventsCalendar = dynamic(() => import("./CompanyEventsCalendar").then(mod => ({ default: mod.CompanyEventsCalendar })), { ssr: false });
+const AiInsightsWidget = dynamic(() => import("./AiInsightsWidget").then(mod => ({ default: mod.AiInsightsWidget })), { ssr: false });
+const AiCommandCenter = dynamic(() => import("./AiCommandCenter").then(mod => ({ default: mod.AiCommandCenter })), { ssr: false });
+const SystemAnnouncementBanner = dynamic(() => import("./SystemAnnouncementBanner").then(mod => ({ default: mod.SystemAnnouncementBanner })), { ssr: false });
+const QuickActions = dynamic(() => import("./QuickActions").then(mod => ({ default: mod.QuickActions })), { ssr: false });
+const BannerWidget = dynamic(() => import("./BannerWidget").then(mod => ({ default: mod.BannerWidget })), { ssr: false });
 
 // Modals - 동적 import (사용자 액션 시에만 로드)
 const EventModal = dynamic(() => import("./modals/EventModal").then(mod => ({ default: mod.EventModal })), { ssr: false });
@@ -83,39 +81,35 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
       />
 
       <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-8 lg:space-y-10">
-        {/* Welcome Header - 더 감각적인 디자인 */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-[0.2em] animate-in slide-in-from-left duration-700">
-              <span className="w-8 h-[2px] bg-blue-600"></span>
-              {todayDate}
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter animate-in slide-in-from-left duration-700 delay-100">
-              {userName}님, {getGreeting()} <span className="inline-block animate-bounce ml-1">👋</span>
-            </h1>
-            <p className="text-slate-500 font-bold text-lg flex items-center gap-2 animate-in slide-in-from-left duration-700 delay-200">
-              오늘도 <span className="text-[#2F80ED] border-b-2 border-blue-100 px-1">{gymName || "We:form"}</span>의 성공적인 운영을 위해 힘내세요!
-            </p>
-          </div>
-          
-          <div className="hidden lg:flex items-center gap-4 bg-white p-2 rounded-[24px] shadow-sm border border-gray-100 animate-in slide-in-from-right duration-700">
-            <div className="px-4 py-2 text-center border-r border-gray-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">오늘의 수업</p>
-              <p className="text-xl font-black text-slate-900">{todaySchedules.length}건</p>
-            </div>
-            <div className="px-4 py-2 text-center">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">공지사항</p>
-              <p className="text-xl font-black text-slate-900">{announcements.length}건</p>
-            </div>
-          </div>
-        </div>
-
         {/* AI Command Center - 자연어 검색바 */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-250">
           <AiCommandCenter />
         </div>
 
-        {/* 로딩 중일 때 나머지 콘텐츠만 스켈레톤 표시 */}
+        {/* Welcome Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="space-y-2">
+            <p className="text-slate-500 font-medium">{todayDate}</p>
+            <h1 className="text-3xl font-bold text-slate-900">
+              {userName}님, {getGreeting()} 👋
+            </h1>
+            <p className="text-slate-500">
+              오늘도 <span className="text-primary font-semibold">{gymName || "We:form"}</span>의 성공적인 운영을 위해 힘내세요!
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <div className="text-center border-r border-gray-100 pr-4">
+              <p className="text-xs text-slate-500 mb-1">오늘의 수업</p>
+              <p className="text-xl font-bold text-slate-900">{todaySchedules.length}건</p>
+            </div>
+            <div className="text-center pl-4">
+              <p className="text-xs text-slate-500 mb-1">공지사항</p>
+              <p className="text-xl font-bold text-slate-900">{announcements.length}건</p>
+            </div>
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="space-y-8">
             <div className="h-24 bg-gray-100 rounded-[32px] animate-pulse" />
@@ -143,7 +137,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
               <AiInsightsWidget stats={stats} gymName={gymName} />
             </div>
 
-            {/* Grid Layout - 입체감 있는 3단 구성 */}
+            {/* Grid Layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
               {/* Left Column - 지점 공지 */}
               <div className="h-full">

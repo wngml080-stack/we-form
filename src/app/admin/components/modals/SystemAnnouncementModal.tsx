@@ -22,10 +22,10 @@ export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }:
               <Bell className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">시스템 공지 및 업데이트</h2>
+              <h2 className="text-2xl font-black text-white tracking-tight" style={{ color: 'white' }}>시스템 공지 및 업데이트</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                <p className="text-sm text-slate-400 font-bold">We:form 플랫폼의 최신 소식과 기능 업데이트 안내</p>
+                <p className="text-sm text-white/80 font-bold">We:form 플랫폼의 최신 소식과 기능 업데이트 안내</p>
               </div>
             </div>
           </DialogTitle>

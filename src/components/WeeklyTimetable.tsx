@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
 
 interface Schedule {
   id: string;
@@ -51,18 +52,6 @@ export default function WeeklyTimetable({
     const [year, month, day] = selectedDate.split('-').map(Number);
     const current = new Date(year, month - 1, day);
     const dayOfWeek = current.getDay();
-    // 일요일(0)이면 -6일 전으로 이동 (월요일부터 시작하도록)
-    // 월요일(1)이면 그날이 시작일
-    // 화요일(2)이면 -1일 전...
-    
-    // 만약 일요일을 시작으로 하려면:
-    // const diff = current.getDate() - day;
-    
-    // 사용자가 원하는 것이 월요일 시작인지 일요일 시작인지 명시적이진 않지만
-    // 이전 코드에서 (day === 0 ? -6 : 1) 로직이 있었음.
-    // 이전 로직: today.getDate() - day + (day === 0 ? -6 : 1)
-    // day=0(일) -> date - 0 - 6 = date - 6 (지난주 월요일?)
-    // day=1(월) -> date - 1 + 1 = date (이번주 월요일)
     
     // 일반적인 달력(일요일 시작)으로 변경하는 것이 더 직관적일 수 있으나
     // 기존 로직(월요일 시작)을 유지하면서 selectedDate 기준으로 변경
@@ -90,16 +79,8 @@ export default function WeeklyTimetable({
       // 선택된 날짜만 표시 (로컬 시간 기준)
       const [year, month, day] = selectedDate.split('-').map(Number);
       dates.push(new Date(year, month - 1, day));
-    } else if (viewType === 'week') {
-      // 일주일 (일~토) -> 월요일 시작 로직이면 월~일
-      // 위 weekStart 로직이 월요일 시작이므로 월~일로 렌더링됨
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(weekStart);
-        date.setDate(weekStart.getDate() + i);
-        dates.push(date);
-      }
     } else {
-      // month는 현재 week와 동일하게 처리 (간단하게)
+      // 일주일 (월~일)
       for (let i = 0; i < 7; i++) {
         const date = new Date(weekStart);
         date.setDate(weekStart.getDate() + i);
@@ -110,7 +91,6 @@ export default function WeeklyTimetable({
     return dates;
   }, [weekStart, viewType, selectedDate]);
 
-  // 이전 weekDates를 displayDates로 변경
   const weekDates = displayDates;
 
   // 스케줄을 날짜별, 시간별로 그룹화 및 duration 계산
@@ -137,8 +117,6 @@ export default function WeeklyTimetable({
       const rowSpan = Math.max(1, Math.ceil(durationMinutes / 30));
 
       const key = `${dateStr}-${timeSlot}`;
-
-      // 디버깅 로그 제거 (성능 개선)
 
       if (!grid.has(key)) {
         grid.set(key, []);

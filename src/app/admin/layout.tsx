@@ -54,19 +54,15 @@ function AdminLayoutContent({
   useEffect(() => {
     if (isLoading) return;
 
-    // 로그인 안됨
     if (!authUser) {
       router.push("/sign-in");
       return;
     }
 
-    // staffs에 없거나 승인 안됨
     if (!isApproved) {
-      // staffs에 등록 안됨 → 온보딩
       if (!user) {
         router.push("/onboarding");
       } else {
-        // 등록됐지만 승인 대기 - 회사 대표(company_admin)인지 직원인지 구분
         const pendingType = user.role === "company_admin" ? "company" : "staff";
         router.push(`/onboarding/pending?type=${pendingType}`);
       }
@@ -78,48 +74,28 @@ function AdminLayoutContent({
     router.push("/sign-in");
   };
 
-  // 로딩 중이거나 미승인이면 로딩 표시
   if (isLoading || !isApproved) {
     return (
       <div className="flex h-screen items-center justify-center bg-[#f0f4f8]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-indigo-600 flex items-center justify-center shadow-[0_8px_24px_rgba(79,70,229,0.35)] animate-pulse">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="4" width="18" height="18" rx="2" stroke="white" strokeWidth="2"/>
-              <line x1="3" y1="9" x2="21" y2="9" stroke="white" strokeWidth="2"/>
-              <line x1="8" y1="2" x2="8" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="16" y1="2" x2="16" y2="6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <p className="text-slate-500 font-medium">로딩 중...</p>
-        </div>
+        <p className="text-slate-500">로딩 중...</p>
       </div>
     );
   }
 
-  // 역할별 메뉴 정의
   const getMenuItems = () => {
     if (userRole === "staff") {
-      // 직원 메뉴
       return {
-        main: [
-          { name: "대시보드", href: "/admin", icon: LayoutDashboard },
-        ],
-        branch: [
-          { name: "급여 확인", href: "/admin/salary", icon: DollarSign, isChild: false },
-        ],
+        main: [{ name: "대시보드", href: "/admin", icon: LayoutDashboard }],
+        branch: [{ name: "급여 확인", href: "/admin/salary", icon: DollarSign }],
         admin: []
       };
     } else {
-      // 관리자 메뉴 (admin, company_admin, system_admin)
       return {
-        main: [
-          { name: "대시보드", href: "/admin", icon: LayoutDashboard },
-        ],
+        main: [{ name: "대시보드", href: "/admin", icon: LayoutDashboard }],
         branch: [
-          { name: "지점 관리", href: "/admin/branch", icon: Building2, isParent: true },
-          { name: "급여 관리", href: "/admin/salary", icon: DollarSign, isChild: true },
-          { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck, isChild: true },
+          { name: "지점 관리", href: "/admin/branch", icon: Building2 },
+          { name: "급여 관리", href: "/admin/salary", icon: DollarSign },
+          { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck },
         ],
         admin: []
       };
@@ -133,7 +109,7 @@ function AdminLayoutContent({
       {/* 모바일 햄버거 버튼 */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden w-12 h-12 rounded-xl bg-white flex items-center justify-center text-slate-700 shadow-[0_4px_12px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300"
+        className="fixed top-4 left-4 z-50 lg:hidden w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"
       >
         {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </button>
@@ -141,250 +117,141 @@ function AdminLayoutContent({
       {/* 모바일 오버레이 */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* 왼쪽 사이드바 */}
+      {/* 사이드바 */}
       <aside className={`
-        w-72 bg-white flex flex-col
-        fixed lg:static inset-y-0 left-0 z-50
-        transform transition-transform duration-500 ease-in-out
-        shadow-[4px_0_24px_rgba(0,0,0,0.02),8px_0_48px_rgba(0,0,0,0.03)]
-        border-r border-slate-100/50
+        w-64 bg-white border-r border-slate-200 flex flex-col
+        fixed lg:static inset-y-0 left-0 z-50 transition-transform
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-        {/* 로고 - 더 세련된 디자인 */}
-        <div className="p-8 pb-6">
-          <Link href="/admin" className="flex items-center gap-4 group">
-            <div className="w-14 h-14 rounded-[22px] bg-gradient-to-br from-[#2F80ED] to-[#1c6cd7] flex items-center justify-center shadow-lg shadow-blue-200 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 relative overflow-hidden">
-              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="relative z-10">
-                <rect x="3" y="4" width="18" height="18" rx="2" stroke="white" strokeWidth="2.5"/>
-                <line x1="3" y1="9" x2="21" y2="9" stroke="white" strokeWidth="2.5"/>
-                <line x1="8" y1="2" x2="8" y2="6" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-                <line x1="16" y1="2" x2="16" y2="6" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-              </svg>
+        {/* 로고 */}
+        <div className="p-6 border-b border-slate-100">
+          <Link href="/admin" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tighter leading-none mb-1">We:form</h1>
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] opacity-60">Admin System</p>
-            </div>
+            <span className="text-xl font-bold text-slate-900 tracking-tight">We:form</span>
           </Link>
         </div>
 
-        {/* 전역 회사/지점/직원 선택 - 입체감 있는 디자인 */}
+        {/* 필터 */}
         {filterInitialized && (
-          <div className="px-6 pb-6 space-y-3">
-            {/* 회사 선택 */}
-            {userRole === "system_admin" && companies.length > 0 ? (
+          <div className="p-4 space-y-2">
+            {userRole === "system_admin" && (
               <Select value={selectedCompanyId} onValueChange={setCompany}>
-                <SelectTrigger aria-label="회사 선택" className="w-full h-11 text-xs font-black bg-slate-900 text-white border-none rounded-2xl shadow-xl shadow-slate-200 focus:ring-2 focus:ring-blue-500/50 transition-all">
-                  <Building2 className="w-4 h-4 mr-2 text-blue-400" />
+                <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
                   <SelectValue placeholder="회사 선택" />
                 </SelectTrigger>
-                <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id} className="rounded-xl font-bold py-3">
-                      {company.name}
-                    </SelectItem>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : (
-              <div className="px-5 py-3.5 bg-slate-900 text-white rounded-2xl text-xs font-black text-center shadow-xl shadow-slate-200 border border-slate-800">
-                {companyName || "COMPANY"}
-              </div>
             )}
+            
+            <Select value={selectedGymId} onValueChange={setGym}>
+              <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                <SelectValue placeholder="지점 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {gyms.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            <div className="grid grid-cols-1 gap-2">
-              {/* 지점 선택 */}
-              <Select value={selectedGymId} onValueChange={setGym}>
-                <SelectTrigger aria-label="지점 선택" className="w-full h-11 text-xs font-bold bg-slate-50 border-none rounded-2xl hover:bg-slate-100 transition-all focus:ring-2 focus:ring-blue-100">
-                  <Building2 className="w-4 h-4 mr-2 text-slate-400" />
-                  <SelectValue placeholder="지점 선택" />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
-                  {gyms.map((gym) => (
-                    <SelectItem key={gym.id} value={gym.id} className="rounded-xl font-bold py-3">
-                      {gym.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* 직원 선택 */}
-              <Select value={selectedStaffId || "all"} onValueChange={(val) => setStaff(val === "all" ? "" : val)}>
-                <SelectTrigger aria-label="직원 선택" className="w-full h-11 text-xs font-bold bg-slate-50 border-none rounded-2xl hover:bg-slate-100 transition-all focus:ring-2 focus:ring-blue-100">
-                  <Users className="w-4 h-4 mr-2 text-slate-400" />
-                  <SelectValue placeholder="전체 직원" />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-none shadow-2xl p-2">
-                  <SelectItem value="all" className="rounded-xl font-bold py-3">전체 직원</SelectItem>
-                  {staffs.map((staff) => (
-                    <SelectItem key={staff.id} value={staff.id} className="rounded-xl font-bold py-3">
-                      {staff.name} <span className="text-[10px] opacity-40 ml-1">{staff.job_title || ""}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={selectedStaffId || "all"} onValueChange={(v) => setStaff(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                <SelectValue placeholder="직원 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 직원</SelectItem>
+                {staffs.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
 
-        {/* 구분선 */}
-        <div className="mx-8 mb-4">
-          <div className="h-[1px] bg-slate-100 w-full"></div>
-        </div>
+        <nav className="flex-1 p-4 space-y-1">
+          {menuItems.main.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname === item.href ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.name}
+            </Link>
+          ))}
 
-        {/* 메뉴 - 감각적인 아이콘과 호버 효과 */}
-        <nav className="flex-1 px-4 overflow-y-auto custom-scrollbar">
-          <div className="space-y-1.5">
-            {/* 메인 메뉴 */}
-            {menuItems.main.map((item, index) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`group flex items-center rounded-[20px] transition-all duration-500 ${
-                    index === 0
-                      ? `px-5 py-4 text-sm font-black tracking-tight ${
-                          isActive
-                            ? "bg-gradient-to-br from-[#2F80ED] to-[#1c6cd7] text-white shadow-xl shadow-blue-200"
-                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                        }`
-                      : `pl-14 pr-5 py-3 text-sm font-bold ${
-                          isActive
-                            ? "bg-blue-50 text-blue-600"
-                            : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                        }`
-                  }`}
-                >
-                  <item.icon className={`mr-4 transition-all duration-500 ${index === 0 ? (isActive ? 'h-6 w-6' : 'h-6 w-6 opacity-40 group-hover:opacity-100 group-hover:scale-110') : 'h-5 w-5'}`} />
-                  {item.name}
-                </Link>
-              );
-            })}
-
-            {/* 지점 관리 섹션 */}
-            {menuItems.branch.length > 0 && userRole !== "staff" && (
-              <div className="mt-8 mb-4">
-                <div className="px-6 mb-3">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Operations</p>
-                </div>
-                {menuItems.branch.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`group flex items-center rounded-[20px] transition-all duration-500 ${
-                        item.isChild
-                          ? `pl-14 pr-5 py-3.5 text-sm font-bold ${
-                              isActive
-                                ? "bg-blue-50 text-blue-600"
-                                : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                            }`
-                          : `px-5 py-4 text-sm font-black tracking-tight ${
-                              isActive
-                                ? "bg-gradient-to-br from-[#2F80ED] to-[#1c6cd7] text-white shadow-xl shadow-blue-200"
-                                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                            }`
-                      }`}
-                    >
-                      <item.icon className={`mr-4 transition-all duration-500 ${item.isChild ? (isActive ? 'h-5 w-5 text-blue-600' : 'h-5 w-5 text-slate-300 group-hover:text-slate-900') : (isActive ? 'h-6 w-6' : 'h-6 w-6 opacity-40 group-hover:opacity-100 group-hover:scale-110')}`} />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 직원용 메뉴 */}
-            {userRole === "staff" && (
-              <div className="mt-8 space-y-1.5">
-                {menuItems.branch.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={`group flex items-center px-5 py-4 text-sm font-black tracking-tight rounded-[20px] transition-all duration-500 ${
-                        isActive
-                          ? "bg-gradient-to-br from-[#2F80ED] to-[#1c6cd7] text-white shadow-xl shadow-blue-200"
-                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                      }`}
-                    >
-                      <item.icon className={`mr-4 h-6 w-6 transition-all duration-500 ${isActive ? 'opacity-100' : 'opacity-40 group-hover:opacity-100 group-hover:scale-110'}`} />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 관리자 설정 섹션 */}
-            {(userRole === "company_admin" || userRole === "system_admin") && (
-              <div className="mt-8 mb-4">
-                <div className="px-6 mb-3">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Enterprise</p>
-                </div>
-
-                {/* 본사 관리 */}
-                <Link
-                  href="/admin/hq"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`group flex items-center px-5 py-4 text-sm font-black tracking-tight rounded-[20px] transition-all duration-500 ${
-                    pathname === "/admin/hq"
-                      ? "bg-gradient-to-br from-[#2F80ED] to-[#1c6cd7] text-white shadow-xl shadow-blue-200"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  <Building2 className={`mr-4 h-6 w-6 transition-all duration-500 ${pathname === "/admin/hq" ? 'opacity-100' : 'opacity-40 group-hover:opacity-100 group-hover:scale-110'}`} />
-                  본사 관리
-                </Link>
-
-                {/* 고객사 관리 (System Admin만) */}
-                {userRole === "system_admin" && (
-                  <Link
-                    href="/admin/system"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={`group flex items-center px-5 py-4 text-sm font-black tracking-tight rounded-[20px] transition-all duration-500 ${
-                      pathname === "/admin/system"
-                        ? "bg-gradient-to-br from-[#2F80ED] to-[#1c6cd7] text-white shadow-xl shadow-blue-200"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                    }`}
-                  >
-                    <Settings className={`mr-4 h-6 w-6 transition-all duration-500 ${pathname === "/admin/system" ? 'opacity-100' : 'opacity-40 group-hover:opacity-100 group-hover:scale-110'}`} />
-                    고객사 관리
-                  </Link>
-                )}
-              </div>
-            )}
+          <div className="pt-4 pb-2">
+            <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Management</p>
           </div>
+
+          {menuItems.branch.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname === item.href ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.name}
+            </Link>
+          ))}
+
+          {(userRole === "company_admin" || userRole === "system_admin") && (
+            <>
+              <div className="pt-4 pb-2">
+                <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">System</p>
+              </div>
+              <Link
+                href="/admin/hq"
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === "/admin/hq" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                본사 관리
+              </Link>
+              {userRole === "system_admin" && (
+                <Link
+                  href="/admin/system"
+                  className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    pathname === "/admin/system" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  시스템 설정
+                </Link>
+              )}
+            </>
+          )}
         </nav>
 
-        {/* 로그아웃 - 더 깔끔한 하단 배치 */}
-        <div className="p-6">
+        <div className="p-4 border-t border-slate-100">
           <button
             onClick={handleLogout}
-            className="flex items-center w-full px-5 py-4 text-sm font-black text-rose-500 rounded-[20px] bg-rose-50 hover:bg-rose-100 transition-all duration-500 group"
+            className="flex items-center gap-3 w-full px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
           >
-            <LogOut className="mr-4 h-6 w-6 transition-transform group-hover:translate-x-1" />
+            <LogOut className="w-4 h-4" />
             로그아웃
           </button>
         </div>
       </aside>
 
-      {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-auto">
-        <div className="lg:hidden h-16"></div>
-        <div className="min-h-full p-4 lg:p-6">
+      <main className="flex-1 overflow-auto bg-[#f8fafc]">
+        <div className="p-6">
           {children}
         </div>
       </main>

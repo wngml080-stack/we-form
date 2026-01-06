@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronDown, ChevronUp, BarChart3, Clock, Calendar } from "lucide-react";
 
 interface Schedule {
   id: string;
@@ -80,7 +80,7 @@ function calculateDailyStats(date: string, schedules: Schedule[]): StatItem[] {
       key: "type_inside",
       label: "근무시간 내",
       value: `${typeCount["근무시간 내"]}개`,
-      color: "bg-blue-100 text-blue-800",
+      color: "bg-blue-50 text-blue-700",
     });
   }
   if (typeCount["근무시간 외"]) {
@@ -88,7 +88,7 @@ function calculateDailyStats(date: string, schedules: Schedule[]): StatItem[] {
       key: "type_outside",
       label: "근무시간 외",
       value: `${typeCount["근무시간 외"]}개`,
-      color: "bg-purple-100 text-purple-800",
+      color: "bg-purple-50 text-purple-700",
     });
   }
   if (typeCount["주말"]) {
@@ -96,7 +96,7 @@ function calculateDailyStats(date: string, schedules: Schedule[]): StatItem[] {
       key: "type_weekend",
       label: "주말",
       value: `${typeCount["주말"]}개`,
-      color: "bg-green-100 text-green-800",
+      color: "bg-emerald-50 text-emerald-700",
     });
   }
   if (typeCount["휴일"]) {
@@ -104,7 +104,7 @@ function calculateDailyStats(date: string, schedules: Schedule[]): StatItem[] {
       key: "type_holiday",
       label: "휴일",
       value: `${typeCount["휴일"]}개`,
-      color: "bg-orange-100 text-orange-800",
+      color: "bg-rose-50 text-rose-700",
     });
   }
 
@@ -114,7 +114,7 @@ function calculateDailyStats(date: string, schedules: Schedule[]): StatItem[] {
       key: `status_${status}`,
       label: status,
       value: `${count}개`,
-      color: "bg-gray-100 text-gray-800",
+      color: "bg-slate-50 text-slate-700",
     });
   });
 
@@ -149,41 +149,55 @@ export function DailyStatsWidget({ selectedDate, schedules, staffName }: DailySt
   });
 
   return (
-    <Card className="p-4 mt-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-md font-semibold">당일 통계</h3>
-          <Badge variant="outline">{formattedDate}</Badge>
-          {staffName && <Badge variant="secondary">{staffName}</Badge>}
+    <Card className="p-6 mt-6 bg-white/50 backdrop-blur-md border-slate-100 rounded-[32px] shadow-xl shadow-slate-200/50 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
+            <BarChart3 className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">당일 운영 통계</h3>
+              {staffName && <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[10px] uppercase tracking-widest">{staffName} 코치</Badge>}
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{formattedDate}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {hiddenStats.size > 0 && (
-            <Button variant="ghost" size="sm" onClick={showAllStats}>
+            <Button variant="ghost" size="sm" onClick={showAllStats} className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-xl px-3">
               모두 보기 ({hiddenStats.size})
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setIsExpanded(!isExpanded)}>
-            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <Button variant="ghost" size="icon" onClick={() => setIsExpanded(!isExpanded)} className="w-10 h-10 rounded-xl hover:bg-slate-100 transition-all">
+            {isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
           </Button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {visibleStats.map((stat) => (
             <div
               key={stat.key}
-              className={`p-3 rounded-lg border relative group ${stat.color || "bg-gray-50"}`}
+              className={`p-5 rounded-[24px] border border-transparent transition-all group relative overflow-hidden shadow-sm hover:shadow-md hover:scale-[1.02] ${stat.color || "bg-slate-50 hover:bg-white hover:border-slate-100"}`}
             >
               <button
                 onClick={() => hideStat(stat.key)}
-                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-slate-200 rounded-full z-10"
                 title="이 통계 숨기기"
               >
-                <X className="h-3 w-3 text-gray-500 hover:text-gray-700" />
+                <X className="h-3 w-3 text-slate-500" />
               </button>
-              <div className="text-xs text-muted-foreground mb-1">{stat.label}</div>
-              <div className="text-lg font-semibold">{stat.value}</div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2">{stat.label}</p>
+              <div className="text-xl font-black text-slate-900 tracking-tight">{stat.value}</div>
+              
+              {/* Subtle background icon for the first two stats */}
+              {(stat.key === 'total_count' || stat.key === 'total_hours') && (
+                <div className="absolute -right-2 -bottom-2 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
+                  {stat.key === 'total_count' ? <Calendar className="w-16 h-16" /> : <Clock className="w-16 h-16" />}
+                </div>
+              )}
             </div>
           ))}
         </div>

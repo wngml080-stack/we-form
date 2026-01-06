@@ -48,3 +48,10 @@ _archive/
 
 # claude
 .claude/
+
+# supabase temp files
+supabase/.temp/
+
+# test screenshots
+screenshots/
+.playwright-mcp/

@@ -30,7 +30,7 @@ export function ScheduleHeader({
   const selectedStaff = staffs.find(s => s.id === selectedStaffId);
 
   return (
-    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 animate-in fade-in slide-in-from-top-4 duration-700 bg-white/50 backdrop-blur-sm p-6 lg:p-8 rounded-[32px] border border-white shadow-sm">
+    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 animate-in fade-in slide-in-from-top-4 duration-700 bg-white/50 backdrop-blur-sm p-6 lg:p-8 rounded-[32px] border border-white shadow-sm mb-6">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
@@ -40,7 +40,7 @@ export function ScheduleHeader({
             {userRole === "staff" ? "내 수업 스케줄" : "통합 수업 스케줄"}
           </h1>
         </div>
-        <p className="text-slate-500 text-sm font-bold flex items-center gap-2 ml-13">
+        <p className="text-slate-500 text-sm font-bold flex items-center gap-2 ml-1">
           <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
           {userRole === "staff"
             ? `${userName || ""} 코치님의 실시간 수업 일정을 확인하세요`

@@ -12,48 +12,47 @@ interface QuickActionProps {
 
 function QuickAction({ icon: Icon, label, href, color }: QuickActionProps) {
   return (
-    <Link href={href} className="flex flex-col items-center gap-3 group min-w-[100px]">
-      <div className={`w-16 h-16 rounded-[24px] ${color} flex items-center justify-center shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-300 relative overflow-hidden`}>
-        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        <Icon className="w-7 h-7 relative z-10" />
+    <Link href={href} className="flex flex-col items-center gap-2 group">
+      <div className={`w-14 h-14 rounded-xl ${color} flex items-center justify-center shadow-sm group-hover:shadow-md transition-all`}>
+        <Icon className="w-6 h-6" />
       </div>
-      <span className="text-[13px] font-black text-slate-600 group-hover:text-blue-600 transition-colors text-center leading-tight tracking-tighter">{label}</span>
+      <span className="text-xs font-semibold text-slate-600 group-hover:text-primary transition-colors">{label}</span>
     </Link>
   );
 }
 
 export function QuickActions() {
   return (
-    <div className="flex gap-8 md:gap-12 overflow-x-auto pb-4 scrollbar-hide px-2">
+    <div className="flex gap-6 overflow-x-auto pb-2 scrollbar-hide">
       <QuickAction
         icon={DollarSign}
         label="매출 현황"
         href="/admin/sales"
-        color="bg-emerald-50 text-emerald-600 border border-emerald-100"
+        color="bg-emerald-100 text-emerald-600"
       />
       <QuickAction
         icon={Calendar}
         label="스케줄 관리"
         href="/admin/schedule"
-        color="bg-purple-50 text-purple-600 border border-purple-100"
+        color="bg-purple-100 text-purple-600"
       />
       <QuickAction
         icon={CheckCircle2}
         label="출석 체크"
         href="/admin/attendance"
-        color="bg-amber-50 text-amber-600 border border-amber-100"
+        color="bg-amber-100 text-amber-600"
       />
       <QuickAction
         icon={Users}
         label="회원 관리"
         href="/admin/pt-members"
-        color="bg-blue-50 text-blue-600 border border-blue-100"
+        color="bg-blue-100 text-blue-600"
       />
       <QuickAction
         icon={Briefcase}
         label="포트폴리오"
         href="/admin/portfolio"
-        color="bg-indigo-50 text-indigo-600 border border-indigo-100"
+        color="bg-indigo-100 text-indigo-600"
       />
     </div>
   );

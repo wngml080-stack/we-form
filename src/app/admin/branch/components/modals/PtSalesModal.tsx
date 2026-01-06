@@ -44,7 +44,7 @@ export function PtSalesModal({
                   <Award className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black tracking-tight">PT 매출 현황</h2>
+                  <h2 className="text-2xl font-black tracking-tight text-white" style={{ color: 'white' }}>PT 매출 현황</h2>
                   <p className="text-orange-200/60 text-xs font-black uppercase tracking-[0.2em] mt-0.5">Personal Training Analytics</p>
                 </div>
               </div>

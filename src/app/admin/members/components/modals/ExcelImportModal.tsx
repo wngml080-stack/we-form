@@ -261,7 +261,7 @@ export function ExcelImportModal({
               <h2 className="text-2xl font-black text-white tracking-tight">회원 데이터 일괄 업로드</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <p className="text-sm text-slate-400 font-bold">Excel 파일을 통한 대규모 회원 정보 등록</p>
+                <p className="text-sm text-white/80 font-bold">Excel 파일을 통한 대규모 회원 정보 등록</p>
               </div>
             </div>
           </DialogTitle>

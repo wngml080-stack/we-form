@@ -50,7 +50,7 @@ export function TotalSalesModal({
                   <TrendingUp className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black tracking-tight">전체 매출 현황</h2>
+                  <h2 className="text-2xl font-black tracking-tight text-white">전체 매출 현황</h2>
                   <p className="text-purple-200/60 text-xs font-black uppercase tracking-[0.2em] mt-0.5">Total Revenue Analytics</p>
                 </div>
               </div>

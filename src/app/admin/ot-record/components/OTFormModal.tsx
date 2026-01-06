@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import domtoimage from "dom-to-image-more";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +48,6 @@ export function OTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
     };
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [initialData, setInitialData] = useState<OTFormData>(formData);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -110,48 +108,6 @@ export function OTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
       }
     } else {
       onClose();
-    }
-  };
-
-  const handleExportImage = async () => {
-    if (!contentRef.current) return;
-
-    setIsExporting(true);
-    try {
-      const element = contentRef.current;
-      const scrollTop = element.scrollTop;
-      element.scrollTop = 0;
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const dataUrl = await domtoimage.toPng(element, {
-        quality: 1,
-        bgcolor: "#ffffff",
-        height: element.scrollHeight,
-        width: element.scrollWidth,
-        style: {
-          overflow: "visible",
-          height: "auto",
-          maxHeight: "none",
-        }
-      });
-
-      element.scrollTop = scrollTop;
-
-      const link = document.createElement("a");
-      const fileName = `OT기록지_${formData.basicInfo.memberName || "신규"}_${new Date().toISOString().split("T")[0]}.png`;
-      link.download = fileName;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      alert("이미지가 저장되었습니다.");
-    } catch (error) {
-      console.error("이미지 저장 실패:", error);
-      alert("이미지 저장에 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -293,17 +249,7 @@ export function OTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
         </div>
 
         {/* 하단 버튼 */}
-        <div className="p-8 bg-white border-t border-slate-50 flex items-center justify-between flex-shrink-0">
-          <Button
-            variant="ghost"
-            onClick={handleExportImage}
-            disabled={isExporting}
-            className="h-14 px-6 rounded-2xl font-black text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all flex items-center gap-2"
-          >
-            <Download className="w-5 h-5" />
-            {isExporting ? "이미지 생성 중..." : "이미지 저장"}
-          </Button>
-          
+        <div className="p-8 bg-white border-t border-slate-50 flex items-center justify-end flex-shrink-0">
           <div className="flex gap-3">
             <Button variant="ghost" onClick={handleClose} className="h-14 px-6 rounded-2xl font-black text-slate-400 hover:text-slate-900 transition-all">
               취소

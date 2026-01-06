@@ -88,7 +88,7 @@ export function EditScheduleModal({
               </h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                <p className="text-sm text-slate-400 font-bold">등록된 스케줄의 상세 내용을 변경합니다</p>
+                <p className="text-sm text-white/80 font-bold">등록된 스케줄의 상세 내용을 변경합니다</p>
               </div>
             </div>
           </DialogTitle>

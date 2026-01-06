@@ -24,12 +24,8 @@ export async function POST(request: NextRequest) {
       method,
       installment,
       trainer_id,
+      trainer_name,
       memo,
-      service_sessions,
-      validity_per_session,
-      membership_start_date,
-      visit_route,
-      expiry_type,
     } = body;
 
     if (!company_id || !gym_id) {
@@ -48,44 +44,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "해당 지점에 대한 접근 권한이 없습니다." }, { status: 403 });
     }
 
-    // 결제일은 현재 시간
-    const paymentDate = new Date().toISOString();
+    // trainer_name 조회 (trainer_id가 있고 trainer_name이 없을 경우)
+    let finalTrainerName = trainer_name || "";
+    if (trainer_id && !trainer_name) {
+      const { data: trainerData } = await supabase
+        .from("staffs")
+        .select("name")
+        .eq("id", trainer_id)
+        .maybeSingle();
+      if (trainerData) finalTrainerName = trainerData.name;
+    }
 
-    // 추가 정보를 JSON으로 저장 (memo 필드에 메타데이터 포함)
-    const metadata = {
-      member_name: member_name || "",
-      phone: phone || "",
-      sale_type: sale_type || "",
-      membership_category: membership_category || "",
-      membership_name: membership_name || "",
-      trainer_id: trainer_id || "",
-      installment: installment || 1,
-      visit_route: visit_route || "",
-      user_memo: memo || "",
-    };
-
-    // 결제 레코드 생성 - 직접 입력 매출은 sales_logs 테이블에 저장
-    const { data: salesLog, error: salesLogError } = await supabase
-      .from("sales_logs")
+    // member_payments 테이블에 저장
+    const { data: payment, error: paymentError } = await supabase
+      .from("member_payments")
       .insert({
         company_id,
         gym_id,
-        staff_id: trainer_id || staff.id, // 담당 트레이너가 있으면 사용
-        type: "sale",
+        member_name: member_name || "",
+        phone: phone || "",
+        sale_type: sale_type || "",
+        membership_category: membership_category || "",
+        membership_name: membership_name || "",
         amount: parseFloat(amount) || 0,
         method: method || "card",
-        memo: JSON.stringify(metadata), // JSON으로 저장
-        occurred_at: paymentDate,
+        installment: installment || 1,
+        trainer_id: trainer_id || null,
+        trainer_name: finalTrainerName,
+        memo: memo || "",
       })
       .select()
       .single();
 
-    if (salesLogError) {
-      console.error("[Sales API] 매출 로그 생성 오류:", salesLogError);
-      return NextResponse.json({ error: salesLogError.message }, { status: 500 });
+    if (paymentError) {
+      console.error("[Sales API] 매출 생성 오류:", paymentError);
+      return NextResponse.json({ error: paymentError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, payment: salesLog });
+    return NextResponse.json({ success: true, payment });
   } catch (error: any) {
     console.error("[Sales API] 매출 생성 오류:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -110,39 +106,60 @@ export async function PUT(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // 기존 매출 로그 확인
-    const { data: existingSalesLog, error: findError } = await supabase
-      .from("sales_logs")
+    // 기존 매출 확인
+    const { data: existingPayment, error: findError } = await supabase
+      .from("member_payments")
       .select("gym_id, company_id")
       .eq("id", id)
       .maybeSingle();
 
     if (findError) {
-      console.error("[Sales API] 매출 로그 조회 오류:", findError);
+      console.error("[Sales API] 매출 조회 오류:", findError);
       return NextResponse.json({ error: "매출 조회 중 오류가 발생했습니다." }, { status: 500 });
     }
 
-    if (!existingSalesLog) {
+    if (!existingPayment) {
       return NextResponse.json({ error: "매출 정보를 찾을 수 없습니다." }, { status: 404 });
     }
 
     // 권한 확인
-    if (!canAccessGym(staff, existingSalesLog.gym_id, existingSalesLog.company_id)) {
+    if (!canAccessGym(staff, existingPayment.gym_id, existingPayment.company_id)) {
       return NextResponse.json({ error: "해당 매출에 대한 접근 권한이 없습니다." }, { status: 403 });
     }
 
-    // 수정 가능한 필드만 필터링
-    const allowedFields = ["amount", "method", "memo", "type"];
-    const filteredUpdates: Record<string, unknown> = {};
+    // trainer_name 조회 (trainer_id가 변경된 경우)
+    let trainerName = updates.trainer_name;
+    if (updates.trainer_id && !updates.trainer_name) {
+      const { data: trainerData } = await supabase
+        .from("staffs")
+        .select("name")
+        .eq("id", updates.trainer_id)
+        .maybeSingle();
+      if (trainerData) trainerName = trainerData.name;
+    }
+
+    // 수정 가능한 필드들
+    const allowedFields = ["member_name", "phone", "sale_type", "membership_category", "membership_name", "amount", "method", "installment", "trainer_id", "memo"];
+    const dbUpdates: Record<string, unknown> = {};
+
     for (const key of allowedFields) {
       if (updates[key] !== undefined) {
-        filteredUpdates[key] = updates[key];
+        if (key === "amount") {
+          dbUpdates[key] = parseFloat(updates[key]) || 0;
+        } else {
+          dbUpdates[key] = updates[key];
+        }
       }
     }
 
+    // trainer_name 업데이트
+    if (trainerName !== undefined) {
+      dbUpdates.trainer_name = trainerName;
+    }
+
     const { error: updateError } = await supabase
-      .from("sales_logs")
-      .update(filteredUpdates)
+      .from("member_payments")
+      .update(dbUpdates)
       .eq("id", id);
 
     if (updateError) {
@@ -175,29 +192,29 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // 기존 매출 로그 확인
-    const { data: existingSalesLog, error: findError } = await supabase
-      .from("sales_logs")
+    // 기존 매출 확인
+    const { data: existingPayment, error: findError } = await supabase
+      .from("member_payments")
       .select("gym_id, company_id")
       .eq("id", id)
       .maybeSingle();
 
     if (findError) {
-      console.error("[Sales API] 매출 로그 조회 오류:", findError);
+      console.error("[Sales API] 매출 조회 오류:", findError);
       return NextResponse.json({ error: "매출 조회 중 오류가 발생했습니다." }, { status: 500 });
     }
 
-    if (!existingSalesLog) {
+    if (!existingPayment) {
       return NextResponse.json({ error: "매출 정보를 찾을 수 없습니다." }, { status: 404 });
     }
 
     // 권한 확인
-    if (!canAccessGym(staff, existingSalesLog.gym_id, existingSalesLog.company_id)) {
+    if (!canAccessGym(staff, existingPayment.gym_id, existingPayment.company_id)) {
       return NextResponse.json({ error: "해당 매출에 대한 접근 권한이 없습니다." }, { status: 403 });
     }
 
     const { error: deleteError } = await supabase
-      .from("sales_logs")
+      .from("member_payments")
       .delete()
       .eq("id", id);
 
@@ -213,7 +230,7 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// 매출 목록 조회 - sales_logs 테이블에서 조회
+// 매출 목록 조회 - member_payments 테이블에서 조회
 export async function GET(request: NextRequest) {
   try {
     const { staff, error: authError } = await authenticateRequest();
@@ -235,63 +252,45 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     let query = supabase
-      .from("sales_logs")
+      .from("member_payments")
       .select("*")
       .eq("gym_id", gymId)
-      .eq("company_id", companyId)
-      .eq("type", "sale");
+      .eq("company_id", companyId);
 
     // 날짜 필터 적용
     if (startDate) {
-      query = query.gte("occurred_at", `${startDate}T00:00:00`);
+      query = query.gte("created_at", `${startDate}T00:00:00`);
     }
     if (endDate) {
       const [year, month, day] = endDate.split('-').map(Number);
       const nextDate = new Date(Date.UTC(year, month - 1, day + 1));
       const nextDayStr = nextDate.toISOString().split('T')[0];
-      query = query.lt("occurred_at", `${nextDayStr}T00:00:00`);
+      query = query.lt("created_at", `${nextDayStr}T00:00:00`);
     }
 
-    const { data, error } = await query.order("occurred_at", { ascending: false });
+    const { data, error } = await query.order("created_at", { ascending: false });
 
     if (error) {
       console.error("매출 조회 에러:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // sales_logs 데이터를 Payment 형태로 변환
-    const payments = (data || []).map((log: any) => {
-      // memo 필드에서 JSON 메타데이터 파싱 시도
-      let metadata: any = {};
-      try {
-        if (log.memo && log.memo.startsWith("{")) {
-          metadata = JSON.parse(log.memo);
-        }
-      } catch {
-        // JSON 파싱 실패시 기존 memo로 처리
-        metadata = { user_memo: log.memo };
-      }
-
-      return {
-        id: log.id,
-        amount: log.amount,
-        method: log.method,
-        memo: metadata.user_memo || log.memo || "",
-        paid_at: log.occurred_at,
-        created_at: log.created_at,
-        registration_type: metadata.sale_type || log.type,
-        membership_type: metadata.membership_category || null,
-        // 추가 필드들
-        member_name: metadata.member_name || "",
-        phone: metadata.phone || "",
-        sale_type: metadata.sale_type || "",
-        membership_category: metadata.membership_category || "",
-        membership_name: metadata.membership_name || "",
-        trainer_id: metadata.trainer_id || log.staff_id || "",
-        installment: metadata.installment || 1,
-        visit_route: metadata.visit_route || "",
-      };
-    });
+    // member_payments 데이터를 Payment 형태로 변환
+    const payments = (data || []).map((p: any) => ({
+      id: p.id,
+      member_name: p.member_name || "",
+      phone: p.phone || "",
+      sale_type: p.sale_type || "",
+      membership_category: p.membership_category || "",
+      membership_name: p.membership_name || "",
+      amount: p.amount || 0,
+      method: p.method || "card",
+      installment: p.installment || 1,
+      trainer_id: p.trainer_id || "",
+      trainer_name: p.trainer_name || "",
+      memo: p.memo || "",
+      created_at: p.created_at,
+    }));
 
     return NextResponse.json({
       success: true,
