@@ -26,6 +26,13 @@ export async function POST(request: NextRequest) {
       trainer_id,
       trainer_name,
       memo,
+      // PT 전용 필드
+      service_sessions,
+      validity_per_session,
+      membership_start_date,
+      // 신규/재등록 전용 필드
+      visit_route,
+      expiry_type,
     } = body;
 
     if (!company_id || !gym_id) {
@@ -72,6 +79,13 @@ export async function POST(request: NextRequest) {
         trainer_id: trainer_id || null,
         trainer_name: finalTrainerName,
         memo: memo || "",
+        // PT 전용 필드
+        service_sessions: service_sessions || null,
+        validity_per_session: validity_per_session || null,
+        start_date: membership_start_date || null,
+        // 신규/재등록 전용 필드
+        visit_route: visit_route || null,
+        expiry_type: expiry_type || null,
       })
       .select()
       .single();
@@ -290,6 +304,13 @@ export async function GET(request: NextRequest) {
       trainer_name: p.trainer_name || "",
       memo: p.memo || "",
       created_at: p.created_at,
+      // PT 전용 필드
+      service_sessions: p.service_sessions || 0,
+      validity_per_session: p.validity_per_session || 0,
+      start_date: p.start_date || "",
+      // 신규/재등록 전용 필드
+      visit_route: p.visit_route || "",
+      expiry_type: p.expiry_type || "",
     }));
 
     return NextResponse.json({
