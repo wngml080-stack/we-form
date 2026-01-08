@@ -150,14 +150,22 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
   const [isMembershipEditOpen, setIsMembershipEditOpen] = useState(false);
   const [isAddonEditOpen, setIsAddonEditOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  // 트레이너 관련 모달 상태
+  const [isTrainerAssignOpen, setIsTrainerAssignOpen] = useState(false);
+  const [isTrainerTransferOpen, setIsTrainerTransferOpen] = useState(false);
 
   // Selected member and forms
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]);
   const [memberAllMemberships, setMemberAllMemberships] = useState<any[]>([]);
   const [memberActivityLogs, setMemberActivityLogs] = useState<any[]>([]);
+  const [memberTrainers, setMemberTrainers] = useState<any[]>([]);
   const [transferMember, setTransferMember] = useState<any>(null);
   const [transferMembership, setTransferMembership] = useState<any>(null);
+  // 트레이너 인계 관련 상태
+  const [trainerTransferTarget, setTrainerTransferTarget] = useState<any>(null);
+  const [trainerTransferCategory, setTrainerTransferCategory] = useState<string>("");
+  const [isPtTransfer, setIsPtTransfer] = useState(false);
   const [membershipEditForm, setMembershipEditForm] = useState<MembershipEditFormData>(INITIAL_MEMBERSHIP_EDIT_FORM);
   const [memberEditForm, setMemberEditForm] = useState<MemberEditFormData>(INITIAL_MEMBER_EDIT_FORM);
   const [selectedAddon, setSelectedAddon] = useState<any>(null);
@@ -223,6 +231,9 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
       .from("members")
       .select(`
         *,
+        trainer:staffs!trainer_id (
+          id, name
+        ),
         member_memberships!left (
           id, name, membership_type, total_sessions, used_sessions, start_date, end_date, status
         )
@@ -411,6 +422,20 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     setIsMembershipEditOpen(true);
   };
 
+  const fetchMemberTrainers = useCallback(async (memberId: string) => {
+    try {
+      const response = await fetch(`/api/admin/members/${memberId}/trainers`);
+      const result = await response.json();
+      if (response.ok) {
+        setMemberTrainers(result.trainers || []);
+      } else {
+        setMemberTrainers([]);
+      }
+    } catch (e) {
+      setMemberTrainers([]);
+    }
+  }, []);
+
   const openMemberDetailModal = async (member: any) => {
     setSelectedMember(member);
     const memberGymId = member.gym_id || gymId;
@@ -438,6 +463,9 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
       setMemberActivityLogs([]);
     }
 
+    // 트레이너 정보 조회
+    await fetchMemberTrainers(member.id);
+
     setIsMemberDetailOpen(true);
   };
 
@@ -452,6 +480,121 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     setTransferMembership(membership || member.activeMembership || null);
     setIsTransferModalOpen(true);
   };
+
+  // 트레이너 모달 핸들러
+  const openTrainerAssignModal = () => {
+    setIsTrainerAssignOpen(true);
+  };
+
+  const openTrainerTransferModal = (trainer: any | null, category: string, isPt: boolean) => {
+    setTrainerTransferTarget(trainer);
+    setTrainerTransferCategory(category);
+    setIsPtTransfer(isPt);
+    setIsTrainerTransferOpen(true);
+  };
+
+  const handleAssignTrainer = async (data: { category: string; trainer_id: string }) => {
+    if (!selectedMember) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/members/${selectedMember.id}/trainers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.error || "트레이너 배정에 실패했습니다.");
+        return;
+      }
+      // 트레이너 목록 새로고침
+      await fetchMemberTrainers(selectedMember.id);
+      setIsTrainerAssignOpen(false);
+    } catch (e: any) {
+      alert(e.message || "트레이너 배정 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTransferTrainer = async (data: { to_trainer_id: string; reason: string; reason_detail?: string }) => {
+    if (!selectedMember) return;
+    setIsLoading(true);
+    try {
+      const body: any = {
+        ...data,
+        is_pt_transfer: isPtTransfer
+      };
+
+      if (isPtTransfer) {
+        body.from_trainer_id = selectedMember.trainer_id;
+      } else if (trainerTransferTarget) {
+        body.member_trainer_id = trainerTransferTarget.id;
+        body.category = trainerTransferCategory;
+        body.from_trainer_id = trainerTransferTarget.trainer_id;
+      }
+
+      const response = await fetch(`/api/admin/members/${selectedMember.id}/trainers/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.error || "트레이너 인계에 실패했습니다.");
+        return;
+      }
+
+      // 회원 정보 새로고침 (PT 인계 시)
+      if (isPtTransfer) {
+        refreshMembers();
+      }
+      // 트레이너 목록 새로고침
+      await fetchMemberTrainers(selectedMember.id);
+      // 활동 로그 새로고침
+      try {
+        const detailResponse = await fetch(`/api/admin/members/${selectedMember.id}/detail?gym_id=${selectedMember.gym_id || gymId}`);
+        const detailResult = await detailResponse.json();
+        if (detailResponse.ok) {
+          setMemberActivityLogs(detailResult.activityLogs || []);
+        }
+      } catch (e) { /* ignore */ }
+
+      setIsTrainerTransferOpen(false);
+    } catch (e: any) {
+      alert(e.message || "트레이너 인계 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteTrainer = async (trainerId: string) => {
+    if (!selectedMember) return;
+    if (!confirm("해당 트레이너 배정을 해제하시겠습니까?")) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/members/${selectedMember.id}/trainers?trainer_id=${trainerId}`, {
+        method: "DELETE"
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.error || "트레이너 배정 해제에 실패했습니다.");
+        return;
+      }
+      // 트레이너 목록 새로고침
+      await fetchMemberTrainers(selectedMember.id);
+    } catch (e: any) {
+      alert(e.message || "트레이너 배정 해제 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 관리자 권한 체크
+  const isAdmin = useMemo(() => {
+    return ["system_admin", "company_admin", "admin"].includes(userRole);
+  }, [userRole]);
 
   // Sort handler
   const handleSort = (field: string) => {
@@ -537,9 +680,15 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     isMembershipEditOpen, setIsMembershipEditOpen,
     isAddonEditOpen, setIsAddonEditOpen,
     isTransferModalOpen, setIsTransferModalOpen,
+    // 트레이너 모달 상태
+    isTrainerAssignOpen, setIsTrainerAssignOpen,
+    isTrainerTransferOpen, setIsTrainerTransferOpen,
     // Selected member and forms
     selectedMember, memberPaymentHistory, memberAllMemberships, memberActivityLogs,
+    memberTrainers, // 종목별 트레이너 목록
     selectedAddon, transferMember, transferMembership,
+    // 트레이너 인계 관련 상태
+    trainerTransferTarget, trainerTransferCategory, isPtTransfer,
     membershipEditForm, setMembershipEditForm,
     memberEditForm, setMemberEditForm,
     membershipForm, setMembershipForm,
@@ -547,6 +696,10 @@ export function useMembersPageData({ registrationType }: UseMembersPageDataProps
     addMembershipModalAddon, removeMembershipModalAddon, updateMembershipModalAddon,
     // Modal openers
     openMembershipModal, openMemberEditModal, openMembershipEditModal, openMemberDetailModal, openAddonEditModal, openTransferModal,
+    // 트레이너 모달 핸들러
+    openTrainerAssignModal, openTrainerTransferModal,
+    handleAssignTrainer, handleTransferTrainer, handleDeleteTrainer,
+    isAdmin, // 관리자 권한 여부
     // Refresh and utilities
     refreshMembers, refreshProducts, fetchMembers, setIsLoading,
     supabase

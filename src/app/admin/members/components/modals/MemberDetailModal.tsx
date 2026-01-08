@@ -50,6 +50,25 @@ interface ActivityLog {
   created_by_name?: string;
 }
 
+interface MemberTrainer {
+  id: string;
+  category: string;
+  trainer_id: string;
+  assigned_at: string;
+  is_primary: boolean;
+  status: string;
+  trainer?: {
+    id: string;
+    name: string;
+    role?: string;
+  };
+}
+
+interface StaffMember {
+  id: string;
+  name: string;
+}
+
 interface Member {
   id: string;
   name: string;
@@ -57,6 +76,11 @@ interface Member {
   birth_date?: string;
   gender?: string;
   activeMembership?: Membership;
+  trainer_id?: string;
+  trainer?: {
+    id: string;
+    name: string;
+  };
 }
 
 interface MemberDetailModalProps {
@@ -71,10 +95,17 @@ interface MemberDetailModalProps {
   onDeleteMembership: (membershipId: string) => Promise<void>;
   onEditAddon?: (member: Member, addon: PaymentHistory) => void;
   onTransferMembership?: (member: Member, membership: Membership) => void;
+  // 트레이너 관련 props
+  memberTrainers?: MemberTrainer[];
+  staffList?: StaffMember[];
+  isAdmin?: boolean;
+  onAssignTrainer?: () => void;
+  onTransferTrainer?: (trainer: MemberTrainer | null, category: string, isPt: boolean) => void;
+  onDeleteTrainer?: (trainerId: string) => void;
 }
 
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, Calendar, MapPin, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, Calendar, MapPin, Search, UserPlus, ArrowRight, Trash2, Users } from "lucide-react";
 
 export function MemberDetailModal({
   isOpen,
@@ -89,6 +120,13 @@ export function MemberDetailModal({
   onDeleteMembership: _onDeleteMembership,
   onEditAddon: _onEditAddon,
   onTransferMembership: _onTransferMembership,
+  // 트레이너 관련 props
+  memberTrainers = [],
+  staffList = [],
+  isAdmin = false,
+  onAssignTrainer,
+  onTransferTrainer,
+  onDeleteTrainer,
 }: MemberDetailModalProps) {
   // 향후 사용을 위해 변수 유지
   void _onEditMember;
@@ -96,6 +134,7 @@ export function MemberDetailModal({
   void _onDeleteMembership;
   void _onEditAddon;
   void _onTransferMembership;
+  void staffList;
 
   const [showExpiredMemberships, setShowExpiredMemberships] = useState(false);
   const [activeHistoryTab, setActiveHistoryTab] = useState<"payments" | "logs">("payments");
@@ -134,6 +173,9 @@ export function MemberDetailModal({
       addon_updated: "부가상품 수정",
       payment_created: "결제 완료",
       status_changed: "상태 변경",
+      trainer_assigned: "트레이너 배정",
+      trainer_transferred: "트레이너 인계",
+      trainer_removed: "트레이너 해제",
     };
     return labels[actionType] || actionType;
   };
@@ -235,6 +277,122 @@ export function MemberDetailModal({
           </div>
 
           <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            {/* 담당 트레이너 섹션 */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full"></div>
+                  담당 트레이너
+                  <Badge className="bg-indigo-50 text-indigo-600 border-none text-[10px] font-black h-5">
+                    {(member.trainer ? 1 : 0) + memberTrainers.length}
+                  </Badge>
+                </h3>
+                {isAdmin && onAssignTrainer && (
+                  <Button
+                    size="sm"
+                    onClick={onAssignTrainer}
+                    className="h-8 px-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold gap-1.5"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    종목 추가
+                  </Button>
+                )}
+              </div>
+
+              <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
+                {/* PT 담당 트레이너 (members.trainer_id) */}
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
+                      <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-blue-600 text-white border-none text-[10px] font-black px-2">PT</Badge>
+                        <span className="text-sm font-black text-slate-900">
+                          {member.trainer?.name || "미지정"}
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                        {member.trainer ? "PT 전담 트레이너" : "담당 트레이너가 배정되지 않았습니다"}
+                      </p>
+                    </div>
+                  </div>
+                  {isAdmin && onTransferTrainer && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onTransferTrainer(null, "PT", true)}
+                      className="h-8 px-3 rounded-xl text-xs font-bold border-slate-200 hover:bg-white gap-1.5"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      {member.trainer ? "인계" : "배정"}
+                    </Button>
+                  )}
+                </div>
+
+                {/* 종목별 트레이너 목록 */}
+                {memberTrainers.length > 0 ? (
+                  <div className="space-y-3">
+                    {memberTrainers.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-all"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                            <Users className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-slate-200 text-slate-600 border-none text-[10px] font-black px-2">
+                                {t.category}
+                              </Badge>
+                              <span className="text-sm font-black text-slate-900">
+                                {t.trainer?.name || "알 수 없음"}
+                              </span>
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                              배정일: {new Date(t.assigned_at).toLocaleDateString("ko-KR")}
+                            </p>
+                          </div>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center gap-2">
+                            {onTransferTrainer && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => onTransferTrainer(t, t.category, false)}
+                                className="h-8 px-3 rounded-xl text-xs font-bold border-slate-200 hover:bg-white gap-1.5"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                                인계
+                              </Button>
+                            )}
+                            {onDeleteTrainer && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => onDeleteTrainer(t.id)}
+                                className="h-8 w-8 p-0 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-xs font-bold text-slate-400 py-4">
+                    종목별 트레이너가 배정되지 않았습니다
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* 상단 퀵 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* 활성 회원권 섹션 */}

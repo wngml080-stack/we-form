@@ -19,6 +19,17 @@ const MemberDetailModal = dynamicImport(
   { ssr: false }
 );
 
+// 트레이너 관련 모달
+const TrainerAssignModal = dynamicImport(
+  () => import("./components/modals/TrainerAssignModal").then(mod => ({ default: mod.TrainerAssignModal })),
+  { ssr: false }
+);
+
+const TrainerTransferModal = dynamicImport(
+  () => import("./components/modals/TrainerTransferModal").then(mod => ({ default: mod.TrainerTransferModal })),
+  { ssr: false }
+);
+
 export const dynamic = 'force-dynamic';
 
 function AdminMembersPageContent() {
@@ -89,7 +100,7 @@ function AdminMembersPageContent() {
         </TabsContent>
       </Tabs>
 
-      {/* 회원 상세 모달 (읽기 전용) */}
+      {/* 회원 상세 모달 */}
       <MemberDetailModal
         isOpen={data.isMemberDetailOpen}
         onClose={() => data.setIsMemberDetailOpen(false)}
@@ -102,6 +113,42 @@ function AdminMembersPageContent() {
         onDeleteMembership={async () => {}}
         onEditAddon={() => {}}
         onTransferMembership={() => {}}
+        // 트레이너 관련 props
+        memberTrainers={data.memberTrainers}
+        staffList={data.staffList}
+        isAdmin={data.isAdmin}
+        onAssignTrainer={data.openTrainerAssignModal}
+        onTransferTrainer={data.openTrainerTransferModal}
+        onDeleteTrainer={data.handleDeleteTrainer}
+      />
+
+      {/* 트레이너 배정 모달 */}
+      <TrainerAssignModal
+        isOpen={data.isTrainerAssignOpen}
+        onClose={() => data.setIsTrainerAssignOpen(false)}
+        memberName={data.selectedMember?.name || ""}
+        staffList={data.staffList}
+        isLoading={data.isDataLoading}
+        onSubmit={data.handleAssignTrainer}
+        existingCategories={data.memberTrainers.map((t: any) => t.category)}
+      />
+
+      {/* 트레이너 인계 모달 */}
+      <TrainerTransferModal
+        isOpen={data.isTrainerTransferOpen}
+        onClose={() => data.setIsTrainerTransferOpen(false)}
+        memberName={data.selectedMember?.name || ""}
+        category={data.trainerTransferCategory}
+        fromTrainer={
+          data.isPtTransfer
+            ? (data.selectedMember?.trainer || null)
+            : (data.trainerTransferTarget?.trainer || null)
+        }
+        staffList={data.staffList}
+        isLoading={data.isDataLoading}
+        onSubmit={data.handleTransferTrainer}
+        memberTrainerId={data.trainerTransferTarget?.id}
+        isPtTransfer={data.isPtTransfer}
       />
     </div>
   );
