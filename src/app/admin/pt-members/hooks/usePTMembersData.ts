@@ -98,6 +98,19 @@ interface UsePTMembersDataProps {
   filterInitialized: boolean;
 }
 
+interface MemberTrainer {
+  id: string;
+  category: string;
+  trainer_id: string;
+  assigned_at: string;
+  is_primary: boolean;
+  status: string;
+  trainer?: {
+    id: string;
+    name: string;
+  };
+}
+
 // PT 관련 회원권 카테고리 (대소문자 무관)
 const PT_CATEGORIES = ["pt", "ppt", "gpt", "개인pt", "그룹pt"];
 
@@ -125,6 +138,24 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       month: now.getMonth() + 1
     };
   });
+
+  // 회원 상세 모달 상태
+  const [isMemberDetailOpen, setIsMemberDetailOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
+  const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]);
+  const [memberAllMemberships, setMemberAllMemberships] = useState<any[]>([]);
+  const [memberActivityLogs, setMemberActivityLogs] = useState<any[]>([]);
+  const [memberTrainers, setMemberTrainers] = useState<MemberTrainer[]>([]);
+
+  // 트레이너 모달 상태
+  const [isTrainerAssignOpen, setIsTrainerAssignOpen] = useState(false);
+  const [isTrainerTransferOpen, setIsTrainerTransferOpen] = useState(false);
+  const [trainerTransferTarget, setTrainerTransferTarget] = useState<any>(null);
+  const [trainerTransferCategory, setTrainerTransferCategory] = useState<string>("");
+  const [isPtTransfer, setIsPtTransfer] = useState(false);
+
+  // 현재 사용자 역할
+  const [userRole, setUserRole] = useState<string>("");
 
   // 확장된 통계
   const [extendedStats, setExtendedStats] = useState<ExtendedStats>({
@@ -170,14 +201,14 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     return { start, end };
   }, [periodFilter]);
 
-  // 현재 로그인한 스태프 ID 가져오기
+  // 현재 로그인한 스태프 ID와 역할 가져오기
   useEffect(() => {
     const fetchCurrentStaff = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data, error } = await supabase
           .from("staffs")
-          .select("id")
+          .select("id, role")
           .eq("user_id", user.id)
           .maybeSingle();
 
@@ -188,6 +219,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
 
         if (data) {
           setCurrentStaffId(data.id);
+          setUserRole(data.role || "");
         }
       }
     };
@@ -206,30 +238,28 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
   const fetchPTMembers = async (gymId: string, companyId: string) => {
     setIsLoading(true);
     try {
-      // member_payments에서 trainer_id가 있는 결제 정보 조회
+      // member_payments에서 모든 결제 정보 조회 (trainer_id 필터 제거)
       const { data: payments, error } = await supabase
         .from("member_payments")
         .select(`
           id,
           amount,
-          paid_at,
-          membership_type,
+          created_at,
           membership_category,
           membership_name,
-          registration_type,
           memo,
           trainer_id,
           trainer_name,
           member_name,
           phone,
-          sale_type
+          sale_type,
+          service_sessions
         `)
         .eq("gym_id", gymId)
         .eq("company_id", companyId)
-        .not("trainer_id", "is", null)
-        .gte("paid_at", dateRange.start)
-        .lte("paid_at", dateRange.end)
-        .order("paid_at", { ascending: false });
+        .gte("created_at", dateRange.start)
+        .lte("created_at", dateRange.end)
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("PT 회원 조회 오류 상세:", JSON.stringify(error, null, 2));
@@ -237,26 +267,100 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         return;
       }
 
-      // 데이터 변환
+      // PT 회원권 정보 조회 (잔여 세션 계산용)
+      const { data: memberships } = await supabase
+        .from("member_memberships")
+        .select("member_id, name, total_sessions, used_sessions, service_sessions, used_service_sessions, status")
+        .eq("gym_id", gymId)
+        .eq("status", "active");
+
+      // 회원별 활성 회원권 매핑
+      const membershipMap: Record<string, any> = {};
+      (memberships || []).forEach((m: any) => {
+        if (!membershipMap[m.member_id]) {
+          membershipMap[m.member_id] = m;
+        }
+      });
+
+      // members 테이블에서 phone으로 member_id 및 현재 담당 트레이너 매핑
+      const phones = (payments || []).map((p: any) => p.phone).filter(Boolean);
+      const { data: memberData } = await supabase
+        .from("members")
+        .select(`
+          id,
+          phone,
+          trainer_id,
+          trainer:staffs!trainer_id (id, name)
+        `)
+        .eq("gym_id", gymId)
+        .in("phone", phones);
+
+      const phoneToMemberInfo: Record<string, { id: string; trainer_id: string | null; trainer_name: string | null }> = {};
+      (memberData || []).forEach((m: any) => {
+        if (m.phone) {
+          phoneToMemberInfo[m.phone] = {
+            id: m.id,
+            trainer_id: m.trainer_id || null,
+            trainer_name: m.trainer?.name || null
+          };
+        }
+      });
+
+      // 하위 호환성을 위한 phoneToMemberId 유지
+      const phoneToMemberId: Record<string, string> = {};
+      (memberData || []).forEach((m: any) => {
+        if (m.phone) phoneToMemberId[m.phone] = m.id;
+      });
+
+      // 데이터 변환 - PT/OT 분류 포함
       const members: PTMember[] = (payments || []).map((p: any) => {
+        const category = p.membership_category || "";
+        // PT 회원권이 아니면 OT로 분류
+        const displayCategory = isPTMembership(category) ? category : (category || "OT");
+        const isPT = isPTMembership(category);
+
+        // PT인 경우 회원권에서 잔여 세션 조회
+        let remainingSessions: number | undefined = undefined;
+        let totalSessions: number | undefined = undefined;
+
+        if (isPT && p.phone) {
+          const memberId = phoneToMemberId[p.phone];
+          const membership = memberId ? membershipMap[memberId] : null;
+          if (membership) {
+            const total = (membership.total_sessions || 0) + (membership.service_sessions || 0);
+            const used = (membership.used_sessions || 0) + (membership.used_service_sessions || 0);
+            totalSessions = total;
+            remainingSessions = total - used;
+          } else if (p.service_sessions) {
+            // 회원권이 없으면 매출에 저장된 세션 수 사용
+            totalSessions = parseInt(p.service_sessions) || undefined;
+            remainingSessions = totalSessions;
+          }
+        }
+
+        // 현재 담당 트레이너 정보 (members 테이블 기준, 없으면 매출 등록 시 정보 사용)
+        const memberInfo = p.phone ? phoneToMemberInfo[p.phone] : null;
+        const currentTrainerId = memberInfo?.trainer_id || p.trainer_id || "";
+        const currentTrainerName = memberInfo?.trainer_name || p.trainer_name || "미배정";
+
         return {
           id: p.id,
           member_name: p.member_name || "Unknown",
           phone: p.phone,
-          membership_category: p.membership_category || p.membership_type || "",
+          membership_category: displayCategory,
           membership_name: p.membership_name || "",
-          sale_type: p.sale_type || p.registration_type || "",
+          sale_type: p.sale_type || "",
           amount: parseFloat(p.amount) || 0,
-          trainer_id: p.trainer_id,
-          trainer_name: p.trainer_name || "",
-          remaining_sessions: undefined,
-          total_sessions: undefined,
+          trainer_id: currentTrainerId,
+          trainer_name: currentTrainerName,
+          remaining_sessions: remainingSessions,
+          total_sessions: totalSessions,
           start_date: undefined,
           end_date: undefined,
           status: "active" as const,
-          created_at: p.paid_at,
+          created_at: p.created_at,
           memo: p.memo,
-          registration_type: p.registration_type
+          registration_type: p.sale_type || ""
         };
       });
 
@@ -369,8 +473,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           .select("amount")
           .eq("gym_id", gymId)
           .eq("trainer_id", currentStaffId)
-          .gte("paid_at", threeMonthsAgo.toISOString().split("T")[0])
-          .lte("paid_at", now.toISOString().split("T")[0]);
+          .gte("created_at", threeMonthsAgo.toISOString().split("T")[0])
+          .lte("created_at", now.toISOString().split("T")[0]);
 
         if (sales3mError) {
           console.error("3개월 매출 조회 오류:", sales3mError);
@@ -385,8 +489,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           .select("amount")
           .eq("gym_id", gymId)
           .eq("trainer_id", currentStaffId)
-          .gte("paid_at", sixMonthsAgo.toISOString().split("T")[0])
-          .lte("paid_at", now.toISOString().split("T")[0]);
+          .gte("created_at", sixMonthsAgo.toISOString().split("T")[0])
+          .lte("created_at", now.toISOString().split("T")[0]);
 
         if (sales6mError) {
           console.error("6개월 매출 조회 오류:", sales6mError);
@@ -401,8 +505,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           .select("amount")
           .eq("gym_id", gymId)
           .eq("trainer_id", currentStaffId)
-          .gte("paid_at", `${currentYear}-01-01`)
-          .lte("paid_at", `${currentYear}-06-30`);
+          .gte("created_at", `${currentYear}-01-01`)
+          .lte("created_at", `${currentYear}-06-30`);
 
         if (firstHalfError) {
           console.error("상반기 매출 조회 오류:", firstHalfError);
@@ -416,8 +520,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           .select("amount")
           .eq("gym_id", gymId)
           .eq("trainer_id", currentStaffId)
-          .gte("paid_at", `${currentYear}-07-01`)
-          .lte("paid_at", `${currentYear}-12-31`);
+          .gte("created_at", `${currentYear}-07-01`)
+          .lte("created_at", `${currentYear}-12-31`);
 
         if (secondHalfError) {
           console.error("하반기 매출 조회 오류:", secondHalfError);
@@ -431,8 +535,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         .from("member_payments")
         .select("trainer_id, amount")
         .eq("gym_id", gymId)
-        .gte("paid_at", dateRange.start)
-        .lte("paid_at", dateRange.end);
+        .gte("created_at", dateRange.start)
+        .lte("created_at", dateRange.end);
 
       if (branchError) {
         console.error("지점 순위 조회 오류:", branchError);
@@ -458,8 +562,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         .from("member_payments")
         .select("trainer_id, amount")
         .eq("company_id", companyId)
-        .gte("paid_at", dateRange.start)
-        .lte("paid_at", dateRange.end);
+        .gte("created_at", dateRange.start)
+        .lte("created_at", dateRange.end);
 
       if (companyError) {
         console.error("회사 순위 조회 오류:", companyError);
@@ -594,6 +698,214 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     // TODO: 구현
   };
 
+  // 관리자 권한 체크
+  const isAdmin = useMemo(() => {
+    return ["system_admin", "company_admin", "admin"].includes(userRole);
+  }, [userRole]);
+
+  // 회원 트레이너 조회
+  const fetchMemberTrainers = useCallback(async (memberId: string) => {
+    try {
+      const response = await fetch(`/api/admin/members/${memberId}/trainers`);
+      const result = await response.json();
+      if (response.ok) {
+        setMemberTrainers(result.trainers || []);
+      } else {
+        setMemberTrainers([]);
+      }
+    } catch (e) {
+      setMemberTrainers([]);
+    }
+  }, []);
+
+  // 회원 상세 모달 열기 (phone으로 member 조회 후) - 최적화: 모달 먼저 열고 데이터 병렬 로드
+  const openMemberDetailModal = async (ptMember: PTMember) => {
+    if (!selectedGymId) {
+      alert("지점 정보가 없습니다.");
+      return;
+    }
+
+    if (!ptMember.phone) {
+      alert("회원 연락처 정보가 없어 상세 정보를 조회할 수 없습니다.");
+      return;
+    }
+
+    // 초기 상태 설정 및 모달 즉시 열기
+    setSelectedMember(null);
+    setMemberAllMemberships([]);
+    setMemberPaymentHistory([]);
+    setMemberActivityLogs([]);
+    setMemberTrainers([]);
+    setIsMemberDetailOpen(true);
+    setIsLoading(true);
+
+    try {
+      // phone으로 실제 member 조회 (하이픈 제거하여 비교)
+      const cleanPhone = ptMember.phone.replace(/-/g, "");
+
+      const { data: member, error } = await supabase
+        .from("members")
+        .select(`
+          *,
+          trainer:staffs!trainer_id (id, name)
+        `)
+        .eq("gym_id", selectedGymId)
+        .or(`phone.eq.${ptMember.phone},phone.eq.${cleanPhone}`)
+        .maybeSingle();
+
+      if (error) {
+        console.error("회원 조회 오류:", error);
+        setIsMemberDetailOpen(false);
+        alert("회원 정보 조회 중 오류가 발생했습니다.");
+        return;
+      }
+
+      if (!member) {
+        setIsMemberDetailOpen(false);
+        alert(`회원 "${ptMember.member_name}"의 상세 정보가 없습니다.\n매출 등록 시 회원 정보가 함께 생성되지 않았을 수 있습니다.`);
+        return;
+      }
+
+      setSelectedMember(member);
+
+      // 상세 정보와 트레이너 정보를 병렬로 조회
+      const [detailResponse, trainerResponse] = await Promise.all([
+        fetch(`/api/admin/members/${member.id}/detail?gym_id=${selectedGymId}`),
+        fetch(`/api/admin/members/${member.id}/trainers`)
+      ]);
+
+      // 상세 정보 처리
+      if (detailResponse.ok) {
+        const detailResult = await detailResponse.json();
+        setMemberAllMemberships(detailResult.memberships || []);
+        setMemberPaymentHistory(detailResult.payments || []);
+        setMemberActivityLogs(detailResult.activityLogs || []);
+      }
+
+      // 트레이너 정보 처리
+      if (trainerResponse.ok) {
+        const trainerResult = await trainerResponse.json();
+        setMemberTrainers(trainerResult.trainers || []);
+      }
+    } catch (e) {
+      console.error("회원 상세 조회 오류:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 트레이너 배정 모달 열기
+  const openTrainerAssignModal = () => {
+    setIsTrainerAssignOpen(true);
+  };
+
+  // 트레이너 인계 모달 열기
+  const openTrainerTransferModal = (trainer: any | null, category: string, isPt: boolean) => {
+    setTrainerTransferTarget(trainer);
+    setTrainerTransferCategory(category);
+    setIsPtTransfer(isPt);
+    setIsTrainerTransferOpen(true);
+  };
+
+  // 트레이너 배정 처리
+  const handleAssignTrainer = async (data: { category: string; trainer_id: string }) => {
+    if (!selectedMember) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/members/${selectedMember.id}/trainers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.error || "트레이너 배정에 실패했습니다.");
+        return;
+      }
+      await fetchMemberTrainers(selectedMember.id);
+      setIsTrainerAssignOpen(false);
+    } catch (e: any) {
+      alert(e.message || "트레이너 배정 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 트레이너 인계 처리
+  const handleTransferTrainer = async (data: { to_trainer_id: string; reason: string; reason_detail?: string }) => {
+    if (!selectedMember) return;
+    setIsLoading(true);
+    try {
+      const body: any = {
+        ...data,
+        is_pt_transfer: isPtTransfer
+      };
+
+      if (isPtTransfer) {
+        body.from_trainer_id = selectedMember.trainer_id;
+      } else if (trainerTransferTarget) {
+        body.member_trainer_id = trainerTransferTarget.id;
+        body.category = trainerTransferCategory;
+        body.from_trainer_id = trainerTransferTarget.trainer_id;
+      }
+
+      const response = await fetch(`/api/admin/members/${selectedMember.id}/trainers/transfer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.error || "트레이너 인계에 실패했습니다.");
+        return;
+      }
+
+      // PT 인계 시 회원 목록 새로고침
+      if (isPtTransfer && selectedGymId && selectedCompanyId) {
+        fetchPTMembers(selectedGymId, selectedCompanyId);
+      }
+      await fetchMemberTrainers(selectedMember.id);
+
+      // 활동 로그 새로고침
+      try {
+        const detailResponse = await fetch(`/api/admin/members/${selectedMember.id}/detail?gym_id=${selectedGymId}`);
+        const detailResult = await detailResponse.json();
+        if (detailResponse.ok) {
+          setMemberActivityLogs(detailResult.activityLogs || []);
+        }
+      } catch (e) { /* ignore */ }
+
+      setIsTrainerTransferOpen(false);
+    } catch (e: any) {
+      alert(e.message || "트레이너 인계 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 트레이너 삭제 처리
+  const handleDeleteTrainer = async (trainerId: string) => {
+    if (!selectedMember) return;
+    if (!confirm("해당 트레이너 배정을 해제하시겠습니까?")) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/members/${selectedMember.id}/trainers?trainer_id=${trainerId}`, {
+        method: "DELETE"
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.error || "트레이너 배정 해제에 실패했습니다.");
+        return;
+      }
+      await fetchMemberTrainers(selectedMember.id);
+    } catch (e: any) {
+      alert(e.message || "트레이너 배정 해제 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     // 회원 데이터
     ptMembers: filteredPTMembers,
@@ -632,6 +944,28 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     // 액션
     updateMemberStatus,
     updateTrainer,
-    refreshData: () => selectedGymId && selectedCompanyId && fetchPTMembers(selectedGymId, selectedCompanyId)
+    refreshData: () => selectedGymId && selectedCompanyId && fetchPTMembers(selectedGymId, selectedCompanyId),
+
+    // 회원 상세 모달
+    isMemberDetailOpen, setIsMemberDetailOpen,
+    selectedMember,
+    memberPaymentHistory,
+    memberAllMemberships,
+    memberActivityLogs,
+    memberTrainers,
+    openMemberDetailModal,
+
+    // 트레이너 관리
+    isTrainerAssignOpen, setIsTrainerAssignOpen,
+    isTrainerTransferOpen, setIsTrainerTransferOpen,
+    trainerTransferTarget,
+    trainerTransferCategory,
+    isPtTransfer,
+    isAdmin,
+    openTrainerAssignModal,
+    openTrainerTransferModal,
+    handleAssignTrainer,
+    handleTransferTrainer,
+    handleDeleteTrainer
   };
 }

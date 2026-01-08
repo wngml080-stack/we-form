@@ -19,6 +19,11 @@ import { ReRegistrationTab } from "./re-registration/components";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
+// Direct imports for faster modal loading
+import { MemberDetailModal } from "./components/modals/MemberDetailModal";
+import { TrainerAssignModal } from "./components/modals/TrainerAssignModal";
+import { TrainerTransferModal } from "./components/modals/TrainerTransferModal";
+
 export default function PTMembersPage(props: {
   params: Promise<any>;
   searchParams: Promise<any>;
@@ -47,7 +52,27 @@ export default function PTMembersPage(props: {
     periodFilter,
     changePeriod,
     navigateMonth,
-    dateRange
+    dateRange,
+    // 회원 상세 모달
+    isMemberDetailOpen, setIsMemberDetailOpen,
+    selectedMember,
+    memberPaymentHistory,
+    memberAllMemberships,
+    memberActivityLogs,
+    memberTrainers,
+    openMemberDetailModal,
+    // 트레이너 관리
+    isTrainerAssignOpen, setIsTrainerAssignOpen,
+    isTrainerTransferOpen, setIsTrainerTransferOpen,
+    trainerTransferTarget,
+    trainerTransferCategory,
+    isPtTransfer,
+    isAdmin,
+    openTrainerAssignModal,
+    openTrainerTransferModal,
+    handleAssignTrainer,
+    handleTransferTrainer,
+    handleDeleteTrainer
   } = usePTMembersData({
     selectedGymId,
     selectedCompanyId,
@@ -173,25 +198,35 @@ export default function PTMembersPage(props: {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {ptMembers.map((member) => (
-                    <tr key={member.id} className="hover:bg-slate-50 transition-colors">
+                    <tr
+                      key={member.id}
+                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      onDoubleClick={() => openMemberDetailModal(member)}
+                    >
                       <td className="px-6 py-4 font-bold">{member.member_name}</td>
                       <td className="px-6 py-4 text-slate-500">{member.phone ? formatPhoneNumber(member.phone) : "-"}</td>
                       <td className="px-6 py-4">{member.membership_category}</td>
-                      <td className="px-6 py-4">
-                        <Select
-                          value={member.trainer_id}
-                          onValueChange={(val) => {
-                            const staff = staffList.find(s => s.id === val);
-                            if (staff) updateTrainer(member.id, staff.id, staff.name);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-24 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        {member.trainer_id ? (
+                          // 트레이너가 지정된 경우: 이름만 표시 (변경은 회원 상세에서)
+                          <span className="text-slate-700 text-sm">{member.trainer_name || "지정됨"}</span>
+                        ) : (
+                          // 미지정인 경우: Select로 최초 지정 가능
+                          <Select
+                            value=""
+                            onValueChange={(val) => {
+                              const staff = staffList.find(s => s.id === val);
+                              if (staff) updateTrainer(member.id, staff.id, staff.name);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 w-24 text-xs border-dashed text-slate-400">
+                              <SelectValue placeholder="미지정" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {member.remaining_sessions != null ? `${member.remaining_sessions} / ${member.total_sessions}` : "-"}
@@ -218,6 +253,57 @@ export default function PTMembersPage(props: {
           <ReRegistrationTab selectedGymId={selectedGymId} />
         </TabsContent>
       </Tabs>
+
+      {/* 회원 상세 모달 */}
+      <MemberDetailModal
+        isOpen={isMemberDetailOpen}
+        onClose={() => setIsMemberDetailOpen(false)}
+        member={selectedMember}
+        paymentHistory={memberPaymentHistory}
+        allMemberships={memberAllMemberships}
+        activityLogs={memberActivityLogs}
+        onEditMember={() => {}}
+        onEditMembership={() => {}}
+        onDeleteMembership={async () => {}}
+        onEditAddon={() => {}}
+        onTransferMembership={() => {}}
+        // 트레이너 관련 props
+        memberTrainers={memberTrainers}
+        staffList={staffList}
+        isAdmin={isAdmin}
+        onAssignTrainer={openTrainerAssignModal}
+        onTransferTrainer={openTrainerTransferModal}
+        onDeleteTrainer={handleDeleteTrainer}
+      />
+
+      {/* 트레이너 배정 모달 */}
+      <TrainerAssignModal
+        isOpen={isTrainerAssignOpen}
+        onClose={() => setIsTrainerAssignOpen(false)}
+        memberName={selectedMember?.name || ""}
+        staffList={staffList}
+        isLoading={isLoading}
+        onSubmit={handleAssignTrainer}
+        existingCategories={memberTrainers.map((t: any) => t.category)}
+      />
+
+      {/* 트레이너 인계 모달 */}
+      <TrainerTransferModal
+        isOpen={isTrainerTransferOpen}
+        onClose={() => setIsTrainerTransferOpen(false)}
+        memberName={selectedMember?.name || ""}
+        category={trainerTransferCategory}
+        fromTrainer={
+          isPtTransfer
+            ? (selectedMember?.trainer || null)
+            : (trainerTransferTarget?.trainer || null)
+        }
+        staffList={staffList}
+        isLoading={isLoading}
+        onSubmit={handleTransferTrainer}
+        memberTrainerId={trainerTransferTarget?.id}
+        isPtTransfer={isPtTransfer}
+      />
     </div>
   );
 }

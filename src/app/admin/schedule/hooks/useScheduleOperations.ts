@@ -43,7 +43,7 @@ export function useScheduleOperations({
 
     const { data: membershipData } = await supabase
       .from("member_memberships")
-      .select("id, member_id, name, total_sessions, used_sessions, start_date, end_date, status")
+      .select("id, member_id, name, total_sessions, used_sessions, service_sessions, used_service_sessions, start_date, end_date, status")
       .eq("gym_id", selectedGymId)
       .eq("status", "active");
 
@@ -64,15 +64,19 @@ export function useScheduleOperations({
     if (!selectedSchedule) return;
 
     try {
-      // 선차감 시스템: 상태 변경 시 회원권 처리가 필요한 경우 API 호출
-      // - no_show/cancelled/service로 변경 시 → 환불
-      // - no_show/cancelled/service에서 다른 상태로 변경 시 → 재차감
-      const refundStatuses = ["no_show", "cancelled", "service"];
-      const needsMembershipUpdate =
-        refundStatuses.includes(newStatus) !== refundStatuses.includes(selectedSchedule.status);
+      // 상태 기반 차감 시스템:
+      // - 일반 차감 상태: reserved, completed, no_show_deducted → used_sessions 차감
+      // - 서비스 상태: service → used_service_sessions 차감 (서비스 세션에서만)
+      // - 비차감 상태: no_show, cancelled → 환불
+      const regularDeductedStatuses = ["reserved", "completed", "no_show_deducted"];
+      const wasRegularDeducted = regularDeductedStatuses.includes(selectedSchedule.status);
+      const willBeRegularDeducted = regularDeductedStatuses.includes(newStatus);
+      const wasService = selectedSchedule.status === "service";
+      const willBeService = newStatus === "service";
+      const needsMembershipUpdate = wasRegularDeducted !== willBeRegularDeducted || wasService !== willBeService;
 
-      if (needsMembershipUpdate || ["completed", "no_show_deducted"].includes(newStatus)) {
-        // API 호출로 회원권 처리
+      if (needsMembershipUpdate || ["completed", "no_show_deducted", "service"].includes(newStatus)) {
+        // API 호출로 회원권 처리 및 출석부 기록
         const res = await fetch("/api/schedule/update-status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

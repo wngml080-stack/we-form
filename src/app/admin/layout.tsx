@@ -15,6 +15,12 @@ import {
   DollarSign,
   Menu,
   X,
+  Calendar,
+  CheckSquare,
+  UserCheck,
+  Briefcase,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import {
   Select,
@@ -47,6 +53,7 @@ function AdminLayoutContent({
   } = useAdminFilter();
   const userRole = user?.role || "";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(true);
 
   const companyName = filterCompanyName || authCompanyName || "";
 
@@ -81,6 +88,14 @@ function AdminLayoutContent({
       </div>
     );
   }
+
+  const dashboardSubMenus = [
+    { name: "매출관리", href: "/admin/sales", icon: DollarSign },
+    { name: "스케줄관리", href: "/admin/schedule", icon: Calendar },
+    { name: "출석체크", href: "/admin/attendance", icon: CheckSquare },
+    { name: "통합회원관리", href: "/admin/pt-members", icon: UserCheck },
+    { name: "포트폴리오", href: "/admin/portfolio", icon: Briefcase },
+  ];
 
   const getMenuItems = () => {
     if (userRole === "staff") {
@@ -180,18 +195,41 @@ function AdminLayoutContent({
         )}
 
         <nav className="flex-1 p-4 space-y-1">
-          {menuItems.main.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                pathname === item.href ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+          {/* 대시보드 with 하위메뉴 */}
+          <div>
+            <div
+              className={`flex items-center justify-between w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname === "/admin" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
-              <item.icon className="w-4 h-4" />
-              {item.name}
-            </Link>
-          ))}
+              <Link href="/admin" className="flex items-center gap-3 flex-1">
+                <LayoutDashboard className="w-4 h-4" />
+                대시보드
+              </Link>
+              <button onClick={() => setIsDashboardOpen(!isDashboardOpen)} className="p-1 -mr-1">
+                {isDashboardOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {isDashboardOpen && (
+              <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 pl-2">
+                {dashboardSubMenus.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      pathname === item.href || pathname.startsWith(item.href + "/")
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    <item.icon className="w-3.5 h-3.5" />
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="pt-4 pb-2">
             <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Management</p>

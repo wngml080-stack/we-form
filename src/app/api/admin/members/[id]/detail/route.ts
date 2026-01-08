@@ -27,7 +27,7 @@ export async function GET(
     // 회원 정보 확인 및 권한 체크
     const { data: member, error: memberError } = await supabase
       .from("members")
-      .select("id, gym_id, company_id")
+      .select("id, gym_id, company_id, phone")
       .eq("id", memberId)
       .maybeSingle();
 
@@ -52,15 +52,26 @@ export async function GET(
       .eq("member_id", memberId)
       .order("created_at", { ascending: false });
 
-    // 2. 결제 이력 조회 (부가상품 시작일/종료일 포함)
-    const { data: payments, error: paymentsError } = await supabase
-      .from("member_payments")
-      .select("*")
-      .eq("member_id", memberId)
-      .order("created_at", { ascending: false });
-
-    if (paymentsError) console.error("[MemberDetail API] paymentsError:", paymentsError);
     if (membershipsError) console.error("[MemberDetail API] membershipsError:", membershipsError);
+
+    // 2. 결제 이력 조회 - member_payments는 phone 기준으로 연결
+    let payments: any[] = [];
+    let paymentsError: any = null;
+
+    if (member.phone) {
+      const normalizedPhone = member.phone.replace(/-/g, "");
+      const { data: paymentData, error: paymentErr } = await supabase
+        .from("member_payments")
+        .select("*")
+        .eq("gym_id", member.gym_id)
+        .or(`phone.eq.${member.phone},phone.eq.${normalizedPhone}`)
+        .order("created_at", { ascending: false });
+
+      payments = paymentData || [];
+      paymentsError = paymentErr;
+
+      if (paymentsError) console.error("[MemberDetail API] paymentsError:", paymentsError);
+    }
 
     // 3. 활동 로그 조회 (변경자 정보 포함)
     let activityLogs: any[] = [];
@@ -99,11 +110,11 @@ export async function GET(
 
     return NextResponse.json({
       memberships: memberships || [],
-      payments: payments || [],
+      payments: payments,
       activityLogs,
       errors: {
-        memberships: membershipsError?.message,
-        payments: paymentsError?.message
+        memberships: membershipsError?.message || null,
+        payments: paymentsError?.message || null
       }
     });
   } catch (error: any) {

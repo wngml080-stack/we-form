@@ -1,5 +1,20 @@
-import { Member } from "@/app/admin/members/components/columns";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
+
+interface Member {
+  name: string;
+  phone?: string;
+  birth_date?: string;
+  gender?: string;
+  status?: string;
+  created_at?: string;
+  activeMembership?: {
+    name: string;
+    total_sessions: number;
+    used_sessions: number;
+    start_date?: string;
+    end_date?: string;
+  };
+}
 
 /**
  * 회원 데이터를 Excel 파일로 내보내기

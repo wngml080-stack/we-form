@@ -75,30 +75,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "스케줄 생성에 실패했습니다." }, { status: 500 });
     }
 
-    // PT/OT인 경우 회원권 1회 차감 (선차감)
-    if (member_id && (type === "PT" || type === "OT")) {
-      const typeFilter = type === "PT"
-        ? "name.ilike.%PT%,name.ilike.%피티%"
-        : "name.ilike.%OT%,name.ilike.%오티%";
-
-      const { data: membership } = await supabase
-        .from("member_memberships")
-        .select("id, used_sessions, total_sessions")
-        .eq("member_id", member_id)
-        .eq("gym_id", gym_id)
-        .eq("status", "active")
-        .or(typeFilter)
-        .order("end_date", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (membership && membership.used_sessions < membership.total_sessions) {
-        await supabase
-          .from("member_memberships")
-          .update({ used_sessions: membership.used_sessions + 1 })
-          .eq("id", membership.id);
-      }
-    }
+    // 스케줄 생성 시 회원권 차감 없음 (상태 변경 시 처리)
 
     return NextResponse.json({ success: true, schedule });
   } catch (error: any) {

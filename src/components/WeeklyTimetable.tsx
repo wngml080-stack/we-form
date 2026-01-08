@@ -305,6 +305,10 @@ export default function WeeklyTimetable({
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-[9px] font-black uppercase tracking-tighter opacity-70">
                                 {schedule.type}
+                                {/* PT인 경우 회차 표시 */}
+                                {schedule.type === 'PT' && schedule.session_number && schedule.total_sessions && (
+                                  <span className="ml-1">({schedule.session_number}/{schedule.total_sessions}회)</span>
+                                )}
                               </span>
                               <div className="w-1.5 h-1.5 rounded-full bg-current opacity-30"></div>
                             </div>

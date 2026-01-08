@@ -2,9 +2,9 @@
 
 import { use } from "react";
 import dynamicImport from "next/dynamic";
-import { Users, DollarSign, Calendar, Target, Award, BarChart3, Building } from "lucide-react";
+import { Users, DollarSign, Calendar, BarChart3, Building } from "lucide-react";
 import { useBranchData } from "./hooks/useBranchData";
-import { StatCard, BEPCard, QuickLinkCard } from "./components/StatCards";
+import { StatCard, QuickLinkCard } from "./components/StatCards";
 import { AnnouncementCalendar } from "./components/AnnouncementCalendar";
 
 // Dynamic imports for modals (코드 스플리팅으로 초기 로드 성능 개선)
@@ -14,18 +14,6 @@ const AnnouncementModal = dynamicImport(
 );
 const DateAnnouncementsModal = dynamicImport(
   () => import("./components/modals/DateAnnouncementsModal").then(mod => ({ default: mod.DateAnnouncementsModal })),
-  { ssr: false }
-);
-const FcSalesModal = dynamicImport(
-  () => import("./components/modals/FcSalesModal").then(mod => ({ default: mod.FcSalesModal })),
-  { ssr: false }
-);
-const PtSalesModal = dynamicImport(
-  () => import("./components/modals/PtSalesModal").then(mod => ({ default: mod.PtSalesModal })),
-  { ssr: false }
-);
-const TotalSalesModal = dynamicImport(
-  () => import("./components/modals/TotalSalesModal").then(mod => ({ default: mod.TotalSalesModal })),
   { ssr: false }
 );
 
@@ -44,14 +32,9 @@ export default function BranchManagementPage(props: {
 
     // Loading states
     isLoading,
-    salesLoading,
 
     // Stats
     stats,
-    fcStats,
-    ptStats,
-    salesSummary,
-    comparisonData,
 
     // Announcements
     announcements,
@@ -72,22 +55,6 @@ export default function BranchManagementPage(props: {
     setSelectedDate,
     isDateAnnouncementsModalOpen,
     setIsDateAnnouncementsModalOpen,
-
-    // Sales modals
-    isFcModalOpen,
-    setIsFcModalOpen,
-    isPtModalOpen,
-    setIsPtModalOpen,
-    isSalesModalOpen,
-    setIsSalesModalOpen,
-    salesPeriod,
-    customDateRange,
-    setCustomDateRange,
-    openFcModal,
-    openPtModal,
-    openSalesModal,
-    handlePeriodChange,
-    fetchDetailedSales,
   } = useBranchData();
 
   if (isLoading) {
@@ -137,7 +104,6 @@ export default function BranchManagementPage(props: {
           value={Math.round(stats.monthlyRevenue / 10000)}
           suffix="만원"
           color="bg-indigo-500"
-          onClick={openSalesModal}
         />
         <StatCard
           icon={Calendar}
@@ -145,26 +111,6 @@ export default function BranchManagementPage(props: {
           value={new Date().getDate()}
           suffix="일"
           color="bg-amber-500"
-        />
-      </div>
-
-      {/* BEP 달성률 - 정교한 프로그레스 바 디자인 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <BEPCard
-          title="FC (회원권) BEP 달성률"
-          progress={stats.fcProgress}
-          target={Math.round(stats.fcBep / 10000)}
-          icon={Target}
-          onClick={openFcModal}
-          helpText="BEP(손익분기점)는 이 금액 이상 매출이 나와야 손해를 보지 않는 기준입니다. FC는 회원권/부가상품 매출을 의미합니다."
-        />
-        <BEPCard
-          title="PT BEP 달성률"
-          progress={stats.ptProgress}
-          target={Math.round(stats.ptBep / 10000)}
-          icon={Award}
-          onClick={openPtModal}
-          helpText="PT(Personal Training) 매출의 손익분기점 달성률입니다. 100% 이상이면 목표 달성입니다."
         />
       </div>
 
@@ -243,48 +189,6 @@ export default function BranchManagementPage(props: {
         onToggleActive={handleToggleAnnouncementActive}
         onEdit={openAnnouncementModal}
         onDelete={handleDeleteAnnouncement}
-      />
-
-      {/* FC 매출 통계 모달 */}
-      <FcSalesModal
-        isOpen={isFcModalOpen}
-        onOpenChange={setIsFcModalOpen}
-        salesPeriod={salesPeriod}
-        onPeriodChange={handlePeriodChange}
-        customDateRange={customDateRange}
-        setCustomDateRange={setCustomDateRange}
-        onCustomSearch={() => fetchDetailedSales("fc", "custom")}
-        fcStats={fcStats}
-        isLoading={salesLoading}
-      />
-
-      {/* PT 매출 통계 모달 */}
-      <PtSalesModal
-        isOpen={isPtModalOpen}
-        onOpenChange={setIsPtModalOpen}
-        salesPeriod={salesPeriod}
-        onPeriodChange={handlePeriodChange}
-        customDateRange={customDateRange}
-        setCustomDateRange={setCustomDateRange}
-        onCustomSearch={() => fetchDetailedSales("pt", "custom")}
-        ptStats={ptStats}
-        isLoading={salesLoading}
-      />
-
-      {/* 총 매출 통계 모달 */}
-      <TotalSalesModal
-        isOpen={isSalesModalOpen}
-        onOpenChange={setIsSalesModalOpen}
-        salesPeriod={salesPeriod}
-        onPeriodChange={handlePeriodChange}
-        customDateRange={customDateRange}
-        setCustomDateRange={setCustomDateRange}
-        onCustomSearch={() => fetchDetailedSales("all", "custom")}
-        fcStats={fcStats}
-        ptStats={ptStats}
-        salesSummary={salesSummary}
-        comparisonData={comparisonData}
-        isLoading={salesLoading}
       />
     </div>
   );

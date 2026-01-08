@@ -90,9 +90,9 @@ export function PTStatsCard({
       </div>
 
       <div className="space-y-4">
-        <StatRow icon={Users} label="전체회원" value={`${stats.totalPTMembers ?? 0}명`} subValue={`총 ${stats.totalMembers ?? 0}명 중`} iconBg="bg-blue-50" iconColor="text-blue-600" href="/admin/members" />
-        <StatRow icon={UserCheck} label="활성회원" value={`${stats.activePTMembers ?? 0}명`} subValue={`${(stats.totalPTMembers ?? 0) > 0 ? (((stats.activePTMembers ?? 0)/(stats.totalPTMembers ?? 1))*100).toFixed(0) : 0}% 활성`} iconBg="bg-emerald-50" iconColor="text-emerald-600" href="/admin/members?status=active" />
-        <StatRow icon={Ghost} label="30일 이상 유령회원" value={`${stats.ghostMembers ?? 0}명`} subValue={(stats.ghostMembers ?? 0) > 0 ? "관리 필요" : "없음"} iconBg={(stats.ghostMembers ?? 0) > 0 ? "bg-red-50" : "bg-gray-50"} iconColor={(stats.ghostMembers ?? 0) > 0 ? "text-red-500" : "text-gray-400"} href="/admin/members?filter=ghost" />
+        <StatRow icon={Users} label="전체회원" value={`${stats.totalPTMembers ?? 0}명`} subValue={`총 ${stats.totalMembers ?? 0}명 중`} iconBg="bg-blue-50" iconColor="text-blue-600" href="/admin/pt-members" />
+        <StatRow icon={UserCheck} label="활성회원" value={`${stats.activePTMembers ?? 0}명`} subValue={`${(stats.totalPTMembers ?? 0) > 0 ? (((stats.activePTMembers ?? 0)/(stats.totalPTMembers ?? 1))*100).toFixed(0) : 0}% 활성`} iconBg="bg-emerald-50" iconColor="text-emerald-600" href="/admin/pt-members?status=active" />
+        <StatRow icon={Ghost} label="30일 이상 유령회원" value={`${stats.ghostMembers ?? 0}명`} subValue={(stats.ghostMembers ?? 0) > 0 ? "관리 필요" : "없음"} iconBg={(stats.ghostMembers ?? 0) > 0 ? "bg-red-50" : "bg-gray-50"} iconColor={(stats.ghostMembers ?? 0) > 0 ? "text-red-500" : "text-gray-400"} href="/admin/pt-members?filter=ghost" />
 
         {statsViewMode === 'monthly' ? (
           <div className="relative">

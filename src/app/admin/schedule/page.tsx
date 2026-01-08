@@ -93,16 +93,29 @@ export default function AdminSchedulePage(props: {
         return;
       }
 
+      const memberships = memberMemberships[createForm.member_id] || [];
+      const ptMembership = memberships.find((m: any) =>
+        m.name?.toLowerCase().includes('pt') || m.name?.includes('피티')
+      );
+
+      // 일반 직원(staff)만 담당자 검증 (관리자는 모든 회원 스케줄 생성 가능)
+      const isAdmin = userRole === "system_admin" || userRole === "company_admin";
+      if (!isAdmin) {
+        const selectedMember = members.find(m => m.id === createForm.member_id);
+        if (!selectedMember?.trainer_id) {
+          showError("담당자가 배정되지 않은 회원은 스케줄을 등록할 수 없습니다.", "스케줄 생성");
+          return;
+        }
+      }
+
       if (createForm.type === "PT") {
-        const memberships = memberMemberships[createForm.member_id] || [];
-        const ptMembership = memberships.find((m: any) => m.name?.includes('PT') || m.name?.includes('피티'));
         if (!ptMembership) {
-          showError("PT 회원권이 없는 회원입니다.", "스케줄 생성");
+          showError("PT 회원권이 없는 회원입니다. OT 또는 상담으로 등록해주세요.", "스케줄 생성");
           return;
         }
         const remainingSessions = (ptMembership.total_sessions || 0) - (ptMembership.used_sessions || 0);
         if (remainingSessions <= 0) {
-          showError("PT 회원권의 잔여 횟수가 없습니다.", "스케줄 생성");
+          showError("PT 회원권의 잔여 횟수가 없습니다. OT 또는 상담으로 등록해주세요.", "스케줄 생성");
           return;
         }
       }

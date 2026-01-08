@@ -61,25 +61,33 @@ export async function POST(request: Request) {
     if (updateError) throw updateError;
 
     // 3. 회원권 횟수 처리
-    // 선차감 시스템: 예약 시 차감, 노쇼/취소/서비스 시 환불
-    // - reserved: 예약 생성 시 차감 (스케줄 생성에서 처리)
-    // - completed, no_show_deducted: 변동 없음 (이미 예약 시 차감됨)
-    // - no_show, cancelled, service: 1회 환불 (used_sessions - 1)
-    // - no_show/cancelled/service → 다른 상태: 재차감 (used_sessions + 1)
+    // 상태 기반 차감 시스템:
+    // - 일반 차감 상태: reserved, completed, no_show_deducted → used_sessions 차감
+    // - 서비스 상태: service → used_service_sessions 차감 (서비스 세션에서만)
+    // - 비차감 상태: no_show, cancelled → 환불
 
     let membershipInfo = "회원권 없음";
-    const refundStatuses = ["no_show", "cancelled", "service"];
-    const wasRefunded = refundStatuses.includes(oldStatus);
-    const willRefund = refundStatuses.includes(newStatus);
+    const regularDeductedStatuses = ["reserved", "completed", "no_show_deducted"];
+    const nonDeductedStatuses = ["no_show", "cancelled"];
+
+    const wasRegularDeducted = regularDeductedStatuses.includes(oldStatus);
+    const willBeRegularDeducted = regularDeductedStatuses.includes(newStatus);
+    const wasService = oldStatus === "service";
+    const willBeService = newStatus === "service";
 
     // 상태 변경에 따른 회원권 처리가 필요한 경우
-    if (schedule.member_id && wasRefunded !== willRefund) {
+    const needsUpdate = schedule.member_id && (
+      wasRegularDeducted !== willBeRegularDeducted ||
+      wasService !== willBeService
+    );
+
+    if (needsUpdate) {
       // 스케줄 타입에 맞는 회원권 조회
       const scheduleType = schedule.type?.toLowerCase() || "";
 
       let membershipQuery = supabase
         .from("member_memberships")
-        .select("id, used_sessions, total_sessions, name")
+        .select("id, used_sessions, total_sessions, service_sessions, used_service_sessions, name")
         .eq("member_id", schedule.member_id)
         .eq("gym_id", schedule.gym_id)
         .eq("status", "active");
@@ -97,24 +105,54 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (membership) {
-        if (!wasRefunded && willRefund && membership.used_sessions > 0) {
-          // 환불: used_sessions - 1
+        const usedSessions = membership.used_sessions || 0;
+        const totalSessions = membership.total_sessions || 0;
+        const serviceSessions = membership.service_sessions || 0;
+        const usedServiceSessions = membership.used_service_sessions || 0;
+
+        // 일반 세션 처리 (reserved, completed, no_show_deducted)
+        if (wasRegularDeducted && !willBeRegularDeducted && !willBeService && usedSessions > 0) {
+          // 일반 차감 → 비차감: 환불
           await supabase
             .from("member_memberships")
-            .update({ used_sessions: membership.used_sessions - 1 })
+            .update({ used_sessions: usedSessions - 1 })
             .eq("id", membership.id);
 
           membershipInfo = `${membership.name} (1회 환불)`;
-          console.log(`✅ 회원권 환불: ${membership.name}, ${membership.used_sessions} → ${membership.used_sessions - 1}`);
-        } else if (wasRefunded && !willRefund && membership.used_sessions < membership.total_sessions) {
-          // 재차감: used_sessions + 1
+          console.log(`✅ 회원권 환불: ${membership.name}, ${usedSessions} → ${usedSessions - 1}`);
+        } else if (!wasRegularDeducted && !wasService && willBeRegularDeducted && usedSessions < totalSessions) {
+          // 비차감 → 일반 차감: 차감
           await supabase
             .from("member_memberships")
-            .update({ used_sessions: membership.used_sessions + 1 })
+            .update({ used_sessions: usedSessions + 1 })
             .eq("id", membership.id);
 
-          membershipInfo = `${membership.name} (1회 재차감)`;
-          console.log(`✅ 회원권 재차감: ${membership.name}, ${membership.used_sessions} → ${membership.used_sessions + 1}`);
+          membershipInfo = `${membership.name} (1회 차감)`;
+          console.log(`✅ 회원권 차감: ${membership.name}, ${usedSessions} → ${usedSessions + 1}`);
+        }
+
+        // 서비스 세션 처리
+        if (wasService && !willBeService && usedServiceSessions > 0) {
+          // 서비스 → 비서비스: 서비스 세션 환불
+          await supabase
+            .from("member_memberships")
+            .update({ used_service_sessions: usedServiceSessions - 1 })
+            .eq("id", membership.id);
+
+          membershipInfo = `${membership.name} (서비스 1회 환불)`;
+          console.log(`✅ 서비스 세션 환불: ${membership.name}, ${usedServiceSessions} → ${usedServiceSessions - 1}`);
+        } else if (!wasService && willBeService && usedServiceSessions < serviceSessions) {
+          // 비서비스 → 서비스: 서비스 세션 차감
+          await supabase
+            .from("member_memberships")
+            .update({ used_service_sessions: usedServiceSessions + 1 })
+            .eq("id", membership.id);
+
+          membershipInfo = `${membership.name} (서비스 1회 차감)`;
+          console.log(`✅ 서비스 세션 차감: ${membership.name}, ${usedServiceSessions} → ${usedServiceSessions + 1}`);
+        } else if (!wasService && willBeService && usedServiceSessions >= serviceSessions) {
+          // 서비스 세션이 부족한 경우
+          console.log(`⚠️ 서비스 세션 부족: ${membership.name}, ${usedServiceSessions}/${serviceSessions}`);
         }
       }
     }

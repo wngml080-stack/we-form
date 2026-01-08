@@ -1,6 +1,6 @@
 # We:form ERD (Entity Relationship Diagram)
 
-> **최종 업데이트**: 2025-01
+> **최종 업데이트**: 2026-01
 > 이 문서는 We:form ERP의 핵심 DB 구조를 정리한 참고용 ERD입니다.
 
 ---
@@ -117,11 +117,38 @@ erDiagram
     text      registration_type "등록 유형: new / renewal / extension"
     int       total_sessions    "총 횟수"
     int       used_sessions     "소진 횟수"
+    int       service_sessions  "서비스(보너스) 세션 총 횟수"
+    int       used_service_sessions "사용된 서비스 세션 횟수"
     date      start_date        "시작일"
     date      end_date          "종료일"
     numeric   amount            "결제 금액"
     numeric   amount_excl_vat   "VAT 제외 금액"
     text      status            "상태: active / frozen / finished"
+    timestamptz created_at      "생성 일시"
+    timestamptz updated_at      "수정 일시"
+  }
+
+  MEMBER_PAYMENTS {
+    uuid      id                PK "결제 ID"
+    uuid      gym_id            FK "지점 ID"
+    uuid      company_id        FK "회사 ID"
+    uuid      member_id         FK "회원 ID"
+    uuid      membership_id     FK "회원권 ID"
+    text      membership_type   "회원권 유형"
+    text      membership_name   "상품명"
+    int       sessions          "횟수"
+    int       bonus_sessions    "서비스(보너스) 세션"
+    int       duration_months   "기간(개월)"
+    text      sale_type         "판매 유형"
+    numeric   unit_price        "단가"
+    numeric   amount            "결제 금액"
+    text      payment_method    "결제 수단"
+    text      registrar         "등록자 (수기입력)"
+    uuid      staff_id          FK "담당자 ID"
+    uuid      created_by        FK "결제 기록 생성자 ID"
+    text      trainer_name      "트레이너 이름"
+    text      memo              "메모"
+    date      payment_date      "결제일"
     timestamptz created_at      "생성 일시"
     timestamptz updated_at      "수정 일시"
   }
@@ -310,6 +337,84 @@ erDiagram
   }
 
   %% ==========================================
+  %% 지출 관리 도메인
+  %% ==========================================
+
+  GYM_EXPENSES {
+    uuid      id                PK "지출 ID"
+    uuid      company_id        FK "회사 ID"
+    uuid      gym_id            FK "지점 ID"
+    date      expense_date      "지출일"
+    text      category          "카테고리"
+    text      sub_category      "세부 카테고리"
+    text      description       "설명"
+    numeric   amount            "금액"
+    text      payment_method    "결제 수단"
+    text      vendor            "거래처"
+    text      receipt_memo      "영수증 메모"
+    uuid      created_by        FK "등록자 ID"
+    timestamptz created_at      "생성 일시"
+    timestamptz updated_at      "수정 일시"
+  }
+
+  EXPENSE_CATEGORIES {
+    uuid      id                PK "카테고리 ID"
+    uuid      gym_id            FK "지점 ID"
+    uuid      company_id        FK "회사 ID"
+    text      name              "카테고리명"
+    int       display_order     "표시 순서"
+    timestamptz created_at      "생성 일시"
+  }
+
+  %% ==========================================
+  %% 회원-트레이너 관리 도메인
+  %% ==========================================
+
+  MEMBER_TRAINERS {
+    uuid      id                PK "배정 ID"
+    uuid      gym_id            FK "지점 ID"
+    uuid      company_id        FK "회사 ID"
+    uuid      member_id         FK "회원 ID"
+    uuid      trainer_id        FK "트레이너 ID"
+    text      category          "종목 (헬스/필라테스/골프 등)"
+    boolean   is_primary        "주 담당 여부"
+    text      status            "상태: active / transferred"
+    uuid      assigned_by       FK "배정자 ID"
+    timestamptz assigned_at     "배정 일시"
+    timestamptz created_at      "생성 일시"
+    timestamptz updated_at      "수정 일시"
+  }
+
+  MEMBER_TRAINER_TRANSFERS {
+    uuid      id                PK "인계 ID"
+    uuid      gym_id            FK "지점 ID"
+    uuid      company_id        FK "회사 ID"
+    uuid      member_id         FK "회원 ID"
+    uuid      member_trainer_id FK "배정 ID"
+    text      category          "종목"
+    uuid      from_trainer_id   FK "이전 트레이너 ID"
+    uuid      to_trainer_id     FK "새 트레이너 ID"
+    text      reason            "인계 사유: resignation / leave / member_request / workload / other"
+    text      reason_detail     "상세 사유"
+    uuid      transferred_by    FK "처리자 ID"
+    timestamptz transferred_at  "인계 일시"
+    timestamptz created_at      "생성 일시"
+  }
+
+  MEMBER_ACTIVITY_LOGS {
+    uuid      id                PK "로그 ID"
+    uuid      gym_id            FK "지점 ID"
+    uuid      company_id        FK "회사 ID"
+    uuid      member_id         FK "회원 ID"
+    uuid      membership_id     FK "회원권 ID"
+    text      action_type       "작업 유형: member_created / member_updated / membership_created / etc"
+    text      description       "변경 내용 요약"
+    jsonb     changes           "변경 전/후 값: { before, after }"
+    uuid      created_by        FK "처리자 ID"
+    timestamptz created_at      "생성 일시"
+  }
+
+  %% ==========================================
   %% 관계 정의
   %% ==========================================
 
@@ -353,6 +458,24 @@ erDiagram
 
   %% 급여 관계
   SALARY_COMPONENTS ||--o{ CALCULATION_RULES : "1:N 구성요소-규칙"
+
+  %% 지출 관계
+  GYMS ||--o{ GYM_EXPENSES : "1:N 지점-지출"
+  GYMS ||--o{ EXPENSE_CATEGORIES : "1:N 지점-지출카테고리"
+  STAFFS ||--o{ GYM_EXPENSES : "1:N 직원-지출등록"
+
+  %% 결제 관계
+  MEMBERS ||--o{ MEMBER_PAYMENTS : "1:N 회원-결제"
+  MEMBER_MEMBERSHIPS ||--o{ MEMBER_PAYMENTS : "1:N 회원권-결제"
+
+  %% 회원-트레이너 관계
+  MEMBERS ||--o{ MEMBER_TRAINERS : "1:N 회원-트레이너배정"
+  STAFFS ||--o{ MEMBER_TRAINERS : "1:N 트레이너-회원배정"
+  MEMBERS ||--o{ MEMBER_TRAINER_TRANSFERS : "1:N 회원-인계이력"
+  MEMBER_TRAINERS ||--o{ MEMBER_TRAINER_TRANSFERS : "1:N 배정-인계"
+
+  %% 회원 활동 로그 관계
+  MEMBERS ||--o{ MEMBER_ACTIVITY_LOGS : "1:N 회원-활동로그"
 ```
 
 ---
@@ -586,7 +709,7 @@ SELECT * FROM staffs WHERE email = auth.jwt()->>'email';
 | 004 | `004_salary_templates.sql` | 급여 템플릿 |
 | 005 | `005_gym_settings.sql` | 지점 설정 (BEP) |
 | 006 | `006_announcements.sql` | 회사 이벤트 |
-| 007 | `007_cleanup.sql` | 정리 |
+| 007 | `007_cleanup.sql` | 미사용 테이블 정리 |
 | 008 | `008_system_announcements.sql` | 시스템 공지 |
 | 009 | `009_schedule_subtype.sql` | 스케줄 서브타입 |
 | 010 | `010_format_phone_numbers.sql` | 전화번호 포맷 |
@@ -594,3 +717,15 @@ SELECT * FROM staffs WHERE email = auth.jwt()->>'email';
 | 012 | `012_addon_membership_type.sql` | 애드온 회원권 타입 |
 | 013 | `013_allow_null_member_id.sql` | member_id null 허용 |
 | 014 | `014_update_registration_type.sql` | 등록 타입 업데이트 |
+| 015 | `015_add_gpt_membership_type.sql` | GPT 회원권 타입 추가 |
+| 015b | `015b_enable_rls.sql` | RLS 정책 적용 |
+| 016 | `016_member_activity_logs.sql` | 회원 활동 로그 |
+| 017 | `017_member_membership_transfers.sql` | 회원권 양도 |
+| 018 | `018_fix_monthly_reports_rls.sql` | 월간보고서 RLS 수정 |
+| 019 | `019_add_expenses.sql` | 지출 관리 테이블 |
+| 020 | `020_update_expenses.sql` | 지출 테이블 업데이트 |
+| 021 | `021_add_sub_category.sql` | 세부 카테고리 추가 |
+| 022 | `022_fix_members_company_id.sql` | members company_id 수정 |
+| 023 | `023_add_service_sessions.sql` | 서비스 세션 컬럼 추가 |
+| 024 | `024_add_registrar_to_payments.sql` | 결제 등록자 컬럼 |
+| 025 | `025_member_trainers.sql` | 회원-트레이너 배정 테이블 |

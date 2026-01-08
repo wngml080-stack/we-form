@@ -53,7 +53,7 @@ export function RecentLogsSection({ logs, summary, formatCurrency }: RecentLogsS
             return (
               <Link
                 key={log.id}
-                href={log.member_id ? `/admin/members?member=${log.member_id}` : `/admin/sales`}
+                href={log.member_id ? `/admin/pt-members?member=${log.member_id}` : `/admin/sales`}
                 className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-blue-50/50 transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-3">

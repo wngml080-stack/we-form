@@ -107,6 +107,7 @@ export function ConsultationFormModal({ isOpen, onClose, onSave, memberName, mem
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-4xl bg-[#f8fafc] p-0 border-none rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogTitle className="sr-only">{formData.memberName || "회원"} 상담기록지</DialogTitle>
         {/* 헤더 */}
         <div className="bg-slate-900 p-8 text-white relative overflow-hidden flex-shrink-0">
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>

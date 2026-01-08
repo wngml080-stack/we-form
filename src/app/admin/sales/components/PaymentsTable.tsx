@@ -1,14 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Save, X, Plus, Banknote, Edit, ChevronDown, Calendar, Info, MapPin, Clock, Star, Sparkles, UserCheck, AlertCircle } from "lucide-react";
+import { Trash2, Save, X, Plus, Banknote, Calendar, Info, MapPin, Clock, Star, Search, Gift } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber, formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
+
+// 다음 입력 필드로 이동하는 헬퍼 함수 (TD 셀 단위로 이동)
+const moveToNextCell = (currentElement: HTMLElement): boolean => {
+  const currentTd = currentElement.closest("td");
+  if (!currentTd) return false;
+
+  let nextTd = currentTd.nextElementSibling as HTMLElement;
+
+  // 다음 TD를 순회하면서 focusable 요소 찾기
+  while (nextTd) {
+    // 다음 TD에서 첫 번째 focusable 요소 찾기
+    const focusableElement = nextTd.querySelector(
+      "input:not([type='hidden']), [role='combobox']"
+    ) as HTMLElement;
+
+    if (focusableElement) {
+      focusableElement.focus();
+      if (focusableElement.tagName === "INPUT") {
+        (focusableElement as HTMLInputElement).select();
+      }
+      return true;
+    }
+
+    nextTd = nextTd.nextElementSibling as HTMLElement;
+  }
+
+  return false;
+};
 
 interface Staff {
   id: string;
@@ -20,19 +48,21 @@ interface Payment {
   id: string;
   member_name: string;
   phone?: string;
+  gender?: string; // 성별
+  birth_date?: string; // 생년월일
   sale_type: string;
   membership_category: string;
   membership_name: string;
   amount: number;
   method: string;
   installment?: number;
-  trainer_id?: string;
-  trainer_name?: string;
+  registrar?: string; // 등록자 (수기 입력)
   memo?: string;
   payment_date: string;
   isNew?: boolean;
   // 상세 필드
   service_sessions?: number;
+  bonus_sessions?: number;
   validity_per_session?: number;
   membership_start_date?: string;
   visit_route?: string;
@@ -59,6 +89,7 @@ interface PaymentsTableProps {
   onNewRowChange: (field: string, value: string | number) => void;
   onAddOption?: (type: "sale_type" | "membership_category" | "membership_name", name: string) => void;
   onAddNewRow?: () => void;
+  onViewMemberDetail?: (payment: Payment) => void;
 }
 
 // 추가 기능이 있는 Select 컴포넌트
@@ -159,13 +190,77 @@ export function PaymentsTable({
   onCancelNewRow,
   onNewRowChange,
   onAddOption,
-  onAddNewRow
+  onAddNewRow,
+  onViewMemberDetail
 }: PaymentsTableProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const tableRef = useRef<HTMLTableElement>(null);
+  
+  // 필터 상태
+  const [saleTypeFilter, setSaleTypeFilter] = useState<string>("all");
+  const [membershipCategoryFilter, setMembershipCategoryFilter] = useState<string>("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+
   const methodLabels: Record<string, string> = {
     card: "카드",
     cash: "현금",
     transfer: "계좌이체"
   };
+
+  // 검색 및 필터링
+  const filteredPayments = payments.filter(payment => {
+    // 검색 필터
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const amountStr = payment.amount.toString();
+      
+      // 금액 검색 (숫자만 입력된 경우)
+      const isNumericQuery = /^\d+$/.test(query);
+      if (isNumericQuery && amountStr.includes(query)) {
+        // 금액이 일치하면 통과
+      } else {
+        // 텍스트 검색
+        const matchesSearch = (
+          payment.member_name?.toLowerCase().includes(query) ||
+          payment.phone?.includes(query) ||
+          payment.membership_category?.toLowerCase().includes(query) ||
+          payment.membership_name?.toLowerCase().includes(query) ||
+          payment.sale_type?.toLowerCase().includes(query) ||
+          payment.memo?.toLowerCase().includes(query) ||
+          payment.registrar?.toLowerCase().includes(query)
+        );
+        if (!matchesSearch) return false;
+      }
+    }
+    
+    // 필터 조건
+    if (saleTypeFilter !== "all" && payment.sale_type !== saleTypeFilter) return false;
+    if (membershipCategoryFilter !== "all" && payment.membership_category !== membershipCategoryFilter) return false;
+    if (paymentMethodFilter !== "all" && payment.method !== paymentMethodFilter) return false;
+    
+    return true;
+  });
+
+  // 키보드 이벤트 핸들러
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 편집 중이 아닐 때만 삭제 키 작동
+      if (e.key === "Delete" && !editingId && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+        const selectedRow = document.querySelector("tr:hover");
+        if (selectedRow) {
+          const rowId = selectedRow.getAttribute("data-payment-id");
+          if (rowId && rowId !== "new") {
+            if (confirm("정말 삭제하시겠습니까?")) {
+              onDelete(rowId);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editingId, onDelete]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" }).format(amount);
@@ -194,14 +289,83 @@ export function PaymentsTable({
     <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden animate-in fade-in duration-500 delay-500">
       {/* 엑셀 스타일 헤더 */}
       <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b-2 border-slate-200">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
-            <Banknote className="w-5 h-5 text-white" />
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-200">
+              <Banknote className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">매출 기록 관리</h3>
+              <p className="text-xs font-bold text-slate-400 mt-0.5">엑셀 스프레드시트 형태로 빠르게 입력하세요</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">매출 기록 관리</h3>
-            <p className="text-xs font-bold text-slate-400 mt-0.5">엑셀 스프레드시트 형태로 빠르게 입력하세요</p>
+          {/* 검색 바 */}
+          <div className="relative w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="회원명, 연락처, 상품명, 내용, 금액 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 pl-10 pr-4 bg-white border-slate-300 rounded-xl text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
           </div>
+        </div>
+        
+        {/* 필터 바 */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-600">필터:</span>
+            <Select value={saleTypeFilter} onValueChange={setSaleTypeFilter}>
+              <SelectTrigger className="h-8 w-[120px] text-xs border border-slate-300 bg-white">
+                <SelectValue placeholder="매출유형" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 유형</SelectItem>
+                {allSaleTypes.map((type) => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={membershipCategoryFilter} onValueChange={setMembershipCategoryFilter}>
+              <SelectTrigger className="h-8 w-[120px] text-xs border border-slate-300 bg-white">
+                <SelectValue placeholder="상품분류" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 분류</SelectItem>
+                {allMembershipCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+              <SelectTrigger className="h-8 w-[100px] text-xs border border-slate-300 bg-white">
+                <SelectValue placeholder="결제방법" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 결제</SelectItem>
+                {allPaymentMethods.map((method) => (
+                  <SelectItem key={method} value={method}>{methodLabels[method] || method}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(saleTypeFilter !== "all" || membershipCategoryFilter !== "all" || paymentMethodFilter !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSaleTypeFilter("all");
+                setMembershipCategoryFilter("all");
+                setPaymentMethodFilter("all");
+              }}
+              className="h-8 text-xs text-slate-500 hover:text-slate-700"
+            >
+              필터 초기화
+            </Button>
+          )}
         </div>
       </div>
 
@@ -209,22 +373,24 @@ export function PaymentsTable({
         <table className="w-full border-collapse" style={{ borderSpacing: 0 }}>
           <thead>
             <tr className="bg-slate-100 border-b-2 border-slate-300 sticky top-0 z-10">
+              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[100px] border-r border-slate-300 bg-slate-100">등록자</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">날짜</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">회원명</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">연락처</th>
+              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[70px] border-r border-slate-300 bg-slate-100">성별</th>
+              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[110px] border-r border-slate-300 bg-slate-100">생년월일</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">매출유형</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">상품분류</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[150px] border-r border-slate-300 bg-slate-100">상품명</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">금액</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[100px] border-r border-slate-300 bg-slate-100">결제방법</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[100px] border-r border-slate-300 bg-slate-100">할부</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">담당자</th>
               <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[150px] border-r border-slate-300 bg-slate-100">메모</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[100px] bg-slate-100">작업</th>
+              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[50px] bg-slate-100"></th>
             </tr>
           </thead>
           <tbody className="bg-white">
-            {payments.map((payment) => {
+            {filteredPayments.map((payment) => {
               const isEditing = editingId === payment.id || payment.isNew;
               const currentData = isEditing ? editForm : payment;
               
@@ -233,12 +399,57 @@ export function PaymentsTable({
               const isRenewal = currentData.sale_type === "재등록" || currentData.sale_type === "리뉴";
 
               if (isEditing) {
-                const onChangeHandler = payment.isNew ? onNewRowChange : onEditFormChange;
+                const onChangeHandler = payment.isNew ? (field: string, value: string | number) => {
+                  // 새 행인 경우 newRows와 editForm 모두 업데이트
+                  onNewRowChange(field, value);
+                  // editForm도 즉시 업데이트
+                  onEditFormChange(field, value);
+                } : onEditFormChange;
                 const saveHandler = payment.isNew ? onSaveNewRow : onSaveEdit;
                 const cancelHandler = payment.isNew ? onCancelNewRow : onCancelEdit;
 
                 return (
-                  <tr key={payment.id} className={cn("border-b border-slate-200 hover:bg-blue-50/30 transition-colors", payment.isNew ? "bg-blue-50/50" : "bg-amber-50/30")}>
+                  <tr
+                    key={payment.id}
+                    data-payment-id={payment.id}
+                    className={cn("border-b border-slate-200 hover:bg-blue-50/30 transition-colors", payment.isNew ? "bg-blue-50/50" : "bg-amber-50/30")}
+                    onBlur={(e) => {
+                      // 행 내부의 다른 요소로 이동하는 경우 저장하지 않음
+                      const relatedTarget = e.relatedTarget as HTMLElement;
+                      const currentRow = e.currentTarget;
+                      if (relatedTarget && currentRow.contains(relatedTarget)) return;
+                      // 행 바깥으로 포커스가 이동하면 자동 저장
+                      setTimeout(() => {
+                        // Select 드롭다운 팝오버가 열린 경우 저장하지 않음
+                        const activeElement = document.activeElement;
+                        const isInPopover = activeElement?.closest('[data-radix-popper-content-wrapper]') ||
+                                           activeElement?.closest('[role="listbox"]') ||
+                                           document.querySelector('[data-radix-popper-content-wrapper]');
+                        if (isInPopover) return;
+
+                        if (currentRow && !currentRow.contains(document.activeElement)) {
+                          saveHandler();
+                        }
+                      }, 150);
+                    }}
+                  >
+                    <td className="px-2 py-3 border-r border-slate-200 text-center align-middle">
+                      <Input
+                        value={editForm.registrar || ""}
+                        onChange={(e) => onChangeHandler("registrar", e.target.value)}
+                        placeholder="등록자"
+                        className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-bold text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            moveToNextCell(e.currentTarget);
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelHandler();
+                          }
+                        }}
+                      />
+                    </td>
                     <td className="px-2 py-3 border-r border-slate-200 text-center align-middle">
                       <Input
                         type="date"
@@ -246,10 +457,12 @@ export function PaymentsTable({
                         onChange={(e) => onChangeHandler("payment_date", e.target.value)}
                         className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-bold text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         onKeyDown={(e) => {
-                          if (e.key === "Tab" && !e.shiftKey) {
+                          if (e.key === "Enter") {
                             e.preventDefault();
-                            const nextInput = e.currentTarget.closest("td")?.nextElementSibling?.querySelector("input, select");
-                            if (nextInput instanceof HTMLElement) nextInput.focus();
+                            moveToNextCell(e.currentTarget);
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelHandler();
                           }
                         }}
                       />
@@ -261,10 +474,12 @@ export function PaymentsTable({
                         placeholder="회원명"
                         className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-bold text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         onKeyDown={(e) => {
-                          if (e.key === "Tab" && !e.shiftKey) {
+                          if (e.key === "Enter") {
                             e.preventDefault();
-                            const nextInput = e.currentTarget.closest("td")?.nextElementSibling?.querySelector("input, select");
-                            if (nextInput instanceof HTMLElement) nextInput.focus();
+                            moveToNextCell(e.currentTarget);
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelHandler();
                           }
                         }}
                       />
@@ -276,10 +491,40 @@ export function PaymentsTable({
                         placeholder="010-0000-0000"
                         className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-bold text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         onKeyDown={(e) => {
-                          if (e.key === "Tab" && !e.shiftKey) {
+                          if (e.key === "Enter") {
                             e.preventDefault();
-                            const nextInput = e.currentTarget.closest("td")?.nextElementSibling?.querySelector("input, select");
-                            if (nextInput instanceof HTMLElement) nextInput.focus();
+                            moveToNextCell(e.currentTarget);
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelHandler();
+                          }
+                        }}
+                      />
+                    </td>
+                    <td className="px-2 py-3 border-r border-slate-200 text-center align-middle">
+                      <Select value={editForm.gender || ""} onValueChange={(v) => onChangeHandler("gender", v)}>
+                        <SelectTrigger className="h-9 w-full text-xs bg-white border border-slate-300 rounded-md font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                          <SelectValue placeholder="성별" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white rounded-lg border border-slate-200 shadow-xl p-1">
+                          <SelectItem value="male" className="text-xs">남성</SelectItem>
+                          <SelectItem value="female" className="text-xs">여성</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-2 py-3 border-r border-slate-200 text-center align-middle">
+                      <Input
+                        type="date"
+                        value={editForm.birth_date || ""}
+                        onChange={(e) => onChangeHandler("birth_date", e.target.value)}
+                        className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-bold text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            moveToNextCell(e.currentTarget);
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelHandler();
                           }
                         }}
                       />
@@ -349,25 +594,74 @@ export function PaymentsTable({
                           triggerClassName="border border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         />
                         {isPT && (
-                          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-slate-200 w-full">
+                          <div className="grid grid-cols-4 gap-1 pt-1 border-t border-slate-200 w-full">
                             <div className="space-y-0.5">
-                              <Label className="text-[9px] font-bold text-slate-400 text-center block">서비스</Label>
+                              <Label className="text-[9px] font-bold text-slate-400 text-center block">횟수</Label>
                               <Input
-                                type="number"
-                                value={editForm.service_sessions || 0}
-                                onChange={(e) => onChangeHandler("service_sessions", parseInt(e.target.value) || 0)}
+                                type="text"
+                                inputMode="numeric"
+                                value={editForm.service_sessions || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "") || "0";
+                                  onChangeHandler("service_sessions", parseInt(val) || 0);
+                                }}
                                 className="h-7 text-[10px] border border-slate-300 bg-white rounded-md font-bold text-center"
                                 placeholder="0"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    moveToNextCell(e.currentTarget);
+                                  } else if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    cancelHandler();
+                                  }
+                                }}
                               />
                             </div>
                             <div className="space-y-0.5">
-                              <Label className="text-[9px] font-bold text-slate-400 text-center block">유효일</Label>
+                              <Label className="text-[9px] font-bold text-orange-500 text-center block">서비스</Label>
                               <Input
-                                type="number"
-                                value={editForm.validity_per_session || 0}
-                                onChange={(e) => onChangeHandler("validity_per_session", parseInt(e.target.value) || 0)}
-                                className="h-7 text-[10px] border border-slate-300 bg-white rounded-md font-bold text-center"
+                                type="text"
+                                inputMode="numeric"
+                                value={editForm.bonus_sessions || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "") || "0";
+                                  onChangeHandler("bonus_sessions", parseInt(val) || 0);
+                                }}
+                                className="h-7 text-[10px] border border-orange-300 bg-orange-50 rounded-md font-bold text-center"
                                 placeholder="0"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    moveToNextCell(e.currentTarget);
+                                  } else if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    cancelHandler();
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-0.5">
+                              <Label className="text-[9px] font-bold text-slate-400 text-center block">1회당</Label>
+                              <Input
+                                type="text"
+                                inputMode="numeric"
+                                value={editForm.validity_per_session || ""}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "") || "0";
+                                  onChangeHandler("validity_per_session", parseInt(val) || 0);
+                                }}
+                                className="h-7 text-[10px] border border-slate-300 bg-white rounded-md font-bold text-center"
+                                placeholder="일"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    moveToNextCell(e.currentTarget);
+                                  } else if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    cancelHandler();
+                                  }
+                                }}
                               />
                             </div>
                             <div className="space-y-0.5">
@@ -377,6 +671,15 @@ export function PaymentsTable({
                                 value={editForm.membership_start_date || ""}
                                 onChange={(e) => onChangeHandler("membership_start_date", e.target.value)}
                                 className="h-7 text-[10px] border border-slate-300 bg-white rounded-md font-bold"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    moveToNextCell(e.currentTarget);
+                                  } else if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    cancelHandler();
+                                  }
+                                }}
                               />
                             </div>
                           </div>
@@ -391,10 +694,12 @@ export function PaymentsTable({
                         placeholder="0"
                         className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-black text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         onKeyDown={(e) => {
-                          if (e.key === "Tab" && !e.shiftKey) {
+                          if (e.key === "Enter") {
                             e.preventDefault();
-                            const nextInput = e.currentTarget.closest("td")?.nextElementSibling?.querySelector("input, select");
-                            if (nextInput instanceof HTMLElement) nextInput.focus();
+                            moveToNextCell(e.currentTarget);
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelHandler();
                           }
                         }}
                       />
@@ -424,50 +729,30 @@ export function PaymentsTable({
                       </Select>
                     </td>
                     <td className="px-2 py-3 border-r border-slate-200 text-center align-middle">
-                      <Select value={editForm.trainer_id || "none"} onValueChange={(v) => onChangeHandler("trainer_id", v === "none" ? "" : v)}>
-                        <SelectTrigger className="h-9 w-full text-xs bg-white border border-slate-300 rounded-md font-bold focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-                          <SelectValue placeholder="직원" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white rounded-lg border border-slate-200 shadow-xl p-1">
-                          <SelectItem value="none" className="text-xs text-slate-400">없음</SelectItem>
-                          {staffList.map(staff => (
-                            <SelectItem key={staff.id} value={staff.id} className="text-xs">{staff.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-2 py-3 border-r border-slate-200 text-center align-middle">
                       <Input
                         value={editForm.memo || ""}
                         onChange={(e) => onChangeHandler("memo", e.target.value)}
                         placeholder="메모"
                         className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-medium text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         onKeyDown={(e) => {
-                          if (e.key === "Tab" && !e.shiftKey) {
+                          if (e.key === "Escape") {
                             e.preventDefault();
-                            const nextInput = e.currentTarget.closest("td")?.nextElementSibling?.querySelector("input, select");
-                            if (nextInput instanceof HTMLElement) nextInput.focus();
+                            cancelHandler();
                           }
                         }}
                       />
                     </td>
-                    <td className="px-2 py-3 text-center align-middle">
-                      <div className="flex gap-1.5 justify-center">
-                        <Button 
-                          onClick={saveHandler} 
-                          size="sm"
-                          className={cn(
-                            "h-8 px-3 rounded-md text-xs font-black transition-all",
-                            payment.isNew ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"
-                          )}
-                        >
-                          <Save className="w-3.5 h-3.5 mr-1" />
-                          저장
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={cancelHandler} className="h-8 px-3 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md">
-                          <X className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                    <td className="px-1 py-3 text-center align-middle">
+                      <Button
+                        onClick={saveHandler}
+                        size="sm"
+                        className={cn(
+                          "h-8 w-8 p-0 rounded-lg transition-all",
+                          payment.isNew ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                        )}
+                      >
+                        <Save className="w-3.5 h-3.5 text-white" />
+                      </Button>
                     </td>
                   </tr>
                 );
@@ -475,18 +760,56 @@ export function PaymentsTable({
 
               return (
                 <tr 
-                  key={payment.id} 
+                  key={payment.id}
+                  data-payment-id={payment.id}
                   className="border-b border-slate-200 hover:bg-blue-50/30 transition-all cursor-pointer group" 
                   onDoubleClick={() => onStartEdit(payment)}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Delete" && !payment.isNew) {
+                      e.preventDefault();
+                      if (confirm("정말 삭제하시겠습니까?")) {
+                        onDelete(payment.id);
+                      }
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      onStartEdit(payment);
+                    }
+                  }}
                 >
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
+                    <span className="text-xs font-medium text-slate-700">{payment.registrar || "-"}</span>
+                  </td>
                   <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
                     <span className="text-xs font-bold text-slate-700">{formatDate(payment.payment_date)}</span>
                   </td>
                   <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-sm font-black text-slate-900">{payment.member_name}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onViewMemberDetail && payment.phone) {
+                          onViewMemberDetail(payment);
+                        }
+                      }}
+                      className={cn(
+                        "text-sm font-black transition-colors",
+                        payment.phone && onViewMemberDetail
+                          ? "text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          : "text-slate-900 cursor-default"
+                      )}
+                      disabled={!payment.phone || !onViewMemberDetail}
+                    >
+                      {payment.member_name}
+                    </button>
                   </td>
                   <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
                     <span className="text-xs font-medium text-slate-600">{payment.phone ? formatPhoneNumber(payment.phone) : "-"}</span>
+                  </td>
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">{payment.gender === "male" ? "남" : payment.gender === "female" ? "여" : "-"}</span>
+                  </td>
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
+                    <span className="text-xs font-medium text-slate-600">{payment.birth_date || "-"}</span>
                   </td>
                   <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
                     <div className="flex flex-col items-center gap-1">
@@ -515,24 +838,39 @@ export function PaymentsTable({
                       <span className="text-xs font-medium text-slate-900">{payment.membership_name}</span>
                       {payment.membership_category?.toUpperCase().includes("PT") && (
                         <div className="flex flex-wrap justify-center gap-1 mt-0.5">
-                          {payment.service_sessions && payment.service_sessions > 0 && (
+                          {(payment.service_sessions ?? 0) > 0 && (
                             <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold">
                               <Star className="w-2.5 h-2.5" />
-                              서비스 {payment.service_sessions}
+                              {payment.service_sessions}회
                             </div>
                           )}
-                          {payment.validity_per_session && payment.validity_per_session > 0 && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-slate-50 text-slate-600 rounded text-[9px] font-bold">
+                          {(payment.bonus_sessions ?? 0) > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[9px] font-bold">
+                              <Gift className="w-2.5 h-2.5" />
+                              서비스 {payment.bonus_sessions}회
+                            </div>
+                          )}
+                          {(payment.service_sessions ?? 0) > 0 && (payment.validity_per_session ?? 0) > 0 && (
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[9px] font-bold">
                               <Clock className="w-2.5 h-2.5" />
-                              유효 {payment.validity_per_session}일
+                              총 {(payment.service_sessions ?? 0) * (payment.validity_per_session ?? 0)}일
                             </div>
                           )}
-                          {payment.membership_start_date && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[9px] font-bold">
-                              <Calendar className="w-2.5 h-2.5" />
-                              {payment.membership_start_date}
-                            </div>
-                          )}
+                          {payment.membership_start_date && (payment.service_sessions ?? 0) > 0 && (payment.validity_per_session ?? 0) > 0 && (() => {
+                            const startDate = new Date(payment.membership_start_date);
+                            const totalDays = (payment.service_sessions ?? 0) * (payment.validity_per_session ?? 0);
+                            const endDate = new Date(startDate);
+                            endDate.setDate(endDate.getDate() + totalDays);
+                            const today = new Date();
+                            const remainingDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                            const endDateStr = endDate.toISOString().split("T")[0];
+                            return (
+                              <div className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${remainingDays > 30 ? 'bg-slate-100 text-slate-700' : remainingDays > 0 ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-600'}`}>
+                                <Calendar className="w-2.5 h-2.5" />
+                                ~{endDateStr}
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -547,27 +885,40 @@ export function PaymentsTable({
                     <span className="text-xs font-medium text-slate-600">{payment.installment === 1 ? "일시불" : `${payment.installment}개월`}</span>
                   </td>
                   <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-xs font-medium text-slate-700">{payment.trainer_name || "-"}</span>
-                  </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
                     <span className="text-xs font-medium text-slate-600 truncate block mx-auto">{payment.memo || "-"}</span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle">
-                    <div className="flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onStartEdit(payment); }} className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
-                        <Edit className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(payment.id); }} className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
+                  <td className="px-1 py-3 text-center align-middle">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm("정말 삭제하시겠습니까?")) {
+                          onDelete(payment.id);
+                        }
+                      }}
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </td>
                 </tr>
               );
             })}
+            {filteredPayments.length === 0 && payments.length > 0 && (
+              <tr>
+                <td colSpan={14} className="px-6 py-16 text-center">
+                  <div className="flex flex-col items-center">
+                    <Search className="w-12 h-12 text-slate-300 mb-4" />
+                    <h3 className="text-base font-black text-slate-700 tracking-tight">검색 결과가 없습니다</h3>
+                    <p className="text-slate-500 font-bold text-xs mt-2">다른 검색어를 입력해주세요</p>
+                  </div>
+                </td>
+              </tr>
+            )}
             {payments.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-6 py-32 text-center border-r border-slate-200">
+                <td colSpan={14} className="px-6 py-32 text-center">
                   <div className="flex flex-col items-center">
                     <div className="w-20 h-20 bg-slate-100 rounded-2xl flex items-center justify-center mb-6 border-2 border-slate-200">
                       <Banknote className="w-10 h-10 text-slate-400" />
@@ -591,7 +942,7 @@ export function PaymentsTable({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
             <Info className="w-4 h-4" />
-            <span>더블클릭으로 편집 | Tab 키로 셀 간 이동</span>
+            <span>더블클릭/Enter: 편집 | Enter/Tab: 다음 셀 | Delete: 삭제 | Esc: 취소 | 행 이탈: 자동저장</span>
           </div>
           <button
             onClick={onAddNewRow}

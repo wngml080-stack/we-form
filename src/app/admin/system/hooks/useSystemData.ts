@@ -77,14 +77,14 @@ const initialEditAnnouncementForm: EditAnnouncementForm = {
 
 // 카테고리 목록
 export const CATEGORY_OPTIONS = [
-  { name: "헬스", bg: "bg-blue-500", border: "border-blue-500", text: "text-blue-500", hoverBg: "hover:bg-blue-600" },
-  { name: "필라테스", bg: "bg-pink-500", border: "border-pink-500", text: "text-pink-500", hoverBg: "hover:bg-pink-600" },
-  { name: "PT", bg: "bg-yellow-500", border: "border-yellow-500", text: "text-yellow-600", hoverBg: "hover:bg-yellow-600" },
-  { name: "GX", bg: "bg-purple-500", border: "border-purple-500", text: "text-purple-500", hoverBg: "hover:bg-purple-600" },
-  { name: "골프", bg: "bg-green-500", border: "border-green-500", text: "text-green-500", hoverBg: "hover:bg-green-600" },
-  { name: "하이록스", bg: "bg-cyan-500", border: "border-cyan-500", text: "text-cyan-500", hoverBg: "hover:bg-cyan-600" },
-  { name: "러닝", bg: "bg-orange-500", border: "border-orange-500", text: "text-orange-500", hoverBg: "hover:bg-orange-600" },
-  { name: "크로스핏", bg: "bg-red-500", border: "border-red-500", text: "text-red-500", hoverBg: "hover:bg-red-600" },
+  { name: "헬스", icon: "💪", bg: "bg-blue-500", border: "border-blue-500", text: "text-blue-500", hoverBg: "hover:bg-blue-600" },
+  { name: "필라테스", icon: "🧘", bg: "bg-pink-500", border: "border-pink-500", text: "text-pink-500", hoverBg: "hover:bg-pink-600" },
+  { name: "PT", icon: "🏋️", bg: "bg-yellow-500", border: "border-yellow-500", text: "text-yellow-600", hoverBg: "hover:bg-yellow-600" },
+  { name: "GX", icon: "🎵", bg: "bg-purple-500", border: "border-purple-500", text: "text-purple-500", hoverBg: "hover:bg-purple-600" },
+  { name: "골프", icon: "⛳", bg: "bg-green-500", border: "border-green-500", text: "text-green-500", hoverBg: "hover:bg-green-600" },
+  { name: "하이록스", icon: "🔥", bg: "bg-cyan-500", border: "border-cyan-500", text: "text-cyan-500", hoverBg: "hover:bg-cyan-600" },
+  { name: "러닝", icon: "🏃", bg: "bg-orange-500", border: "border-orange-500", text: "text-orange-500", hoverBg: "hover:bg-orange-600" },
+  { name: "크로스핏", icon: "🤸", bg: "bg-red-500", border: "border-red-500", text: "text-red-500", hoverBg: "hover:bg-red-600" },
 ];
 
 export function useSystemData() {

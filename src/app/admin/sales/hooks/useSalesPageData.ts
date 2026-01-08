@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
+import { FcStats, PtStats, SalesSummary, ComparisonData, SalesPeriod, SalesType } from "../components/modals/TotalSalesModal";
 
 interface Payment {
   id: string;
   member_name: string;
   phone?: string;
+  gender?: string;           // 성별
+  birth_date?: string;       // 생년월일
   sale_type: string;         // 유형 (신규, 재등록, 양도 등)
   membership_category: string; // 회원권 (PT, 헬스, 필라테스 등)
   membership_name: string;   // 회원권명 (1개월, 3개월 등)
@@ -15,10 +18,12 @@ interface Payment {
   installment?: number;      // 할부
   trainer_id?: string;
   trainer_name?: string;
+  registrar?: string;        // 등록자 (수기 입력)
   memo?: string;
   created_at: string;
   // 상세 필드
-  service_sessions?: number;      // 서비스 세션
+  service_sessions?: number;      // PT 횟수
+  bonus_sessions?: number;        // 서비스(보너스) 세션
   validity_per_session?: number;  // 1회당 유효기간 (일)
   membership_start_date?: string; // 회원권 시작일
   visit_route?: string;           // 방문 경로 (신규용)
@@ -43,6 +48,13 @@ interface CustomOption {
   id: string;
   name: string;
   display_order: number;
+}
+
+interface GymInfo {
+  id: string;
+  name: string;
+  fc_bep?: number;
+  pt_bep?: number;
 }
 
 interface UseSalesPageDataProps {
@@ -97,6 +109,59 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     count: 0
   });
 
+  // 지점 BEP 데이터
+  const [gymData, setGymData] = useState<GymInfo | null>(null);
+
+  // BEP 달성률 관련 상태
+  const [fcStats, setFcStats] = useState<FcStats>({
+    bep: 0,
+    totalSales: 0,
+    bepRate: 0,
+    avgPrice: 0,
+    totalCount: 0,
+    walkinCount: 0,
+    onlineCount: 0,
+    renewCount: 0,
+    newRate: 0,
+    newSales: 0
+  });
+  const [ptStats, setPtStats] = useState<PtStats>({
+    bep: 0,
+    totalSales: 0,
+    bepRate: 0,
+    avgPrice: 0,
+    totalCount: 0,
+    newCount: 0,
+    renewCount: 0,
+    renewRate: 0,
+    newSales: 0,
+    renewSales: 0
+  });
+  const [salesSummary, setSalesSummary] = useState<SalesSummary>({
+    totalRevenue: 0,
+    fcRevenue: 0,
+    ptRevenue: 0,
+    fcCount: 0,
+    ptCount: 0,
+    otherRevenue: 0,
+    otherCount: 0
+  });
+  const [comparisonData, setComparisonData] = useState<ComparisonData>({
+    prevMonth: { fcSales: 0, ptSales: 0, totalSales: 0, fcCount: 0, ptCount: 0 },
+    prevYear: { fcSales: 0, ptSales: 0, totalSales: 0, fcCount: 0, ptCount: 0 }
+  });
+
+  // 매출 통계 모달 상태
+  const [isFcModalOpen, setIsFcModalOpen] = useState(false);
+  const [isPtModalOpen, setIsPtModalOpen] = useState(false);
+  const [isSalesModalOpen, setIsSalesModalOpen] = useState(false);
+  const [salesPeriod, setSalesPeriod] = useState<SalesPeriod>("thisMonth");
+  const [modalCustomDateRange, setModalCustomDateRange] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [salesLoading, setSalesLoading] = useState(false);
+
   // 기본 옵션들
   const defaultSaleTypes = ["신규", "재등록", "연장", "양도", "환불"];
   const defaultMembershipCategories = ["PT", "헬스", "필라테스", "요가", "수영", "골프", "GX"];
@@ -135,14 +200,144 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     });
   }, [payments, methodFilter, membershipTypeFilter, registrationTypeFilter]);
 
+  // 지점 데이터 로드 (BEP 포함)
+  const fetchGymData = useCallback(async (gymId: string) => {
+    const { data, error } = await supabase
+      .from("gyms")
+      .select("id, name, fc_bep, pt_bep")
+      .eq("id", gymId)
+      .single();
+
+    if (!error && data) {
+      setGymData(data);
+      // 초기 BEP 값 설정
+      const fcBep = data.fc_bep || 75000000;
+      const ptBep = data.pt_bep || 100000000;
+      setFcStats(prev => ({ ...prev, bep: fcBep }));
+      setPtStats(prev => ({ ...prev, bep: ptBep }));
+    }
+  }, [supabase]);
+
+  // 상세 매출 통계 조회
+  const fetchDetailedSales = useCallback(async (_type: SalesType, _period: SalesPeriod) => {
+    if (!selectedGymId || !selectedCompanyId) return;
+
+    setSalesLoading(true);
+
+    // 현재 payments 데이터를 기반으로 통계 계산
+    const fcBep = gymData?.fc_bep || 75000000;
+    const ptBep = gymData?.pt_bep || 100000000;
+
+    // FC (회원권) 통계 계산 - PT가 아닌 모든 것
+    const fcPayments = payments.filter(p => p.membership_category !== "PT");
+    const fcTotalSales = fcPayments.reduce((sum, p) => sum + p.amount, 0);
+    const fcNewPayments = fcPayments.filter(p => p.sale_type === "신규");
+    const fcWalkinPayments = fcNewPayments.filter(p => p.visit_route === "워크인" || !p.visit_route);
+    const fcOnlinePayments = fcNewPayments.filter(p => p.visit_route === "온라인" || p.visit_route === "인터넷" || p.visit_route === "네이버");
+    const fcRenewPayments = fcPayments.filter(p => p.sale_type === "재등록" || p.sale_type === "연장");
+
+    setFcStats({
+      bep: fcBep,
+      totalSales: fcTotalSales,
+      bepRate: fcBep > 0 ? (fcTotalSales / fcBep) * 100 : 0,
+      avgPrice: fcPayments.length > 0 ? fcTotalSales / fcPayments.length : 0,
+      totalCount: fcPayments.length,
+      walkinCount: fcWalkinPayments.length,
+      onlineCount: fcOnlinePayments.length,
+      renewCount: fcRenewPayments.length,
+      newRate: fcPayments.length > 0 ? (fcNewPayments.length / fcPayments.length) * 100 : 0,
+      newSales: fcNewPayments.reduce((sum, p) => sum + p.amount, 0)
+    });
+
+    // PT 통계 계산
+    const ptPayments = payments.filter(p => p.membership_category === "PT");
+    const ptTotalSales = ptPayments.reduce((sum, p) => sum + p.amount, 0);
+    const ptNewPayments = ptPayments.filter(p => p.sale_type === "신규");
+    const ptRenewPayments = ptPayments.filter(p => p.sale_type === "재등록" || p.sale_type === "연장");
+
+    setPtStats({
+      bep: ptBep,
+      totalSales: ptTotalSales,
+      bepRate: ptBep > 0 ? (ptTotalSales / ptBep) * 100 : 0,
+      avgPrice: ptPayments.length > 0 ? ptTotalSales / ptPayments.length : 0,
+      totalCount: ptPayments.length,
+      newCount: ptNewPayments.length,
+      renewCount: ptRenewPayments.length,
+      renewRate: ptPayments.length > 0 ? (ptRenewPayments.length / ptPayments.length) * 100 : 0,
+      newSales: ptNewPayments.reduce((sum, p) => sum + p.amount, 0),
+      renewSales: ptRenewPayments.reduce((sum, p) => sum + p.amount, 0)
+    });
+
+    // 전체 매출 요약
+    setSalesSummary({
+      totalRevenue: fcTotalSales + ptTotalSales,
+      fcRevenue: fcTotalSales,
+      ptRevenue: ptTotalSales,
+      fcCount: fcPayments.length,
+      ptCount: ptPayments.length,
+      otherRevenue: 0,
+      otherCount: 0
+    });
+
+    // 비교 데이터 (임시로 0으로 설정 - 추후 API 연동 시 구현)
+    setComparisonData({
+      prevMonth: { fcSales: 0, ptSales: 0, totalSales: 0, fcCount: 0, ptCount: 0 },
+      prevYear: { fcSales: 0, ptSales: 0, totalSales: 0, fcCount: 0, ptCount: 0 }
+    });
+
+    setSalesLoading(false);
+  }, [selectedGymId, selectedCompanyId, payments, gymData]);
+
+  // 모달 열기 함수들
+  const openFcModal = useCallback(() => {
+    setSalesPeriod("thisMonth");
+    fetchDetailedSales("fc", "thisMonth");
+    setIsFcModalOpen(true);
+  }, [fetchDetailedSales]);
+
+  const openPtModal = useCallback(() => {
+    setSalesPeriod("thisMonth");
+    fetchDetailedSales("pt", "thisMonth");
+    setIsPtModalOpen(true);
+  }, [fetchDetailedSales]);
+
+  const openSalesModal = useCallback(() => {
+    setSalesPeriod("thisMonth");
+    fetchDetailedSales("all", "thisMonth");
+    setIsSalesModalOpen(true);
+  }, [fetchDetailedSales]);
+
+  const handlePeriodChange = useCallback((type: SalesType, newPeriod: SalesPeriod) => {
+    setSalesPeriod(newPeriod);
+    if (newPeriod !== "custom") {
+      fetchDetailedSales(type, newPeriod);
+    }
+  }, [fetchDetailedSales]);
+
+  // BEP 달성률 계산
+  const fcProgress = useMemo(() => {
+    const fcBep = gymData?.fc_bep || 75000000;
+    const fcPayments = payments.filter(p => p.membership_category !== "PT");
+    const fcTotal = fcPayments.reduce((sum, p) => sum + p.amount, 0);
+    return fcBep > 0 ? (fcTotal / fcBep) * 100 : 0;
+  }, [payments, gymData]);
+
+  const ptProgress = useMemo(() => {
+    const ptBep = gymData?.pt_bep || 100000000;
+    const ptPayments = payments.filter(p => p.membership_category === "PT");
+    const ptTotal = ptPayments.reduce((sum, p) => sum + p.amount, 0);
+    return ptBep > 0 ? (ptTotal / ptBep) * 100 : 0;
+  }, [payments, gymData]);
+
   // 데이터 로드
   useEffect(() => {
     if (filterInitialized && selectedGymId && selectedCompanyId) {
       fetchPayments(selectedGymId, selectedCompanyId);
       fetchCustomOptions(selectedGymId);
       fetchStaffList(selectedGymId);
+      fetchGymData(selectedGymId);
     }
-  }, [filterInitialized, selectedGymId, selectedCompanyId]);
+  }, [filterInitialized, selectedGymId, selectedCompanyId, fetchGymData]);
 
   // 날짜 필터 변경 시
   useEffect(() => {
@@ -172,9 +367,11 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
           installment: p.installment || p.installment_count || 1,
           trainer_id: p.trainer_id || "",
           trainer_name: p.trainer_name || "",
+          registrar: p.registrar || "",
           memo: p.memo || "",
           created_at: p.paid_at || p.created_at,
           service_sessions: p.service_sessions || 0,
+          bonus_sessions: p.bonus_sessions || 0,
           validity_per_session: p.validity_per_session || 0,
           membership_start_date: p.start_date || "",
           visit_route: p.visit_route || "",
@@ -284,8 +481,10 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
       method: "card",
       installment: 1,
       trainer_id: "",
+      registrar: "",
       memo: "",
       service_sessions: 0,
+      bonus_sessions: 0,
       validity_per_session: 0,
       membership_start_date: new Date().toISOString().split("T")[0],
       visit_route: "워크인",
@@ -311,21 +510,25 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
         body: JSON.stringify({
           company_id: selectedCompanyId,
           gym_id: selectedGymId,
-          member_name: row.member_name,
-          phone: row.phone,
-          sale_type: row.sale_type,
-          membership_category: row.membership_category,
-          membership_name: row.membership_name,
-          amount: row.amount,
-          method: row.method,
-          installment: row.installment,
-          trainer_id: row.trainer_id,
-          memo: row.memo,
-          service_sessions: row.service_sessions,
-          validity_per_session: row.validity_per_session,
-          membership_start_date: row.membership_start_date,
-          visit_route: row.visit_route,
-          expiry_type: row.expiry_type,
+          member_name: row.member_name || "",
+          phone: row.phone || "",
+          gender: row.gender || null,
+          birth_date: row.birth_date || null,
+          sale_type: row.sale_type || "신규",
+          membership_category: row.membership_category || "",
+          membership_name: row.membership_name || "",
+          amount: row.amount || 0,
+          method: row.method || "card",
+          installment: row.installment || 1,
+          trainer_id: row.trainer_id || "",
+          registrar: row.registrar || "",
+          memo: row.memo || "",
+          service_sessions: row.service_sessions || 0,
+          bonus_sessions: row.bonus_sessions || 0,
+          validity_per_session: row.validity_per_session || 0,
+          membership_start_date: row.membership_start_date || null,
+          visit_route: row.visit_route || null,
+          expiry_type: row.expiry_type || null,
         }),
       });
 
@@ -333,8 +536,10 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
 
       if (result.success) {
         setNewRows(prev => prev.filter(r => r.id !== id));
-        // 저장 후 데이터 새로고침
-        fetchPayments(selectedGymId, selectedCompanyId);
+        // 저장 후 데이터 새로고침 (약간의 지연을 두어 DB 반영 대기)
+        setTimeout(() => {
+          fetchPayments(selectedGymId, selectedCompanyId);
+        }, 300);
       } else {
         console.error("매출 저장 실패:", result.error);
         alert(`저장 실패: ${result.error}`);
@@ -471,6 +676,9 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
 
     // 설정 모달
     isSettingsOpen,
+
+    // 데이터 새로고침 함수
+    fetchPayments,
     setIsSettingsOpen,
 
     // 필터
@@ -499,6 +707,32 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     updatePayment,
     addCustomOption,
     deleteCustomOption,
+
+    // BEP 관련 데이터
+    gymData,
+    fcStats,
+    ptStats,
+    fcProgress,
+    ptProgress,
+    salesSummary,
+    comparisonData,
+    salesLoading,
+
+    // 매출 통계 모달 상태
+    isFcModalOpen,
+    setIsFcModalOpen,
+    isPtModalOpen,
+    setIsPtModalOpen,
+    isSalesModalOpen,
+    setIsSalesModalOpen,
+    salesPeriod,
+    modalCustomDateRange,
+    setModalCustomDateRange,
+    openFcModal,
+    openPtModal,
+    openSalesModal,
+    handlePeriodChange,
+    fetchDetailedSales,
 
     // 새로고침
     refreshData: () => {

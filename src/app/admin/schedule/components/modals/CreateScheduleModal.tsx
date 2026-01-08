@@ -19,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock, User, Plus, X, Sparkles, CheckCircle2 } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, User, Plus, X, Sparkles, CheckCircle2, AlertCircle, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 
 interface TimeSlot {
   date: string;
@@ -74,6 +75,70 @@ export function CreateScheduleModal({
   isLoading,
   onSubmit,
 }: CreateScheduleModalProps) {
+  // 선택된 회원의 PT 회원권 정보 계산
+  const selectedMemberInfo = useMemo(() => {
+    if (!createForm.member_id) return null;
+
+    const memberships = memberMemberships[createForm.member_id] || [];
+    const ptMembership = memberships.find((m: any) =>
+      m.name?.toLowerCase().includes('pt') || m.name?.includes('피티')
+    );
+    const selectedMember = filteredMembers.find(m => m.id === createForm.member_id);
+    const hasTrainer = !!selectedMember?.trainer_id;
+
+    if (ptMembership) {
+      const remainingSessions = (ptMembership.total_sessions || 0) - (ptMembership.used_sessions || 0);
+      const serviceSessions = ptMembership.service_sessions || 0;
+      const usedServiceSessions = ptMembership.used_service_sessions || 0;
+      const remainingServiceSessions = serviceSessions - usedServiceSessions;
+      return {
+        hasPtMembership: true,
+        hasTrainer,
+        ptMembership: {
+          name: ptMembership.name,
+          totalSessions: ptMembership.total_sessions || 0,
+          usedSessions: ptMembership.used_sessions || 0,
+          remainingSessions,
+          serviceSessions,
+          usedServiceSessions,
+          remainingServiceSessions,
+          startDate: ptMembership.start_date,
+          endDate: ptMembership.end_date,
+        },
+        canBookPT: remainingSessions > 0,
+        canBookOT: hasTrainer, // 담당자가 있으면 OT 가능
+      };
+    }
+
+    return {
+      hasPtMembership: false,
+      hasTrainer,
+      ptMembership: null,
+      canBookPT: false,
+      canBookOT: hasTrainer, // PT 없어도 담당자 있으면 OT만 가능
+    };
+  }, [createForm.member_id, memberMemberships, filteredMembers]);
+
+  // 회원 선택 시 자동으로 적절한 수업 유형 설정
+  const handleMemberChange = (memberId: string) => {
+    const memberships = memberMemberships[memberId] || [];
+    const pt = memberships.find((m: any) => m.name?.toLowerCase().includes('pt') || m.name?.includes('피티'));
+    setSelectedMemberMembership(pt || null);
+
+    // PT 회원권이 없으면 기본값을 OT로 변경
+    if (!pt) {
+      setCreateForm({ ...createForm, member_id: memberId, type: "OT" });
+    } else {
+      const remainingSessions = (pt.total_sessions || 0) - (pt.used_sessions || 0);
+      // PT 잔여횟수가 없으면 OT로 변경
+      if (remainingSessions <= 0) {
+        setCreateForm({ ...createForm, member_id: memberId, type: "OT" });
+      } else {
+        setCreateForm({ ...createForm, member_id: memberId });
+      }
+    }
+  };
+
   const handleClose = () => {
     setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "" });
     setSelectedMemberMembership(null);
@@ -182,27 +247,128 @@ export function CreateScheduleModal({
                   />
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">대상 회원 선택</Label>
-                  <Select
-                    value={createForm.member_id}
-                    onValueChange={(val) => {
-                      setCreateForm({ ...createForm, member_id: val });
-                      const memberships = memberMemberships[val] || [];
-                      const pt = memberships.find(m => m.name?.includes('PT') || m.name?.includes('피티'));
-                      setSelectedMemberMembership(pt || null);
-                    }}
-                  >
-                    <SelectTrigger className="h-14 px-6 rounded-2xl bg-white border-slate-100 focus:ring-blue-500 font-bold">
-                      <SelectValue placeholder="회원을 검색하거나 선택하세요" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2">
-                      {filteredMembers.map((m) => (
-                        <SelectItem key={m.id} value={m.id} className="rounded-xl py-3 font-bold">{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  <div className="space-y-3">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">대상 회원 선택</Label>
+                    <Select
+                      value={createForm.member_id}
+                      onValueChange={handleMemberChange}
+                    >
+                      <SelectTrigger className="h-14 px-6 rounded-2xl bg-white border-slate-100 focus:ring-blue-500 font-bold">
+                        <SelectValue placeholder="회원을 검색하거나 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2">
+                        {filteredMembers.map((m) => (
+                          <SelectItem key={m.id} value={m.id} className="rounded-xl py-3 font-bold">{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* 선택된 회원의 PT 정보 표시 */}
+                  {createForm.member_id && selectedMemberInfo && (
+                    <div className={cn(
+                      "p-5 rounded-2xl border-2",
+                      selectedMemberInfo.hasPtMembership
+                        ? selectedMemberInfo.canBookPT
+                          ? "bg-emerald-50 border-emerald-200"
+                          : "bg-amber-50 border-amber-200"
+                        : "bg-slate-50 border-slate-200"
+                    )}>
+                      <div className="flex items-start gap-4">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+                          selectedMemberInfo.hasPtMembership
+                            ? selectedMemberInfo.canBookPT
+                              ? "bg-emerald-500 text-white"
+                              : "bg-amber-500 text-white"
+                            : "bg-slate-400 text-white"
+                        )}>
+                          <Ticket className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {selectedMemberInfo.hasPtMembership && selectedMemberInfo.ptMembership ? (
+                            <>
+                              <div className="flex items-center gap-2 mb-2">
+                                <p className="text-sm font-black text-slate-900">{selectedMemberInfo.ptMembership.name}</p>
+                                {selectedMemberInfo.canBookPT ? (
+                                  <Badge className="bg-emerald-500 text-white text-[10px] px-2 py-0.5">이용가능</Badge>
+                                ) : (
+                                  <Badge className="bg-amber-500 text-white text-[10px] px-2 py-0.5">횟수소진</Badge>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-4 gap-3">
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase">잔여횟수</p>
+                                  <p className={cn(
+                                    "text-lg font-black",
+                                    selectedMemberInfo.ptMembership.remainingSessions > 0 ? "text-emerald-600" : "text-red-500"
+                                  )}>
+                                    {selectedMemberInfo.ptMembership.remainingSessions}회
+                                    <span className="text-xs text-slate-400 ml-1">/ {selectedMemberInfo.ptMembership.totalSessions}회</span>
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-orange-500 uppercase">서비스</p>
+                                  {selectedMemberInfo.ptMembership.serviceSessions > 0 ? (
+                                    <p className={cn(
+                                      "text-lg font-black",
+                                      selectedMemberInfo.ptMembership.remainingServiceSessions > 0 ? "text-orange-600" : "text-slate-400"
+                                    )}>
+                                      {selectedMemberInfo.ptMembership.remainingServiceSessions}회
+                                      <span className="text-xs text-slate-400 ml-1">/ {selectedMemberInfo.ptMembership.serviceSessions}회</span>
+                                    </p>
+                                  ) : (
+                                    <p className="text-lg font-black text-slate-300">-</p>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase">시작일</p>
+                                  <p className="text-sm font-bold text-slate-700">{selectedMemberInfo.ptMembership.startDate || '-'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase">유효기간</p>
+                                  {selectedMemberInfo.ptMembership.endDate ? (() => {
+                                    const endDate = new Date(selectedMemberInfo.ptMembership.endDate);
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    const remainingDays = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                    return (
+                                      <p className={cn(
+                                        "text-sm font-bold",
+                                        remainingDays > 30 ? "text-slate-700" : remainingDays > 0 ? "text-amber-600" : "text-red-600"
+                                      )}>
+                                        ~{selectedMemberInfo.ptMembership.endDate}
+                                        <span className={cn(
+                                          "ml-1 text-xs",
+                                          remainingDays > 30 ? "text-slate-400" : remainingDays > 0 ? "text-amber-500" : "text-red-500"
+                                        )}>
+                                          ({remainingDays > 0 ? `${remainingDays}일` : '만료'})
+                                        </span>
+                                      </p>
+                                    );
+                                  })() : <p className="text-sm font-bold text-slate-700">-</p>}
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <AlertCircle className="w-5 h-5 text-slate-400" />
+                              <div>
+                                <p className="text-sm font-black text-slate-700">PT 회원권이 없습니다</p>
+                                <p className="text-xs text-slate-500">
+                                  {selectedMemberInfo.hasTrainer
+                                    ? "담당자가 배정되어 있어 OT 또는 상담만 등록 가능합니다."
+                                    : "담당자 배정 후 OT 또는 상담을 등록할 수 있습니다."}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               <div className="grid grid-cols-2 gap-6">
@@ -217,7 +383,20 @@ export function CreateScheduleModal({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2">
-                        <SelectItem value="PT" className="rounded-xl py-3 font-bold">PT (Personal Training)</SelectItem>
+                        <SelectItem
+                          value="PT"
+                          className="rounded-xl py-3 font-bold"
+                          disabled={!selectedMemberInfo?.canBookPT}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span>PT (Personal Training)</span>
+                            {selectedMemberInfo && !selectedMemberInfo.canBookPT && (
+                              <span className="text-[10px] text-red-500 font-bold">
+                                {selectedMemberInfo.hasPtMembership ? "횟수소진" : "회원권없음"}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
                         <SelectItem value="OT" className="rounded-xl py-3 font-bold">OT (Orientation)</SelectItem>
                         <SelectItem value="Consulting" className="rounded-xl py-3 font-bold">상담 (Consulting)</SelectItem>
                       </SelectContent>
