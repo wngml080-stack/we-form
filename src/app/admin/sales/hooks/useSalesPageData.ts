@@ -359,6 +359,8 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
           id: p.id,
           member_name: p.member_name || p.members?.name || "",
           phone: p.phone || p.members?.phone || "",
+          gender: p.gender || "",
+          birth_date: p.birth_date || "",
           sale_type: p.sale_type || p.registration_type || "",
           membership_category: p.membership_category || p.membership_type || "",
           membership_name: p.membership_name || p.member_memberships?.name || "",
