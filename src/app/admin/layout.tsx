@@ -21,6 +21,7 @@ import {
   Briefcase,
   ChevronDown,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import {
   Select,
@@ -94,6 +95,7 @@ function AdminLayoutContent({
     { name: "스케줄관리", href: "/admin/schedule", icon: Calendar },
     { name: "출석체크", href: "/admin/attendance", icon: CheckSquare },
     { name: "통합회원관리", href: "/admin/pt-members", icon: UserCheck },
+    { name: "문의관리", href: "/admin/inquiries", icon: MessageSquare },
     { name: "포트폴리오", href: "/admin/portfolio", icon: Briefcase },
   ];
 

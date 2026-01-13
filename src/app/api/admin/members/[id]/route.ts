@@ -26,7 +26,7 @@ export async function PUT(
     // 회원 정보 확인 및 권한 체크
     const { data: member, error: memberError } = await supabase
       .from("members")
-      .select("id, gym_id, company_id, name, phone, birth_date, gender, exercise_goal, memo, weight, body_fat_mass, skeletal_muscle_mass, trainer_id")
+      .select("id, gym_id, company_id, name, phone, birth_date, gender, trainer_id")
       .eq("id", memberId)
       .maybeSingle();
 
@@ -50,11 +50,6 @@ export async function PUT(
     if (body.phone !== undefined) updateData.phone = body.phone;
     if (body.birth_date !== undefined) updateData.birth_date = body.birth_date || null;
     if (body.gender !== undefined) updateData.gender = body.gender || null;
-    if (body.exercise_goal !== undefined) updateData.exercise_goal = body.exercise_goal || null;
-    if (body.memo !== undefined) updateData.memo = body.memo || null;
-    if (body.weight !== undefined) updateData.weight = body.weight ? parseFloat(body.weight) : null;
-    if (body.body_fat_mass !== undefined) updateData.body_fat_mass = body.body_fat_mass ? parseFloat(body.body_fat_mass) : null;
-    if (body.skeletal_muscle_mass !== undefined) updateData.skeletal_muscle_mass = body.skeletal_muscle_mass ? parseFloat(body.skeletal_muscle_mass) : null;
     if (body.trainer_id !== undefined) updateData.trainer_id = body.trainer_id || null;
 
     // 회원 정보 업데이트

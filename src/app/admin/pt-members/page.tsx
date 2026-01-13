@@ -7,6 +7,7 @@ import { usePTMembersData } from "./hooks/usePTMembersData";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -47,6 +48,9 @@ export default function PTMembersPage(props: {
     searchQuery,
     setSearchQuery,
     updateTrainer,
+    handleBulkUpdateTrainer,
+    selectedMemberIds,
+    setSelectedMemberIds,
     memberCategory,
     setMemberCategory,
     periodFilter,
@@ -126,13 +130,50 @@ export default function PTMembersPage(props: {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-slate-100 p-1 rounded-xl">
-          <TabsTrigger value="members" className="rounded-lg">회원 리스트</TabsTrigger>
-          <TabsTrigger value="manual" className="rounded-lg">코칭 현황</TabsTrigger>
-          <TabsTrigger value="re-registration" className="rounded-lg">재등록 관리</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <TabsList className="bg-slate-100 p-1 rounded-xl h-12">
+            <TabsTrigger value="members" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">회원 리스트</TabsTrigger>
+            <TabsTrigger value="manual" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">코칭 현황</TabsTrigger>
+            <TabsTrigger value="re-registration" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">재등록 관리</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="members" className="mt-6 space-y-6">
+          {/* 일괄 변경 툴바 */}
+          {selectedMemberIds.length > 0 && (
+            <div className="flex items-center gap-3 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 animate-in fade-in slide-in-from-right-1 shadow-sm">
+              <span className="text-sm font-bold text-blue-700 whitespace-nowrap">
+                {selectedMemberIds.length}명 선택됨
+              </span>
+              <div className="h-4 w-[1px] bg-blue-200 mx-1" />
+              <Select
+                onValueChange={(val) => {
+                  const staff = staffList.find(s => s.id === val);
+                  if (staff) {
+                    if (confirm(`${selectedMemberIds.length}명의 담당자를 ${staff.name}님으로 변경하시겠습니까?`)) {
+                      handleBulkUpdateTrainer(staff.id, staff.name);
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger className="h-9 w-40 text-xs bg-white border-blue-200 text-blue-700 font-bold hover:bg-blue-100 transition-colors shadow-none focus:ring-1 focus:ring-blue-400">
+                  <SelectValue placeholder="일괄 담당자 지정" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 shadow-xl rounded-xl">
+                  {staffList.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-9 text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-transparent px-2"
+                onClick={() => setSelectedMemberIds([])}
+              >
+                취소
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <TabsContent value="members" className="mt-0 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {memberCategoryConfig.map(({ key, label, count, icon: Icon }) => (
               <Button
@@ -187,6 +228,18 @@ export default function PTMembersPage(props: {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-slate-500">
                   <tr>
+                    <th className="px-6 py-3 text-left font-semibold">
+                      <Checkbox 
+                        checked={ptMembers.length > 0 && selectedMemberIds.length === ptMembers.length}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedMemberIds(ptMembers.map(m => m.id));
+                          } else {
+                            setSelectedMemberIds([]);
+                          }
+                        }}
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left font-semibold">회원명</th>
                     <th className="px-6 py-3 text-left font-semibold">연락처</th>
                     <th className="px-6 py-3 text-left font-semibold">회원권</th>
@@ -200,9 +253,24 @@ export default function PTMembersPage(props: {
                   {ptMembers.map((member) => (
                     <tr
                       key={member.id}
-                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      className={cn(
+                        "hover:bg-slate-50 transition-colors cursor-pointer",
+                        selectedMemberIds.includes(member.id) && "bg-blue-50/50"
+                      )}
                       onDoubleClick={() => openMemberDetailModal(member)}
                     >
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox 
+                          checked={selectedMemberIds.includes(member.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedMemberIds(prev => [...prev, member.id]);
+                            } else {
+                              setSelectedMemberIds(prev => prev.filter(id => id !== member.id));
+                            }
+                          }}
+                        />
+                      </td>
                       <td className="px-6 py-4 font-bold">{member.member_name}</td>
                       <td className="px-6 py-4 text-slate-500">{member.phone ? formatPhoneNumber(member.phone) : "-"}</td>
                       <td className="px-6 py-4">{member.membership_category}</td>
@@ -229,7 +297,18 @@ export default function PTMembersPage(props: {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        {member.remaining_sessions != null ? `${member.remaining_sessions} / ${member.total_sessions}` : "-"}
+                        {member.remaining_sessions != null ? (
+                          <div className="flex items-center gap-1">
+                            <span className="font-bold text-blue-600">{member.remaining_sessions}</span>
+                            <span className="text-slate-400">/</span>
+                            <span className="text-slate-600">{member.total_sessions}</span>
+                            {member.service_sessions != null && member.service_sessions > 0 && (
+                              <span className="ml-1 text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-bold">
+                                +{(member.service_sessions || 0) - (member.used_service_sessions || 0)}서비스
+                              </span>
+                            )}
+                          </div>
+                        ) : "-"}
                       </td>
                       <td className="px-6 py-4 text-right font-semibold">{formatFullCurrency(member.amount)}</td>
                       <td className="px-6 py-4 text-center">

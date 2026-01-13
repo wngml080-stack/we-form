@@ -3,9 +3,25 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 
+// 상품명에서 횟수 추출 (예: "PT 50회" → 50, "PT50" → 50, "50회" → 50)
+const extractSessionsFromName = (name: string): number | null => {
+  if (!name) return null;
+  // "50회" 패턴
+  const sessionMatch = name.match(/(\d+)\s*회/);
+  if (sessionMatch) return parseInt(sessionMatch[1], 10);
+  // "PT50" 또는 "PT 50" 패턴
+  const ptMatch = name.match(/PT\s*(\d+)/i);
+  if (ptMatch) return parseInt(ptMatch[1], 10);
+  // 숫자만 있는 경우
+  const numberMatch = name.match(/^(\d+)$/);
+  if (numberMatch) return parseInt(numberMatch[1], 10);
+  return null;
+};
+
 // ============ 타입 정의 ============
 interface PTMember {
-  id: string;
+  id: string; // member_id를 기본으로 사용하도록 변경 예정
+  payment_id: string; // 기존 id는 payment_id로 보존
   member_name: string;
   phone?: string;
   membership_category: string;
@@ -16,6 +32,8 @@ interface PTMember {
   trainer_name: string;
   remaining_sessions?: number;
   total_sessions?: number;
+  service_sessions?: number; // 서비스(보너스) 횟수
+  used_service_sessions?: number; // 사용한 서비스 횟수
   start_date?: string;
   end_date?: string;
   status: "active" | "expired" | "paused";
@@ -127,6 +145,9 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
   const [trainerFilter, setTrainerFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // 다중 선택 상태
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   // 새로운 필터
   const [memberCategory, setMemberCategory] = useState<MemberCategory>("all");
@@ -253,7 +274,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           member_name,
           phone,
           sale_type,
-          service_sessions
+          service_sessions,
+          bonus_sessions
         `)
         .eq("gym_id", gymId)
         .eq("company_id", companyId)
@@ -268,22 +290,30 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       }
 
       // PT 회원권 정보 조회 (잔여 세션 계산용)
-      const { data: memberships } = await supabase
+      // status 필터링을 제거하고 프론트엔드에서 처리하거나, ilike 사용 (안전하게 가져옴)
+      const { data: memberships, error: membershipsError } = await supabase
         .from("member_memberships")
         .select("member_id, name, total_sessions, used_sessions, service_sessions, used_service_sessions, status")
-        .eq("gym_id", gymId)
-        .eq("status", "active");
+        .eq("gym_id", gymId);
 
-      // 회원별 활성 회원권 매핑
+      if (membershipsError) {
+        console.error("회원권 정보 조회 오류:", membershipsError);
+      }
+
+      // 회원별 활성 회원권 매핑 (이용중인 것 우선)
       const membershipMap: Record<string, any> = {};
       (memberships || []).forEach((m: any) => {
-        if (!membershipMap[m.member_id]) {
+        const isCurrentlyActive = m.status?.toLowerCase() === "active" || m.status === "이용중";
+        if (isCurrentlyActive && !membershipMap[m.member_id]) {
           membershipMap[m.member_id] = m;
         }
       });
 
       // members 테이블에서 phone으로 member_id 및 현재 담당 트레이너 매핑
-      const phones = (payments || []).map((p: any) => p.phone).filter(Boolean);
+      const rawPhones = (payments || []).map((p: any) => p.phone).filter(Boolean);
+      const normalizedPhones = rawPhones.map((p: string) => p.replace(/-/g, ""));
+      const allPhoneVariants = [...new Set([...rawPhones, ...normalizedPhones])];
+
       const { data: memberData } = await supabase
         .from("members")
         .select(`
@@ -293,27 +323,30 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           trainer:staffs!trainer_id (id, name)
         `)
         .eq("gym_id", gymId)
-        .in("phone", phones);
+        .in("phone", allPhoneVariants);
 
       const phoneToMemberInfo: Record<string, { id: string; trainer_id: string | null; trainer_name: string | null }> = {};
       (memberData || []).forEach((m: any) => {
         if (m.phone) {
-          phoneToMemberInfo[m.phone] = {
+          const info = {
             id: m.id,
             trainer_id: m.trainer_id || null,
             trainer_name: m.trainer?.name || null
           };
+          phoneToMemberInfo[m.phone] = info;
+          // 하이픈 제거 버전으로도 매핑
+          phoneToMemberInfo[m.phone.replace(/-/g, "")] = info;
         }
       });
 
       // 하위 호환성을 위한 phoneToMemberId 유지
       const phoneToMemberId: Record<string, string> = {};
-      (memberData || []).forEach((m: any) => {
-        if (m.phone) phoneToMemberId[m.phone] = m.id;
+      Object.entries(phoneToMemberInfo).forEach(([phone, info]) => {
+        phoneToMemberId[phone] = info.id;
       });
 
       // 데이터 변환 - PT/OT 분류 포함
-      const members: PTMember[] = (payments || []).map((p: any) => {
+      const allMembers: PTMember[] = (payments || []).map((p: any) => {
         const category = p.membership_category || "";
         // PT 회원권이 아니면 OT로 분류
         const displayCategory = isPTMembership(category) ? category : (category || "OT");
@@ -322,29 +355,48 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         // PT인 경우 회원권에서 잔여 세션 조회
         let remainingSessions: number | undefined = undefined;
         let totalSessions: number | undefined = undefined;
+        let serviceSessions: number | undefined = undefined;
+        let usedServiceSessions: number | undefined = undefined;
 
         if (isPT && p.phone) {
           const memberId = phoneToMemberId[p.phone];
           const membership = memberId ? membershipMap[memberId] : null;
-          if (membership) {
-            const total = (membership.total_sessions || 0) + (membership.service_sessions || 0);
-            const used = (membership.used_sessions || 0) + (membership.used_service_sessions || 0);
+          // membership이 있고 total_sessions가 9999가 아닌 경우에만 membership 데이터 사용
+          // (9999는 잘못된 OT 데이터로 생성된 경우)
+          if (membership && membership.total_sessions !== 9999) {
+            // 기본 횟수만 계산 (서비스는 별도 표시)
+            const total = membership.total_sessions || 0;
+            const usedSessions = membership.used_sessions || 0;
             totalSessions = total;
-            remainingSessions = total - used;
-          } else if (p.service_sessions) {
-            // 회원권이 없으면 매출에 저장된 세션 수 사용
-            totalSessions = parseInt(p.service_sessions) || undefined;
-            remainingSessions = totalSessions;
+            remainingSessions = total - usedSessions;
+            // 서비스 횟수 별도 저장
+            serviceSessions = membership.service_sessions || 0;
+            usedServiceSessions = membership.used_service_sessions || 0;
+          } else {
+            // 회원권이 없거나 9999(잘못된 OT)인 경우 매출 데이터 또는 상품명에서 추출
+            let total = parseInt(p.service_sessions) || 0;
+            // service_sessions가 없으면 상품명에서 추출 시도
+            if (!total && p.membership_name) {
+              total = extractSessionsFromName(p.membership_name) || 0;
+            }
+            if (total > 0) {
+              totalSessions = total;
+              remainingSessions = total; // 아직 사용하지 않았으므로 전체가 잔여
+              serviceSessions = parseInt(p.bonus_sessions) || 0;
+              usedServiceSessions = 0;
+            }
           }
         }
 
         // 현재 담당 트레이너 정보 (members 테이블 기준, 없으면 매출 등록 시 정보 사용)
         const memberInfo = p.phone ? phoneToMemberInfo[p.phone] : null;
+        const memberId = memberInfo?.id || p.id; // member_id가 없으면 payment_id라도 사용 (fallback)
         const currentTrainerId = memberInfo?.trainer_id || p.trainer_id || "";
         const currentTrainerName = memberInfo?.trainer_name || p.trainer_name || "미배정";
 
         return {
-          id: p.id,
+          id: memberId,
+          payment_id: p.id,
           member_name: p.member_name || "Unknown",
           phone: p.phone,
           membership_category: displayCategory,
@@ -355,6 +407,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           trainer_name: currentTrainerName,
           remaining_sessions: remainingSessions,
           total_sessions: totalSessions,
+          service_sessions: serviceSessions,
+          used_service_sessions: usedServiceSessions,
           start_date: undefined,
           end_date: undefined,
           status: "active" as const,
@@ -363,6 +417,26 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           registration_type: p.sale_type || ""
         };
       });
+
+      // phone 기준으로 중복 제거 (같은 연락처는 하나의 회원으로 통합)
+      // 가장 최근 매출 기준, 총 금액은 합산
+      const phoneMap = new Map<string, PTMember & { totalAmount: number }>();
+      allMembers.forEach(m => {
+        const phone = m.phone || m.id; // phone이 없으면 id 사용
+        const existing = phoneMap.get(phone);
+        if (!existing) {
+          phoneMap.set(phone, { ...m, totalAmount: m.amount });
+        } else {
+          // 기존 회원이 있으면 금액 합산, 나머지는 최신 정보 유지 (이미 정렬되어 있으므로 첫번째가 최신)
+          existing.totalAmount += m.amount;
+        }
+      });
+
+      // 통합된 회원 목록 (총 금액으로 amount 대체)
+      const members: PTMember[] = Array.from(phoneMap.values()).map(m => ({
+        ...m,
+        amount: m.totalAmount
+      }));
 
       setPTMembers(members);
       calculateExtendedStats(members, gymId, companyId);
@@ -694,8 +768,77 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
   };
 
   // 담당 트레이너 변경
-  const updateTrainer = async (_id: string, _trainerId: string, _trainerName: string) => {
-    // TODO: 구현
+  const updateTrainer = async (memberId: string, trainerId: string, trainerName: string) => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/admin/members/${memberId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trainer_id: trainerId })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "트레이너 배정에 실패했습니다.");
+      }
+
+      // 로컬 상태 업데이트
+      setPTMembers(prev => prev.map(m => 
+        m.id === memberId 
+          ? { ...m, trainer_id: trainerId, trainer_name: trainerName } 
+          : m
+      ));
+
+      // 알림 (Toast UI가 있으면 좋겠지만 현재는 alert 사용 가능성이 큼)
+      // 성공 메시지는 생략하거나 간단히 처리
+    } catch (e: any) {
+      console.error("[updateTrainer] Error:", e);
+      alert(e.message || "트레이너 배정 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 일괄 담당자 변경
+  const handleBulkUpdateTrainer = async (trainerId: string, trainerName: string) => {
+    if (selectedMemberIds.length === 0) {
+      alert("선택된 회원이 없습니다.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/admin/members/bulk-trainer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberIds: selectedMemberIds,
+          trainerId: trainerId
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "일괄 변경에 실패했습니다.");
+      }
+
+      // 로컬 상태 업데이트
+      setPTMembers(prev => prev.map(m => 
+        selectedMemberIds.includes(m.id)
+          ? { ...m, trainer_id: trainerId, trainer_name: trainerName }
+          : m
+      ));
+
+      setSelectedMemberIds([]);
+      alert(`${result.updated}명의 담당자가 변경되었습니다.`);
+    } catch (e: any) {
+      console.error("[handleBulkUpdateTrainer] Error:", e);
+      alert(e.message || "일괄 변경 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // 관리자 권한 체크
@@ -780,12 +923,20 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         setMemberAllMemberships(detailResult.memberships || []);
         setMemberPaymentHistory(detailResult.payments || []);
         setMemberActivityLogs(detailResult.activityLogs || []);
+      } else {
+        console.error("회원 상세 정보 로드 실패");
+        setMemberAllMemberships([]);
+        setMemberPaymentHistory([]);
+        setMemberActivityLogs([]);
       }
 
       // 트레이너 정보 처리
       if (trainerResponse.ok) {
         const trainerResult = await trainerResponse.json();
         setMemberTrainers(trainerResult.trainers || []);
+      } else {
+        console.error("트레이너 정보 로드 실패");
+        setMemberTrainers([]);
       }
     } catch (e) {
       console.error("회원 상세 조회 오류:", e);
@@ -944,6 +1095,9 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     // 액션
     updateMemberStatus,
     updateTrainer,
+    handleBulkUpdateTrainer,
+    selectedMemberIds,
+    setSelectedMemberIds,
     refreshData: () => selectedGymId && selectedCompanyId && fetchPTMembers(selectedGymId, selectedCompanyId),
 
     // 회원 상세 모달

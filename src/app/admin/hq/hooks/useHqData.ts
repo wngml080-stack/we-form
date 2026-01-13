@@ -13,7 +13,8 @@ export interface Stats {
   totalGyms: number;
   totalStaffs: number;
   totalMembers: number;
-  newMembersThisMonth: number;
+  activeMembers: number;
+  monthlySales: number;
 }
 
 export interface GymStats {
@@ -118,7 +119,8 @@ export function useHqData() {
     totalGyms: 0,
     totalStaffs: 0,
     totalMembers: 0,
-    newMembersThisMonth: 0
+    activeMembers: 0,
+    monthlySales: 0
   });
   const [gymStats, setGymStats] = useState<GymStats[]>([]);
 
@@ -648,20 +650,28 @@ export function useHqData() {
     if (!selectedGymData) return stats;
 
     const staffCount = allStaffs.filter(s => s.gym_id === selectedGymFilter).length;
-    const memberCount = members.filter(m => m.gym_id === selectedGymFilter).length;
+    const gymMembers = members.filter(m => m.gym_id === selectedGymFilter);
+    const memberCount = gymMembers.length;
+    const activeMemberCount = gymMembers.filter(m => m.status === "active").length;
+
+    // 이번달 매출 계산
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const newMembersCount = members.filter(m => {
-      if (m.gym_id !== selectedGymFilter) return false;
-      const createdAt = new Date(m.created_at);
-      return createdAt >= firstDayOfMonth;
-    }).length;
+    const gymMonthlySales = gymMembers.reduce((sum, m) => {
+      const payments = m.payments || [];
+      const monthlyPayments = payments.filter((p: any) => {
+        const paymentDate = new Date(p.payment_date);
+        return paymentDate >= firstDayOfMonth;
+      });
+      return sum + monthlyPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+    }, 0);
 
     return {
       totalGyms: 1,
       totalStaffs: staffCount,
       totalMembers: memberCount,
-      newMembersThisMonth: newMembersCount
+      activeMembers: activeMemberCount,
+      monthlySales: gymMonthlySales
     };
   })();
 

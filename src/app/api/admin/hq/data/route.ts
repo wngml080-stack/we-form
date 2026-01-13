@@ -33,55 +33,89 @@ export async function GET(request: Request) {
     }
 
     const supabaseAdmin = getSupabaseAdmin();
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-    // 지점 목록
-    const { data: gyms, error: gymsError } = await supabaseAdmin
-      .from("gyms")
-      .select("*, staffs(id, name, role, email)")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
+    // 모든 쿼리를 병렬로 실행
+    const [
+      gymsResult,
+      staffsResult,
+      membersResult,
+      paymentsResult,
+      eventsResult,
+      totalMembersResult,
+      activeMembersResult,
+      monthlyPaymentsResult
+    ] = await Promise.all([
+      // 지점 목록
+      supabaseAdmin
+        .from("gyms")
+        .select("*, staffs(id, name, role, email)")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false }),
+      // 전체 직원
+      supabaseAdmin
+        .from("staffs")
+        .select("id, name, email, role, job_title, gym_id, employment_status, created_at, gyms(name)")
+        .eq("company_id", companyId)
+        .order("name", { ascending: true }),
+      // 회원 데이터 (필요한 필드만)
+      supabaseAdmin
+        .from("members")
+        .select("id, name, phone, gym_id, status, created_at")
+        .eq("company_id", companyId),
+      // 결제 데이터 (필요한 필드만)
+      supabaseAdmin
+        .from("member_payments")
+        .select("id, member_id, amount, payment_date")
+        .eq("company_id", companyId),
+      // 회사 일정/행사
+      supabaseAdmin
+        .from("company_events")
+        .select("*")
+        .eq("company_id", companyId)
+        .order("event_date", { ascending: true }),
+      // 전체 회원 수
+      supabaseAdmin
+        .from("members")
+        .select("*", { count: "exact", head: true })
+        .eq("company_id", companyId),
+      // 활성 회원 수
+      supabaseAdmin
+        .from("members")
+        .select("*", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("status", "active"),
+      // 이번달 매출
+      supabaseAdmin
+        .from("member_payments")
+        .select("amount")
+        .eq("company_id", companyId)
+        .gte("payment_date", firstDayOfMonth)
+    ]);
 
-    if (gymsError) throw gymsError;
+    // 에러 체크
+    if (gymsResult.error) throw gymsResult.error;
+    if (staffsResult.error) throw staffsResult.error;
+    if (membersResult.error) throw membersResult.error;
+    if (paymentsResult.error) throw paymentsResult.error;
+    if (eventsResult.error) throw eventsResult.error;
 
-    // 전체 직원
-    const { data: allStaffs, error: staffsError } = await supabaseAdmin
-      .from("staffs")
-      .select("id, name, email, role, job_title, gym_id, employment_status, created_at, gyms(name)")
-      .eq("company_id", companyId)
-      .order("name", { ascending: true });
-
-    if (staffsError) throw staffsError;
+    const gyms = gymsResult.data;
+    const allStaffs = staffsResult.data;
+    const members = membersResult.data;
+    const payments = paymentsResult.data;
+    const events = eventsResult.data;
 
     // 미배정 직원 (gym_id가 null)
     const pendingStaffs = allStaffs?.filter(s => !s.gym_id) || [];
 
-    // 회원 데이터 - 임시 비활성화 (테이블 재연결 예정)
-    const members: any[] = [];
-    const payments: any[] = [];
-
-    // 통계
-    const { count: totalGymsCount } = await supabaseAdmin
-      .from("gyms")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", companyId);
-
-    const { count: totalStaffsCount } = await supabaseAdmin
-      .from("staffs")
-      .select("*", { count: "exact", head: true })
-      .eq("company_id", companyId);
-
-    // 회원 통계 - 임시 비활성화 (테이블 재연결 예정)
-    const totalMembersCount = 0;
-    const newMembersThisMonth = 0;
-
-    // 회사 일정/행사
-    const { data: events, error: eventsError } = await supabaseAdmin
-      .from("company_events")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("event_date", { ascending: true });
-
-    if (eventsError) throw eventsError;
+    // 통계 계산
+    const totalGymsCount = gyms?.length || 0;
+    const totalStaffsCount = allStaffs?.length || 0;
+    const totalMembersCount = totalMembersResult.count || 0;
+    const activeMembersCount = activeMembersResult.count || 0;
+    const monthlySales = monthlyPaymentsResult.data?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
 
     return NextResponse.json({
       success: true,
@@ -95,7 +129,8 @@ export async function GET(request: Request) {
         totalGyms: totalGymsCount || 0,
         totalStaffs: totalStaffsCount || 0,
         totalMembers: totalMembersCount || 0,
-        newMembersThisMonth: newMembersThisMonth || 0,
+        activeMembers: activeMembersCount || 0,
+        monthlySales: monthlySales || 0,
       },
     });
   } catch (error: any) {

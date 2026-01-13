@@ -49,7 +49,7 @@ export function GymFormModal({
               {isEditMode ? <Building className="w-6 h-6 text-white" /> : <Plus className="w-6 h-6 text-white" />}
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight">{title}</h2>
+              <h2 className="text-xl font-black tracking-tight text-white">{title}</h2>
               <p className="text-blue-200/60 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">
                 {isEditMode ? "Update Branch Information" : "Register New Fitness Center"}
               </p>

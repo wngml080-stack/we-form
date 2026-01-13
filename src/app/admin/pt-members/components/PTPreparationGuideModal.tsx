@@ -64,7 +64,7 @@ export function PTPreparationGuideModal({ isOpen, onClose }: Props) {
               <Package className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">PT 전 준비물 안내</h2>
+              <h2 className="text-2xl font-black tracking-tight text-white" style={{ color: '#ffffff' }}>PT 전 준비물 안내</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
                 <p className="text-sm text-slate-400 font-bold">회원 전달용 가이드 스타일링</p>

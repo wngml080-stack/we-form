@@ -47,6 +47,9 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     selectedBranchAnnouncement, setSelectedBranchAnnouncement,
     isBranchAnnouncementModalOpen, setIsBranchAnnouncementModalOpen,
 
+    // 지점/회사 정보 (AI 기능용)
+    selectedGymId,
+
     // 유틸리티
     getStatusColor
   } = useAdminDashboardData();
@@ -83,7 +86,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
       <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-8 lg:space-y-10">
         {/* AI Command Center - 자연어 검색바 */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-250">
-          <AiCommandCenter />
+          <AiCommandCenter gymId={selectedGymId} />
         </div>
 
         {/* Welcome Header */}
@@ -134,7 +137,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
 
             {/* AI Insights Widget */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-450">
-              <AiInsightsWidget stats={stats} gymName={gymName} />
+              <AiInsightsWidget stats={stats} gymName={gymName} gymId={selectedGymId} />
             </div>
 
             {/* Grid Layout */}

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, Calendar, MapPin, Search, UserPlus, ArrowRight, Trash2, Users, X, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, Calendar, MapPin, Search, UserPlus, ArrowRight, Trash2, Users, Loader2 } from "lucide-react";
 
 interface Membership {
   id: string;
@@ -22,6 +22,8 @@ interface PaymentHistory {
   id: string;
   sale_type: string;
   membership_name?: string;
+  membership_type?: string;
+  membership_category?: string;
   amount: number;
   payment_method?: string;
   created_at: string;
@@ -125,8 +127,8 @@ export function MemberDetailModal({
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-3xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
-          <DialogHeader className="px-10 py-8 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 flex-shrink-0 relative overflow-hidden">
-            <DialogTitle className="text-white text-xl font-bold">회원 정보 로딩 중...</DialogTitle>
+          <DialogHeader className="px-10 py-6 bg-white border-b border-slate-200 flex-shrink-0">
+            <DialogTitle className="text-slate-900 text-xl font-bold">회원 정보 로딩 중...</DialogTitle>
             <DialogDescription className="sr-only">회원 정보를 불러오는 중입니다</DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center py-20">
@@ -137,20 +139,25 @@ export function MemberDetailModal({
     );
   }
 
-  const activeMemberships = allMemberships.filter(m => m.status === "active");
-  const expiredMemberships = allMemberships.filter(m => m.status !== "active");
+  const activeMemberships = allMemberships.filter(m => 
+    m.status?.toLowerCase() === "active" || m.status?.toLowerCase() === "이용중"
+  );
+  const expiredMemberships = allMemberships.filter(m => 
+    m.status?.toLowerCase() !== "active" && m.status?.toLowerCase() !== "이용중"
+  );
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return { label: "이용중", className: "bg-emerald-500 text-white" };
-      case "expired":
-        return { label: "만료", className: "bg-slate-400 text-white" };
-      case "paused":
-        return { label: "일시정지", className: "bg-amber-500 text-white" };
-      default:
-        return { label: status, className: "bg-slate-400 text-white" };
+    const s = status?.toLowerCase();
+    if (s === "active" || s === "이용중") {
+      return { label: "이용중", className: "bg-emerald-500 text-white" };
     }
+    if (s === "expired" || s === "만료") {
+      return { label: "만료", className: "bg-slate-400 text-white" };
+    }
+    if (s === "paused" || s === "일시정지") {
+      return { label: "일시정지", className: "bg-amber-500 text-white" };
+    }
+    return { label: status, className: "bg-slate-400 text-white" };
   };
 
   const formatDate = (date: string) => {
@@ -163,6 +170,50 @@ export function MemberDetailModal({
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" }).format(amount);
+  };
+
+  const formatMembershipName = (name: string) => {
+    // "OT (헬스)" 형식에서 "OT "를 제거하고 괄호 안의 내용만 반환
+    const match = name.match(/^OT\s*\((.+)\)$/);
+    if (match) {
+      return match[1];
+    }
+    // "OT 헬스" 형식에서 "OT "를 제거
+    if (name.startsWith("OT ")) {
+      return name.replace(/^OT\s+/, "");
+    }
+    return name;
+  };
+
+  const formatBirthDate = (date: string | undefined) => {
+    if (!date) return "미입력";
+    return new Date(date).toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    });
+  };
+
+  const formatGender = (gender: string | undefined) => {
+    if (!gender) return "미입력";
+    return gender === "M" || gender === "male" ? "남성" : gender === "F" || gender === "female" ? "여성" : gender;
+  };
+
+  const formatPaymentName = (payment: PaymentHistory) => {
+    const membershipName = payment.membership_name || "";
+    const membershipCategory = payment.membership_type || payment.membership_category || "";
+
+    // 종목과 상품명 모두 표시 (종목 + 상품명)
+    if (membershipCategory && membershipName) {
+      // 상품명에 이미 종목이 포함되어 있으면 그대로 표시
+      if (membershipName.toUpperCase().includes(membershipCategory.toUpperCase())) {
+        return membershipName;
+      }
+      return `${membershipCategory} ${membershipName}`;
+    }
+
+    // 둘 중 하나만 있으면 있는 것 표시
+    return membershipName || membershipCategory || payment.sale_type || "-";
   };
 
   const getActionLabel = (actionType: string) => {
@@ -199,19 +250,14 @@ export function MemberDetailModal({
       >
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h4 className="font-bold text-slate-900">{membership.name}</h4>
-            <p className="text-xs text-slate-400 mt-0.5">{membership.membership_type || "PT"}</p>
+            <h4 className="font-bold text-slate-900">{formatMembershipName(membership.name)}</h4>
           </div>
           <Badge className={cn("text-[10px] font-black", statusBadge.className)}>
             {statusBadge.label}
           </Badge>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <p className="text-slate-400 mb-1">잔여 / 전체</p>
-            <p className="font-bold text-slate-900">{remaining} / {membership.total_sessions}회</p>
-          </div>
+        <div className="grid grid-cols-1 gap-3 text-xs">
           <div>
             <p className="text-slate-400 mb-1">이용 기간</p>
             <p className="font-bold text-slate-900">{formatDate(membership.start_date)} ~ {formatDate(membership.end_date)}</p>
@@ -225,38 +271,33 @@ export function MemberDetailModal({
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-3xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
-          <DialogHeader className="px-10 py-8 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 flex-shrink-0 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-            <DialogTitle className="flex items-center gap-5 relative z-10">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                <User className="w-8 h-8 text-white" />
+          <DialogHeader className="px-10 py-6 bg-white border-b border-slate-200 flex-shrink-0">
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight">{member.name}</h2>
+                  <p className="text-sm text-slate-500 font-medium mt-0.5">회원 상세 정보</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-2xl font-black text-white tracking-tight">{member.name}</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <p className="text-sm text-blue-100 font-bold">회원 상세 정보</p>
+              <div className="flex items-center gap-6 text-right">
+                <div>
+                  <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wide">Contact</p>
+                  <p className="text-base font-bold text-slate-900 mt-1">{member.phone || "010-0000-0000"}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wide">생년월일</p>
+                  <p className="text-sm font-bold text-slate-700 mt-1">{formatBirthDate(member.birth_date)}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wide">성별</p>
+                  <p className="text-sm font-bold text-slate-700 mt-1">{formatGender(member.gender)}</p>
                 </div>
               </div>
             </DialogTitle>
             <DialogDescription className="sr-only">회원 상세 정보</DialogDescription>
-            <button
-              onClick={onClose}
-              className="absolute top-8 right-10 w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all group z-10"
-            >
-              <X className="w-6 h-6 text-white/80 group-hover:text-white transition-colors" />
-            </button>
-
-            <div className="flex items-center justify-between mt-6 relative z-10">
-              <div>
-                <p className="text-blue-200/40 text-[10px] font-black uppercase tracking-[0.2em]">Member ID</p>
-                <p className="text-sm font-bold text-white/80 mt-1">{member.id.slice(0, 8)}...</p>
-              </div>
-              <div className="text-right">
-                <p className="text-blue-200/40 text-[10px] font-black uppercase tracking-[0.2em]">Contact Information</p>
-                <p className="text-lg font-black text-white mt-1">{member.phone || "010-0000-0000"}</p>
-              </div>
-            </div>
           </DialogHeader>
 
           <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
@@ -452,7 +493,7 @@ export function MemberDetailModal({
                       {paymentHistory.map((payment) => (
                         <div key={payment.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                           <div>
-                            <p className="font-bold text-slate-900">{payment.membership_name || payment.sale_type}</p>
+                            <p className="font-bold text-slate-900">{formatPaymentName(payment)}</p>
                             <p className="text-xs text-slate-400 mt-0.5">{formatDate(payment.created_at)}</p>
                           </div>
                           <p className="font-black text-slate-900">{formatCurrency(payment.amount)}</p>
@@ -503,3 +544,4 @@ export function MemberDetailModal({
     </>
   );
 }
+

@@ -48,11 +48,55 @@ export async function GET(
     // 1. 회원권 조회 (전체 - active + expired)
     const { data: memberships, error: membershipsError } = await supabase
       .from("member_memberships")
-      .select("id, name, total_sessions, used_sessions, start_date, end_date, status, created_at")
+      .select("id, name, membership_type, total_sessions, used_sessions, service_sessions, used_service_sessions, start_date, end_date, status, created_at")
       .eq("member_id", memberId)
       .order("created_at", { ascending: false });
 
-    if (membershipsError) console.error("[MemberDetail API] membershipsError:", membershipsError);
+    if (membershipsError) {
+      console.error("[MemberDetail API] membershipsError:", membershipsError);
+    } else {
+      console.log(`[MemberDetail API] Found ${memberships?.length || 0} memberships for member ${memberId}`);
+    }
+
+    // 1-2. member_payments에서도 회원권 정보 조회 (member_memberships가 비어있을 경우 대비)
+    let paymentsAsMemberships: any[] = [];
+    if (member.phone) {
+      const normalizedPhone = member.phone.replace(/-/g, "");
+      const { data: paymentMemberships } = await supabase
+        .from("member_payments")
+        .select("id, membership_category, membership_name, service_sessions, bonus_sessions, start_date, created_at, amount")
+        .eq("gym_id", member.gym_id)
+        .or(`phone.eq.${member.phone},phone.eq.${normalizedPhone}`)
+        .order("created_at", { ascending: false });
+
+      if (paymentMemberships && paymentMemberships.length > 0) {
+        // member_payments를 회원권 형식으로 변환
+        paymentsAsMemberships = paymentMemberships.map(p => {
+          const totalSessions = (p.service_sessions || 0) + (p.bonus_sessions || 0);
+          const startDate = p.start_date || p.created_at?.split("T")[0];
+          // 회원권 기간 계산 (기본 1년)
+          const endDate = startDate ? new Date(new Date(startDate).setFullYear(new Date(startDate).getFullYear() + 1)).toISOString().split("T")[0] : null;
+
+          return {
+            id: `payment-${p.id}`,
+            name: p.membership_name ? `${p.membership_category || ""} ${p.membership_name}`.trim() : (p.membership_category || "회원권"),
+            membership_type: p.membership_category,
+            total_sessions: totalSessions,
+            used_sessions: 0, // member_payments에서는 사용량 추적 안함
+            service_sessions: p.bonus_sessions || 0,
+            used_service_sessions: 0,
+            start_date: startDate,
+            end_date: endDate,
+            status: "active", // 결제 기록이 있으면 이용중으로 표시
+            created_at: p.created_at,
+            amount: p.amount
+          };
+        });
+      }
+    }
+
+    // member_memberships 데이터가 없으면 payments 데이터 사용
+    const finalMemberships = (memberships && memberships.length > 0) ? memberships : paymentsAsMemberships;
 
     // 2. 결제 이력 조회 - member_payments는 phone 기준으로 연결
     let payments: any[] = [];
@@ -109,7 +153,7 @@ export async function GET(
     }
 
     return NextResponse.json({
-      memberships: memberships || [],
+      memberships: finalMemberships || [],
       payments: payments,
       activityLogs,
       errors: {

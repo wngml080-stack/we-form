@@ -202,19 +202,23 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
 
   // 지점 데이터 로드 (BEP 포함)
   const fetchGymData = useCallback(async (gymId: string) => {
-    const { data, error } = await supabase
-      .from("gyms")
-      .select("id, name, fc_bep, pt_bep")
-      .eq("id", gymId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("gyms")
+        .select("*")
+        .eq("id", gymId)
+        .maybeSingle();
 
-    if (!error && data) {
-      setGymData(data);
-      // 초기 BEP 값 설정
-      const fcBep = data.fc_bep || 75000000;
-      const ptBep = data.pt_bep || 100000000;
-      setFcStats(prev => ({ ...prev, bep: fcBep }));
-      setPtStats(prev => ({ ...prev, bep: ptBep }));
+      if (!error && data) {
+        setGymData(data);
+        // 초기 BEP 값 설정 (컬럼이 없으면 기본값 사용)
+        const fcBep = data.fc_bep || 75000000;
+        const ptBep = data.pt_bep || 100000000;
+        setFcStats(prev => ({ ...prev, bep: fcBep }));
+        setPtStats(prev => ({ ...prev, bep: ptBep }));
+      }
+    } catch {
+      // 지점 데이터 로드 실패 시 무시 (기본값 사용)
     }
   }, [supabase]);
 
@@ -506,6 +510,26 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     if (!row || !selectedGymId || !selectedCompanyId) return;
 
     try {
+      // 연락처가 있으면 기존 회원인지 확인
+      if (row.phone) {
+        const checkResponse = await fetch(
+          `/api/admin/members/by-phone?phone=${encodeURIComponent(row.phone)}&gym_id=${selectedGymId}`
+        );
+        const checkResult = await checkResponse.json();
+
+        if (checkResult.member) {
+          // 기존 회원이 있음 - 확인 팝업
+          const existingName = checkResult.member.name || "기존 회원";
+          const confirmed = window.confirm(
+            `기존 회원 "${existingName}"님에게 추가 매출을 등록하시겠습니까?`
+          );
+
+          if (!confirmed) {
+            return; // 취소하면 저장하지 않음
+          }
+        }
+      }
+
       const response = await fetch("/api/admin/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -179,7 +179,10 @@ export async function POST(request: NextRequest) {
 
     console.log("[Sales API] 회원권 생성 체크 - memberId:", memberId, "category:", membership_category);
 
-    if (memberId && membership_category === "PT") {
+    // PT 카테고리 여부 판단 (PT, PT 10회, PT50 등 모두 PT로 인식)
+    const isPTCategory = membership_category?.toUpperCase().includes("PT");
+
+    if (memberId && isPTCategory) {
       // PT 카테고리: PT 회원권 자동 생성 (횟수가 없어도 생성)
       console.log("[Sales API] ✅ PT 조건 충족! PT 회원권 생성 시작...");
       // 횟수가 없으면 기본값 10회 사용
@@ -243,7 +246,7 @@ export async function POST(request: NextRequest) {
           created_by: staff.id
         });
       }
-    } else if (memberId && membership_category && membership_category !== "PT") {
+    } else if (memberId && membership_category && !isPTCategory) {
       // PT 외 카테고리 (헬스, 골프, 필라테스 등): OT 회원권 자동 생성 (무제한)
       console.log("[Sales API] ✅ 비PT 카테고리! OT 회원권 생성 시작...");
       const startDate = membership_start_date ? new Date(membership_start_date) : new Date();

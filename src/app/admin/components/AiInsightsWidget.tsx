@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Sparkles, TrendingUp, AlertCircle, CheckCircle2, ChevronRight, RefreshCw, ArrowRight, BarChart3, Users, Clock, Target, MessageSquare, ShieldCheck, Zap, X } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Sparkles, TrendingUp, AlertCircle, CheckCircle2, ChevronRight, RefreshCw, ArrowRight, BarChart3, Users, Clock, Target, MessageSquare, ShieldCheck, Zap, X, Info } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,58 +14,126 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-interface AiInsightsWidgetProps {
-  stats: any;
-  gymName: string;
+interface Insight {
+  type: "opportunity" | "warning" | "info";
+  title: string;
+  description: string;
+  metric?: string;
+  priority: "high" | "medium" | "low";
 }
 
-export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
+interface AiInsightsWidgetProps {
+  stats: Record<string, unknown>;
+  gymName: string;
+  gymId?: string;
+}
+
+const insightConfig = {
+  opportunity: {
+    icon: TrendingUp,
+    color: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    badge: "매출 기회",
+  },
+  warning: {
+    icon: AlertCircle,
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    badge: "회원 관리",
+  },
+  info: {
+    icon: CheckCircle2,
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    badge: "운영 최적화",
+  },
+};
+
+export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isActionPlanOpen, setIsActionPlanOpen] = useState(false);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [rawData, setRawData] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const fetchInsights = useCallback(async () => {
+    setIsAnalyzing(true);
+    setError(null);
+
+    try {
+      const url = gymId
+        ? `/api/ai/insights?gym_id=${gymId}`
+        : "/api/ai/insights";
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!res.ok) {
+        // 크레딧 부족 등의 에러는 조용히 처리
+        if (data.error?.includes("credit") || data.error?.includes("API")) {
+          setError("ai_disabled");
+          return;
+        }
+        throw new Error(data.error || "인사이트를 가져오는데 실패했습니다.");
+      }
+
+      setInsights(data.insights || []);
+      setRawData(data.rawData || null);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("[AiInsightsWidget] Error:", err);
+      setError("ai_disabled");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [gymId]);
+
+  useEffect(() => {
+    // AI 기능 비활성화 상태 체크 (환경변수나 이전 에러 기반)
+    const aiDisabled = localStorage.getItem("ai_insights_disabled");
+    if (aiDisabled === "true") {
+      setError("ai_disabled");
+      setIsAnalyzing(false);
+      return;
+    }
+    fetchInsights();
+  }, [fetchInsights]);
 
   const handleRefresh = () => {
-    setIsAnalyzing(true);
-    setTimeout(() => setIsAnalyzing(false), 2000);
+    fetchInsights();
   };
 
-  const insights = [
+  // 기본 인사이트 (API 호출 전 또는 에러 시)
+  const displayInsights = insights.length > 0 ? insights : [
     {
-      type: "opportunity",
-      icon: TrendingUp,
+      type: "opportunity" as const,
       title: "재등록 가능성 높은 회원",
-      description: "이번 주 만료 예정인 회원 5명 중 3명이 최근 출석률 90%를 기록했습니다. 재등록 상담을 제안해보세요.",
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      badge: "매출 기회"
+      description: "이번 주 만료 예정인 회원 중 출석률이 높은 회원을 확인해보세요.",
+      priority: "high" as const,
     },
     {
-      type: "warning",
-      icon: AlertCircle,
+      type: "warning" as const,
       title: "이탈 위험군 감지",
-      description: "최근 2주간 출석이 없는 회원이 8명 발견되었습니다. 안부 문자를 통해 케어가 필요한 시점입니다.",
-      color: "text-amber-600",
-      bgColor: "bg-amber-50",
-      badge: "회원 관리"
+      description: "최근 미출석 회원에게 안부 문자를 보내보세요.",
+      priority: "medium" as const,
     },
     {
-      type: "info",
-      icon: CheckCircle2,
+      type: "info" as const,
       title: "운영 효율성 분석",
-      description: "화요일 오후 7시 수업의 노쇼(No-show) 발생률이 평소보다 20% 높습니다. 예약 알림 시간을 조정해보는 건 어떨까요?",
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      badge: "운영 최적화"
-    }
+      description: "AI 분석 기능이 곧 활성화됩니다.",
+      priority: "low" as const,
+    },
   ];
 
   return (
     <>
       <Card className="relative overflow-hidden border border-slate-100 hover:shadow-[0_8px_16px_rgba(0,0,0,0.06),0_16px_32px_rgba(0,0,0,0.08)] transition-all duration-300 ease-bounce-in shadow-xl bg-white rounded-[32px] p-6 lg:p-8">
-        {/* Background decoration - More dynamic */}
+        {/* Background decoration */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-500/[0.08] via-indigo-500/[0.05] to-purple-500/[0.08] rounded-full -mr-48 -mt-48 blur-[80px] animate-pulse"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/[0.05] to-blue-500/[0.05] rounded-full -ml-32 -mb-32 blur-[60px]"></div>
-        
+
         <div className="relative z-10 space-y-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -78,14 +146,14 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight">AI 경영 인사이트</h2>
-                  <Badge className="bg-blue-50 text-blue-600 border-none px-2 py-0 h-5 text-[9px] font-black uppercase tracking-widest">Live v2.2</Badge>
+                  <Badge className="bg-blue-50 text-blue-600 border-none px-2 py-0 h-5 text-[9px] font-black uppercase tracking-widest">Live</Badge>
                 </div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">We:form AI Analyst Intelligence</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Powered by Claude AI</p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleRefresh}
               disabled={isAnalyzing}
               className="w-10 h-10 rounded-2xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all group"
@@ -105,43 +173,48 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                 </div>
               </div>
               <div className="text-center space-y-2">
-                <p className="text-lg font-black text-slate-900 tracking-tight">데이터를 치밀하게 분석 중입니다...</p>
-                <p className="text-sm font-bold text-slate-400">{gymName}의 모든 운영 로그를 대조하고 있어요.</p>
+                <p className="text-lg font-black text-slate-900 tracking-tight">AI가 데이터를 분석 중입니다...</p>
+                <p className="text-sm font-bold text-slate-400">{gymName}의 운영 데이터를 심층 분석하고 있어요.</p>
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {insights.map((insight, index) => (
-                <div 
-                  key={index}
-                  className={cn(
-                    "group relative p-6 rounded-[32px] border-2 border-transparent transition-all cursor-pointer hover:shadow-2xl hover:-translate-y-1 overflow-hidden",
-                    insight.bgColor,
-                    "hover:border-white shadow-sm"
-                  )}
-                >
-                  {/* Subtle shine effect on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                  
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-6">
-                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center bg-white shadow-md group-hover:scale-110 transition-transform duration-300", insight.color)}>
-                        <insight.icon className="w-6 h-6" />
+              {displayInsights.slice(0, 3).map((insight, index) => {
+                const config = insightConfig[insight.type];
+                const IconComponent = config.icon;
+
+                return (
+                  <div
+                    key={index}
+                    className={cn(
+                      "group relative p-6 rounded-[32px] border-2 border-transparent transition-all cursor-pointer hover:shadow-2xl hover:-translate-y-1 overflow-hidden",
+                      config.bgColor,
+                      "hover:border-white shadow-sm"
+                    )}
+                  >
+                    {/* Subtle shine effect on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-6">
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center bg-white shadow-md group-hover:scale-110 transition-transform duration-300", config.color)}>
+                          <IconComponent className="w-6 h-6" />
+                        </div>
+                        <Badge variant="outline" className="bg-white/80 border-none text-[10px] font-black uppercase tracking-tighter shadow-sm px-3 py-1">
+                          {config.badge}
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="bg-white/80 border-none text-[10px] font-black uppercase tracking-tighter shadow-sm px-3 py-1">
-                        {insight.badge}
-                      </Badge>
+                      <h3 className="text-base font-black text-slate-900 mb-3 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
+                        {insight.title}
+                        <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                      </h3>
+                      <p className="text-[13px] font-bold text-slate-600 leading-relaxed">
+                        {insight.description}
+                      </p>
                     </div>
-                    <h3 className="text-base font-black text-slate-900 mb-3 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
-                      {insight.title}
-                      <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
-                    </h3>
-                    <p className="text-[13px] font-bold text-slate-600 leading-relaxed">
-                      {insight.description}
-                    </p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -149,18 +222,18 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
             <div className="pt-6 flex items-center justify-between border-t border-slate-100/50 mt-4">
               <div className="flex items-center gap-3">
                 <div className="flex -space-x-2">
-                  {[1, 2, 3].map(i => (
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center">
                       <div className="w-1 h-1 rounded-full bg-blue-400"></div>
                     </div>
                   ))}
                 </div>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Last Intelligence Update: {new Date().toLocaleTimeString('ko-KR')}
+                  Last Update: {lastUpdated ? lastUpdated.toLocaleTimeString("ko-KR") : "분석 대기 중"}
                 </p>
               </div>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="h-10 px-5 rounded-2xl bg-slate-50 text-xs font-black text-blue-600 hover:text-blue-700 hover:bg-blue-50 transition-all group"
                 onClick={() => setIsReportOpen(true)}
               >
@@ -184,18 +257,18 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h2 className="text-3xl font-black text-white tracking-tight" style={{ color: 'white' }}>AI 경영 분석 리포트</h2>
-                    <Badge className="bg-emerald-500 text-white border-none px-3 py-1 h-6 text-[10px] font-black uppercase tracking-widest">Premium Insight</Badge>
+                    <h2 className="text-3xl font-black text-white tracking-tight" style={{ color: "white" }}>AI 경영 분석 리포트</h2>
+                    <Badge className="bg-emerald-500 text-white border-none px-3 py-1 h-6 text-[10px] font-black uppercase tracking-widest">Claude AI</Badge>
                   </div>
                   <p className="text-white/80 text-sm font-bold mt-1.5 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-blue-400" />
-                    {gymName} · {new Date().toLocaleDateString('ko-KR')} 기준 심층 분석 데이터
+                    {gymName} · {new Date().toLocaleDateString("ko-KR")} 기준 심층 분석 데이터
                   </p>
                 </div>
               </div>
             </DialogTitle>
             <DialogDescription className="sr-only">AI가 분석한 센터 운영 상세 리포트입니다.</DialogDescription>
-            <button 
+            <button
               onClick={() => setIsReportOpen(false)}
               className="absolute top-8 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10"
             >
@@ -218,9 +291,13 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                     </div>
                     <div className="space-y-2">
                       <p className="text-sm font-black text-slate-900">재등록 잠재 매출액 예측</p>
-                      <p className="text-2xl font-black text-blue-600 tracking-tighter">약 1,250만원</p>
+                      <p className="text-2xl font-black text-blue-600 tracking-tighter">
+                        {rawData?.renewal_opportunity
+                          ? `${((rawData.renewal_opportunity as { value?: number })?.value || 0) * 150}만원 예상`
+                          : "분석 중"}
+                      </p>
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                        최근 출석률이 85% 이상인 만료 예정 회원 12명을 대상으로 재등록 상담을 진행할 경우, 예상되는 전환 매출입니다.
+                        출석률이 높은 만료 예정 회원을 대상으로 재등록 상담을 진행할 경우, 예상되는 전환 매출입니다.
                       </p>
                     </div>
                   </div>
@@ -232,9 +309,13 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                     </div>
                     <div className="space-y-2">
                       <p className="text-sm font-black text-slate-900">회원권 업셀링 제안</p>
-                      <p className="text-2xl font-black text-emerald-600 tracking-tighter">5명 타겟팅</p>
+                      <p className="text-2xl font-black text-emerald-600 tracking-tighter">
+                        {rawData?.renewal_opportunity
+                          ? `${(rawData.renewal_opportunity as { value?: number })?.value || 0}명 타겟팅`
+                          : "분석 중"}
+                      </p>
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                        주 4회 이상 꾸준히 출석하는 일반 회원 5명에게 PT 패키지 전환 프로모션을 제안하는 것을 추천합니다.
+                        꾸준히 출석하는 회원에게 PT 패키지 전환 프로모션을 제안하는 것을 추천합니다.
                       </p>
                     </div>
                   </div>
@@ -250,7 +331,7 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
               </div>
               <Card className="p-8 rounded-[32px] border-none shadow-sm bg-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 p-6">
-                  <Badge variant="outline" className="bg-rose-50 border-rose-100 text-rose-600 font-black text-[10px]">위험도 높음</Badge>
+                  <Badge variant="outline" className="bg-rose-50 border-rose-100 text-rose-600 font-black text-[10px]">위험도 분석</Badge>
                 </div>
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
@@ -258,27 +339,16 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                       <AlertCircle className="w-7 h-7 text-rose-500" />
                     </div>
                     <div>
-                      <p className="text-lg font-black text-slate-900 tracking-tight">장기 미출석 회원 8명 분석</p>
+                      <p className="text-lg font-black text-slate-900 tracking-tight">
+                        장기 미출석 회원 {(rawData?.churn_risk as { value?: number })?.value || 0}명 감지
+                      </p>
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Urgent Attention Required</p>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                      { label: "10일 이상 미출석", value: "5명", sub: "재방문 유도 필요" },
-                      { label: "최근 예약 취소 급증", value: "2명", sub: "스케줄 조정 상담" },
-                      { label: "회원권 종료 임박", value: "1명", sub: "이탈 가능성 90%" },
-                    ].map((item, i) => (
-                      <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
-                        <p className="text-xl font-black text-slate-900">{item.value}</p>
-                        <p className="text-[10px] text-rose-500 font-bold mt-1">{item.sub}</p>
-                      </div>
-                    ))}
                   </div>
                   <div className="bg-rose-50/50 p-5 rounded-[24px] border border-rose-100/50 flex items-start gap-3">
                     <ShieldCheck className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                     <p className="text-xs font-bold text-rose-900 leading-relaxed">
-                      AI 처방: 이탈 위험군 회원들에게 "무료 바디 체크업" 또는 "개인화된 운동 팁" 문자를 발송하여 다시 센터에 발을 들일 수 있는 명분을 제공하세요.
+                      AI 처방: 이탈 위험군 회원들에게 &quot;무료 바디 체크업&quot; 또는 &quot;개인화된 운동 팁&quot; 문자를 발송하여 다시 센터에 발을 들일 수 있는 명분을 제공하세요.
                     </p>
                   </div>
                 </div>
@@ -299,13 +369,17 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                         <Zap className="w-6 h-6 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900">피크 타임 예약 혼잡도</p>
-                        <p className="text-xs text-slate-400 font-medium">화/목 오후 19:00 - 21:00 (포화 상태)</p>
+                        <p className="text-sm font-black text-slate-900">노쇼(No-show) 발생률</p>
+                        <p className="text-xs text-slate-400 font-medium">최근 7일 기준</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-black text-amber-600">94%</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Full Capacity</p>
+                      <p className="text-xl font-black text-amber-600">
+                        {(rawData?.no_show_rate as { value?: number })?.value || 0}%
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        {((rawData?.no_show_rate as { value?: number })?.value || 0) > 10 ? "주의 필요" : "양호"}
+                      </p>
                     </div>
                   </div>
                   <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-100 flex items-center justify-between">
@@ -314,30 +388,30 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                         <MessageSquare className="w-6 h-6 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900">회원 피드백 키워드</p>
-                        <p className="text-xs text-slate-400 font-medium">최근 PT 세션 후기 분석</p>
+                        <p className="text-sm font-black text-slate-900">AI 분석 엔진</p>
+                        <p className="text-xs text-slate-400 font-medium">Claude Haiku</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Badge className="bg-blue-50 text-blue-600 border-none px-2 py-0.5 text-[10px] font-black">#체계적인</Badge>
-                      <Badge className="bg-blue-50 text-blue-600 border-none px-2 py-0.5 text-[10px] font-black">#전문적인</Badge>
+                      <Badge className="bg-blue-50 text-blue-600 border-none px-2 py-0.5 text-[10px] font-black">#실시간분석</Badge>
+                      <Badge className="bg-blue-50 text-blue-600 border-none px-2 py-0.5 text-[10px] font-black">#자동화</Badge>
                     </div>
                   </div>
                 </div>
                 <div className="bg-slate-900 rounded-[32px] p-6 text-white flex flex-col justify-center space-y-4 border border-slate-800 shadow-2xl">
                   <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest text-center">AI Intelligence Goal</p>
-                  <h4 className="text-center text-lg font-black tracking-tight leading-snug text-white" style={{ color: 'white' }}>
+                  <h4 className="text-center text-lg font-black tracking-tight leading-snug text-white" style={{ color: "white" }}>
                     비활성 시간대(14:00~16:00)<br />할인 프로모션을 통한<br />수요 분산 제안
                   </h4>
-                  <Button 
+                  <Button
                     className="w-full h-12 rounded-2xl bg-blue-600 hover:bg-blue-500 font-black text-xs shadow-lg shadow-blue-900/20 transition-all active:scale-95"
                     onClick={(e) => {
                       e.preventDefault();
                       setIsActionPlanOpen(true);
                       setTimeout(() => {
-                        const element = document.getElementById('ai-action-plan-section');
+                        const element = document.getElementById("ai-action-plan-section");
                         if (element) {
-                          element.scrollIntoView({ behavior: 'smooth' });
+                          element.scrollIntoView({ behavior: "smooth" });
                         }
                       }, 100);
                     }}
@@ -361,21 +435,21 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Strategic Demand Distribution Plan</p>
                     </div>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setIsActionPlanOpen(false)}
                     className="rounded-xl font-bold text-slate-400 hover:text-slate-900 border-slate-200"
                   >
                     계획 접기
                   </Button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Card className="p-8 rounded-[32px] bg-white border-none shadow-sm hover:shadow-md transition-all space-y-4">
                     <Badge className="bg-blue-100 text-blue-700 border-none px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">Step 01</Badge>
                     <p className="text-lg font-black text-slate-900">타겟 시간 설정</p>
-                    <p className="text-sm text-slate-500 font-medium leading-relaxed">매주 화/목 14:00~16:00 시간대를 'Happy Hour'로 지정하여 저녁 피크 타임의 예약을 이동하도록 유도합니다.</p>
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed">매주 화/목 14:00~16:00 시간대를 &apos;Happy Hour&apos;로 지정하여 저녁 피크 타임의 예약을 이동하도록 유도합니다.</p>
                   </Card>
                   <Card className="p-8 rounded-[32px] bg-white border-none shadow-sm hover:shadow-md transition-all space-y-4">
                     <Badge className="bg-emerald-100 text-emerald-700 border-none px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">Step 02</Badge>
@@ -385,7 +459,7 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
                   <Card className="p-8 rounded-[32px] bg-white border-none shadow-sm hover:shadow-md transition-all space-y-4">
                     <Badge className="bg-amber-100 text-amber-700 border-none px-2 py-0.5 text-[10px] font-black uppercase tracking-widest">Step 03</Badge>
                     <p className="text-lg font-black text-slate-900">AI 타겟 메시징</p>
-                    <p className="text-sm text-slate-500 font-medium leading-relaxed">저녁 시간대 예약 빈도가 높고 유연한 스케줄을 가진 회원 20명을 AI가 선별하여 맞춤 프로모션 문자를 발송합니다.</p>
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed">저녁 시간대 예약 빈도가 높고 유연한 스케줄을 가진 회원을 AI가 선별하여 맞춤 프로모션 문자를 발송합니다.</p>
                   </Card>
                 </div>
 
@@ -411,10 +485,10 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
           <div className="px-10 py-8 bg-white border-t border-slate-100 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">AI Engine v2.0.4 - Intelligence Status: Optimal</p>
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Claude AI - Intelligence Status: Optimal</p>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsReportOpen(false)}
               className="h-14 px-10 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
             >
@@ -426,4 +500,3 @@ export function AiInsightsWidget({ stats, gymName }: AiInsightsWidgetProps) {
     </>
   );
 }
-

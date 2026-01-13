@@ -122,7 +122,7 @@ export function SalesSettingsModal({
               <Settings className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight">매출 항목 설정</h2>
+              <h2 className="text-xl font-black tracking-tight text-white">매출 항목 설정</h2>
               <p className="text-blue-200/60 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">Sales Categories & Options</p>
             </div>
           </div>

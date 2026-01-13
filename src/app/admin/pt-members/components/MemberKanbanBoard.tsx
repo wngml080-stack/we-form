@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, FileText, Heart, RefreshCw, Book, Bot, Package, Filter, Search, Copy, Trash2, X, Users, Dumbbell } from "lucide-react";
+import { Plus, FileText, Heart, RefreshCw, Book, Bot, Package, Filter, Search, Copy, Trash2, X, Users, Dumbbell, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,6 +20,8 @@ import { PTFormModal } from "@/app/admin/pt-record/components/PTFormModal";
 import { PTFormData, calculatePTFormCompletion } from "@/app/admin/pt-record/types";
 import { MemberManualModal } from "./MemberManualModal";
 import { PTPreparationGuideModal } from "./PTPreparationGuideModal";
+import { ConsultationResultModal } from "./modals/ConsultationResultModal";
+import { OTResultShareModal } from "./modals/OTResultShareModal";
 
 // 선택된 목표 유형 가져오기
 function getSelectedGoalType(data?: ConsultationFormData): string {
@@ -173,7 +175,10 @@ export function MemberKanbanBoard() {
   const [isPTModalOpen, setIsPTModalOpen] = useState(false);
   const [selectedMemberForPTModal, setSelectedMemberForPTModal] = useState<{ name: string; phone?: string; cardId: string; ptFormData?: PTFormData } | null>(null);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isConsultationResultModalOpen, setIsConsultationResultModalOpen] = useState(false);
   const [isPreparationGuideModalOpen, setIsPreparationGuideModalOpen] = useState(false);
+  const [isOTResultShareModalOpen, setIsOTResultShareModalOpen] = useState(false);
+  const [selectedOTDataForShare, setSelectedOTDataForShare] = useState<{ otData: OTFormData; memberName: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [columns, setColumns] = useState<BoardColumn[]>(getInitialColumns);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -254,6 +259,12 @@ export function MemberKanbanBoard() {
     // 회원 관리 노션 매뉴얼 클릭 시 매뉴얼 모달 열기
     if (card.id === "8" && card.title === "회원 관리 노션 매뉴얼") {
       setIsManualModalOpen(true);
+      return;
+    }
+
+    // 첫 상담 후 상담 결과 (트레이너) 클릭 시 모달 열기
+    if (card.id === "9" && card.title === "첫 상담 후 상담 결과 (트레이너)") {
+      setIsConsultationResultModalOpen(true);
       return;
     }
 
@@ -871,7 +882,7 @@ export function MemberKanbanBoard() {
                             </div>
 
                             {/* 액션 버튼 */}
-                            <div className="flex items-center">
+                            <div className="flex items-center gap-0.5">
                               {card.isTemplate ? (
                                 (card.id === "1" || card.id === "3" || card.id === "5") && (
                                   <button
@@ -884,13 +895,32 @@ export function MemberKanbanBoard() {
                                 )
                               ) : (
                                 !card.isEditing && (
-                                  <button
-                                    onClick={(e) => handleDeleteCard(e, card.id, column.id)}
-                                    className="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-red-50 rounded-lg text-red-400"
-                                    title="삭제하기"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  <>
+                                    {/* OT 데이터가 있는 경우 상담결과 공유 버튼 */}
+                                    {column.id === "ot" && card.otFormData && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedOTDataForShare({
+                                            otData: card.otFormData!,
+                                            memberName: card.memberName || ""
+                                          });
+                                          setIsOTResultShareModalOpen(true);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-500"
+                                        title="상담결과 공유"
+                                      >
+                                        <Share2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={(e) => handleDeleteCard(e, card.id, column.id)}
+                                      className="opacity-0 group-hover:opacity-100 transition-all p-1.5 hover:bg-red-50 rounded-lg text-red-400"
+                                      title="삭제하기"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
                                 )
                               )}
                             </div>
@@ -967,8 +997,8 @@ export function MemberKanbanBoard() {
                       {card.title}
                     </h4>
                     <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                      {card.id === "8" ? "센터 운영 및 회원 관리 표준화 프로세스" : 
-                       card.id === "9" ? "상담 결과를 바탕으로 한 맞춤형 피드백 생성" : 
+                      {card.id === "8" ? "센터 운영 및 회원 관리 표준화 프로세스" :
+                       card.id === "9" ? "OT 기록을 바탕으로 회원님께 공유할 맞춤 상담 결과" :
                        "회원이 첫 수업 전 준비해야 할 체크리스트"}
                     </p>
                   </div>
@@ -1028,10 +1058,52 @@ export function MemberKanbanBoard() {
         onClose={() => setIsManualModalOpen(false)}
       />
 
+      {/* 첫 상담 후 상담 결과 모달 */}
+      <ConsultationResultModal
+        isOpen={isConsultationResultModalOpen}
+        onClose={() => setIsConsultationResultModalOpen(false)}
+        membersWithData={[
+          // 신규 회원 (상담 데이터)
+          ...(columns
+            .find(col => col.id === "new")
+            ?.cards
+            .filter(card => !card.isTemplate && card.consultationData && card.memberName)
+            .map(card => ({
+              id: card.id,
+              memberName: card.memberName!,
+              type: "consultation" as const,
+              consultationData: card.consultationData!,
+            })) || []),
+          // OT 회원 (OT 데이터)
+          ...(columns
+            .find(col => col.id === "ot")
+            ?.cards
+            .filter(card => !card.isTemplate && card.otFormData && card.memberName)
+            .map(card => ({
+              id: card.id,
+              memberName: card.memberName!,
+              type: "ot" as const,
+              otFormData: card.otFormData!,
+            })) || []),
+        ]}
+        gymName="We:form"
+      />
+
       {/* PT 전 준비물 안내 모달 */}
       <PTPreparationGuideModal
         isOpen={isPreparationGuideModalOpen}
         onClose={() => setIsPreparationGuideModalOpen(false)}
+      />
+
+      {/* OT 상담결과 공유 모달 */}
+      <OTResultShareModal
+        isOpen={isOTResultShareModalOpen}
+        onClose={() => {
+          setIsOTResultShareModalOpen(false);
+          setSelectedOTDataForShare(null);
+        }}
+        otData={selectedOTDataForShare?.otData || null}
+        gymName="We:form"
       />
     </div>
   );

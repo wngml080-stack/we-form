@@ -10,6 +10,27 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber, formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 
+// 상품명에서 횟수 추출 (예: "PT 50회" → 50, "PT50" → 50, "50회" → 50)
+const extractSessionsFromName = (name: string): number | null => {
+  if (!name) return null;
+  // "50회", "50 회" 패턴 먼저 검색
+  const sessionMatch = name.match(/(\d+)\s*회/);
+  if (sessionMatch) {
+    return parseInt(sessionMatch[1], 10);
+  }
+  // "PT50", "PT 50" 패턴 검색
+  const ptMatch = name.match(/PT\s*(\d+)/i);
+  if (ptMatch) {
+    return parseInt(ptMatch[1], 10);
+  }
+  // 숫자만 있는 경우 (예: "50")
+  const numberMatch = name.match(/^(\d+)$/);
+  if (numberMatch) {
+    return parseInt(numberMatch[1], 10);
+  }
+  return null;
+};
+
 // 다음 입력 필드로 이동하는 헬퍼 함수 (TD 셀 단위로 이동)
 const moveToNextCell = (currentElement: HTMLElement): boolean => {
   const currentTd = currentElement.closest("td");
@@ -399,12 +420,8 @@ export function PaymentsTable({
               const isRenewal = currentData.sale_type === "재등록" || currentData.sale_type === "리뉴";
 
               if (isEditing) {
-                const onChangeHandler = payment.isNew ? (field: string, value: string | number) => {
-                  // 새 행인 경우 newRows와 editForm 모두 업데이트
-                  onNewRowChange(field, value);
-                  // editForm도 즉시 업데이트
-                  onEditFormChange(field, value);
-                } : onEditFormChange;
+                // 새 행인 경우 onNewRowChange만 호출 (이미 editForm도 업데이트함)
+                const onChangeHandler = payment.isNew ? onNewRowChange : onEditFormChange;
                 const saveHandler = payment.isNew ? onSaveNewRow : onSaveEdit;
                 const cancelHandler = payment.isNew ? onCancelNewRow : onCancelEdit;
 
@@ -548,7 +565,7 @@ export function PaymentsTable({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-white rounded-lg border border-slate-200 shadow-xl">
-                              {["워크인", "인터넷", "지인추천", "인스타그램", "네이버", "전화상담", "기타"].map(route => (
+                              {["워크인", "인터넷", "지인추천", "인스타그램", "네이버", "전화상담", "타종목신규", "기타"].map(route => (
                                 <SelectItem key={route} value={route} className="text-[10px]">{route}</SelectItem>
                               ))}
                             </SelectContent>
@@ -588,24 +605,36 @@ export function PaymentsTable({
                           value={editForm.membership_name || ""}
                           options={allMembershipNames}
                           placeholder="상품명"
-                          onChange={(v) => onChangeHandler("membership_name", v)}
+                          onChange={(v) => {
+                            onChangeHandler("membership_name", v);
+                            // 상품명에서 횟수 자동 추출 (PT인 경우)
+                            if (isPT) {
+                              const extractedSessions = extractSessionsFromName(v);
+                              if (extractedSessions) {
+                                onChangeHandler("service_sessions", extractedSessions);
+                              }
+                            }
+                          }}
                           onAdd={(name) => onAddOption?.("membership_name", name)}
                           className="h-9 w-full text-xs bg-white border border-slate-300 rounded-md font-bold"
                           triggerClassName="border border-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         />
                         {isPT && (
-                          <div className="grid grid-cols-4 gap-1 pt-1 border-t border-slate-200 w-full">
-                            <div className="space-y-0.5">
-                              <Label className="text-[9px] font-bold text-slate-400 text-center block">횟수</Label>
-                              <Input
+                          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 w-full">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-orange-500 text-center block flex items-center justify-center gap-1">
+                                <Gift className="w-3 h-3" />
+                                서비스
+                              </Label>
+                              <input
                                 type="text"
                                 inputMode="numeric"
-                                value={editForm.service_sessions || ""}
+                                value={editForm.bonus_sessions !== undefined ? String(editForm.bonus_sessions) : ""}
                                 onChange={(e) => {
-                                  const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "") || "0";
-                                  onChangeHandler("service_sessions", parseInt(val) || 0);
+                                  const v = e.target.value.replace(/[^0-9]/g, "");
+                                  onChangeHandler("bonus_sessions", v === "" ? 0 : parseInt(v, 10));
                                 }}
-                                className="h-7 text-[10px] border border-slate-300 bg-white rounded-md font-bold text-center"
+                                className="h-8 w-full text-sm border border-orange-300 bg-orange-50 rounded-md font-bold text-center px-2"
                                 placeholder="0"
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
@@ -618,18 +647,21 @@ export function PaymentsTable({
                                 }}
                               />
                             </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[9px] font-bold text-orange-500 text-center block">서비스</Label>
-                              <Input
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-slate-500 text-center block flex items-center justify-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                1회당
+                              </Label>
+                              <input
                                 type="text"
                                 inputMode="numeric"
-                                value={editForm.bonus_sessions || ""}
+                                value={editForm.validity_per_session !== undefined ? String(editForm.validity_per_session) : ""}
                                 onChange={(e) => {
-                                  const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "") || "0";
-                                  onChangeHandler("bonus_sessions", parseInt(val) || 0);
+                                  const v = e.target.value.replace(/[^0-9]/g, "");
+                                  onChangeHandler("validity_per_session", v === "" ? 0 : parseInt(v, 10));
                                 }}
-                                className="h-7 text-[10px] border border-orange-300 bg-orange-50 rounded-md font-bold text-center"
-                                placeholder="0"
+                                className="h-8 w-full text-sm border border-slate-300 bg-white rounded-md font-bold text-center px-2"
+                                placeholder="7"
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
                                     e.preventDefault();
@@ -641,36 +673,16 @@ export function PaymentsTable({
                                 }}
                               />
                             </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[9px] font-bold text-slate-400 text-center block">1회당</Label>
-                              <Input
-                                type="text"
-                                inputMode="numeric"
-                                value={editForm.validity_per_session || ""}
-                                onChange={(e) => {
-                                  const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+/, "") || "0";
-                                  onChangeHandler("validity_per_session", parseInt(val) || 0);
-                                }}
-                                className="h-7 text-[10px] border border-slate-300 bg-white rounded-md font-bold text-center"
-                                placeholder="일"
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    moveToNextCell(e.currentTarget);
-                                  } else if (e.key === "Escape") {
-                                    e.preventDefault();
-                                    cancelHandler();
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-0.5">
-                              <Label className="text-[9px] font-bold text-slate-400 text-center block">시작일</Label>
-                              <Input
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-bold text-green-600 text-center block flex items-center justify-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                시작일
+                              </Label>
+                              <input
                                 type="date"
                                 value={editForm.membership_start_date || ""}
                                 onChange={(e) => onChangeHandler("membership_start_date", e.target.value)}
-                                className="h-7 text-[10px] border border-slate-300 bg-white rounded-md font-bold"
+                                className="h-8 w-full text-xs border border-green-300 bg-green-50 rounded-md font-bold text-center px-1"
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
                                     e.preventDefault();

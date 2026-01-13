@@ -116,6 +116,8 @@ export function OTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-4xl bg-[#f8fafc] p-0 border-none rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogTitle className="sr-only">OT 수업 기록지</DialogTitle>
+        <DialogDescription className="sr-only">회원 OT 수업 기록을 작성하고 관리합니다.</DialogDescription>
         {/* 헤더 */}
         <div className="bg-slate-900 p-8 text-white relative overflow-hidden flex-shrink-0">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>

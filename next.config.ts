@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Turbopack 루트 디렉토리 설정
+  turbopack: {
+    root: __dirname,
+  },
+
   // SWC 컴파일러 최적화 - 모던 브라우저 타겟
   compiler: {
     // 프로덕션에서 console.log 제거
