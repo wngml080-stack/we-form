@@ -36,86 +36,137 @@ export async function GET(request: Request) {
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-    // 모든 쿼리를 병렬로 실행
-    const [
-      gymsResult,
-      staffsResult,
-      membersResult,
-      paymentsResult,
-      eventsResult,
-      totalMembersResult,
-      activeMembersResult,
-      monthlyPaymentsResult
-    ] = await Promise.all([
-      // 지점 목록
+    // 1단계: 지점 목록과 직원, 이벤트 먼저 조회
+    const [gymsResult, staffsResult, eventsResult] = await Promise.all([
       supabaseAdmin
         .from("gyms")
         .select("*, staffs(id, name, role, email)")
         .eq("company_id", companyId)
         .order("created_at", { ascending: false }),
-      // 전체 직원
       supabaseAdmin
         .from("staffs")
         .select("id, name, email, role, job_title, gym_id, employment_status, created_at, gyms(name)")
         .eq("company_id", companyId)
         .order("name", { ascending: true }),
-      // 회원 데이터 (필요한 필드만)
-      supabaseAdmin
-        .from("members")
-        .select("id, name, phone, gym_id, status, created_at")
-        .eq("company_id", companyId),
-      // 결제 데이터 (필요한 필드만)
-      supabaseAdmin
-        .from("member_payments")
-        .select("id, member_id, amount, payment_date")
-        .eq("company_id", companyId),
-      // 회사 일정/행사
       supabaseAdmin
         .from("company_events")
         .select("*")
         .eq("company_id", companyId)
-        .order("event_date", { ascending: true }),
-      // 전체 회원 수
-      supabaseAdmin
-        .from("members")
-        .select("*", { count: "exact", head: true })
-        .eq("company_id", companyId),
-      // 활성 회원 수
-      supabaseAdmin
-        .from("members")
-        .select("*", { count: "exact", head: true })
-        .eq("company_id", companyId)
-        .eq("status", "active"),
-      // 이번달 매출
-      supabaseAdmin
-        .from("member_payments")
-        .select("amount")
-        .eq("company_id", companyId)
-        .gte("payment_date", firstDayOfMonth)
+        .order("event_date", { ascending: true })
     ]);
 
-    // 에러 체크
     if (gymsResult.error) throw gymsResult.error;
     if (staffsResult.error) throw staffsResult.error;
-    if (membersResult.error) throw membersResult.error;
-    if (paymentsResult.error) throw paymentsResult.error;
     if (eventsResult.error) throw eventsResult.error;
 
-    const gyms = gymsResult.data;
-    const allStaffs = staffsResult.data;
-    const members = membersResult.data;
-    const payments = paymentsResult.data;
-    const events = eventsResult.data;
+    const gyms = gymsResult.data || [];
+    const allStaffs = staffsResult.data || [];
+    const events = eventsResult.data || [];
+    const gymIds = gyms.map(g => g.id);
+
+    // 2단계: gym_id + company_id로 결제 데이터 조회 (통합회원관리와 동일한 방식)
+    let payments: any[] = [];
+    let monthlySales = 0;
+    let activeMembersCount = 0;
+
+    if (gymIds.length > 0) {
+      const [paymentsResult, monthlyPaymentsResult, activeMembersResult] = await Promise.all([
+        // member_payments에서 회원 정보 조회 (gym_id + company_id 기준 - 통합회원관리와 동일)
+        supabaseAdmin
+          .from("member_payments")
+          .select("id, member_name, phone, amount, created_at, gym_id, membership_category, trainer_name")
+          .in("gym_id", gymIds)
+          .eq("company_id", companyId),
+        // 이번달 매출 (created_at 기준)
+        supabaseAdmin
+          .from("member_payments")
+          .select("amount")
+          .in("gym_id", gymIds)
+          .eq("company_id", companyId)
+          .gte("created_at", firstDayOfMonth),
+        // 활성 회원: member_memberships에서 status가 'active' 또는 '이용중'인 회원
+        supabaseAdmin
+          .from("member_memberships")
+          .select("member_id")
+          .in("gym_id", gymIds)
+          .or("status.eq.active,status.eq.이용중")
+      ]);
+
+      if (paymentsResult.error) {
+        console.error("[HQ Data] payments 조회 에러:", paymentsResult.error);
+        throw paymentsResult.error;
+      }
+
+      if (monthlyPaymentsResult.error) {
+        console.error("[HQ Data] monthlyPayments 조회 에러:", monthlyPaymentsResult.error);
+      }
+
+      if (activeMembersResult.error) {
+        console.error("[HQ Data] activeMembersResult 조회 에러:", activeMembersResult.error);
+      }
+
+      payments = paymentsResult.data || [];
+      monthlySales = monthlyPaymentsResult.data?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+
+      // 활성 회원 수: 고유한 member_id 개수
+      const activeMemberIds = new Set<string>();
+      (activeMembersResult.data || []).forEach((m: any) => {
+        if (m.member_id) activeMemberIds.add(m.member_id);
+      });
+      activeMembersCount = activeMemberIds.size;
+    }
+
+    console.log("[HQ Data] 조회 결과:", {
+      companyId,
+      gymIds,
+      paymentsCount: payments.length,
+      monthlySales,
+      activeMembersCount
+    });
+
+    // 전화번호 기준 중복 제거하여 회원 수 계산 (통합회원관리 방식)
+    const uniquePhones = new Set<string>();
+    payments.forEach((p: any) => {
+      if (p.phone) {
+        uniquePhones.add(p.phone.replace(/-/g, ""));
+      }
+    });
 
     // 미배정 직원 (gym_id가 null)
-    const pendingStaffs = allStaffs?.filter(s => !s.gym_id) || [];
+    const pendingStaffs = allStaffs.filter(s => !s.gym_id);
 
-    // 통계 계산
-    const totalGymsCount = gyms?.length || 0;
-    const totalStaffsCount = allStaffs?.length || 0;
-    const totalMembersCount = totalMembersResult.count || 0;
-    const activeMembersCount = activeMembersResult.count || 0;
-    const monthlySales = monthlyPaymentsResult.data?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+    // 통계 계산 (member_payments 기준)
+    const totalGymsCount = gyms.length;
+    const totalStaffsCount = allStaffs.length;
+    const totalMembersCount = uniquePhones.size;
+
+    console.log("[HQ Data] Stats:", {
+      totalGyms: totalGymsCount,
+      totalStaffs: totalStaffsCount,
+      totalMembers: totalMembersCount,
+      activeMembers: activeMembersCount,
+      monthlySales,
+      paymentsCount: payments.length
+    });
+
+    // payments에서 고유 회원 목록 생성 (전화번호 기준)
+    const memberMap = new Map<string, any>();
+    payments.forEach((p: any) => {
+      if (p.phone) {
+        const normalizedPhone = p.phone.replace(/-/g, "");
+        if (!memberMap.has(normalizedPhone)) {
+          memberMap.set(normalizedPhone, {
+            id: normalizedPhone,
+            name: p.member_name,
+            phone: p.phone,
+            gym_id: p.gym_id,
+            payments: []
+          });
+        }
+        memberMap.get(normalizedPhone).payments.push(p);
+      }
+    });
+    const members = Array.from(memberMap.values());
 
     return NextResponse.json({
       success: true,

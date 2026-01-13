@@ -229,6 +229,12 @@ export function useHqData() {
 
       const { gyms: gymData, allStaffs: allData, pendingStaffs: pendingData, members: memberData, payments: paymentData, events: eventsData, stats: statsData } = result;
 
+      console.log("📊 [HQ Data] API 응답:", {
+        stats: statsData,
+        membersCount: memberData?.length,
+        paymentsCount: paymentData?.length
+      });
+
       // 지점 목록 설정
       if (gymData) setGyms(gymData);
 
