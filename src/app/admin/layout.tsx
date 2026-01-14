@@ -55,6 +55,7 @@ function AdminLayoutContent({
   const userRole = user?.role || "";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(true);
+  const [isBranchOpen, setIsBranchOpen] = useState(true);
 
   const companyName = filterCompanyName || authCompanyName || "";
 
@@ -91,12 +92,17 @@ function AdminLayoutContent({
   }
 
   const dashboardSubMenus = [
-    { name: "매출관리", href: "/admin/sales", icon: DollarSign },
     { name: "스케줄관리", href: "/admin/schedule", icon: Calendar },
-    { name: "출석체크", href: "/admin/attendance", icon: CheckSquare },
     { name: "통합회원관리", href: "/admin/pt-members", icon: UserCheck },
-    { name: "문의관리", href: "/admin/inquiries", icon: MessageSquare },
     { name: "포트폴리오", href: "/admin/portfolio", icon: Briefcase },
+  ];
+
+  const branchSubMenus = [
+    { name: "매출관리", href: "/admin/sales?tab=sales", icon: DollarSign },
+    { name: "지출관리", href: "/admin/sales?tab=expenses", icon: DollarSign },
+    { name: "문의관리", href: "/admin/sales?tab=inquiries", icon: MessageSquare },
+    { name: "급여관리", href: "/admin/salary", icon: DollarSign },
+    { name: "직원관리", href: "/admin/staff", icon: ClipboardCheck },
   ];
 
   const getMenuItems = () => {
@@ -109,11 +115,7 @@ function AdminLayoutContent({
     } else {
       return {
         main: [{ name: "대시보드", href: "/admin", icon: LayoutDashboard }],
-        branch: [
-          { name: "지점 관리", href: "/admin/branch", icon: Building2 },
-          { name: "급여 관리", href: "/admin/salary", icon: DollarSign },
-          { name: "직원 관리", href: "/admin/staff", icon: ClipboardCheck },
-        ],
+        branch: [], // 하위 메뉴로 이동됨
         admin: []
       };
     }
@@ -237,18 +239,57 @@ function AdminLayoutContent({
             <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Management</p>
           </div>
 
-          {menuItems.branch.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                pathname === item.href ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.name}
-            </Link>
-          ))}
+          {userRole !== "staff" ? (
+            <div>
+              <div
+                className={`flex items-center justify-between w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname.startsWith("/admin/branch") || branchSubMenus.some(m => pathname.startsWith(m.href))
+                    ? "bg-primary text-white"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Link href="/admin/branch" className="flex items-center gap-3 flex-1">
+                  <Building2 className="w-4 h-4" />
+                  지점관리
+                </Link>
+                <button onClick={() => setIsBranchOpen(!isBranchOpen)} className="p-1 -mr-1">
+                  {isBranchOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {isBranchOpen && (
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 pl-2">
+                  {branchSubMenus.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        pathname === item.href || pathname.startsWith(item.href + "/")
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      <item.icon className="w-3.5 h-3.5" />
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            menuItems.branch.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === item.href ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.name}
+              </Link>
+            ))
+          )}
 
           {(userRole === "company_admin" || userRole === "system_admin") && (
             <>
@@ -290,8 +331,8 @@ function AdminLayoutContent({
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto bg-[#f8fafc]">
-        <div className="p-6">
+      <main className="flex-1 overflow-auto bg-[#f8fafc] overflow-x-hidden">
+        <div className="p-2 xs:p-3 sm:p-4 md:p-6">
           {children}
         </div>
       </main>

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, Calendar, User, Building, FileText, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { CheckCircle, XCircle, Calendar, User, Building, FileText, ChevronDown, ChevronUp, Clock, Trash2 } from "lucide-react";
 
 interface MonthlyReport {
   id: string;
@@ -54,6 +54,8 @@ export default function AdminReportsPage() {
   // 카드 확장 상태
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const [expandedSchedules, setExpandedSchedules] = useState<any[]>([]);
+  const [expandedStats, setExpandedStats] = useState<any>(null);
+  const [calculatedStatsMap, setCalculatedStatsMap] = useState<Record<string, any>>({}); // 보고서별 실시간 통계 캐시
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
 
   // Supabase 클라이언트 한 번만 생성 (메모이제이션)
@@ -131,6 +133,22 @@ export default function AdminReportsPage() {
       }));
 
       setReports(reportsWithRelations as MonthlyReport[]);
+
+      // 모든 보고서의 실시간 통계를 자동으로 가져오기
+      reportsWithRelations.forEach(async (report: any) => {
+        try {
+          const res = await fetch(`/api/admin/schedule/reports/${report.id}/schedules`);
+          const result = await res.json();
+          if (res.ok && result.success && result.calculatedStats) {
+            setCalculatedStatsMap(prev => ({
+              ...prev,
+              [report.id]: result.calculatedStats
+            }));
+          }
+        } catch {
+          // 개별 통계 로드 실패는 무시
+        }
+      });
     } catch {
       // 네트워크 오류 등 예외 상황
     } finally {
@@ -150,6 +168,7 @@ export default function AdminReportsPage() {
       // 접기
       setExpandedReportId(null);
       setExpandedSchedules([]);
+      setExpandedStats(null);
       return;
     }
 
@@ -157,6 +176,7 @@ export default function AdminReportsPage() {
     setExpandedReportId(reportId);
     setIsLoadingSchedules(true);
     setExpandedSchedules([]);
+    setExpandedStats(null);
 
     try {
       const response = await fetch(`/api/admin/schedule/reports/${reportId}/schedules`);
@@ -164,6 +184,15 @@ export default function AdminReportsPage() {
 
       if (response.ok && result.success) {
         setExpandedSchedules(result.schedules || []);
+        setExpandedStats(result.calculatedStats || null);
+        // 실시간 통계를 캐시에 저장 (접어도 유지됨)
+        if (result.calculatedStats) {
+          setCalculatedStatsMap(prev => ({
+            ...prev,
+            [reportId]: result.calculatedStats
+          }));
+        }
+        console.log("[Reports] calculatedStats from API:", result.calculatedStats);
       } else {
         toast.error(result.error || "스케줄 조회 실패");
       }
@@ -190,9 +219,12 @@ export default function AdminReportsPage() {
   const handleReview = async (action: "approved" | "rejected") => {
     if (!selectedReport || !user) return;
 
+    const isRevisionRequest = selectedReport.status === "approved" && action === "rejected";
     const confirmMsg = action === "approved"
       ? "승인하시겠습니까? 승인 후에는 해당 월의 스케줄을 수정할 수 없습니다."
-      : "반려하시겠습니까?";
+      : isRevisionRequest
+        ? "수정요청 하시겠습니까? 승인된 보고서가 반려 상태로 변경되어 직원이 다시 수정할 수 있습니다."
+        : "반려하시겠습니까?";
 
     if (!confirm(confirmMsg)) return;
 
@@ -214,11 +246,41 @@ export default function AdminReportsPage() {
         throw new Error(result.error || "처리 중 오류가 발생했습니다.");
       }
 
-      toast.success(action === "approved" ? "승인되었습니다." : "반려되었습니다.");
+      toast.success(
+        action === "approved"
+          ? "승인되었습니다."
+          : isRevisionRequest
+            ? "수정요청이 완료되었습니다."
+            : "반려되었습니다."
+      );
       setIsReviewOpen(false);
       fetchReports();
     } catch (error: any) {
       toast.error(error.message || "처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (!selectedReport || !user) return;
+
+    if (!confirm("정말 이 보고서를 폐기하시겠습니까?\n\n폐기된 보고서는 복구할 수 없으며, 연관된 스케줄의 잠금이 해제됩니다.")) return;
+
+    try {
+      const response = await fetch(`/api/admin/schedule/reports/${selectedReport.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "폐기 처리 중 오류가 발생했습니다.");
+      }
+
+      toast.success("보고서가 폐기되었습니다.");
+      setIsReviewOpen(false);
+      fetchReports();
+    } catch (error: any) {
+      toast.error(error.message || "폐기 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -244,13 +306,13 @@ export default function AdminReportsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4">
+    <div className="p-2 xs:p-3 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-3 xs:space-y-4 sm:space-y-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-3 xs:gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+          <h1 className="text-lg xs:text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
             월별 스케줄 승인
           </h1>
-          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-sm sm:text-base">
+          <p className="text-gray-500 mt-1 sm:mt-2 font-medium text-xs xs:text-sm sm:text-base">
             {showAllGyms
               ? "전체 지점의 스케줄을 검토하고 승인합니다."
               : gymName
@@ -263,83 +325,96 @@ export default function AdminReportsPage() {
           <Button
             variant={showAllGyms ? "default" : "outline"}
             onClick={() => setShowAllGyms(!showAllGyms)}
-            className={showAllGyms ? "bg-[#2F80ED] hover:bg-[#2570d6]" : ""}
+            className={`${showAllGyms ? "bg-[#2F80ED] hover:bg-[#2570d6]" : ""} text-xs xs:text-sm w-full xs:w-auto`}
           >
             {showAllGyms ? "선택 지점만 보기" : "전체 지점 보기"}
           </Button>
         )}
       </div>
 
-      <div className="grid gap-4">
+      <div className="grid gap-2 xs:gap-3 sm:gap-4">
         {reports.length === 0 ? (
-          <Card className="bg-white rounded-2xl shadow-sm border border-gray-100">
-            <CardContent className="py-12 text-center text-gray-500">
+          <Card className="bg-white rounded-xl xs:rounded-2xl shadow-sm border border-gray-100">
+            <CardContent className="py-8 xs:py-12 text-center text-gray-500 text-sm xs:text-base">
               제출된 보고서가 없습니다.
             </CardContent>
           </Card>
         ) : (
           reports.map((report) => (
-            <Card key={report.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-                  <div className="flex-1 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                        <Calendar className="w-5 h-5 text-[#2F80ED]" />
+            <Card key={report.id} className="bg-white rounded-xl xs:rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-3 xs:p-4 sm:p-6">
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 xs:gap-4 sm:gap-6">
+                  <div className="flex-1 space-y-3 xs:space-y-4">
+                    <div className="flex items-center gap-2 xs:gap-3 flex-wrap">
+                      <div className="w-8 h-8 xs:w-10 xs:h-10 rounded-lg xs:rounded-xl bg-blue-50 flex items-center justify-center">
+                        <Calendar className="w-4 h-4 xs:w-5 xs:h-5 text-[#2F80ED]" />
                       </div>
-                      <span className="font-bold text-xl text-gray-900">{report.year_month}</span>
+                      <span className="font-bold text-base xs:text-lg sm:text-xl text-gray-900">{report.year_month}</span>
                       {getStatusBadge(report.status)}
                     </div>
 
-                    <div className="space-y-2 text-sm text-gray-600 pl-13">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
+                    <div className="space-y-1.5 xs:space-y-2 text-xs xs:text-sm text-gray-600 pl-0 xs:pl-11 sm:pl-13">
+                      <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
+                        <User className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-gray-400" />
                         <span className="font-medium text-gray-700">{report.staffs?.name}</span>
-                        <span className="text-gray-400">({report.staffs?.email})</span>
+                        <span className="text-gray-400 text-[10px] xs:text-xs">({report.staffs?.email})</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-gray-400" />
+                      <div className="flex items-center gap-1.5 xs:gap-2">
+                        <Building className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-gray-400" />
                         <span className="text-gray-600">{report.gyms?.name}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600">제출일: {new Date(report.submitted_at).toLocaleString('ko-KR')}</span>
+                      <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
+                        <FileText className="w-3.5 h-3.5 xs:w-4 xs:h-4 text-gray-400" />
+                        <span className="text-gray-600 text-[10px] xs:text-xs sm:text-sm">제출일: {new Date(report.submitted_at).toLocaleString('ko-KR')}</span>
                       </div>
                     </div>
 
                     {/* 통계 */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                      <div className="bg-blue-50 p-3 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="text-xs text-gray-500 font-medium mb-1">총 PT</div>
-                        <div className="text-lg font-bold text-gray-900">{report.stats?.pt_total_count || 0}<span className="text-sm text-gray-500 ml-1">회</span></div>
-                      </div>
-                      <div className="bg-emerald-50 p-3 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="text-xs text-gray-500 font-medium mb-1">근무내</div>
-                        <div className="text-lg font-bold text-gray-900">{report.stats?.pt_inside_count || 0}<span className="text-sm text-gray-500 ml-1">회</span></div>
-                      </div>
-                      <div className="bg-purple-50 p-3 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="text-xs text-gray-500 font-medium mb-1">근무외</div>
-                        <div className="text-lg font-bold text-gray-900">{report.stats?.pt_outside_count || 0}<span className="text-sm text-gray-500 ml-1">회</span></div>
-                      </div>
-                      <div className="bg-orange-50 p-3 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="text-xs text-gray-500 font-medium mb-1">주말/공휴일</div>
-                        <div className="text-lg font-bold text-gray-900">
-                          {(report.stats?.pt_weekend_count || 0) + (report.stats?.pt_holiday_count || 0)}<span className="text-sm text-gray-500 ml-1">회</span>
+                    {(() => {
+                      const cachedStats = calculatedStatsMap[report.id];
+                      const stats = cachedStats || report.stats;
+                      return (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 xs:gap-3 mt-3 xs:mt-4">
+                          <div className="bg-blue-50 p-2 xs:p-3 rounded-lg xs:rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                            <div className="text-[10px] xs:text-xs text-gray-500 font-medium mb-0.5 xs:mb-1">총 PT</div>
+                            <div className="text-sm xs:text-base sm:text-lg font-bold text-gray-900">{stats?.pt_total_count || 0}<span className="text-[10px] xs:text-xs sm:text-sm text-gray-500 ml-0.5 xs:ml-1">회</span></div>
+                          </div>
+                          <div className="bg-emerald-50 p-2 xs:p-3 rounded-lg xs:rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                            <div className="text-[10px] xs:text-xs text-gray-500 font-medium mb-0.5 xs:mb-1">근무내,외</div>
+                            <div className="text-sm xs:text-base sm:text-lg font-bold text-gray-900">
+                              {stats?.pt_inside_count || 0}<span className="text-[10px] xs:text-xs sm:text-sm text-gray-500 ml-0.5">회</span>
+                              <span className="text-gray-400 mx-0.5 xs:mx-1">/</span>
+                              {stats?.pt_outside_count || 0}<span className="text-[10px] xs:text-xs sm:text-sm text-gray-500 ml-0.5">회</span>
+                            </div>
+                          </div>
+                          <div className="bg-orange-50 p-2 xs:p-3 rounded-lg xs:rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                            <div className="text-[10px] xs:text-xs text-gray-500 font-medium mb-0.5 xs:mb-1">주말, 공휴일</div>
+                            <div className="text-sm xs:text-base sm:text-lg font-bold text-gray-900">
+                              {stats?.pt_weekend_count || 0}<span className="text-[10px] xs:text-xs sm:text-sm text-gray-500 ml-0.5 xs:ml-1">회</span>
+                            </div>
+                          </div>
+                          <div className="bg-purple-50 p-2 xs:p-3 rounded-lg xs:rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                            <div className="text-[10px] xs:text-xs text-gray-500 font-medium mb-0.5 xs:mb-1">OT</div>
+                            <div className="text-sm xs:text-base sm:text-lg font-bold text-gray-900">
+                              {(stats?.ot_count || 0) + (stats?.ot_inbody_count || 0)}<span className="text-[10px] xs:text-xs sm:text-sm text-gray-500 ml-0.5 xs:ml-1">회</span>
+                              <span className="text-[8px] xs:text-[10px] sm:text-xs text-gray-400 ml-0.5 xs:ml-1 hidden xs:inline">(인바디 {stats?.ot_inbody_count || stats?.inbody_count || 0}개)</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {report.staff_memo && (
-                      <div className="mt-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                        <div className="font-semibold text-sm text-gray-700 mb-1.5">직원 메모</div>
-                        <div className="text-sm text-gray-600">{report.staff_memo}</div>
+                      <div className="mt-2 xs:mt-3 p-2 xs:p-3 sm:p-4 bg-blue-50 border border-blue-100 rounded-lg xs:rounded-xl">
+                        <div className="font-semibold text-xs xs:text-sm text-gray-700 mb-1 xs:mb-1.5">직원 메모</div>
+                        <div className="text-xs xs:text-sm text-gray-600">{report.staff_memo}</div>
                       </div>
                     )}
 
                     {report.admin_memo && (
-                      <div className="mt-3 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                        <div className="font-semibold text-sm text-gray-700 mb-1.5">관리자 메모</div>
-                        <div className="text-sm text-gray-600">{report.admin_memo}</div>
+                      <div className="mt-2 xs:mt-3 p-2 xs:p-3 sm:p-4 bg-gray-50 border border-gray-200 rounded-lg xs:rounded-xl">
+                        <div className="font-semibold text-xs xs:text-sm text-gray-700 mb-1 xs:mb-1.5">관리자 메모</div>
+                        <div className="text-xs xs:text-sm text-gray-600">{report.admin_memo}</div>
                       </div>
                     )}
                   </div>
@@ -348,9 +423,20 @@ export default function AdminReportsPage() {
                     <div className="flex flex-col gap-2">
                       <Button
                         onClick={() => openReview(report)}
-                        className="h-10 bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold shadow-sm w-full lg:w-32"
+                        className="h-8 xs:h-9 sm:h-10 bg-[#2F80ED] hover:bg-[#2570d6] text-white font-semibold shadow-sm w-full lg:w-32 text-xs xs:text-sm"
                       >
                         검토하기
+                      </Button>
+                    </div>
+                  )}
+                  {report.status === "approved" && (
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => openReview(report)}
+                        className="h-8 xs:h-9 sm:h-10 border-orange-300 text-orange-600 hover:bg-orange-50 font-semibold shadow-sm w-full lg:w-32 text-xs xs:text-sm"
+                      >
+                        수정요청
                       </Button>
                     </div>
                   )}
@@ -361,17 +447,9 @@ export default function AdminReportsPage() {
                   onClick={() => toggleExpand(report.id)}
                   className="w-full mt-4 pt-4 border-t border-gray-100 flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-[#2F80ED] transition-colors"
                 >
-                  {expandedReportId === report.id ? (
-                    <>
-                      <ChevronUp className="w-4 h-4" />
-                      스케줄 상세 접기
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-4 h-4" />
-                      스케줄 상세 보기
-                    </>
-                  )}
+                  <ChevronUp className={`w-4 h-4 ${expandedReportId === report.id ? "block" : "hidden"}`} />
+                  <ChevronDown className={`w-4 h-4 ${expandedReportId === report.id ? "hidden" : "block"}`} />
+                  <span>{expandedReportId === report.id ? "스케줄 상세 접기" : "스케줄 상세 보기"}</span>
                 </button>
 
                 {/* 확장된 스케줄 목록 */}
@@ -386,6 +464,7 @@ export default function AdminReportsPage() {
                         등록된 스케줄이 없습니다.
                       </div>
                     ) : (
+                      <>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
@@ -395,41 +474,84 @@ export default function AdminReportsPage() {
                               <th className="py-2 px-3 text-left font-semibold text-gray-600">타입</th>
                               <th className="py-2 px-3 text-left font-semibold text-gray-600">회원</th>
                               <th className="py-2 px-3 text-left font-semibold text-gray-600">상태</th>
-                              <th className="py-2 px-3 text-left font-semibold text-gray-600">구분</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {expandedSchedules.map((schedule: any, idx: number) => (
-                              <tr key={schedule.id || idx} className="border-b border-gray-50 hover:bg-gray-50">
-                                <td className="py-2.5 px-3 text-gray-700">{schedule.date}</td>
-                                <td className="py-2.5 px-3 text-gray-600">
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                    {schedule.time}
-                                  </div>
-                                </td>
-                                <td className="py-2.5 px-3">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    schedule.type === "PT" ? "bg-blue-100 text-blue-700" :
-                                    schedule.type === "OT" ? "bg-purple-100 text-purple-700" :
-                                    "bg-gray-100 text-gray-700"
-                                  }`}>
-                                    {schedule.type}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 font-medium text-gray-800">{schedule.member_name}</td>
-                                <td className="py-2.5 px-3">{getScheduleStatusBadge(schedule.status)}</td>
-                                <td className="py-2.5 px-3 text-gray-600">
-                                  {schedule.schedule_type === "inside" ? "근무내" :
-                                   schedule.schedule_type === "outside" ? "근무외" :
-                                   schedule.schedule_type === "weekend" ? "주말" :
-                                   schedule.schedule_type === "holiday" ? "공휴일" : "-"}
-                                </td>
-                              </tr>
-                            ))}
+                            {expandedSchedules.map((schedule: any, idx: number) => {
+                              // 타입 표시 로직
+                              const getTypeLabel = () => {
+                                if (schedule.type === "PT") {
+                                  if (schedule.schedule_type === "inside") return "근무내";
+                                  if (schedule.schedule_type === "outside") return "근무외";
+                                  if (schedule.schedule_type === "weekend" || schedule.schedule_type === "holiday") return "주말,공휴일";
+                                  return "근무내";
+                                }
+                                if (schedule.type === "OT") {
+                                  return schedule.inbody_checked ? "OT+인바디" : "OT";
+                                }
+                                if (schedule.type === "Personal") {
+                                  if (schedule.schedule_type === "inside") return "근무내 개인일정";
+                                  if (schedule.schedule_type === "outside") return "근무외 개인일정";
+                                  return "개인일정";
+                                }
+                                return schedule.type || "-";
+                              };
+
+                              const getTypeStyle = () => {
+                                if (schedule.type === "PT") {
+                                  if (schedule.schedule_type === "inside") return "bg-emerald-100 text-emerald-700";
+                                  if (schedule.schedule_type === "outside") return "bg-amber-100 text-amber-700";
+                                  if (schedule.schedule_type === "weekend" || schedule.schedule_type === "holiday") return "bg-orange-100 text-orange-700";
+                                  return "bg-emerald-100 text-emerald-700";
+                                }
+                                if (schedule.type === "OT") return "bg-purple-100 text-purple-700";
+                                if (schedule.type === "Personal") return "bg-slate-100 text-slate-700";
+                                return "bg-gray-100 text-gray-600";
+                              };
+
+                              // 횟수 계산 여부 (completed, no_show_deducted만 카운트)
+                              const isCounted = schedule.status === "completed" || schedule.status === "no_show_deducted";
+
+                              return (
+                                <tr key={schedule.id || idx} className={`border-b border-gray-50 hover:bg-gray-50 ${!isCounted ? "opacity-50" : ""}`}>
+                                  <td className="py-2.5 px-3 text-gray-700">{schedule.date}</td>
+                                  <td className="py-2.5 px-3 text-gray-600">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                      {schedule.time}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getTypeStyle()}`}>
+                                      {getTypeLabel()}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 font-medium text-gray-800">{schedule.member_name}</td>
+                                  <td className="py-2.5 px-3">{getScheduleStatusBadge(schedule.status)}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
+                      {/* 스케줄 요약 - 테이블 하단 */}
+                      {expandedStats && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600">
+                          <span className="font-semibold text-gray-800">상세요약: </span>
+                          <span>
+                            PT <strong className="text-blue-600">{expandedStats.pt_total_count}회</strong> (근무내 {expandedStats.pt_inside_count}회 / 근무외 {expandedStats.pt_outside_count}회 / 주말&공휴일 {expandedStats.pt_weekend_count}회 / 서비스&취소&노쇼 {expandedStats.cancelled_pt_count || 0}회, <span className="text-red-500">미처리 {expandedStats.reserved_pt_count || 0}회</span>)
+                          </span>
+                          <span className="mx-2 text-gray-300">|</span>
+                          <span>
+                            개인일정 <strong className="text-slate-600">{(expandedStats.personal_inside_count || 0) + (expandedStats.personal_outside_count || 0)}회</strong> (근무내 {expandedStats.personal_inside_count || 0}시간 / 근무외 {expandedStats.personal_outside_count || 0}시간)
+                          </span>
+                          <span className="mx-2 text-gray-300">|</span>
+                          <span>
+                            OT <strong className="text-purple-600">{expandedStats.ot_count || 0}회</strong> / OT+인바디 <strong className="text-purple-600">{expandedStats.ot_inbody_count || 0}회</strong>, <span className="text-red-500">미처리 {expandedStats.reserved_ot_count || 0}회</span>
+                          </span>
+                        </div>
+                      )}
+                      </>
                     )}
                   </div>
                 )}
@@ -443,8 +565,12 @@ export default function AdminReportsPage() {
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
         <DialogContent className="bg-white max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-900">스케줄 보고서 검토</DialogTitle>
-            <DialogDescription className="sr-only">스케줄 보고서를 검토합니다</DialogDescription>
+            <DialogTitle className="text-xl font-bold text-gray-900">
+              {selectedReport?.status === "approved" ? "보고서 수정요청" : "스케줄 보고서 검토"}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {selectedReport?.status === "approved" ? "승인된 보고서에 수정을 요청합니다" : "스케줄 보고서를 검토합니다"}
+            </DialogDescription>
           </DialogHeader>
 
           {selectedReport && (
@@ -460,32 +586,41 @@ export default function AdminReportsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="p-3 bg-blue-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">총 PT</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {selectedReport.stats?.pt_total_count || 0}<span className="text-sm text-gray-500 ml-1">회</span>
+              {(() => {
+                const cachedStats = calculatedStatsMap[selectedReport.id];
+                const stats = cachedStats || selectedReport.stats;
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 bg-blue-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                      <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">총 PT</div>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {stats?.pt_total_count || 0}<span className="text-sm text-gray-500 ml-1">회</span>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                      <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">근무내,외</div>
+                      <div className="text-xl font-bold text-gray-900">
+                        {stats?.pt_inside_count || 0}<span className="text-sm text-gray-500 ml-1">회</span>
+                        <span className="text-gray-400 mx-1">/</span>
+                        {stats?.pt_outside_count || 0}<span className="text-sm text-gray-500 ml-1">회</span>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-orange-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                      <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">주말, 공휴일</div>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {stats?.pt_weekend_count || 0}<span className="text-sm text-gray-500 ml-1">회</span>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-purple-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
+                      <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">OT</div>
+                      <div className="text-xl font-bold text-gray-900">
+                        {(stats?.ot_count || 0) + (stats?.ot_inbody_count || 0)}<span className="text-sm text-gray-500 ml-1">회</span>
+                        <span className="text-xs text-gray-400 ml-1">(인바디 {stats?.ot_inbody_count || stats?.inbody_count || 0}개)</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="p-3 bg-emerald-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">근무내</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {selectedReport.stats?.pt_inside_count || 0}<span className="text-sm text-gray-500 ml-1">회</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-purple-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">근무외</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {selectedReport.stats?.pt_outside_count || 0}<span className="text-sm text-gray-500 ml-1">회</span>
-                  </div>
-                </div>
-                <div className="p-3 bg-orange-50 rounded-xl border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">주말/공휴일</div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {(selectedReport.stats?.pt_weekend_count || 0) + (selectedReport.stats?.pt_holiday_count || 0)}<span className="text-sm text-gray-500 ml-1">회</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {selectedReport.staff_memo && (
                 <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
@@ -508,21 +643,44 @@ export default function AdminReportsPage() {
           )}
 
           <DialogFooter className="gap-2 mt-2">
-            <Button
-              variant="outline"
-              onClick={() => handleReview("rejected")}
-              className="h-10 border-2 border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 font-semibold"
-            >
-              <XCircle className="w-4 h-4 mr-2" />
-              반려
-            </Button>
-            <Button
-              onClick={() => handleReview("approved")}
-              className="h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-sm"
-            >
-              <CheckCircle className="w-4 h-4 mr-2" />
-              승인
-            </Button>
+            {selectedReport?.status === "approved" ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleDiscard}
+                  className="h-10 border-2 border-red-400 text-red-600 hover:bg-red-50 hover:text-red-700 font-semibold"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  폐기
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleReview("rejected")}
+                  className="h-10 border-2 border-orange-400 text-orange-600 hover:bg-orange-50 hover:text-orange-700 font-semibold"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  수정요청
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => handleReview("rejected")}
+                  className="h-10 border-2 border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700 font-semibold"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  반려
+                </Button>
+                <Button
+                  onClick={() => handleReview("approved")}
+                  className="h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-sm"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  승인
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

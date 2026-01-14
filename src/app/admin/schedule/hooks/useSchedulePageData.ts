@@ -65,8 +65,11 @@ export function useSchedulePageData() {
   const workEndTime = user?.work_end_time || null;
 
   // 뷰 타입 및 날짜
-  const [viewType, setViewType] = useState<'day' | 'week' | 'month'>('week');
-  const todayStr = new Date().toISOString().split('T')[0];
+  const [viewType, setViewType] = useState<'day' | 'week' | 'month' | 'attendance'>('week');
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
   // 월별 통계
@@ -87,29 +90,11 @@ export function useSchedulePageData() {
   });
   const [selectedMemberMembership, setSelectedMemberMembership] = useState<any | null>(null);
 
-  // 내 스케줄 제출 관련 상태
+  // 선택된 강사의 스케줄 제출 관련 상태
   const [mySubmissionStatus, setMySubmissionStatus] = useState<"none" | "submitted" | "approved" | "rejected">("none");
   const [mySubmittedAt, setMySubmittedAt] = useState<string | null>(null);
   const [myReviewedAt, setMyReviewedAt] = useState<string | null>(null);
   const [myAdminMemo, setMyAdminMemo] = useState<string | null>(null);
-
-  // 빠른 상태 변경 모달
-  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
-
-  // 스케줄 수정 모달
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState<EditFormData>({
-    member_id: "",
-    status: "",
-    type: "",
-    date: "",
-    time: "",
-    duration: "60",
-    personalTitle: "",
-    sub_type: "",
-    inbody_checked: false,
-  });
 
   const yearMonth = useMemo(() => {
     const d = new Date(selectedDate);
@@ -117,10 +102,11 @@ export function useSchedulePageData() {
   }, [selectedDate]);
 
   // 스케줄 생성 시 회원 필터링
-  // - 담당자 배정 없이 전체 회원 표시
+  // - 지정된 코치의 회원만 표시 (선택된 코치가 있으면 필터링)
   const filteredMembers = useMemo(() => {
-    return members;
-  }, [members]);
+    if (selectedStaffId === "all") return members;
+    return members.filter(m => m.trainer_id === selectedStaffId);
+  }, [members, selectedStaffId]);
 
   // 스케줄 조회 함수 (memberships를 파라미터로 받아 클로저 문제 해결)
   const fetchSchedules = async (gymId: string, staffIdFilter: string, memberships?: Record<string, any[]>) => {
@@ -150,8 +136,31 @@ export function useSchedulePageData() {
     }
   };
 
-  // 내 제출 상태 조회
-  const fetchMyReportStatus = async (staffId: string, gymId: string) => {
+  // 빠른 상태 변경 모달
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
+
+  // 스케줄 수정 모달
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormData>({
+    member_id: "",
+    status: "",
+    type: "",
+    date: "",
+    time: "",
+    duration: "60",
+    personalTitle: "",
+    sub_type: "",
+    inbody_checked: false,
+  });
+
+  // 제출 상태 조회 (특정 강사 기준)
+  const fetchReportStatus = async (staffId: string, gymId: string) => {
+    if (!staffId || staffId === "all" || !gymId) {
+      setMySubmissionStatus("none");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("monthly_schedule_reports")
       .select("id, status, submitted_at, reviewed_at, admin_memo")
@@ -160,7 +169,10 @@ export function useSchedulePageData() {
       .eq("year_month", yearMonth)
       .maybeSingle();
 
-    if (error) return;
+    if (error) {
+      console.error("Report status fetch error:", error);
+      return;
+    }
 
     if (data) {
       setMySubmissionStatus(data.status as any);
@@ -182,14 +194,17 @@ export function useSchedulePageData() {
       router.push("/sign-in");
       return;
     }
-    if (!selectedGymId) return;
+    if (!selectedGymId) {
+      setIsLoading(false);
+      return;
+    }
 
     const init = async () => {
       try {
         const staffIdFilter = user.role === "staff" ? user.id : "all";
         setSelectedStaffId(staffIdFilter);
 
-        // 회원 데이터 조회 (모든 회원 - status 필터 제거)
+        // 회원 데이터 조회
         const { data: memberData } = await supabase
           .from("members")
           .select("id, name, phone, trainer_id, status")
@@ -200,15 +215,12 @@ export function useSchedulePageData() {
           setMembers(memberData);
         }
 
-        // 회원권 데이터 조회 (서비스 세션 포함)
-        const { data: membershipData, error: membershipError } = await supabase
+        // 회원권 데이터 조회
+        const { data: membershipData } = await supabase
           .from("member_memberships")
           .select("id, member_id, name, total_sessions, used_sessions, service_sessions, used_service_sessions, start_date, end_date, status")
           .eq("gym_id", selectedGymId)
           .eq("status", "active");
-
-        // 디버그 로그
-        console.log("[Schedule] 회원권 조회 결과:", { membershipData, membershipError, selectedGymId });
 
         if (membershipData) {
           const grouped = membershipData.reduce((acc: Record<string, any[]>, m) => {
@@ -216,29 +228,31 @@ export function useSchedulePageData() {
             acc[m.member_id].push(m);
             return acc;
           }, {});
-          console.log("[Schedule] 그룹화된 회원권:", grouped);
           setMemberMemberships(grouped);
         }
 
-        if (user.role !== "staff") {
-          const staffResult = await supabase
-            .from("staffs")
-            .select("id, name, work_start_time, work_end_time")
-            .eq("gym_id", selectedGymId)
-            .order("name", { ascending: true });
-          if (staffResult.data) setStaffs(staffResult.data);
+        // 직원 목록 조회
+        const staffQuery = supabase
+          .from("staffs")
+          .select("id, name, work_start_time, work_end_time")
+          .eq("gym_id", selectedGymId);
+        
+        if (user.role === "staff") {
+          staffQuery.eq("id", user.id);
         }
 
-        // 회원권 그룹 데이터를 사용하여 스케줄 조회
+        const staffResult = await staffQuery.order("name", { ascending: true });
+        if (staffResult.data) setStaffs(staffResult.data);
+
         const groupedMemberships = membershipData?.reduce((acc: Record<string, any[]>, m) => {
           if (!acc[m.member_id]) acc[m.member_id] = [];
           acc[m.member_id].push(m);
           return acc;
         }, {}) || {};
 
-        fetchSchedules(selectedGymId, staffIdFilter, groupedMemberships);
-      } catch {
-        // 초기화 실패
+        await fetchSchedules(selectedGymId, staffIdFilter, groupedMemberships);
+      } catch (error) {
+        console.error("Initialization error:", error);
       } finally {
         setIsLoading(false);
       }
@@ -247,12 +261,13 @@ export function useSchedulePageData() {
     init();
   }, [authLoading, filterInitialized, selectedGymId, user]);
 
-  // 월/날짜/지점 변경 시 내 제출 상태 갱신
+  // 월/날짜/지점/강사 변경 시 제출 상태 갱신
   useEffect(() => {
-    if (myStaffId && selectedGymId) {
-      fetchMyReportStatus(myStaffId, selectedGymId);
+    const targetStaffId = selectedStaffId === "all" ? myStaffId : selectedStaffId;
+    if (targetStaffId && selectedGymId) {
+      fetchReportStatus(targetStaffId, selectedGymId);
     }
-  }, [yearMonth, myStaffId, selectedGymId]);
+  }, [yearMonth, selectedStaffId, myStaffId, selectedGymId]);
 
   // 스케줄이 변경되면 통계 재계산
   useEffect(() => {

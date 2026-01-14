@@ -90,34 +90,47 @@ export function FormDialog({
     await onSubmit(e);
   };
 
+  // 320px에 맞는 반응형 maxWidth 클래스 매핑
+  const responsiveMaxWidth = {
+    "max-w-sm": "max-w-[calc(100%-1rem)] xs:max-w-sm",
+    "max-w-md": "max-w-[calc(100%-1rem)] xs:max-w-md",
+    "max-w-lg": "max-w-[calc(100%-1rem)] xs:max-w-lg",
+    "max-w-xl": "max-w-[calc(100%-1rem)] xs:max-w-xl",
+    "max-w-2xl": "max-w-[calc(100%-1rem)] xs:max-w-2xl",
+    "max-w-3xl": "max-w-[calc(100%-1rem)] xs:max-w-3xl",
+    "max-w-4xl": "max-w-[calc(100%-1rem)] xs:max-w-4xl",
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={`bg-white ${maxWidth} max-h-[90vh] overflow-y-auto`}>
+      <DialogContent className={`bg-white ${responsiveMaxWidth[maxWidth]} max-h-[85vh] xs:max-h-[90vh] overflow-y-auto`}>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-base xs:text-lg">{title}</DialogTitle>
           {description ? (
-            <DialogDescription>{description}</DialogDescription>
+            <DialogDescription className="text-xs xs:text-sm">{description}</DialogDescription>
           ) : (
             <DialogDescription className="sr-only">{title}</DialogDescription>
           )}
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 xs:space-y-6">
           {children}
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 flex-col xs:flex-col sm:flex-row">
             {extraFooterContent}
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
+              className="w-full xs:w-full sm:w-auto text-sm xs:text-base"
             >
               {cancelText}
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting || submitDisabled}
+              className="w-full xs:w-full sm:w-auto text-sm xs:text-base"
             >
               {isSubmitting ? (
                 <>

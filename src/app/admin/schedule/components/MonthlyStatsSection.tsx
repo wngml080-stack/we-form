@@ -26,6 +26,8 @@ export function MonthlyStatsSection({
   onQuickAttendance,
   onSubmitMonth,
 }: MonthlyStatsSectionProps) {
+  const isLocked = mySubmissionStatus === "submitted" || mySubmissionStatus === "approved";
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 delay-300">
       {/* 월간 요약 카드 대시보드 */}
@@ -108,13 +110,10 @@ export function MonthlyStatsSection({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50/50">
-                <th className="text-left py-4 px-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest">날짜</th>
-                <th className="text-center py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest">PT 수업</th>
-                <th className="text-center py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest">OT 예약</th>
-                <th className="text-center py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest">회원 상담</th>
-                <th className="text-center py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest">GX 단체</th>
-                <th className="text-center py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest">개인 일정</th>
-                <th className="text-center py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest">합계 (시간)</th>
+                <th className="text-left py-4 px-6 font-bold text-[10px] text-slate-400 uppercase tracking-widest min-w-[120px]">날짜</th>
+                <th className="text-left py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest min-w-[250px]">PT 세션 상세</th>
+                <th className="text-left py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest min-w-[180px]">OT / 개인 일정</th>
+                <th className="text-center py-4 px-4 font-bold text-[10px] text-slate-400 uppercase tracking-widest w-32">합계</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -129,9 +128,10 @@ export function MonthlyStatsSection({
 
                     return (
                       <tr key={dateKey} className="group hover:bg-blue-50/30 transition-all">
-                        <td className="py-4 px-6">
+                        {/* 날짜 */}
+                        <td className="py-6 px-6 align-top">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-700">{shortDate}</span>
+                            <span className="text-sm font-black text-slate-700">{shortDate}</span>
                             <Badge variant="secondary" className={`px-2 py-0 h-5 text-[10px] font-black rounded-md ${
                               isWeekend ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400'
                             }`}>
@@ -139,35 +139,54 @@ export function MonthlyStatsSection({
                             </Badge>
                           </div>
                         </td>
-                        <td className="text-center py-4 px-4">
-                          {dayStats.PT.count > 0 ? (
-                            <span className="font-bold text-blue-600">{dayStats.PT.count}<span className="text-[10px] font-medium text-slate-400 ml-0.5">회</span></span>
-                          ) : <span className="text-slate-200">-</span>}
+
+                        {/* PT 상세 */}
+                        <td className="py-6 px-4 align-top">
+                          <div className="bg-blue-50/30 rounded-xl p-3 border border-blue-50/50 space-y-2">
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <span className="font-black text-blue-600 uppercase w-6">PT</span>
+                              <div className="flex items-center gap-3 text-slate-500">
+                                <span className="flex items-center gap-1"><span className="font-bold text-blue-600">근무내</span> {dayStats.PT.inside}회</span>
+                                <span className="w-px h-2 bg-slate-200"></span>
+                                <span className="flex items-center gap-1"><span className="font-bold text-orange-500">근무외</span> {dayStats.PT.outside}회</span>
+                                <span className="w-px h-2 bg-slate-200"></span>
+                                <span className="flex items-center gap-1"><span className="font-bold text-purple-600">주말</span> {dayStats.PT.weekend}회</span>
+                                <span className="w-px h-2 bg-slate-200"></span>
+                                <span className="flex items-center gap-1"><span className="font-bold text-slate-400">서비스</span> {dayStats.PT.service}회</span>
+                              </div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="text-center py-4 px-4">
-                          {dayStats.OT.count > 0 ? (
-                            <span className="font-bold text-purple-600">{dayStats.OT.count}<span className="text-[10px] font-medium text-slate-400 ml-0.5">회</span></span>
-                          ) : <span className="text-slate-200">-</span>}
+
+                        {/* OT & 개인 상세 */}
+                        <td className="py-6 px-4 align-top">
+                          <div className="space-y-2">
+                            {/* OT */}
+                            <div className="bg-teal-50/30 rounded-xl p-2.5 border border-teal-50/50 flex items-center gap-2 text-[11px]">
+                              <span className="font-black text-teal-600 uppercase w-6">OT</span>
+                              <div className="flex items-center gap-3 text-slate-500">
+                                <span className="flex items-center gap-1"><span className="font-bold text-teal-600">OT</span> {dayStats.OT.ot}회</span>
+                                <span className="w-px h-2 bg-slate-200"></span>
+                                <span className="flex items-center gap-1"><span className="font-bold text-teal-500">인바디</span> {dayStats.OT.inbody}회</span>
+                              </div>
+                            </div>
+                            {/* 개인 */}
+                            <div className="bg-indigo-50/30 rounded-xl p-2.5 border border-indigo-50/50 flex items-center gap-2 text-[11px]">
+                              <span className="font-black text-indigo-600 uppercase w-6">개인</span>
+                              <div className="flex items-center gap-3 text-slate-500">
+                                <span className="flex items-center gap-1"><span className="font-bold text-indigo-600">내</span> {dayStats.Personal.inside.toFixed(1)}h</span>
+                                <span className="w-px h-2 bg-slate-200"></span>
+                                <span className="flex items-center gap-1"><span className="font-bold text-indigo-400">외</span> {dayStats.Personal.outside.toFixed(1)}h</span>
+                              </div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="text-center py-4 px-4">
-                          {dayStats.Consulting.count > 0 ? (
-                            <span className="font-bold text-emerald-600">{dayStats.Consulting.count}<span className="text-[10px] font-medium text-slate-400 ml-0.5">건</span></span>
-                          ) : <span className="text-slate-200">-</span>}
-                        </td>
-                        <td className="text-center py-4 px-4">
-                          {dayStats.GX.count > 0 ? (
-                            <span className="font-bold text-amber-600">{dayStats.GX.count}</span>
-                          ) : <span className="text-slate-200">-</span>}
-                        </td>
-                        <td className="text-center py-4 px-4">
-                          {dayStats.Personal.count > 0 ? (
-                            <span className="font-bold text-slate-500">{dayStats.Personal.count}</span>
-                          ) : <span className="text-slate-200">-</span>}
-                        </td>
-                        <td className="text-center py-4 px-4">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-900 text-white rounded-xl text-[11px] font-black group-hover:bg-blue-600 transition-colors">
-                            {dayStats.total.count}건
-                            <span className="text-slate-400 group-hover:text-blue-200 font-medium">({dayStats.total.hours.toFixed(1)}h)</span>
+
+                        {/* 합계 */}
+                        <td className="py-6 px-4 text-center align-middle">
+                          <div className="inline-flex flex-col items-center bg-slate-900 text-white px-4 py-2 rounded-2xl shadow-lg shadow-slate-200 group-hover:bg-blue-600 transition-all">
+                            <span className="text-base font-black tracking-tighter">{dayStats.total.count}건</span>
+                            <span className="text-[9px] font-bold text-slate-400 group-hover:text-blue-200 uppercase tracking-widest">{dayStats.total.hours.toFixed(1)}h</span>
                           </div>
                         </td>
                       </tr>
@@ -190,11 +209,22 @@ export function MonthlyStatsSection({
               <tfoot className="bg-slate-900 text-white">
                 <tr>
                   <td className="py-5 px-6 font-black uppercase text-xs tracking-widest text-blue-400">월간 합계</td>
-                  <td className="text-center py-5 px-4 font-black text-base">{monthlyStats.PT}회</td>
-                  <td className="text-center py-5 px-4 font-black text-base">{monthlyStats.OT}회</td>
-                  <td className="text-center py-5 px-4 font-black text-base">{monthlyStats.Consulting}건</td>
-                  <td className="text-center py-5 px-4 font-black text-base">{monthlyStats.GX}회</td>
-                  <td className="text-center py-5 px-4 font-black text-base">{monthlyStats.Personal}건</td>
+                  <td className="py-5 px-4">
+                    <div className="flex items-center gap-4 text-sm font-black">
+                      <span className="text-blue-400">PT {monthlyStats.PT}회</span>
+                      <span className="w-px h-3 bg-slate-700"></span>
+                      <span className="text-slate-300">OT {monthlyStats.OT}회</span>
+                      <span className="w-px h-3 bg-slate-700"></span>
+                      <span className="text-emerald-400">상담 {monthlyStats.Consulting}건</span>
+                    </div>
+                  </td>
+                  <td className="py-5 px-4">
+                    <div className="flex items-center gap-4 text-sm font-black text-slate-300">
+                      <span>GX {monthlyStats.GX}회</span>
+                      <span className="w-px h-3 bg-slate-700"></span>
+                      <span>개인 {monthlyStats.Personal}건</span>
+                    </div>
+                  </td>
                   <td className="text-center py-5 px-4">
                     <div className="inline-flex flex-col">
                       <span className="text-lg font-black tracking-tighter leading-none">{monthlyStats.total}건</span>
@@ -243,9 +273,10 @@ export function MonthlyStatsSection({
                   </div>
                   <Button
                     onClick={() => onQuickAttendance(schedule.id)}
-                    className="h-9 px-4 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl shadow-lg shadow-amber-100 opacity-0 group-hover:opacity-100 transition-all"
+                    disabled={isLocked}
+                    className="h-9 px-4 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl shadow-lg shadow-amber-100 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
                   >
-                    즉시 출석
+                    {isLocked ? "제출됨" : "즉시 출석"}
                   </Button>
                 </div>
               ))}

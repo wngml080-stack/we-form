@@ -17,6 +17,8 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        {/* Viewport for proper mobile scaling - prevents horizontal scroll */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         {/* jsDelivr CDN preconnect for Pretendard font */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
       </head>

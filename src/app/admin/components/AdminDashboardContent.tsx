@@ -83,48 +83,48 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
         onBannerClick={() => setIsAnnouncementModalOpen(true)}
       />
 
-      <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-8 lg:space-y-10">
+      <div className="p-2 xs:p-3 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 xs:space-y-6 lg:space-y-10">
         {/* AI Command Center - 자연어 검색바 */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-250">
           <AiCommandCenter gymId={selectedGymId} />
         </div>
 
         {/* Welcome Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <div className="space-y-2">
-            <p className="text-slate-500 font-medium">{todayDate}</p>
-            <h1 className="text-3xl font-bold text-slate-900">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 xs:gap-4 md:gap-6">
+          <div className="space-y-1 xs:space-y-2">
+            <p className="text-xs xs:text-sm text-slate-500 font-medium">{todayDate}</p>
+            <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-slate-900">
               {userName}님, {getGreeting()} 👋
             </h1>
-            <p className="text-slate-500">
+            <p className="text-xs xs:text-sm text-slate-500">
               오늘도 <span className="text-primary font-semibold">{gymName || "We:form"}</span>의 성공적인 운영을 위해 힘내세요!
             </p>
           </div>
-          
-          <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <div className="text-center border-r border-gray-100 pr-4">
-              <p className="text-xs text-slate-500 mb-1">오늘의 수업</p>
-              <p className="text-xl font-bold text-slate-900">{todaySchedules.length}건</p>
+
+          <div className="flex items-center gap-2 xs:gap-4 bg-white p-2 xs:p-3 sm:p-4 rounded-xl xs:rounded-2xl shadow-sm border border-gray-100 w-full xs:w-auto">
+            <div className="text-center border-r border-gray-100 pr-2 xs:pr-4 flex-1 xs:flex-none">
+              <p className="text-[10px] xs:text-xs text-slate-500 mb-0.5 xs:mb-1">오늘의 수업</p>
+              <p className="text-base xs:text-lg sm:text-xl font-bold text-slate-900">{todaySchedules.length}건</p>
             </div>
-            <div className="text-center pl-4">
-              <p className="text-xs text-slate-500 mb-1">공지사항</p>
-              <p className="text-xl font-bold text-slate-900">{announcements.length}건</p>
+            <div className="text-center pl-2 xs:pl-4 flex-1 xs:flex-none">
+              <p className="text-[10px] xs:text-xs text-slate-500 mb-0.5 xs:mb-1">공지사항</p>
+              <p className="text-base xs:text-lg sm:text-xl font-bold text-slate-900">{announcements.length}건</p>
             </div>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="space-y-8">
-            <div className="h-24 bg-gray-100 rounded-[32px] animate-pulse" />
-            <div className="h-40 bg-gray-100 rounded-[32px] animate-pulse" />
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-              <div className="h-[400px] bg-gray-100 rounded-[32px] animate-pulse" />
-              <div className="h-[400px] bg-gray-100 rounded-[32px] animate-pulse" />
-              <div className="h-[400px] bg-gray-100 rounded-[32px] animate-pulse" />
+          <div className="space-y-4 xs:space-y-6 lg:space-y-8">
+            <div className="h-16 xs:h-20 sm:h-24 bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
+            <div className="h-28 xs:h-32 sm:h-40 bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 xs:gap-4 sm:gap-6 lg:gap-8">
+              <div className="h-[280px] xs:h-[320px] sm:h-[400px] bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
+              <div className="h-[280px] xs:h-[320px] sm:h-[400px] bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
+              <div className="h-[280px] xs:h-[320px] sm:h-[400px] bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
             </div>
           </div>
         ) : (
-          <div className="space-y-8 lg:space-y-10">
+          <div className="space-y-4 xs:space-y-6 lg:space-y-10">
             {/* Quick Actions */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
               <QuickActions />
@@ -141,7 +141,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
             </div>
 
             {/* Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 xs:gap-4 sm:gap-6 lg:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
               {/* Left Column - 지점 공지 */}
               <div className="h-full">
                 <BranchAnnouncementsCard

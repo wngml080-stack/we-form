@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, X, Pencil, Calendar as CalendarIcon, Clock, User, Activity, AlertTriangle, Info, CheckCircle2 } from "lucide-react";
+import { Trash2, X, Pencil, Calendar as CalendarIcon, Clock, User, Activity, AlertTriangle, Info, CheckCircle2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { useMemo, useState } from "react";
 
 interface EditFormData {
   member_id: string;
@@ -38,6 +39,7 @@ interface Member {
   id: string;
   name: string;
   trainer_id?: string;
+  phone?: string;
 }
 
 interface EditScheduleModalProps {
@@ -54,6 +56,7 @@ interface EditScheduleModalProps {
   isLoading: boolean;
   onUpdate: () => void;
   onDelete: () => void;
+  isLocked?: boolean;
 }
 
 export function EditScheduleModal({
@@ -70,43 +73,70 @@ export function EditScheduleModal({
   isLoading,
   onUpdate,
   onDelete,
+  isLocked = false,
 }: EditScheduleModalProps) {
+  const [searchTerm, setSearchTerm] = useState("");
   const isPersonalSchedule = selectedSchedule?.type?.toLowerCase() === 'personal' || selectedSchedule?.type === '개인';
 
+  // 검색어에 따른 회원 필터링
+  const searchedMembers = useMemo(() => {
+    if (!searchTerm.trim()) return filteredMembers;
+    const lowerSearch = searchTerm.toLowerCase();
+    return filteredMembers.filter(m => 
+      m.name.toLowerCase().includes(lowerSearch) || 
+      (m.phone && m.phone.includes(lowerSearch))
+    );
+  }, [filteredMembers, searchTerm]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
-        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
-          <DialogTitle className="flex items-center gap-5 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Pencil className="w-7 h-7 text-white" />
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        setSearchTerm("");
+        onClose();
+      }
+    }}>
+      <DialogContent className="w-[calc(100%-1rem)] xs:w-[calc(100%-1.5rem)] sm:w-full max-w-2xl bg-[#f8fafc] max-h-[85vh] xs:max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
+        <DialogHeader className="px-4 xs:px-6 sm:px-10 py-4 xs:py-6 sm:py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 xs:w-48 sm:w-64 h-32 xs:h-48 sm:h-64 bg-blue-500/10 rounded-full blur-3xl -mr-16 xs:-mr-24 sm:-mr-32 -mt-16 xs:-mt-24 sm:-mt-32"></div>
+          <DialogTitle className="flex items-center gap-3 xs:gap-4 sm:gap-5 relative z-10">
+            <div className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-xl xs:rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Pencil className="w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">
+              <h2 className="text-base xs:text-lg sm:text-2xl font-black text-white tracking-tight">
                 {isPersonalSchedule ? '개인 일정 수정' : '스케줄 정보 수정'}
               </h2>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="hidden xs:flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                <p className="text-sm text-white/80 font-bold">등록된 스케줄의 상세 내용을 변경합니다</p>
+                <p className="text-xs xs:text-sm text-white/80 font-bold">선택하신 코치님의 회원만 필터링됩니다</p>
               </div>
             </div>
           </DialogTitle>
           <DialogDescription className="sr-only">스케줄 정보를 수정합니다</DialogDescription>
           <button
             onClick={onClose}
-            className="absolute top-8 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10"
+            className="absolute top-4 xs:top-6 sm:top-8 right-4 xs:right-6 sm:right-10 w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl xs:rounded-2xl transition-all group z-10"
           >
-            <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+            <X className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-slate-400 group-hover:text-white transition-colors" />
           </button>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-10 space-y-8 bg-[#f8fafc]">
+        <div className="flex-1 overflow-y-auto p-3 xs:p-4 sm:p-6 lg:p-10 space-y-4 xs:space-y-6 sm:space-y-8 bg-[#f8fafc] custom-scrollbar">
+          {isLocked && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <p className="text-xs font-bold text-amber-700 leading-relaxed">
+                해당 월의 스케줄이 관리자에게 제출되었습니다.<br />
+                승인 전까지는 내용을 수정하거나 삭제할 수 없습니다.
+              </p>
+            </div>
+          )}
+          
           {/* 기본 정보 섹션 */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">1</div>
-              <h3 className="text-lg font-black text-slate-900">핵심 일정 정보</h3>
+          <div className="bg-white rounded-xl xs:rounded-2xl sm:rounded-[32px] p-3 xs:p-4 sm:p-6 lg:p-8 border border-slate-100 shadow-sm space-y-4 xs:space-y-6 sm:space-y-8">
+            <div className="flex items-center gap-2 xs:gap-3 mb-2">
+              <div className="w-6 h-6 xs:w-8 xs:h-8 rounded-lg xs:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] xs:text-xs font-black">1</div>
+              <h3 className="text-sm xs:text-base sm:text-lg font-black text-slate-900">핵심 일정 정보</h3>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
@@ -124,28 +154,48 @@ export function EditScheduleModal({
               ) : (
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Member *</Label>
-                    <Select
-                      value={editForm.member_id}
-                      onValueChange={(value) => setEditForm({ ...editForm, member_id: value })}
-                    >
-                      <SelectTrigger className="h-14 bg-slate-50 border-none rounded-2xl font-bold text-lg focus:ring-2 focus:ring-blue-100 transition-all">
-                        <SelectValue placeholder="회원을 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2">
-                        {filteredMembers.length === 0 ? (
-                          <SelectItem value="none" disabled className="rounded-xl font-bold py-3">
-                            {selectedStaffId !== "all" ? "담당 회원이 없습니다" : "등록된 회원이 없습니다"}
-                          </SelectItem>
-                        ) : (
-                          filteredMembers.map((member) => (
-                            <SelectItem key={member.id} value={member.id} className="rounded-xl font-bold py-3">
-                              {member.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Member * (검색 가능)</Label>
+                    <div className="relative group">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
+                        <Search className="w-5 h-5" />
+                      </div>
+                      <Select
+                        value={editForm.member_id}
+                        onValueChange={(value) => {
+                          setEditForm({ ...editForm, member_id: value });
+                          setSearchTerm("");
+                        }}
+                      >
+                        <SelectTrigger className="h-14 pl-14 pr-6 bg-slate-50 border-none rounded-2xl font-bold text-lg focus:ring-2 focus:ring-blue-100 transition-all">
+                          <SelectValue placeholder="회원을 선택하세요" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white rounded-2xl border-none shadow-2xl p-2 max-h-[300px]">
+                          <div className="p-2 sticky top-0 bg-white z-10">
+                            <Input
+                              placeholder="회원 이름 또는 전화번호 검색..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="h-10 rounded-xl border-slate-100 focus-visible:ring-blue-500 mb-2"
+                              onKeyDown={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          {searchedMembers.length === 0 ? (
+                            <div className="py-10 text-center text-slate-400 font-bold">
+                              {selectedStaffId !== "all" ? "담당 회원 중 검색 결과가 없습니다" : "검색 결과가 없습니다"}
+                            </div>
+                          ) : (
+                            searchedMembers.map((member) => (
+                              <SelectItem key={member.id} value={member.id} className="rounded-xl font-bold py-3">
+                                <div className="flex flex-col">
+                                  <span>{member.name}</span>
+                                  {member.phone && <span className="text-[10px] text-slate-400 font-normal">{member.phone}</span>}
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {editForm.member_id && editForm.type === "PT" && (() => {
@@ -356,40 +406,55 @@ export function EditScheduleModal({
                   </Select>
                 </div>
               )}
+
+              {editForm.type === 'OT' && (
+                <div className="flex items-center space-x-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <input
+                    type="checkbox"
+                    id="inbody_checked"
+                    checked={editForm.inbody_checked}
+                    onChange={(e) => setEditForm({ ...editForm, inbody_checked: e.target.checked })}
+                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <Label htmlFor="inbody_checked" className="font-bold text-slate-700 cursor-pointer">인바디 측정 포함</Label>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <DialogFooter className="px-10 py-8 bg-white border-t flex items-center justify-between flex-shrink-0">
+        <DialogFooter className="px-3 xs:px-4 sm:px-6 lg:px-10 py-3 xs:py-4 sm:py-6 lg:py-8 bg-white border-t flex flex-col xs:flex-row items-center justify-between flex-shrink-0 gap-2 xs:gap-3">
           <Button
             variant="ghost"
             onClick={onDelete}
-            disabled={isLoading}
-            className="h-14 px-6 rounded-2xl font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all gap-2"
+            disabled={isLoading || isLocked}
+            className="h-10 xs:h-12 sm:h-14 px-3 xs:px-4 sm:px-6 rounded-xl xs:rounded-2xl font-black text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition-all gap-1 xs:gap-2 text-xs xs:text-sm w-full xs:w-auto order-2 xs:order-1 disabled:opacity-50"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-4 h-4 xs:w-5 xs:h-5" />
             삭제하기
           </Button>
-          
-          <div className="flex gap-3">
+
+          <div className="flex gap-2 xs:gap-3 w-full xs:w-auto order-1 xs:order-2">
             <Button
               variant="outline"
               onClick={onClose}
-              className="h-14 px-8 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
+              className="h-10 xs:h-12 sm:h-14 px-4 xs:px-6 sm:px-8 rounded-xl xs:rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all text-xs xs:text-sm flex-1 xs:flex-none"
             >
               취소
             </Button>
             <Button
               onClick={onUpdate}
-              disabled={isLoading}
-              className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black gap-3 shadow-xl shadow-blue-100 hover:-translate-y-1 transition-all"
+              disabled={isLoading || isLocked}
+              className="h-10 xs:h-12 sm:h-14 px-4 xs:px-6 sm:px-10 rounded-xl xs:rounded-2xl bg-blue-600 hover:bg-blue-700 font-black gap-1 xs:gap-2 sm:gap-3 shadow-xl shadow-blue-100 hover:-translate-y-1 transition-all text-xs xs:text-sm flex-1 xs:flex-none disabled:opacity-50"
             >
               {isLoading ? (
-                <span className="flex items-center gap-2">수정 중...</span>
+                <span className="flex items-center gap-1 xs:gap-2">수정 중...</span>
+              ) : isLocked ? (
+                <span className="flex items-center gap-1 xs:gap-2">제출됨 (수정불가)</span>
               ) : (
                 <>
-                  <CheckCircle2 className="w-5 h-5" />
-                  수정 내용 저장
+                  <CheckCircle2 className="w-4 h-4 xs:w-5 xs:h-5" />
+                  <span className="hidden xs:inline">수정 내용 </span>저장
                 </>
               )}
             </Button>

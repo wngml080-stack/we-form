@@ -7,6 +7,14 @@ const config: Config = {
     "./src/**/*.{ts,tsx,js,jsx,mdx}",
   ],
   theme: {
+    screens: {
+      'xs': '320px',
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       colors: {
         // 기본 색상

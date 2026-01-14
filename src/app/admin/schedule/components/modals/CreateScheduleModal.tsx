@@ -19,9 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Clock, User, Plus, X, Sparkles, CheckCircle2, AlertCircle, Ticket } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, User, Plus, X, Sparkles, CheckCircle2, AlertCircle, Ticket, Search, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface TimeSlot {
   date: string;
@@ -35,12 +35,14 @@ interface CreateFormData {
   duration: string;
   isPersonal: boolean;
   personalTitle: string;
+  inbody_checked?: boolean;
 }
 
 interface Member {
   id: string;
   name: string;
   trainer_id?: string;
+  phone?: string;
 }
 
 interface CreateScheduleModalProps {
@@ -58,6 +60,7 @@ interface CreateScheduleModalProps {
   getSessionNumber: (memberId: string, type: 'pt' | 'ot', scheduleId?: string) => number;
   isLoading: boolean;
   onSubmit: () => void;
+  isLocked?: boolean;
 }
 
 export function CreateScheduleModal({
@@ -74,7 +77,20 @@ export function CreateScheduleModal({
   getSessionNumber,
   isLoading,
   onSubmit,
+  isLocked = false,
 }: CreateScheduleModalProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // 검색어에 따른 회원 필터링
+  const searchedMembers = useMemo(() => {
+    if (!searchTerm.trim()) return filteredMembers;
+    const lowerSearch = searchTerm.toLowerCase();
+    return filteredMembers.filter(m => 
+      m.name.toLowerCase().includes(lowerSearch) || 
+      (m.phone && m.phone.includes(lowerSearch))
+    );
+  }, [filteredMembers, searchTerm]);
+
   // 선택된 회원의 PT 회원권 정보 계산
   const selectedMemberInfo = useMemo(() => {
     if (!createForm.member_id) return null;
@@ -134,14 +150,16 @@ export function CreateScheduleModal({
       if (remainingSessions <= 0) {
         setCreateForm({ ...createForm, member_id: memberId, type: "OT" });
       } else {
-        setCreateForm({ ...createForm, member_id: memberId });
+        setCreateForm({ ...createForm, member_id: memberId, type: "PT" });
       }
     }
+    setSearchTerm(""); // 선택 후 검색어 초기화
   };
 
   const handleClose = () => {
     setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "" });
     setSelectedMemberMembership(null);
+    setSearchTerm("");
     onClose();
   };
 
@@ -161,7 +179,7 @@ export function CreateScheduleModal({
                 <h2 className="text-2xl font-black text-white tracking-tight" style={{ color: 'white' }}>새 스케줄 등록</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                  <p className="text-sm text-white/80 font-bold">센터의 일정을 효율적으로 관리하세요 (v1.1)</p>
+                  <p className="text-sm text-white/80 font-bold">선택하신 코치님의 회원만 필터링됩니다</p>
                 </div>
               </div>
             </div>
@@ -170,6 +188,16 @@ export function CreateScheduleModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
+          {isLocked && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <p className="text-xs font-bold text-amber-700 leading-relaxed">
+                해당 월의 스케줄이 관리자에게 제출되었습니다.<br />
+                승인 전까지는 새로운 스케줄을 생성할 수 없습니다.
+              </p>
+            </div>
+          )}
+
           {/* 일시 정보 카드 */}
           {selectedTimeSlot && (
             <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between">
@@ -249,20 +277,45 @@ export function CreateScheduleModal({
               ) : (
                 <>
                   <div className="space-y-3">
-                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">대상 회원 선택</Label>
-                    <Select
-                      value={createForm.member_id}
-                      onValueChange={handleMemberChange}
-                    >
-                      <SelectTrigger className="h-14 px-6 rounded-2xl bg-white border-slate-100 focus:ring-blue-500 font-bold">
-                        <SelectValue placeholder="회원을 검색하거나 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-2xl border-slate-100 shadow-2xl p-2">
-                        {filteredMembers.map((m) => (
-                          <SelectItem key={m.id} value={m.id} className="rounded-xl py-3 font-bold">{m.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">대상 회원 선택 (검색 가능)</Label>
+                    <div className="relative group">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
+                        <Search className="w-5 h-5" />
+                      </div>
+                      <Select
+                        value={createForm.member_id}
+                        onValueChange={handleMemberChange}
+                      >
+                        <SelectTrigger className="h-14 pl-14 pr-6 rounded-2xl bg-white border-slate-100 focus:ring-blue-500 font-bold">
+                          <SelectValue placeholder="회원을 검색하거나 선택하세요" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-[24px] border-slate-100 shadow-2xl p-2 max-h-[300px]">
+                          <div className="p-2 sticky top-0 bg-white z-10">
+                            <Input
+                              placeholder="회원 이름 또는 전화번호 검색..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="h-10 rounded-xl border-slate-100 focus-visible:ring-blue-500 mb-2"
+                              onKeyDown={(e) => e.stopPropagation()} // 검색창에서 스페이스바 등이 Select를 닫지 않게 함
+                            />
+                          </div>
+                          {searchedMembers.length === 0 ? (
+                            <div className="py-10 text-center text-slate-400 font-bold">
+                              검색 결과가 없습니다.
+                            </div>
+                          ) : (
+                            searchedMembers.map((m) => (
+                              <SelectItem key={m.id} value={m.id} className="rounded-xl py-3 font-bold cursor-pointer">
+                                <div className="flex flex-col">
+                                  <span>{m.name}</span>
+                                  {m.phone && <span className="text-[10px] text-slate-400 font-normal">{m.phone}</span>}
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {/* 선택된 회원의 PT 정보 표시 */}
@@ -420,6 +473,19 @@ export function CreateScheduleModal({
                     </SelectContent>
                   </Select>
                 </div>
+
+                {createForm.type === 'OT' && (
+                  <div className="col-span-2 flex items-center space-x-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <input
+                      type="checkbox"
+                      id="create_inbody_checked"
+                      checked={createForm.inbody_checked || false}
+                      onChange={(e) => setCreateForm({ ...createForm, inbody_checked: e.target.checked })}
+                      className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor="create_inbody_checked" className="font-bold text-slate-700 cursor-pointer">인바디 측정 포함</Label>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -440,13 +506,18 @@ export function CreateScheduleModal({
             </Button>
             <Button 
               onClick={onSubmit} 
-              disabled={isLoading}
-              className="h-14 px-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center gap-2"
+              disabled={isLoading || isLocked}
+              className="h-14 px-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (
                 <>
                   <Clock className="w-5 h-5 animate-spin" />
                   등록 중...
+                </>
+              ) : isLocked ? (
+                <>
+                  <X className="w-5 h-5" />
+                  제출됨 (수정불가)
                 </>
               ) : (
                 <>

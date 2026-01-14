@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useMemo } from "react";
 import dynamicImport from "next/dynamic";
 import WeeklyTimetable from "@/components/WeeklyTimetable";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
@@ -10,6 +10,7 @@ import { MonthlySubmissionBanner } from "@/components/MonthlySubmissionBanner";
 import { MonthlyStatsSection } from "./components/MonthlyStatsSection";
 import { ScheduleHeader } from "./components/ScheduleHeader";
 import { ScheduleControls } from "./components/ScheduleControls";
+import { AttendanceSection } from "./components/AttendanceSection";
 import { StaffSelectionPrompt } from "./components/StaffSelectionPrompt";
 import { useSchedulePageData } from "./hooks/useSchedulePageData";
 import { useScheduleOperations } from "./hooks/useScheduleOperations";
@@ -59,11 +60,48 @@ export default function AdminSchedulePage(props: {
     fetchSchedules,
     handleSubmitMonth,
     handlePrevDate, handleNextDate, handleToday,
-    handleTimeSlotClick, handleScheduleClick,
+    handleTimeSlotClick: baseHandleTimeSlotClick,
+    handleScheduleClick: baseHandleScheduleClick,
     handleOpenEditModal, handleStaffChange,
     getSessionNumber,
     supabase,
   } = pageData;
+
+  const isLocked = useMemo(() => {
+    // 제출됨 또는 승인됨 상태면 기본적으로 잠금 대상
+    const isStatusLocked = mySubmissionStatus === "submitted" || mySubmissionStatus === "approved";
+    
+    if (!isStatusLocked) return false;
+
+    // 최고 관리자(system_admin)는 어떤 경우에도 잠금되지 않음 (운영 편의성)
+    if (userRole === "system_admin") return false;
+
+    // 일반 강사(staff)는 본인의 제출 건에 대해 무조건 잠금
+    if (userRole === "staff") return true;
+
+    // 관리자(admin, company_admin 등)라도 본인의 스케줄을 보고 있고 제출했다면 잠금 (실수 방지)
+    // 단, 타인의 스케줄을 관리할 때는 잠금 해제 (수정 권한 부여)
+    if (selectedStaffId === myStaffId) return true;
+
+    return false;
+  }, [userRole, mySubmissionStatus, selectedStaffId, myStaffId]);
+
+  // 타임슬롯 클릭 (락 체크 개선: 클릭한 날짜의 월이 현재 보고 있는 월과 같은 경우에만 락 적용)
+  const handleTimeSlotClick = (date: Date, time: string) => {
+    const clickedYearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    
+    if (isLocked && clickedYearMonth === yearMonth) {
+      showError("해당 월의 스케줄이 제출되어 생성이 불가능합니다. 반려 처리 후 수정해주세요.", "스케줄 생성");
+      return;
+    }
+    baseHandleTimeSlotClick(date, time);
+  };
+
+  // 스케줄 클릭 (락 체크 추가)
+  const handleScheduleClick = (schedule: any) => {
+    // 상세 정보 모달은 잠금 여부와 상관없이 열리도록 유지 (QuickStatusModal 내부에서 버튼이 비활성화됨)
+    baseHandleScheduleClick(schedule);
+  };
 
   const scheduleOps = useScheduleOperations({
     supabase,
@@ -76,11 +114,18 @@ export default function AdminSchedulePage(props: {
     memberMemberships,
     setMemberMemberships,
     fetchSchedules,
-    setIsLoading
+    setIsLoading,
+    isLocked,
+    yearMonth
   });
 
   const handleCreateSchedule = async () => {
     if (!selectedTimeSlot || !selectedGymId) return;
+
+    if (isLocked) {
+      showError("해당 월의 스케줄이 제출되어 수정이 불가능합니다. 반려 처리 후 수정해주세요.", "스케줄 생성");
+      return;
+    }
 
     if (createForm.isPersonal) {
       if (!createForm.personalTitle.trim()) {
@@ -175,6 +220,10 @@ export default function AdminSchedulePage(props: {
         scheduleData.title = `${selectedMember.name} (${createForm.type})`;
         scheduleData.status = "reserved";
         scheduleData.counted_for_salary = true;
+
+        if (createForm.type === 'OT') {
+          scheduleData.inbody_checked = createForm.inbody_checked || false;
+        }
       }
 
       const { error } = await supabase.from("schedules").insert(scheduleData);
@@ -206,7 +255,7 @@ export default function AdminSchedulePage(props: {
       }
 
       setIsCreateModalOpen(false);
-      setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "" });
+      setCreateForm({ member_id: "", type: "PT", duration: "60", isPersonal: false, personalTitle: "", inbody_checked: false });
       setSelectedMemberMembership(null);
       fetchSchedules(selectedGymId, selectedStaffId);
     } catch (error) {
@@ -218,6 +267,11 @@ export default function AdminSchedulePage(props: {
 
   const handleUpdateSchedule = async () => {
     if (!selectedSchedule) return;
+
+    if (isLocked) {
+      showError("해당 월의 스케줄이 제출되어 수정이 불가능합니다. 반려 처리 후 수정해주세요.", "스케줄 수정");
+      return;
+    }
 
     const isPersonalSchedule = ['personal', '개인'].includes(selectedSchedule?.type?.toLowerCase()) || editForm.type === 'Personal';
 
@@ -374,7 +428,13 @@ export default function AdminSchedulePage(props: {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 sm:space-y-6">
+    <div className="p-4 sm:p-6 lg:p-10 xl:p-12 max-w-[1920px] mx-auto space-y-6 sm:space-y-10 relative">
+      {/* Background Decor */}
+      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-[-1] overflow-hidden">
+        <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-50/40 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[5%] left-[-5%] w-[30%] h-[30%] bg-indigo-50/30 rounded-full blur-[100px]"></div>
+      </div>
+
       <ScheduleHeader
         userRole={userRole}
         userName={user?.name || ""}
@@ -385,7 +445,7 @@ export default function AdminSchedulePage(props: {
         onExportExcel={() => exportSchedulesToExcel(schedules)}
       />
 
-      {userRole === "staff" && (
+      {(userRole === "staff" || selectedStaffId === myStaffId) && (
         <MonthlySubmissionBanner
           yearMonth={yearMonth}
           status={mySubmissionStatus === "none" ? "not_submitted" : mySubmissionStatus === "submitted" ? "submitted" : mySubmissionStatus === "approved" ? "approved" : "rejected"}
@@ -416,11 +476,21 @@ export default function AdminSchedulePage(props: {
           onQuickAttendance={scheduleOps.handleQuickAttendance}
           onSubmitMonth={handleSubmitMonth}
         />
+      ) : viewType === 'attendance' ? (
+        <AttendanceSection
+          schedules={schedules}
+          staffs={staffs}
+          selectedStaffId={selectedStaffId}
+          onScheduleClick={handleScheduleClick}
+          isLoading={isLoading}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
       ) : selectedStaffId === "all" ? (
         <StaffSelectionPrompt />
       ) : (
-        <>
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="space-y-8 animate-in fade-in duration-1000 delay-300">
+          <div className="bg-white/40 backdrop-blur-xl rounded-[40px] p-1.5 shadow-2xl shadow-slate-200/50 border border-white/60">
             <WeeklyTimetable
               schedules={schedules}
               onScheduleClick={handleScheduleClick}
@@ -438,7 +508,7 @@ export default function AdminSchedulePage(props: {
             schedules={schedules}
             staffName={staffs.find(s => s.id === selectedStaffId)?.name}
           />
-        </>
+        </div>
       )}
 
       <CreateScheduleModal
@@ -456,6 +526,7 @@ export default function AdminSchedulePage(props: {
         getSessionNumber={getSessionNumber}
         isLoading={isLoading}
         onSubmit={handleCreateSchedule}
+        isLocked={isLocked}
       />
 
       <EditScheduleModal
@@ -475,6 +546,7 @@ export default function AdminSchedulePage(props: {
           setIsEditModalOpen(false);
           setSelectedSchedule(null);
         })}
+        isLocked={isLocked}
       />
 
       <QuickStatusModal
@@ -492,6 +564,7 @@ export default function AdminSchedulePage(props: {
           setSelectedSchedule(null);
         })}
         fetchSchedules={fetchSchedules}
+        isLocked={isLocked}
       />
     </div>
   );

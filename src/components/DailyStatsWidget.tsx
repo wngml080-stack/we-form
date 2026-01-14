@@ -149,55 +149,77 @@ export function DailyStatsWidget({ selectedDate, schedules, staffName }: DailySt
   });
 
   return (
-    <Card className="p-6 mt-6 bg-white/50 backdrop-blur-md border-slate-100 rounded-[32px] shadow-xl shadow-slate-200/50 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
-            <BarChart3 className="w-5 h-5 text-white" />
+    <Card className="p-8 mt-10 bg-white/40 backdrop-blur-xl border-white/60 rounded-[40px] shadow-2xl shadow-slate-200/50 animate-in fade-in slide-in-from-bottom-4 duration-1000 relative overflow-hidden group/widget">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50"></div>
+      
+      <div className="flex items-center justify-between mb-8 relative z-10">
+        <div className="flex items-center gap-5">
+          <div className="w-14 h-14 rounded-[20px] bg-slate-900 flex items-center justify-center shadow-2xl shadow-slate-200 group-hover/widget:scale-105 transition-transform duration-500">
+            <BarChart3 className="w-7 h-7 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-black text-slate-900 tracking-tight">당일 운영 통계</h3>
-              {staffName && <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[10px] uppercase tracking-widest">{staffName} 코치</Badge>}
+            <div className="flex items-center gap-3">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">당일 운영 리포트</h3>
+              {staffName && (
+                <Badge className="bg-blue-600 text-white border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg shadow-lg shadow-blue-100">
+                  {staffName} 코치
+                </Badge>
+              )}
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{formattedDate}</p>
+            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mt-1.5">{formattedDate}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {hiddenStats.size > 0 && (
-            <Button variant="ghost" size="sm" onClick={showAllStats} className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-xl px-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={showAllStats} 
+              className="h-10 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-50 rounded-xl px-4 border border-blue-100 bg-white/50"
+            >
               모두 보기 ({hiddenStats.size})
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={() => setIsExpanded(!isExpanded)} className="w-10 h-10 rounded-xl hover:bg-slate-100 transition-all">
-            {isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setIsExpanded(!isExpanded)} 
+            className="w-12 h-12 rounded-2xl hover:bg-white hover:shadow-md transition-all active:scale-90 bg-white/30"
+          >
+            {isExpanded ? <ChevronUp className="h-6 w-6 text-slate-600" /> : <ChevronDown className="h-6 w-6 text-slate-600" />}
           </Button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 relative z-10">
           {visibleStats.map((stat) => (
             <div
               key={stat.key}
-              className={`p-5 rounded-[24px] border border-transparent transition-all group relative overflow-hidden shadow-sm hover:shadow-md hover:scale-[1.02] ${stat.color || "bg-slate-50 hover:bg-white hover:border-slate-100"}`}
+              className={`p-6 rounded-[32px] border border-white/60 shadow-sm transition-all group/stat relative overflow-hidden hover:shadow-xl hover:-translate-y-1 ${
+                stat.key === 'total_count' ? 'bg-blue-50/50 border-blue-100/50' :
+                stat.key === 'total_hours' ? 'bg-indigo-50/50 border-indigo-100/50' :
+                stat.color ? `${stat.color.replace('bg-', 'bg-').replace('text-', 'text-')} border-current/5` : 
+                "bg-white/60 hover:bg-white"
+              }`}
             >
               <button
                 onClick={() => hideStat(stat.key)}
-                className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-slate-200 rounded-full z-10"
+                className="absolute top-4 right-4 opacity-0 group-hover/stat:opacity-100 transition-opacity p-2 hover:bg-black/5 rounded-full z-20"
                 title="이 통계 숨기기"
               >
-                <X className="h-3 w-3 text-slate-500" />
+                <X className="h-3.5 w-3.5 text-slate-400" />
               </button>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-2">{stat.label}</p>
-              <div className="text-xl font-black text-slate-900 tracking-tight">{stat.value}</div>
               
-              {/* Subtle background icon for the first two stats */}
-              {(stat.key === 'total_count' || stat.key === 'total_hours') && (
-                <div className="absolute -right-2 -bottom-2 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
-                  {stat.key === 'total_count' ? <Calendar className="w-16 h-16" /> : <Clock className="w-16 h-16" />}
-                </div>
-              )}
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 group-hover/stat:text-slate-500 transition-colors">{stat.label}</p>
+              <div className="text-2xl font-black text-slate-900 tracking-tightest group-hover/stat:scale-105 origin-left transition-transform duration-500">{stat.value}</div>
+              
+              {/* Decorative Icons */}
+              <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover/stat:opacity-[0.08] transition-all duration-700 group-hover/stat:scale-110 group-hover/stat:-rotate-12">
+                {stat.key === 'total_count' ? <Calendar className="w-24 h-24" /> : 
+                 stat.key === 'total_hours' ? <Clock className="w-24 h-24" /> :
+                 <BarChart3 className="w-24 h-24" />}
+              </div>
             </div>
           ))}
         </div>

@@ -66,21 +66,7 @@ export async function GET(
     // 3. 해당 직원의 해당 월 스케줄 조회
     const { data: schedules, error: schedulesError } = await supabaseAdmin
       .from("schedules")
-      .select(`
-        id,
-        member_id,
-        member_name,
-        type,
-        status,
-        start_time,
-        end_time,
-        title,
-        schedule_type,
-        sub_type,
-        inbody_checked,
-        counted_for_salary,
-        members(id, name)
-      `)
+      .select("*")
       .eq("staff_id", report.staff_id)
       .eq("gym_id", report.gym_id)
       .gte("start_time", startDate.toISOString())
@@ -88,7 +74,11 @@ export async function GET(
       .order("start_time", { ascending: true });
 
     if (schedulesError) {
-      throw schedulesError;
+      console.error("[ReportSchedules] 스케줄 조회 오류:", schedulesError);
+      return NextResponse.json(
+        { error: `스케줄 조회 오류: ${schedulesError.message}` },
+        { status: 500 }
+      );
     }
 
     // 4. 스케줄 데이터 가공
@@ -109,7 +99,7 @@ export async function GET(
         hour12: false,
       })}`,
       type: schedule.type,
-      member_name: schedule.members?.name || schedule.member_name || "-",
+      member_name: schedule.member_name || "-",
       status: schedule.status,
       schedule_type: schedule.schedule_type,
       sub_type: schedule.sub_type,
@@ -134,6 +124,85 @@ export async function GET(
       }
     });
 
+    // 6. 횟수 계산 (completed, no_show_deducted 상태만 카운트)
+    const countedSchedules = (schedules || []).filter(
+      (s: any) => s.status === "completed" || s.status === "no_show_deducted"
+    );
+
+    // 미처리 (예약 상태) 스케줄
+    const reservedSchedules = (schedules || []).filter(
+      (s: any) => s.status === "reserved"
+    );
+
+    // 서비스/취소/노쇼 스케줄
+    const cancelledSchedules = (schedules || []).filter(
+      (s: any) => s.status === "service" || s.status === "cancelled" || s.status === "no_show"
+    );
+
+    // 디버깅 로그
+    console.log("[ReportSchedules] 전체 스케줄:", schedules?.length);
+    console.log("[ReportSchedules] 완료/차감노쇼:", countedSchedules.length);
+    console.log("[ReportSchedules] 예약(미처리):", reservedSchedules.length);
+    console.log("[ReportSchedules] 스케줄 상세:", schedules?.map((s: any) => ({
+      type: s.type,
+      schedule_type: s.schedule_type,
+      status: s.status,
+    })));
+    console.log("[ReportSchedules] PT counted:", countedSchedules.filter((s: any) => s.type === "PT").length);
+    console.log("[ReportSchedules] Reserved PT:", reservedSchedules.filter((s: any) => s.type === "PT").length);
+    console.log("[ReportSchedules] Reserved OT:", reservedSchedules.filter((s: any) => s.type === "OT").length);
+    console.log("[ReportSchedules] Cancelled (서비스/취소/노쇼):", cancelledSchedules.length);
+    console.log("[ReportSchedules] Cancelled PT:", cancelledSchedules.filter((s: any) => s.type === "PT").length);
+
+    const calculatedStats = {
+      // PT 통계 (completed, no_show_deducted만 카운트)
+      // schedule_type이 없거나 null이면 inside로 처리
+      pt_inside_count: countedSchedules.filter(
+        (s: any) => s.type === "PT" && (!s.schedule_type || s.schedule_type === "inside")
+      ).length,
+      pt_outside_count: countedSchedules.filter(
+        (s: any) => s.type === "PT" && s.schedule_type === "outside"
+      ).length,
+      pt_weekend_count: countedSchedules.filter(
+        (s: any) => s.type === "PT" && (s.schedule_type === "weekend" || s.schedule_type === "holiday")
+      ).length,
+      pt_total_count: 0, // 아래에서 계산
+      // OT 통계
+      ot_count: countedSchedules.filter(
+        (s: any) => s.type === "OT" && !s.inbody_checked
+      ).length,
+      ot_inbody_count: countedSchedules.filter(
+        (s: any) => s.type === "OT" && s.inbody_checked
+      ).length,
+      // 인바디 총 개수
+      inbody_count: countedSchedules.filter(
+        (s: any) => s.type === "OT" && s.inbody_checked
+      ).length,
+      // 개인일정 통계
+      personal_inside_count: countedSchedules.filter(
+        (s: any) => s.type === "Personal" && s.schedule_type === "inside"
+      ).length,
+      personal_outside_count: countedSchedules.filter(
+        (s: any) => s.type === "Personal" && s.schedule_type === "outside"
+      ).length,
+      // 미처리 (예약 상태) 통계
+      reserved_pt_count: reservedSchedules.filter((s: any) => s.type === "PT").length,
+      reserved_ot_count: reservedSchedules.filter((s: any) => s.type === "OT").length,
+      reserved_personal_count: reservedSchedules.filter((s: any) => s.type === "Personal").length,
+      // 서비스/취소/노쇼 통계
+      cancelled_pt_count: cancelledSchedules.filter((s: any) => s.type === "PT").length,
+      cancelled_ot_count: cancelledSchedules.filter((s: any) => s.type === "OT").length,
+      cancelled_personal_count: cancelledSchedules.filter((s: any) => s.type === "Personal").length,
+    };
+
+    // 총 PT = 근무내 + 근무외 + 주말공휴일
+    calculatedStats.pt_total_count =
+      calculatedStats.pt_inside_count +
+      calculatedStats.pt_outside_count +
+      calculatedStats.pt_weekend_count;
+
+    console.log("[ReportSchedules] calculatedStats:", calculatedStats);
+
     return NextResponse.json({
       success: true,
       report: {
@@ -147,8 +216,10 @@ export async function GET(
         total: formattedSchedules.length,
         ...statusSummary,
       },
+      calculatedStats,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[ReportSchedules] 예외 발생:", error);
+    return NextResponse.json({ error: error.message || "알 수 없는 오류" }, { status: 500 });
   }
 }

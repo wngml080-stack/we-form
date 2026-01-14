@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, Phone, User, RefreshCw, ExternalLink } from "lucide-react";
+import { Calendar, Clock, Phone, User, RefreshCw, ExternalLink, X, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface Reservation {
   id: string;
@@ -209,178 +209,228 @@ export function ReservationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            {reservation ? "예약 수정" : "예약 등록"}
-          </DialogTitle>
+      <DialogContent className="max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px] [&>button]:hidden">
+        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <DialogTitle className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Calendar className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-white tracking-tight">{reservation ? "예약 정보 수정" : "상담/체험 예약 등록"}</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">{reservation ? "Edit Reservation" : "Register New Appointment"}</p>
+              </div>
+            </DialogTitle>
+            <button
+              onClick={onClose}
+              className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90"
+            >
+              <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+            </button>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar bg-[#f8fafc]">
           {/* 고객 정보 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>이름 *</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="홍길동"
-                  value={formData.customer_name}
-                  onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                  className="pl-9"
-                />
-              </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 ml-1">
+              <div className="w-1.5 h-5 bg-blue-500 rounded-full"></div>
+              <h3 className="text-lg font-black text-slate-900">고객 정보</h3>
             </div>
-            <div className="space-y-2">
-              <Label>전화번호 *</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="010-0000-0000"
-                  value={formData.customer_phone}
-                  onChange={(e) => setFormData({ ...formData, customer_phone: formatPhoneInput(e.target.value) })}
-                  className="pl-9"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+              <div className="space-y-2">
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">이름 *</Label>
+                <div className="relative">
+                  <User className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    placeholder="홍길동"
+                    value={formData.customer_name}
+                    onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+                    className="h-14 pl-14 rounded-2xl bg-slate-50 border-none focus:ring-blue-500 font-bold"
+                  />
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* 예약 유형 */}
-          <div className="space-y-2">
-            <Label>예약 유형</Label>
-            <Select
-              value={formData.reservation_type}
-              onValueChange={(value) => setFormData({ ...formData, reservation_type: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="유형 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="consultation">상담</SelectItem>
-                <SelectItem value="trial">체험</SelectItem>
-                <SelectItem value="ot">OT</SelectItem>
-                <SelectItem value="pt_consultation">PT 상담</SelectItem>
-                <SelectItem value="tour">견학</SelectItem>
-                <SelectItem value="other">기타</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 날짜/시간 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>날짜 *</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={formData.scheduled_date}
-                  onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>시간 *</Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="time"
-                  value={formData.scheduled_time}
-                  onChange={(e) => setFormData({ ...formData, scheduled_time: e.target.value })}
-                  className="pl-9"
-                />
+              <div className="space-y-2">
+                <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">전화번호 *</Label>
+                <div className="relative">
+                  <Phone className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input
+                    placeholder="010-0000-0000"
+                    value={formData.customer_phone}
+                    onChange={(e) => setFormData({ ...formData, customer_phone: formatPhoneInput(e.target.value) })}
+                    className="h-14 pl-14 rounded-2xl bg-slate-50 border-none focus:ring-blue-500 font-bold"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 담당자 */}
-          <div className="space-y-2">
-            <Label>담당자</Label>
-            <Select
-              value={formData.staff_id}
-              onValueChange={(value) => setFormData({ ...formData, staff_id: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="담당자 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">미지정</SelectItem>
-                {staffList.map((staff) => (
-                  <SelectItem key={staff.id} value={staff.id}>
-                    {staff.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 날짜/시간 선택 */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 ml-1">
+                <div className="w-1.5 h-5 bg-indigo-500 rounded-full"></div>
+                <h3 className="text-lg font-black text-slate-900">예약 일시</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">날짜</Label>
+                  <Input
+                    type="date"
+                    value={formData.scheduled_date}
+                    onChange={(e) => setFormData({ ...formData, scheduled_date: e.target.value })}
+                    className="h-12 rounded-xl bg-white border-slate-100 shadow-sm font-bold text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">시간</Label>
+                  <Input
+                    type="time"
+                    value={formData.scheduled_time}
+                    onChange={(e) => setFormData({ ...formData, scheduled_time: e.target.value })}
+                    className="h-12 rounded-xl bg-white border-slate-100 shadow-sm font-bold text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 예약 유형 및 담당자 */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 ml-1">
+                <div className="w-1.5 h-5 bg-emerald-500 rounded-full"></div>
+                <h3 className="text-lg font-black text-slate-900">상세 분류</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">예약 유형</Label>
+                  <Select
+                    value={formData.reservation_type}
+                    onValueChange={(value) => setFormData({ ...formData, reservation_type: value })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl bg-white border-slate-100 shadow-sm font-bold text-sm">
+                      <SelectValue placeholder="유형 선택" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
+                      <SelectItem value="consultation">상담</SelectItem>
+                      <SelectItem value="trial">체험</SelectItem>
+                      <SelectItem value="ot">OT</SelectItem>
+                      <SelectItem value="pt_consultation">PT 상담</SelectItem>
+                      <SelectItem value="tour">견학</SelectItem>
+                      <SelectItem value="other">기타</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">담당 직원</Label>
+                  <Select
+                    value={formData.staff_id}
+                    onValueChange={(value) => setFormData({ ...formData, staff_id: value })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl bg-white border-slate-100 shadow-sm font-bold text-sm">
+                      <SelectValue placeholder="담당자 선택" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
+                      <SelectItem value="">미지정</SelectItem>
+                      {staffList.map((staff) => (
+                        <SelectItem key={staff.id} value={staff.id}>
+                          {staff.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* 상태 (수정 시에만) */}
+          {/* 상태 설정 (수정 시) */}
           {reservation && (
-            <div className="space-y-2">
-              <Label>상태</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">대기</SelectItem>
-                  <SelectItem value="confirmed">확정</SelectItem>
-                  <SelectItem value="completed">완료</SelectItem>
-                  <SelectItem value="no_show">노쇼</SelectItem>
-                  <SelectItem value="cancelled">취소</SelectItem>
-                  <SelectItem value="rescheduled">변경됨</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 ml-1">
+                <div className="w-1.5 h-5 bg-orange-500 rounded-full"></div>
+                <h3 className="text-lg font-black text-slate-900">예약 상태 설정</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: "pending", label: "대기", color: "amber" },
+                  { value: "confirmed", label: "확정", color: "blue" },
+                  { value: "completed", label: "완료", color: "emerald" },
+                  { value: "no_show", label: "노쇼", color: "rose" },
+                  { value: "cancelled", label: "취소", color: "slate" },
+                  { value: "rescheduled", label: "변경됨", color: "indigo" },
+                ].map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => setFormData({ ...formData, status: s.value })}
+                    className={cn(
+                      "px-5 py-2.5 rounded-xl text-xs font-black transition-all border-2",
+                      formData.status === s.value
+                        ? `bg-${s.color}-500 border-${s.color}-500 text-white shadow-lg shadow-${s.color}-200`
+                        : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* 메모 */}
-          <div className="space-y-2">
-            <Label>메모</Label>
+          {/* 메모 섹션 */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 ml-1">
+              <div className="w-1.5 h-5 bg-slate-400 rounded-full"></div>
+              <h3 className="text-lg font-black text-slate-900">상담 및 예약 메모</h3>
+            </div>
             <Textarea
-              placeholder="예약 관련 메모..."
+              placeholder="상담 예정 내용이나 주의사항을 입력하세요..."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              rows={2}
+              rows={3}
+              className="rounded-3xl bg-white border-slate-100 shadow-sm p-6 font-bold text-slate-600 focus:ring-blue-500"
             />
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          {reservation && (
-            <div className="flex items-center gap-2 mr-auto">
+        <div className="p-8 bg-white border-t border-slate-50 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            {reservation && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={handleCalendarSync}
                 disabled={isSyncing}
+                className="h-10 px-4 rounded-xl border-slate-200 font-bold text-xs gap-2"
               >
-                <RefreshCw className={`h-4 w-4 mr-1 ${isSyncing ? "animate-spin" : ""}`} />
-                {reservation.google_calendar_event_id ? "캘린더 업데이트" : "캘린더 등록"}
+                <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+                Google 캘린더 동기화
               </Button>
-              {reservation.google_calendar_event_id && (
-                <Badge variant="outline" className="text-xs text-green-600">
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  동기화됨
-                </Badge>
-              )}
-            </div>
-          )}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              className="h-14 px-8 rounded-[22px] font-black text-slate-400 hover:text-slate-900 transition-all"
+            >
               취소
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "저장 중..." : reservation ? "수정" : "등록"}
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="h-14 px-12 rounded-[22px] bg-slate-900 hover:bg-slate-800 text-white font-black shadow-xl shadow-slate-200 transition-all active:scale-95 flex items-center gap-3"
+            >
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <CheckCircle2 className="w-5 h-5" />
+              )}
+              {reservation ? "예약 정보 수정 완료" : "예약 등록 완료"}
             </Button>
           </div>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

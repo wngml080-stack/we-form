@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Clock } from "lucide-react";
 
@@ -189,22 +190,26 @@ export default function WeeklyTimetable({
   };
 
   return (
-    <div className="w-full h-full overflow-hidden bg-white rounded-[32px] shadow-xl shadow-slate-200/50 border border-slate-100 md:mx-0 relative flex flex-col animate-in fade-in duration-1000">
+    <div className="w-full h-full overflow-hidden bg-white rounded-[40px] shadow-2xl shadow-slate-200/60 border border-slate-100 md:mx-0 relative flex flex-col animate-in fade-in duration-1000">
       {/* 근무시간 정보 표시 */}
       {selectedStaffId && selectedStaffId !== "all" && (
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-3 shadow-lg z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 text-sm">
-              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                <Clock className="w-4 h-4 text-white" />
+        <div className="bg-slate-900 px-8 py-4 shadow-xl z-10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-4 text-sm">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Clock className="w-5 h-5 text-white" />
               </div>
-              <span className="font-black text-white tracking-tight">
-                {staffs?.find(s => s.id === selectedStaffId)?.name || '선택된 강사'} 코치 근무시간
-              </span>
+              <div>
+                <span className="font-black text-white text-base tracking-tight">
+                  {staffs?.find(s => s.id === selectedStaffId)?.name || '선택된 강사'} 코치
+                </span>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Working Hours Today</p>
+              </div>
             </div>
-            <div className="px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
-              <span className="font-black text-white text-xs tracking-widest uppercase">
-                {workStartTime ? workStartTime.substring(0, 5) : '--:--'} - {workEndTime ? workEndTime.substring(0, 5) : '--:--'}
+            <div className="px-6 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-inner">
+              <span className="font-black text-blue-400 text-sm tracking-widest uppercase">
+                {workStartTime ? workStartTime.substring(0, 5) : '--:--'} <span className="text-white/30 mx-2">-</span> {workEndTime ? workEndTime.substring(0, 5) : '--:--'}
               </span>
             </div>
           </div>
@@ -214,8 +219,8 @@ export default function WeeklyTimetable({
         <table className={cn("w-full border-collapse", viewType === 'day' ? 'min-w-full' : 'min-w-[800px] md:min-w-full')}>
           {/* 헤더 */}
           <thead className="sticky top-0 z-40">
-            <tr className="bg-white border-b border-slate-100">
-              <th className="p-3 w-16 md:w-24 sticky left-0 bg-slate-50/90 backdrop-blur-md z-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] h-14 border-r border-slate-100">
+            <tr className="bg-white/95 backdrop-blur-xl border-b border-slate-100 shadow-sm">
+              <th className="p-4 w-20 md:w-28 sticky left-0 bg-slate-50/95 backdrop-blur-md z-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] h-16 border-r border-slate-100 text-center">
                 Time
               </th>
               {weekDates.map((date, idx) => {
@@ -223,23 +228,22 @@ export default function WeeklyTimetable({
                 const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                 return (
                   <th key={idx} className={cn(
-                    "p-3 min-w-[120px] h-14 align-middle border-r border-slate-50 last:border-r-0",
-                    isToday ? "bg-blue-50/50" : "bg-white/90 backdrop-blur-md"
+                    "p-4 min-w-[140px] h-16 align-middle border-r border-slate-50 last:border-r-0 transition-colors",
+                    isToday ? "bg-blue-50/40" : "bg-white/95 backdrop-blur-xl"
                   )}>
-                    <div className="flex flex-col items-center justify-center gap-1">
+                    <div className="flex flex-col items-center justify-center gap-1.5">
                       <span className={cn(
-                        "text-[11px] font-black uppercase tracking-widest",
-                        isToday ? "text-blue-600" : isWeekend ? "text-rose-500" : "text-slate-500"
+                        "text-[10px] font-black uppercase tracking-[0.15em]",
+                        isToday ? "text-blue-600" : isWeekend ? "text-rose-500" : "text-slate-400"
                       )}>
                         {DAYS[date.getDay()]}
                       </span>
-                      <span className={cn(
-                        "text-lg font-black tracking-tighter",
-                        isToday ? "text-blue-600" : "text-slate-900"
+                      <div className={cn(
+                        "w-10 h-10 rounded-2xl flex items-center justify-center text-xl font-black tracking-tightest transition-all",
+                        isToday ? "bg-blue-600 text-white shadow-lg shadow-blue-200 scale-110" : "text-slate-900"
                       )}>
                         {date.getDate()}
-                      </span>
-                      {isToday && <div className="w-1 h-1 bg-blue-600 rounded-full mt-1"></div>}
+                      </div>
                     </div>
                   </th>
                 );
@@ -252,7 +256,7 @@ export default function WeeklyTimetable({
             {timeSlots.map((timeSlot, timeIdx) => (
               <tr key={timeSlot} className="group">
                 {/* 시간 컬럼 */}
-                <td className="p-3 text-center text-[11px] font-black text-slate-400 sticky left-0 bg-slate-50/80 backdrop-blur-sm z-30 border-r border-slate-100 group-hover:text-blue-500 transition-colors">
+                <td className="p-4 text-center text-[11px] font-black text-slate-400 sticky left-0 bg-slate-50/90 backdrop-blur-sm z-30 border-r border-slate-100 group-hover:text-blue-600 group-hover:bg-blue-50/50 transition-all">
                   {timeSlot}
                 </td>
 
@@ -276,8 +280,8 @@ export default function WeeklyTimetable({
                       key={dayIdx}
                       rowSpan={cellRowSpan}
                       className={cn(
-                        "p-0.5 align-top cursor-pointer transition-all relative h-[54px] border-r border-slate-50 last:border-r-0",
-                        schedulesInSlot.length === 0 && "hover:bg-blue-50/30"
+                        "p-1 align-top cursor-pointer transition-all relative h-[64px] border-r border-slate-50 last:border-r-0",
+                        schedulesInSlot.length === 0 && "hover:bg-blue-50/20"
                       )}
                       onClick={() => {
                         if (schedulesInSlot.length === 0) {
@@ -285,7 +289,7 @@ export default function WeeklyTimetable({
                         }
                       }}
                     >
-                      <div className="flex flex-col w-full h-full gap-0.5">
+                      <div className="flex flex-col w-full h-full gap-1">
                         {schedulesInSlot.map((schedule, sIdx) => (
                           <div
                             key={schedule.id}
@@ -294,29 +298,38 @@ export default function WeeklyTimetable({
                               onScheduleClick?.(schedule);
                             }}
                             className={cn(
-                              "group/item px-3 py-2 rounded-2xl border-2 transition-all w-full overflow-hidden flex flex-col justify-center shadow-sm hover:shadow-md hover:scale-[1.02] hover:z-10",
+                              "group/item px-4 py-3 rounded-[20px] border-2 transition-all w-full overflow-hidden flex flex-col justify-center shadow-sm hover:shadow-xl hover:scale-[1.03] hover:z-20 relative",
                               getScheduleColor(schedule)
                             )}
                             style={{
-                              height: `${schedule.rowSpan * 54 - 4}px`,
-                              minHeight: `${schedule.rowSpan * 54 - 4}px`
+                              height: `${schedule.rowSpan * 64 - 8}px`,
+                              minHeight: `${schedule.rowSpan * 64 - 8}px`
                             }}
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[9px] font-black uppercase tracking-tighter opacity-70">
-                                {schedule.type}
-                                {/* PT인 경우 회차 표시 */}
-                                {schedule.type === 'PT' && schedule.session_number && schedule.total_sessions && (
-                                  <span className="ml-1">({schedule.session_number}/{schedule.total_sessions}회)</span>
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mt-8 blur-xl"></div>
+                            
+                            <div className="flex items-center justify-between mb-1.5 relative z-10">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                                  {schedule.type}
+                                </span>
+                                {schedule.type === 'PT' && schedule.session_number && (
+                                  <Badge className="bg-white/30 text-current border-none h-4 px-1.5 text-[9px] font-black rounded-lg">
+                                    {schedule.session_number}회차
+                                  </Badge>
                                 )}
-                              </span>
-                              <div className="w-1.5 h-1.5 rounded-full bg-current opacity-30"></div>
+                              </div>
+                              <div className="w-2 h-2 rounded-full bg-current animate-pulse opacity-40"></div>
                             </div>
-                            <div className="font-black text-[13px] truncate leading-none tracking-tight mb-1">
+                            
+                            <div className="font-black text-sm truncate leading-tight tracking-tightest mb-1 relative z-10">
                               {schedule.member_name || '개인일정'}
                             </div>
-                            <div className="text-[10px] font-bold opacity-80 flex items-center gap-1">
-                              <Clock className="w-2.5 h-2.5" />
+                            
+                            <div className="text-[10px] font-bold opacity-70 flex items-center gap-1.5 relative z-10">
+                              <div className="w-4 h-4 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                <Clock className="w-2.5 h-2.5" />
+                              </div>
                               {new Date(schedule.start_time).toLocaleTimeString('ko-KR', {
                                 hour: '2-digit',
                                 minute: '2-digit',
@@ -336,49 +349,33 @@ export default function WeeklyTimetable({
       </div>
 
       {/* 범례 */}
-      <div className="p-3 border-t bg-gray-50 flex flex-wrap gap-x-4 gap-y-2 text-xs shrink-0 sticky bottom-0 z-40 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-sky-200 border-l-4 border-sky-300 rounded"></div>
+      <div className="p-4 bg-slate-50/80 backdrop-blur-md border-t border-slate-100 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[10px] font-black uppercase tracking-widest shrink-0 sticky bottom-0 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+        <div className="flex items-center gap-2 text-sky-600 bg-sky-100/50 px-3 py-1.5 rounded-xl border border-sky-100">
+          <div className="w-2 h-2 rounded-full bg-sky-400"></div>
           <span>PT (근무내)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-pink-200 border-l-4 border-pink-300 rounded"></div>
+        <div className="flex items-center gap-2 text-pink-600 bg-pink-100/50 px-3 py-1.5 rounded-xl border border-pink-100">
+          <div className="w-2 h-2 rounded-full bg-pink-400"></div>
           <span>PT (근무외)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-200 border-l-4 border-orange-300 rounded"></div>
-          <span>PT (주말)</span>
+        <div className="flex items-center gap-2 text-orange-600 bg-orange-100/50 px-3 py-1.5 rounded-xl border border-orange-100">
+          <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+          <span>PT (주말/공휴일)</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-200 border-l-4 border-orange-300 rounded"></div>
-          <span>PT (공휴일)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-teal-200 border-l-4 border-teal-300 rounded"></div>
+        <div className="flex items-center gap-2 text-teal-600 bg-teal-100/50 px-3 py-1.5 rounded-xl border border-teal-100">
+          <div className="w-2 h-2 rounded-full bg-teal-400"></div>
           <span>OT</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-emerald-200 border-l-4 border-emerald-300 rounded"></div>
+        <div className="flex items-center gap-2 text-emerald-600 bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200">
+          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
           <span>출석완료</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-rose-300 border-l-4 border-rose-400 rounded"></div>
+        <div className="flex items-center gap-2 text-rose-600 bg-rose-100 px-3 py-1.5 rounded-xl border border-rose-200">
+          <div className="w-2 h-2 rounded-full bg-rose-500"></div>
           <span>노쇼</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-rose-100 border-l-4 border-rose-200 rounded"></div>
-          <span>노쇼 (차감)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-amber-200 border-l-4 border-amber-300 rounded"></div>
-          <span>서비스</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-200 border-l-4 border-gray-300 rounded"></div>
-          <span>취소</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-purple-200 border-l-4 border-purple-300 rounded"></div>
+        <div className="flex items-center gap-2 text-purple-600 bg-purple-100/50 px-3 py-1.5 rounded-xl border border-purple-100">
+          <div className="w-2 h-2 rounded-full bg-purple-400"></div>
           <span>개인일정</span>
         </div>
       </div>

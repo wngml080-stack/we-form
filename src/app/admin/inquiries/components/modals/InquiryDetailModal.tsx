@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import {
   Phone, Calendar, User, Clock, Trash2, Edit, CalendarPlus,
-  MessageSquare, CheckCircle, AlertCircle, Sparkles, Loader2
+  MessageSquare, CheckCircle, AlertCircle, Sparkles, Loader2, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
@@ -169,217 +169,284 @@ export function InquiryDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              문의 상세
+      <DialogContent className="max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px] [&>button]:hidden">
+        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <div className="flex items-center justify-between relative z-10">
+            <DialogTitle className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <MessageSquare className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-white tracking-tight">문의 상세 정보</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Inquiry Detailed View</p>
+              </div>
             </DialogTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                className="h-12 w-12 p-0 rounded-2xl bg-white/5 hover:bg-white/10 text-white transition-all"
                 onClick={onCreateReservation}
               >
-                <CalendarPlus className="h-4 w-4 mr-1" />
-                예약 등록
+                <CalendarPlus className="h-5 w-5" />
               </Button>
               <Button
-                variant="destructive"
-                size="sm"
+                variant="ghost"
+                className="h-12 w-12 p-0 rounded-2xl bg-white/5 hover:bg-rose-500/20 text-rose-400 hover:text-rose-500 transition-all"
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-5 w-5" />
               </Button>
+              <button
+                onClick={onClose}
+                className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90"
+              >
+                <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+              </button>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* 상태 및 기본 정보 */}
-          <div className="flex items-center justify-between">
+        <div className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar bg-[#f8fafc]">
+          {/* 상태 및 기본 태그 */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Badge variant="outline">
+              <Badge className={cn("text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl border-none shadow-sm", CHANNEL_COLORS[inquiry.channel])}>
                 {CHANNEL_LABELS[inquiry.channel] || inquiry.channel}
               </Badge>
-              <Badge variant="outline">
+              <Badge className="text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl bg-white text-slate-600 border-slate-100 shadow-sm">
                 {INQUIRY_TYPE_LABELS[inquiry.inquiry_type] || inquiry.inquiry_type}
               </Badge>
               {inquiry.ai_responded && (
-                <Badge className="bg-purple-100 text-purple-800">
-                  AI 응답
+                <Badge className="text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl bg-purple-100 text-purple-700 border-none animate-pulse">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  AI 응답 완료
                 </Badge>
               )}
             </div>
-            <Select value={status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="new">신규</SelectItem>
-                <SelectItem value="in_progress">진행중</SelectItem>
-                <SelectItem value="waiting">대기중</SelectItem>
-                <SelectItem value="resolved">완료</SelectItem>
-                <SelectItem value="converted">전환됨</SelectItem>
-                <SelectItem value="cancelled">취소</SelectItem>
-              </SelectContent>
-            </Select>
+            
+            <div className="flex items-center gap-3 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">Status</span>
+              <Select value={status} onValueChange={handleStatusChange}>
+                <SelectTrigger className="h-10 w-32 rounded-[14px] border-none bg-slate-50 font-black text-xs focus:ring-blue-500 transition-all">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border-slate-100 shadow-2xl">
+                  <SelectItem value="new">신규</SelectItem>
+                  <SelectItem value="in_progress">진행중</SelectItem>
+                  <SelectItem value="waiting">대기중</SelectItem>
+                  <SelectItem value="resolved">완료</SelectItem>
+                  <SelectItem value="converted">전환됨</SelectItem>
+                  <SelectItem value="cancelled">취소</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* 고객 정보 */}
-          <div className="bg-muted/50 rounded-lg p-4">
-            <h4 className="font-medium mb-3">고객 정보</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span>{inquiry.customer_name || "이름 미입력"}</span>
+          {/* 고객 정보 카드 */}
+          <div className="bg-white rounded-[32px] p-8 border border-white shadow-xl shadow-slate-200/50 relative overflow-hidden group/customer">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 transition-transform group-hover/customer:scale-110 duration-700"></div>
+            <div className="flex items-start gap-6 relative z-10">
+              <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                <User className="w-8 h-8" />
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {inquiry.customer_phone
-                    ? formatPhoneNumber(inquiry.customer_phone)
-                    : "전화번호 미입력"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 col-span-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {formatDate(inquiry.created_at)}
-                </span>
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <h4 className="text-2xl font-black text-slate-900 tracking-tight">{inquiry.customer_name || "이름 미입력"}</h4>
+                  <Badge variant="outline" className="bg-slate-50 text-slate-400 border-slate-100 font-bold px-2 py-0">Customer</Badge>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div className="flex items-center gap-3 text-slate-600">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                      <Phone className="h-4 w-4" />
+                    </div>
+                    <span className="font-bold text-sm">
+                      {inquiry.customer_phone ? formatPhoneNumber(inquiry.customer_phone) : "전화번호 미입력"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center">
+                      <Clock className="h-4 w-4" />
+                    </div>
+                    <span className="font-bold text-xs">{formatDate(inquiry.created_at)} 등록</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 문의 내용 */}
-          {inquiry.content && (
-            <div>
-              <h4 className="font-medium mb-2">문의 내용</h4>
-              <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-                {inquiry.content}
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* 문의 내용 */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 ml-1">
+                <div className="w-1.5 h-5 bg-blue-500 rounded-full"></div>
+                <h3 className="text-lg font-black text-slate-900">문의 내용</h3>
+              </div>
+              <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm min-h-[150px]">
+                <p className="text-sm font-bold text-slate-600 leading-relaxed">
+                  {inquiry.content || "상세 내용이 없습니다."}
+                </p>
+              </div>
             </div>
-          )}
 
-          {/* AI 응답 */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-600" />
-                AI 응답
-              </h4>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGenerateAI}
-                disabled={isGeneratingAI}
-              >
-                {isGeneratingAI ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    생성 중...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-1" />
-                    {aiResponse ? "다시 생성" : "AI 응답 생성"}
-                  </>
-                )}
-              </Button>
-            </div>
-            {aiResponse ? (
-              <p className="text-sm bg-purple-50 text-purple-900 rounded-lg p-3">
-                {aiResponse}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-                AI 응답을 생성하려면 버튼을 클릭하세요.
-              </p>
-            )}
-          </div>
-
-          {/* 예약 정보 */}
-          {inquiry.reservation && (
-            <div className="bg-blue-50 rounded-lg p-4">
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                예약 정보
-              </h4>
-              <div className="flex items-center gap-4">
-                <span className="text-sm">
-                  {new Date(inquiry.reservation.scheduled_date).toLocaleDateString("ko-KR", {
-                    month: "short",
-                    day: "numeric",
-                    weekday: "short",
-                  })}
-                </span>
-                <span className="text-sm">
-                  {inquiry.reservation.scheduled_time.slice(0, 5)}
-                </span>
-                <Badge
-                  className={cn(
-                    "text-xs",
-                    inquiry.reservation.status === "confirmed" && "bg-blue-100 text-blue-800",
-                    inquiry.reservation.status === "completed" && "bg-green-100 text-green-800",
-                    inquiry.reservation.status === "cancelled" && "bg-red-100 text-red-800"
-                  )}
+            {/* AI 응답 섹션 */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between ml-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-5 bg-purple-500 rounded-full"></div>
+                  <h3 className="text-lg font-black text-slate-900">AI 권장 응답</h3>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateAI}
+                  disabled={isGeneratingAI}
+                  className="h-9 px-4 rounded-xl border-purple-100 text-purple-600 hover:bg-purple-50 hover:text-purple-700 transition-all font-black text-xs gap-2"
                 >
-                  {inquiry.reservation.status === "confirmed" && "확정"}
-                  {inquiry.reservation.status === "completed" && "완료"}
-                  {inquiry.reservation.status === "cancelled" && "취소"}
-                  {inquiry.reservation.status === "no_show" && "노쇼"}
-                </Badge>
+                  {isGeneratingAI ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  {aiResponse ? "다시 생성" : "응답 생성"}
+                </Button>
+              </div>
+              <div className={cn(
+                "rounded-3xl p-6 border transition-all min-h-[150px] flex flex-col justify-center",
+                aiResponse ? "bg-purple-50/50 border-purple-100 shadow-purple-50 shadow-inner" : "bg-white border-slate-100 shadow-sm"
+              )}>
+                {aiResponse ? (
+                  <p className="text-sm font-bold text-purple-900 leading-relaxed italic">
+                    "{aiResponse}"
+                  </p>
+                ) : (
+                  <p className="text-sm font-bold text-slate-400 text-center">
+                    AI 응답을 생성하려면<br/>버튼을 클릭하세요.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 예약 정보 (있는 경우) */}
+          {inquiry.reservation && (
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[32px] p-8 text-white shadow-xl shadow-blue-200 space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                    <Calendar className="w-5 h-5 text-white" />
+                  </div>
+                  <h4 className="font-black text-lg">상담/체험 예약 정보</h4>
+                </div>
+                <Badge className="bg-white/20 text-white border-none px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Linked Reservation</Badge>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/10 rounded-2xl p-4 text-center">
+                  <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Date</p>
+                  <p className="text-lg font-black">
+                    {new Date(inquiry.reservation.scheduled_date).toLocaleDateString("ko-KR", { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+                <div className="bg-white/20 rounded-2xl p-4 text-center border border-white/20">
+                  <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-1">Time</p>
+                  <p className="text-lg font-black">{inquiry.reservation.scheduled_time.slice(0, 5)}</p>
+                </div>
+                <div className="bg-white/10 rounded-2xl p-4 text-center flex items-center justify-center">
+                  <Badge
+                    className={cn(
+                      "text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border-none shadow-md",
+                      inquiry.reservation.status === "confirmed" && "bg-blue-500 text-white",
+                      inquiry.reservation.status === "completed" && "bg-emerald-500 text-white",
+                      inquiry.reservation.status === "cancelled" && "bg-rose-500 text-white",
+                      "bg-white text-slate-900"
+                    )}
+                  >
+                    {inquiry.reservation.status === "confirmed" ? "확정" :
+                     inquiry.reservation.status === "completed" ? "완료" :
+                     inquiry.reservation.status === "cancelled" ? "취소" :
+                     inquiry.reservation.status === "no_show" ? "노쇼" : "대기"}
+                  </Badge>
+                </div>
               </div>
             </div>
           )}
 
-          {/* 메모 */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium">메모</h4>
+          {/* 관리자 메모 */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between ml-1">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-5 bg-slate-400 rounded-full"></div>
+                <h3 className="text-lg font-black text-slate-900">관리자 메모</h3>
+              </div>
               {!isEditing && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditing(true)}
+                  className="h-8 rounded-lg text-blue-600 hover:bg-blue-50 font-bold text-xs"
                 >
-                  <Edit className="h-4 w-4 mr-1" />
-                  수정
+                  <Edit className="h-3.5 w-3.5 mr-1.5" />
+                  메모 수정
                 </Button>
               )}
             </div>
-            {isEditing ? (
-              <div className="space-y-2">
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="메모를 입력하세요..."
-                  rows={3}
-                />
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setNotes(inquiry.notes || "");
-                      setIsEditing(false);
-                    }}
-                  >
-                    취소
-                  </Button>
-                  <Button size="sm" onClick={handleSaveNotes}>
-                    저장
-                  </Button>
+            
+            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+              {isEditing ? (
+                <div className="space-y-4">
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="상담 결과나 특이사항을 기록하세요..."
+                    rows={4}
+                    className="rounded-2xl border-slate-100 focus:ring-blue-500 font-bold text-sm"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setNotes(inquiry.notes || "");
+                        setIsEditing(false);
+                      }}
+                      className="rounded-xl h-10 px-6 font-black text-xs"
+                    >
+                      취소
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={handleSaveNotes}
+                      className="rounded-xl h-10 px-8 font-black text-xs bg-slate-900"
+                    >
+                      메모 저장
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3 min-h-[60px]">
-                {notes || "메모가 없습니다"}
-              </p>
-            )}
+              ) : (
+                <p className={cn(
+                  "text-sm font-bold leading-relaxed min-h-[60px]",
+                  notes ? "text-slate-600" : "text-slate-300 italic"
+                )}>
+                  {notes || "아직 기록된 메모가 없습니다."}
+                </p>
+              )}
+            </div>
           </div>
+        </div>
+        
+        <div className="p-8 bg-white border-t border-slate-50 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Data Sync Enabled</p>
+          </div>
+          <Button
+            onClick={onClose}
+            className="h-14 px-12 rounded-[22px] bg-slate-900 hover:bg-slate-800 text-white font-black shadow-xl shadow-slate-200 transition-all active:scale-95"
+          >
+            확인 및 닫기
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -27,12 +27,6 @@ export function QuickActions({ onRegisterMember, onManageSchedule }: QuickAction
       onClick: () => toast.info("준비 중인 기능입니다."),
     },
     {
-      label: "출석 체크",
-      icon: CheckCircle,
-      color: "bg-orange-100 text-orange-600",
-      onClick: () => toast.info("스케줄을 선택하여 출석 체크를 진행해주세요."),
-    },
-    {
       label: "추가 메뉴",
       icon: MoreHorizontal,
       color: "bg-gray-100 text-gray-600",

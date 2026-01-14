@@ -16,6 +16,8 @@ interface UseScheduleOperationsParams {
   setMemberMemberships: (data: Record<string, any[]>) => void;
   fetchSchedules: (gymId: string, staffId: string, memberships?: Record<string, any[]>) => void;
   setIsLoading: (loading: boolean) => void;
+  isLocked?: boolean;
+  yearMonth: string;
 }
 
 export function useScheduleOperations({
@@ -29,7 +31,9 @@ export function useScheduleOperations({
   memberMemberships,
   setMemberMemberships,
   fetchSchedules,
-  setIsLoading
+  setIsLoading,
+  isLocked = false,
+  yearMonth
 }: UseScheduleOperationsParams) {
 
   const refreshSchedules = () => {
@@ -62,6 +66,16 @@ export function useScheduleOperations({
   // 빠른 상태 변경
   const handleQuickStatusChange = async (selectedSchedule: any, newStatus: string, onSuccess: () => void) => {
     if (!selectedSchedule) return;
+
+    // 해당 스케줄의 날짜 기준 잠금 여부 재확인
+    const scheduleDate = new Date(selectedSchedule.start_time);
+    const scheduleYearMonth = `${scheduleDate.getFullYear()}-${String(scheduleDate.getMonth() + 1).padStart(2, "0")}`;
+    
+    // 현재 보고 있는 달(yearMonth)과 클릭한 스케줄의 달이 같은 경우에만 락 적용
+    if (isLocked && scheduleYearMonth === yearMonth) {
+      showError("해당 월의 스케줄이 제출되어 상태 변경이 불가능합니다.", "상태 변경");
+      return;
+    }
 
     try {
       // 상태 기반 차감 시스템:
@@ -120,6 +134,15 @@ export function useScheduleOperations({
   const handleQuickSubTypeChange = async (selectedSchedule: any, newSubType: string, onSuccess: () => void) => {
     if (!selectedSchedule) return;
 
+    // 해당 스케줄의 날짜 기준 잠금 여부 재확인
+    const scheduleDate = new Date(selectedSchedule.start_time);
+    const scheduleYearMonth = `${scheduleDate.getFullYear()}-${String(scheduleDate.getMonth() + 1).padStart(2, "0")}`;
+    
+    if (isLocked && scheduleYearMonth === yearMonth) {
+      showError("해당 월의 스케줄이 제출되어 분류 변경이 불가능합니다.", "분류 변경");
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("schedules")
@@ -139,6 +162,15 @@ export function useScheduleOperations({
   // 스케줄 삭제
   const handleDeleteSchedule = async (selectedSchedule: any, onSuccess: () => void) => {
     if (!selectedSchedule) return;
+
+    // 해당 스케줄의 날짜 기준 잠금 여부 재확인
+    const scheduleDate = new Date(selectedSchedule.start_time);
+    const scheduleYearMonth = `${scheduleDate.getFullYear()}-${String(scheduleDate.getMonth() + 1).padStart(2, "0")}`;
+
+    if (isLocked && scheduleYearMonth === yearMonth) {
+      showError("해당 월의 스케줄이 제출되어 삭제가 불가능합니다.", "스케줄 삭제");
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -196,6 +228,11 @@ export function useScheduleOperations({
 
   // 출석 처리 (미등록 리스트에서 빠른 출석 처리)
   const handleQuickAttendance = async (scheduleId: string) => {
+    if (isLocked) {
+      showError("해당 월의 스케줄이 제출되어 출석 처리가 불가능합니다.", "출석 처리");
+      return;
+    }
+
     try {
       const res = await fetch("/api/schedule/update-status", {
         method: "POST",

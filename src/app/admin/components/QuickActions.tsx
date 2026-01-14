@@ -37,12 +37,6 @@ export function QuickActions() {
         color="bg-purple-100 text-purple-600"
       />
       <QuickAction
-        icon={CheckCircle2}
-        label="출석 체크"
-        href="/admin/attendance"
-        color="bg-amber-100 text-amber-600"
-      />
-      <QuickAction
         icon={Users}
         label="회원 관리"
         href="/admin/pt-members"

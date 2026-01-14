@@ -138,6 +138,7 @@ export interface MonthlyScheduleStats {
   pt_outside_count: number;      // PT 근무외 횟수
   pt_weekend_count: number;      // PT 주말 횟수
   pt_holiday_count: number;      // PT 공휴일 횟수
+  bc_count: number;             // BC (바디챌린지) 횟수
 }
 
 /**
@@ -156,6 +157,7 @@ export function calculateMonthlyStats(
     pt_outside_count: 0,
     pt_weekend_count: 0,
     pt_holiday_count: 0,
+    bc_count: 0,
   };
 
   schedules.forEach((schedule) => {
@@ -183,6 +185,10 @@ export function calculateMonthlyStats(
         break;
       case 'holiday':
         stats.pt_holiday_count++;
+        break;
+      case 'bc':
+      case 'body_challenge':
+        stats.bc_count++;
         break;
     }
   });

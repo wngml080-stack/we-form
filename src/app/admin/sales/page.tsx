@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { useSalesPageData } from "./hooks/useSalesPageData";
 import { useExpensesData } from "./hooks/useExpensesData";
@@ -11,9 +12,10 @@ import { SalesStats } from "./components/SalesStats";
 import { ExpenseStats } from "./components/ExpenseStats";
 import { PaymentsTable } from "./components/PaymentsTable";
 import { ExpensesTable } from "./components/ExpensesTable";
+import { InquirySection } from "./components/InquirySection";
 import { BEPCard } from "./components/BEPCard";
 import { exportSalesToExcel } from "./utils/excelExport";
-import { TrendingUp, TrendingDown, Settings, Plus, Download, Target, Award } from "lucide-react";
+import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, Target, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -56,8 +58,28 @@ export default function SalesPage(props: {
   use(props.searchParams);
 
   const { selectedGymId, gymName, selectedCompanyId, isInitialized } = useAdminFilter();
-  const [activeTab, setActiveTab] = useState<"sales" | "expenses">("sales");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = (searchParams.get("tab") as "sales" | "expenses" | "inquiries") || "sales";
+  
+  const [activeTab, setActiveTab] = useState<"sales" | "expenses" | "inquiries">(initialTab);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // URL 파라미터와 탭 상태 동기화
+  useEffect(() => {
+    const tab = searchParams.get("tab") as "sales" | "expenses" | "inquiries";
+    if (tab && ["sales", "expenses", "inquiries"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  // 탭 변경 시 URL 업데이트
+  const handleTabChange = (tab: "sales" | "expenses" | "inquiries") => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.replace(`${window.location.pathname}?${params.toString()}`);
+  };
   const [editForm, setEditForm] = useState<any>({});
 
   // 회원 상세 모달 관련 상태
@@ -442,7 +464,7 @@ export default function SalesPage(props: {
           {/* 탭 버튼 */}
           <div className="bg-slate-100 p-1.5 rounded-2xl flex gap-1">
             <button
-              onClick={() => setActiveTab("sales")}
+              onClick={() => handleTabChange("sales")}
               className={cn(
                 "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
                 activeTab === "sales"
@@ -454,7 +476,7 @@ export default function SalesPage(props: {
               매출
             </button>
             <button
-              onClick={() => setActiveTab("expenses")}
+              onClick={() => handleTabChange("expenses")}
               className={cn(
                 "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
                 activeTab === "expenses"
@@ -464,6 +486,18 @@ export default function SalesPage(props: {
             >
               <TrendingDown className="w-4 h-4" />
               지출
+            </button>
+            <button
+              onClick={() => handleTabChange("inquiries")}
+              className={cn(
+                "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
+                activeTab === "inquiries"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
+              )}
+            >
+              <MessageSquare className="w-4 h-4" />
+              문의
             </button>
           </div>
         </div>
@@ -482,7 +516,7 @@ export default function SalesPage(props: {
                 <Download className="w-4 h-4 text-slate-500" />
               </Button>
             </>
-          ) : (
+          ) : activeTab === "expenses" ? (
             <>
               <Button onClick={expensesData.addNewRow} className="h-11 px-5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black shadow-lg shadow-rose-100 gap-2">
                 <Plus className="w-4 h-4" />
@@ -492,7 +526,7 @@ export default function SalesPage(props: {
                 <Settings className="w-4 h-4 text-slate-500" />
               </Button>
             </>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -617,7 +651,7 @@ export default function SalesPage(props: {
             isLoading={salesLoading}
           />
         </>
-      ) : (
+      ) : activeTab === "expenses" ? (
         <>
           {/* 지출 필터 */}
           <div className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-sm animate-in fade-in duration-500">
@@ -700,6 +734,13 @@ export default function SalesPage(props: {
             onDeleteCategory={expensesData.deleteCustomCategory}
           />
         </>
+      ) : (
+        <InquirySection 
+          selectedGymId={selectedGymId}
+          selectedCompanyId={selectedCompanyId}
+          gymName={gymName || ""}
+          isInitialized={isInitialized}
+        />
       )}
 
       {/* 회원 상세 모달 (매출 등록 후 자동 표시) */}
