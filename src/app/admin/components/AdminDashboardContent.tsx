@@ -101,16 +101,6 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
             </p>
           </div>
 
-          <div className="flex items-center gap-2 xs:gap-4 bg-white p-2 xs:p-3 sm:p-4 rounded-xl xs:rounded-2xl shadow-sm border border-gray-100 w-full xs:w-auto">
-            <div className="text-center border-r border-gray-100 pr-2 xs:pr-4 flex-1 xs:flex-none">
-              <p className="text-[10px] xs:text-xs text-slate-500 mb-0.5 xs:mb-1">오늘의 수업</p>
-              <p className="text-base xs:text-lg sm:text-xl font-bold text-slate-900">{todaySchedules.length}건</p>
-            </div>
-            <div className="text-center pl-2 xs:pl-4 flex-1 xs:flex-none">
-              <p className="text-[10px] xs:text-xs text-slate-500 mb-0.5 xs:mb-1">공지사항</p>
-              <p className="text-base xs:text-lg sm:text-xl font-bold text-slate-900">{announcements.length}건</p>
-            </div>
-          </div>
         </div>
 
         {isLoading ? (

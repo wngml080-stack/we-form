@@ -124,7 +124,7 @@ export function FirstConsultationResultModal({ isOpen, onClose }: Props) {
                 <ClipboardCheck className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white tracking-tight">첫 상담 후 상담 결과</h2>
+                <h2 className="text-2xl font-black !text-white tracking-tight">첫 상담 후 상담 결과</h2>
                 <p className="text-sm text-emerald-400/80 font-bold mt-1 uppercase tracking-widest">
                   Trainer Management Template
                 </p>

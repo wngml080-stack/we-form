@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminFilterProvider, useAdminFilter } from "@/contexts/AdminFilterContext";
+import { MessengerWidget } from "./components/messenger";
 import {
   LayoutDashboard,
   Users,
@@ -98,9 +99,7 @@ function AdminLayoutContent({
   ];
 
   const branchSubMenus = [
-    { name: "매출관리", href: "/admin/sales?tab=sales", icon: DollarSign },
-    { name: "지출관리", href: "/admin/sales?tab=expenses", icon: DollarSign },
-    { name: "문의관리", href: "/admin/sales?tab=inquiries", icon: MessageSquare },
+    { name: "센터관리", href: "/admin/sales?tab=sales", icon: Building2 },
     { name: "급여관리", href: "/admin/salary", icon: DollarSign },
     { name: "직원관리", href: "/admin/staff", icon: ClipboardCheck },
   ];
@@ -336,6 +335,9 @@ function AdminLayoutContent({
           {children}
         </div>
       </main>
+
+      {/* 사내 메신저 플로팅 위젯 */}
+      <MessengerWidget />
     </div>
   );
 }

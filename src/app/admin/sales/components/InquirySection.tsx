@@ -188,7 +188,7 @@ export function InquirySection({
             onClick={() => setIsCreateModalOpen(true)}
           >
             <Plus className="h-5 w-5 mr-2" />
-            문의 등록
+            신규 문의 등록
           </Button>
         </div>
       </div>
@@ -202,7 +202,7 @@ export function InquirySection({
                 value="inquiries" 
                 className="rounded-xl px-6 py-2 font-black text-xs data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md transition-all gap-2"
               >
-                문의 목록
+                신규 고객 목록
               </TabsTrigger>
               <TabsTrigger 
                 value="reservations" 

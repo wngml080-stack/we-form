@@ -103,7 +103,7 @@ export function EditScheduleModal({
               <Pencil className="w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-base xs:text-lg sm:text-2xl font-black text-white tracking-tight">
+              <h2 className="text-base xs:text-lg sm:text-2xl font-black !text-white tracking-tight">
                 {isPersonalSchedule ? '개인 일정 수정' : '스케줄 정보 수정'}
               </h2>
               <div className="hidden xs:flex items-center gap-2 mt-1">

@@ -149,19 +149,38 @@ export function useAdminDashboardData() {
   };
 
   useEffect(() => {
+    // 필수 데이터 로딩 대기
     if (authLoading || !filterInitialized) return;
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
 
-    if (selectedGymId && selectedCompanyId) {
-      fetchDashboardData(selectedGymId, selectedCompanyId, user.id);
-      fetchProducts(selectedGymId);
-      fetchStaffList(selectedGymId);
-      fetchMembers(selectedGymId, selectedCompanyId);
-    }
-    setIsLoading(false);
+    // 데이터 조회 시작
+    const loadData = async () => {
+      try {
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        // 지점이나 회사 정보가 아직 없는 경우에도 로딩은 종료 (필터 선택 대기)
+        if (!selectedGymId || !selectedCompanyId) {
+          setIsLoading(false);
+          return;
+        }
+
+        // 병렬 데이터 조회
+        await Promise.allSettled([
+          fetchDashboardData(selectedGymId, selectedCompanyId, user.id),
+          fetchProducts(selectedGymId),
+          fetchStaffList(selectedGymId),
+          fetchMembers(selectedGymId, selectedCompanyId)
+        ]);
+      } catch (error) {
+        console.error("대시보드 데이터 로딩 중 오류:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
 
   const fetchDashboardData = async (gymId: string, companyId: string, staffId: string) => {

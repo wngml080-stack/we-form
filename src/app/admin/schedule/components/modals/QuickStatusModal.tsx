@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,9 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { showSuccess } from "@/lib/utils/error-handler";
 import { createSupabaseClient } from "@/lib/supabase/client";
-import { X, CheckCircle2, Clock, Calendar as CalendarIcon, User, Pencil, Trash2, Activity, Zap, AlertTriangle } from "lucide-react";
+import { X, CheckCircle2, Clock, Calendar as CalendarIcon, User, Pencil, Trash2, Activity, Zap, AlertTriangle, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { SignatureQRModal } from "./SignatureQRModal";
 
 interface QuickStatusModalProps {
   isOpen: boolean;
@@ -44,6 +46,34 @@ export function QuickStatusModal({
   isLocked = false,
 }: QuickStatusModalProps) {
   const supabase = createSupabaseClient();
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
+
+  // 서명 상태 조회
+  const checkSignatureStatus = useCallback(async () => {
+    if (!selectedSchedule?.id) return;
+
+    try {
+      const res = await fetch(`/api/schedule/signature/status?scheduleId=${selectedSchedule.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHasSignature(data.signature?.status === "completed");
+      }
+    } catch {
+      // 에러 무시
+    }
+  }, [selectedSchedule?.id]);
+
+  useEffect(() => {
+    if (isOpen && selectedSchedule?.id) {
+      checkSignatureStatus();
+    }
+  }, [isOpen, selectedSchedule?.id, checkSignatureStatus]);
+
+  const handleSignatureComplete = useCallback(() => {
+    setHasSignature(true);
+    if (selectedGymId) fetchSchedules(selectedGymId, selectedStaffId);
+  }, [selectedGymId, selectedStaffId, fetchSchedules]);
 
   const handleInbodyToggle = async () => {
     if (!selectedSchedule) return;
@@ -75,7 +105,7 @@ export function QuickStatusModal({
               <Zap className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">상태 퀵 변경</h2>
+              <h2 className="text-2xl font-black !text-white tracking-tight">상태 퀵 변경</h2>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Quick Action Panel</p>
             </div>
           </DialogTitle>
@@ -185,6 +215,34 @@ export function QuickStatusModal({
                         </Button>
                       ))}
                     </div>
+
+                    {/* 서명 요청 버튼 - PT 완료된 경우에만 표시 */}
+                    {selectedSchedule.status === 'completed' && (
+                      <button
+                        onClick={() => setIsSignatureModalOpen(true)}
+                        className={cn(
+                          "w-full h-16 flex items-center justify-center gap-4 rounded-[22px] border-2 transition-all font-black text-base active:scale-95 group/sign mt-4",
+                          hasSignature
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                            : "bg-white border-white text-slate-400 shadow-sm hover:border-blue-200 hover:text-blue-600"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                            hasSignature
+                              ? "bg-emerald-500 text-white"
+                              : "bg-slate-50 text-slate-300 group-hover/sign:bg-blue-50 group-hover/sign:text-blue-500"
+                          )}
+                        >
+                          <Pen className="w-5 h-5" />
+                        </div>
+                        {hasSignature ? "서명 완료됨" : "회원 서명 요청"}
+                        {hasSignature && (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 );
               }
@@ -238,6 +296,34 @@ export function QuickStatusModal({
                       인바디 측정 완료
                       {selectedSchedule.inbody_checked && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                     </button>
+
+                    {/* 서명 요청 버튼 - OT 완료된 경우에만 표시 */}
+                    {selectedSchedule.status === 'completed' && (
+                      <button
+                        onClick={() => setIsSignatureModalOpen(true)}
+                        className={cn(
+                          "w-full h-16 flex items-center justify-center gap-4 rounded-[22px] border-2 transition-all font-black text-base active:scale-95 group/sign",
+                          hasSignature
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-600"
+                            : "bg-white border-white text-slate-400 shadow-sm hover:border-teal-200 hover:text-teal-600"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                            hasSignature
+                              ? "bg-emerald-500 text-white"
+                              : "bg-slate-50 text-slate-300 group-hover/sign:bg-teal-50 group-hover/sign:text-teal-500"
+                          )}
+                        >
+                          <Pen className="w-5 h-5" />
+                        </div>
+                        {hasSignature ? "서명 완료됨" : "회원 서명 요청"}
+                        {hasSignature && (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 );
               }
@@ -379,6 +465,18 @@ export function QuickStatusModal({
           </Button>
         </div>
       </DialogContent>
+
+      {/* 서명 QR 모달 */}
+      {selectedSchedule && (
+        <SignatureQRModal
+          isOpen={isSignatureModalOpen}
+          onClose={() => setIsSignatureModalOpen(false)}
+          scheduleId={selectedSchedule.id}
+          memberName={selectedSchedule.member_name || "회원"}
+          scheduleType={selectedSchedule.type || "PT"}
+          onSignatureComplete={handleSignatureComplete}
+        />
+      )}
     </Dialog>
   );
 }

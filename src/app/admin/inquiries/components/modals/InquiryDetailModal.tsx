@@ -178,7 +178,7 @@ export function InquiryDetailModal({
                 <MessageSquare className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white tracking-tight">문의 상세 정보</h2>
+                <h2 className="text-2xl font-black !text-white tracking-tight">문의 상세 정보</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Inquiry Detailed View</p>
               </div>
             </DialogTitle>

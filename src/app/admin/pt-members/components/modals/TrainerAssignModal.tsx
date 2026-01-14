@@ -97,10 +97,10 @@ export function TrainerAssignModal({
               <UserPlus className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight">트레이너 배정</h2>
+              <h2 className="text-2xl font-black !text-white tracking-tight">트레이너 배정</h2>
               <div className="flex items-center gap-2 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <p className="text-sm text-slate-400 font-bold">{memberName}님의 종목별 담당자 추가</p>
+                <p className="text-sm text-white/80 font-bold">{memberName}님의 종목별 담당자 추가</p>
               </div>
             </div>
           </DialogTitle>

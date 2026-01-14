@@ -86,7 +86,7 @@ export function CreateInquiryModal({
                 <Plus className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white tracking-tight">새 문의 등록</h2>
+                <h2 className="text-2xl font-black !text-white tracking-tight">새 문의 등록</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Create New Inquiry</p>
               </div>
             </DialogTitle>

@@ -218,7 +218,7 @@ export function ReservationModal({
                 <Calendar className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white tracking-tight">{reservation ? "예약 정보 수정" : "상담/체험 예약 등록"}</h2>
+                <h2 className="text-2xl font-black !text-white tracking-tight">{reservation ? "예약 정보 수정" : "상담/체험 예약 등록"}</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">{reservation ? "Edit Reservation" : "Register New Appointment"}</p>
               </div>
             </DialogTitle>

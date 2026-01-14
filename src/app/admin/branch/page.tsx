@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import dynamicImport from "next/dynamic";
-import { Users, DollarSign, BarChart3, Building } from "lucide-react";
+import { Users, DollarSign, BarChart3, Building, MessageSquare, Plus } from "lucide-react";
 import { useBranchData } from "./hooks/useBranchData";
 import { StatCard, QuickLinkCard } from "./components/StatCards";
 import { AnnouncementCalendar } from "./components/AnnouncementCalendar";
@@ -92,7 +92,7 @@ export default function BranchManagementPage(props: {
             <p className="text-[10px] xs:text-xs sm:text-sm text-slate-400 font-bold ml-9 xs:ml-11 sm:ml-13">주요 관리 페이지로 빠르게 이동할 수 있습니다.</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 xs:gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 xs:gap-4 sm:gap-6">
           <QuickLinkCard
             title="매출 통합 관리"
             description="실시간 매출 현황 분석"
@@ -108,11 +108,18 @@ export default function BranchManagementPage(props: {
             color="text-rose-600 bg-rose-50 border-rose-100"
           />
           <QuickLinkCard
-            title="AI 문의 관리"
+            title="신규 관리"
             description="채널별 문의 및 자동 응답"
-            href="/admin/sales?tab=inquiries"
+            href="/admin/sales?tab=new_inquiries"
             icon={MessageSquare}
             color="text-indigo-600 bg-indigo-50 border-indigo-100"
+          />
+          <QuickLinkCard
+            title="리뉴 관리"
+            description="재등록 대상자 집중 관리"
+            href="/admin/sales?tab=renewals"
+            icon={Plus}
+            color="text-emerald-600 bg-emerald-50 border-emerald-100"
           />
           <QuickLinkCard
             title="투명한 급여 관리"

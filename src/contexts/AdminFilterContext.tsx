@@ -165,37 +165,52 @@ export function AdminFilterProvider({ children }: { children: ReactNode }) {
 
   // 초기화
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading) return;
+    
+    // 유저가 없으면 초기화 완료로 간주 (로그인 페이지 등으로 리다이렉트될 것)
+    if (!user) {
+      setIsInitialized(true);
+      return;
+    }
 
     const initializeFilter = async () => {
-      const userCompanyId = user.company_id || "";
-      const userGymId = user.gym_id || "";
-      const isSystemAdmin = user.role === "system_admin";
+      try {
+        const userCompanyId = user.company_id || "";
+        const userGymId = user.gym_id || "";
+        const isSystemAdmin = user.role === "system_admin";
 
-      const [companiesList, gymsList] = await Promise.all([
-        isSystemAdmin ? fetchCompanies() : Promise.resolve([]),
-        userCompanyId ? fetchGymsForCompany(userCompanyId) : Promise.resolve([]),
-      ]);
+        const [companiesList, gymsList] = await Promise.all([
+          isSystemAdmin ? fetchCompanies() : Promise.resolve([]),
+          userCompanyId ? fetchGymsForCompany(userCompanyId) : Promise.resolve([]),
+        ]);
 
-      if (isSystemAdmin) {
-        setCompanies(companiesList);
-      }
+        if (isSystemAdmin) {
+          setCompanies(companiesList);
+        }
 
-      const defaultGymId = userGymId || (gymsList.length > 0 ? gymsList[0].id : "");
+        const defaultGymId = userGymId || (gymsList.length > 0 ? gymsList[0].id : "");
 
-      setGlobalFilter({
-        selectedCompanyId: userCompanyId,
-        selectedGymId: defaultGymId,
-        selectedStaffId: "",
-        gyms: gymsList,
-        staffs: [],
-      });
-      setIsInitialized(true);
+        setGlobalFilter({
+          selectedCompanyId: userCompanyId,
+          selectedGymId: defaultGymId,
+          selectedStaffId: "",
+          gyms: gymsList,
+          staffs: [],
+        });
 
-      // 직원 목록 백그라운드 로드
-      if (defaultGymId) {
-        const staffsList = await fetchStaffsForGym(defaultGymId);
-        setGlobalFilter((prev) => ({ ...prev, staffs: staffsList }));
+        // 직원 목록 백그라운드 로드
+        if (defaultGymId) {
+          try {
+            const staffsList = await fetchStaffsForGym(defaultGymId);
+            setGlobalFilter((prev) => ({ ...prev, staffs: staffsList }));
+          } catch (staffError) {
+            console.error("Error fetching staffs during initialization:", staffError);
+          }
+        }
+      } catch (error) {
+        console.error("Error during filter initialization:", error);
+      } finally {
+        setIsInitialized(true);
       }
     };
 

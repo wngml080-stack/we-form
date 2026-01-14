@@ -176,7 +176,7 @@ export function CreateScheduleModal({
                 <Plus className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-white tracking-tight" style={{ color: 'white' }}>새 스케줄 등록</h2>
+                <h2 className="text-2xl font-black !text-white tracking-tight">새 스케줄 등록</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
                   <p className="text-sm text-white/80 font-bold">선택하신 코치님의 회원만 필터링됩니다</p>
