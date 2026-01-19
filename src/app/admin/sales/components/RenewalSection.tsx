@@ -4,14 +4,16 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Search, Plus, RefreshCw, FileUp, Download, 
+  Search, Plus, RefreshCw, FileUp, Download,
   User, Calendar, Phone, AlertCircle, CheckCircle2,
-  Trash2, Mail, MessageCircle, MoreVertical
+  Trash2, Mail, MessageCircle, MoreVertical, BarChart3, Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
 import { RenewalDetailModal } from "./modals/RenewalDetailModal";
+import { RenewalDashboard } from "./RenewalDashboard";
 
 interface RenewalMember {
   id: string;
@@ -36,6 +38,7 @@ export function RenewalSection({
   gymName: string;
   isInitialized: boolean;
 }) {
+  const [activeSubTab, setActiveSubTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<RenewalMember | null>(null);
@@ -104,47 +107,79 @@ export function RenewalSection({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
-      {/* 액션바 */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="flex-1 flex items-center gap-4 w-full md:w-auto">
-          <div className="relative flex-1 md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="이름, 전화번호, 회원권 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-12 pl-11 pr-4 rounded-2xl bg-white border-slate-200 focus:ring-blue-500 font-bold text-sm shadow-sm"
-            />
+      {/* 탭 네비게이션 */}
+      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-6">
+          <TabsList className="bg-slate-100/80 backdrop-blur-md p-1 rounded-2xl h-auto border border-slate-200/50">
+            <TabsTrigger
+              value="dashboard"
+              className="rounded-xl px-6 py-2 font-black text-xs data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-md transition-all gap-2"
+            >
+              <BarChart3 className="w-3.5 h-3.5 mr-1" />
+              대시보드
+            </TabsTrigger>
+            <TabsTrigger
+              value="targets"
+              className="rounded-xl px-6 py-2 font-black text-xs data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-md transition-all gap-2"
+            >
+              <Users className="w-3.5 h-3.5 mr-1" />
+              리뉴 대상자
+            </TabsTrigger>
+          </TabsList>
+
+          {activeSubTab === "targets" && (
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <Button
+                variant="outline"
+                className="flex-1 md:flex-none h-12 bg-white border-slate-200 text-slate-700 font-black px-6 rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"
+                onClick={handleDownloadTemplate}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                양식 다운로드
+              </Button>
+              <Button
+                className="flex-1 md:flex-none h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 rounded-2xl shadow-xl shadow-emerald-100 transition-all active:scale-95 flex items-center gap-2"
+                onClick={handleExcelUpload}
+              >
+                <FileUp className="h-5 w-5" />
+                엑셀 업로드
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <TabsContent value="dashboard" className="mt-0 animate-in fade-in duration-500">
+          <RenewalDashboard
+            selectedGymId={selectedGymId}
+            selectedCompanyId={selectedCompanyId}
+            isInitialized={isInitialized}
+          />
+        </TabsContent>
+
+        <TabsContent value="targets" className="mt-0 animate-in fade-in duration-500">
+          {/* 액션바 */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
+            <div className="flex-1 flex items-center gap-4 w-full md:w-auto">
+              <div className="relative flex-1 md:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="이름, 전화번호, 회원권 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-12 pl-11 pr-4 rounded-2xl bg-white border-slate-200 focus:ring-blue-500 font-bold text-sm shadow-sm"
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="h-12 w-12 bg-white border-slate-200 text-slate-700 p-0 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm"
+                onClick={() => {}}
+              >
+                <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
+              </Button>
+            </div>
           </div>
-          <Button 
-            variant="outline" 
-            className="h-12 w-12 bg-white border-slate-200 text-slate-700 p-0 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm"
-            onClick={() => {}}
-          >
-            <RefreshCw className={cn("h-5 w-5", isLoading && "animate-spin")} />
-          </Button>
-        </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Button 
-            variant="outline" 
-            className="flex-1 md:flex-none h-12 bg-white border-slate-200 text-slate-700 font-black px-6 rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-            onClick={handleDownloadTemplate}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            양식 다운로드
-          </Button>
-          <Button 
-            className="flex-1 md:flex-none h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 rounded-2xl shadow-xl shadow-emerald-100 transition-all active:scale-95 flex items-center gap-2"
-            onClick={handleExcelUpload}
-          >
-            <FileUp className="h-5 w-5" />
-            엑셀 업로드
-          </Button>
-        </div>
-      </div>
-
-      {/* 리뉴 대상자 목록 */}
+          {/* 리뉴 대상자 목록 */}
       <div className="bg-white/80 backdrop-blur-xl rounded-[40px] shadow-2xl shadow-slate-200/50 border border-white/60 overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full border-collapse">
@@ -245,6 +280,8 @@ export function RenewalSection({
           </table>
         </div>
       </div>
+        </TabsContent>
+      </Tabs>
 
       {/* 상세 관리 모달 */}
       <RenewalDetailModal

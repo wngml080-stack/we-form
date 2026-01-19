@@ -163,7 +163,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
   const [salesLoading, setSalesLoading] = useState(false);
 
   // 기본 옵션들
-  const defaultSaleTypes = ["신규", "재등록", "연장", "양도", "환불"];
+  const defaultSaleTypes = ["신규", "리뉴", "연장", "양도", "환불"];
   const defaultMembershipCategories = ["PT", "헬스", "필라테스", "요가", "수영", "골프", "GX"];
   const defaultMembershipNames = ["1개월", "3개월", "6개월", "12개월", "1회", "10회", "20회", "30회", "50회"];
   const defaultPaymentMethods = ["card", "cash", "transfer"];
@@ -238,7 +238,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     const fcNewPayments = fcPayments.filter(p => p.sale_type === "신규");
     const fcWalkinPayments = fcNewPayments.filter(p => p.visit_route === "워크인" || !p.visit_route);
     const fcOnlinePayments = fcNewPayments.filter(p => p.visit_route === "온라인" || p.visit_route === "인터넷" || p.visit_route === "네이버");
-    const fcRenewPayments = fcPayments.filter(p => p.sale_type === "재등록" || p.sale_type === "연장");
+    const fcRenewPayments = fcPayments.filter(p => p.sale_type === "재등록" || p.sale_type === "리뉴" || p.sale_type === "연장");
 
     setFcStats({
       bep: fcBep,
@@ -257,7 +257,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     const ptPayments = payments.filter(p => p.membership_category === "PT");
     const ptTotalSales = ptPayments.reduce((sum, p) => sum + p.amount, 0);
     const ptNewPayments = ptPayments.filter(p => p.sale_type === "신규");
-    const ptRenewPayments = ptPayments.filter(p => p.sale_type === "재등록" || p.sale_type === "연장");
+    const ptRenewPayments = ptPayments.filter(p => p.sale_type === "재등록" || p.sale_type === "리뉴" || p.sale_type === "연장");
 
     setPtStats({
       bep: ptBep,

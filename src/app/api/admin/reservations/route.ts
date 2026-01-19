@@ -38,12 +38,7 @@ export async function GET(request: NextRequest) {
     // 예약 목록 조회
     let query = supabase
       .from("reservations")
-      .select(`
-        *,
-        staff:staffs(id, name),
-        inquiry:inquiries(id, channel, customer_name),
-        member:members(id, name, phone)
-      `)
+      .select("*")
       .eq("gym_id", gym_id)
       .order("scheduled_date", { ascending: true })
       .order("scheduled_time", { ascending: true });

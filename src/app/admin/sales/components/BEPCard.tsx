@@ -10,10 +10,49 @@ interface BEPCardProps {
   icon: LucideIcon;
   onClick?: () => void;
   helpText?: string;
+  compact?: boolean;
 }
 
-export function BEPCard({ title, progress, target, icon: Icon, onClick, helpText }: BEPCardProps) {
+export function BEPCard({ title, progress, target, icon: Icon, onClick, helpText, compact = false }: BEPCardProps) {
   const isAchieved = progress >= 100;
+
+  if (compact) {
+    return (
+      <div
+        className={`bg-slate-50/50 rounded-2xl p-5 border border-slate-100 group transition-all duration-300 hover:bg-white hover:shadow-md ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={onClick}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:bg-blue-50 transition-colors">
+              <Icon className="w-4.5 h-4.5 text-[#2F80ED]" />
+            </div>
+            <div>
+              <h4 className="font-black text-slate-900 text-sm tracking-tight flex items-center gap-1.5">
+                {title}
+                {helpText && <HelpTooltip content={helpText} />}
+              </h4>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">목표: {target.toLocaleString()}만원</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className={`text-2xl font-black tracking-tighter ${isAchieved ? 'text-emerald-500' : 'text-[#2F80ED]'}`}>
+              {Math.round(progress)}<span className="text-xs ml-0.5 opacity-40">%</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="relative w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner p-0.5">
+          <div
+            className={`h-full ${isAchieved ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-lg shadow-emerald-100' : 'bg-gradient-to-r from-blue-400 to-blue-600 shadow-lg shadow-blue-100'} transition-all duration-1000 rounded-full relative`}
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          >
+            <div className="absolute top-0 right-0 w-2 h-full bg-white/20"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

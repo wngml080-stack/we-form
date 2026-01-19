@@ -1,6 +1,7 @@
 "use client";
 
 import { CreditCard, Banknote, Building2, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Stats {
   total: number;
@@ -13,11 +14,16 @@ interface Stats {
 interface SalesStatsProps {
   stats: Stats;
   onTotalClick?: () => void;
+  layout?: "horizontal" | "vertical";
 }
 
-export function SalesStats({ stats, onTotalClick }: SalesStatsProps) {
+export function SalesStats({ stats, onTotalClick, layout = "horizontal" }: SalesStatsProps) {
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" }).format(amount);
+    return new Intl.NumberFormat("ko-KR", { 
+      style: "currency", 
+      currency: "KRW",
+      maximumFractionDigits: 0
+    }).format(amount);
   };
 
   const statItems = [
@@ -26,6 +32,53 @@ export function SalesStats({ stats, onTotalClick }: SalesStatsProps) {
     { label: "현금 결제액", value: stats.cash, icon: Banknote, color: "emerald", clickable: false },
     { label: "계좌이체액", value: stats.transfer, icon: Building2, color: "amber", clickable: false },
   ];
+
+  if (layout === "vertical") {
+    return (
+      <div className="space-y-3">
+        {statItems.map((item) => (
+          <div
+            key={item.label}
+            className={`p-4 rounded-2xl border border-slate-100 transition-all group ${
+              item.clickable && onTotalClick 
+                ? 'bg-blue-600 border-blue-500 cursor-pointer hover:scale-[1.02] shadow-lg shadow-blue-100' 
+                : 'bg-slate-50 hover:bg-white hover:shadow-md'
+            }`}
+            onClick={item.clickable && onTotalClick ? onTotalClick : undefined}
+          >
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
+                item.clickable 
+                  ? "bg-white/20 text-white" 
+                  : cn(
+                      item.color === 'indigo' && "bg-indigo-100 text-indigo-600",
+                      item.color === 'emerald' && "bg-emerald-100 text-emerald-600",
+                      item.color === 'amber' && "bg-amber-100 text-amber-600",
+                    )
+              )}>
+                <item.icon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <p className={cn(
+                  "text-[10px] font-black uppercase tracking-widest",
+                  item.clickable ? "text-blue-100" : "text-slate-400"
+                )}>
+                  {item.label}
+                </p>
+                <p className={cn(
+                  "text-lg font-black tracking-tight truncate",
+                  item.clickable ? "text-white" : "text-slate-900"
+                )}>
+                  {formatCurrency(item.value)}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-500 delay-300">

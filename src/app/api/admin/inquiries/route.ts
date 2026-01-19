@@ -40,11 +40,7 @@ export async function GET(request: NextRequest) {
     // 문의 목록 조회
     let query = supabase
       .from("inquiries")
-      .select(`
-        *,
-        assigned_staff:staffs!inquiries_assigned_staff_id_fkey(id, name),
-        reservation:reservations(id, scheduled_date, scheduled_time, status)
-      `)
+      .select("*")
       .eq("gym_id", gym_id)
       .order("created_at", { ascending: false });
 

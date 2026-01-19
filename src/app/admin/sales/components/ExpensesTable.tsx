@@ -270,90 +270,77 @@ export function ExpensesTable({
   };
 
   return (
-    <div className="bg-white rounded-[40px] border border-gray-100 shadow-sm overflow-hidden animate-in fade-in duration-500 delay-500">
+    <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-500 delay-500">
       {/* 헤더 */}
-      <div className="bg-gradient-to-r from-rose-50 to-orange-50 px-6 py-4 border-b-2 border-rose-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-500 flex items-center justify-center shadow-lg shadow-rose-200">
-            <Receipt className="w-5 h-5 text-white" />
+      <div className="bg-white px-6 py-5 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center">
+              <Receipt className="w-5 h-5 text-rose-500" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900 tracking-tight">지출 내역 상세</h3>
+              <p className="text-[11px] font-bold text-slate-400">총 {filteredExpenses.length}건의 지출이 조회되었습니다</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-black text-slate-900 tracking-tight">지출 기록 관리</h3>
-            <p className="text-xs font-bold text-slate-400 mt-0.5">지점 운영 비용을 기록하세요</p>
+          
+          <div className="flex items-center gap-3">
+            {/* 검색 바 */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <Input
+                type="text"
+                placeholder="결과 내 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 pl-9 pr-4 bg-slate-50 border-none rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-rose-500/20 transition-all"
+              />
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* 필터 및 검색 바 */}
-      <div className="bg-slate-50 border-b border-slate-200 px-6 py-3 space-y-3">
-        {/* 검색 바 */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              type="text"
-              placeholder="내용, 메모, 예금주, 금액 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 pl-10 pr-4 bg-white border-slate-300 rounded-xl text-xs font-medium focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
-            />
-          </div>
-          {searchQuery && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSearchQuery("")}
-              className="h-9 text-xs text-slate-500 hover:text-slate-700"
-            >
-              검색 초기화
-            </Button>
-          )}
         </div>
         
         {/* 필터 바 */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-600">필터:</span>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="h-8 w-[120px] text-xs border border-slate-300 bg-white">
-                <SelectValue placeholder="대분류" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 대분류</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select 
-              value={subCategoryFilter} 
-              onValueChange={setSubCategoryFilter}
-              disabled={categoryFilter === "all"}
-            >
-              <SelectTrigger className="h-8 w-[120px] text-xs border border-slate-300 bg-white">
-                <SelectValue placeholder="계정과목" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 계정과목</SelectItem>
-                {availableSubCategories.map((sub) => (
-                  <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-              <SelectTrigger className="h-8 w-[100px] text-xs border border-slate-300 bg-white">
-                <SelectValue placeholder="결제방법" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 결제</SelectItem>
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method} value={method}>{methodLabels[method] || method}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-8 w-[110px] text-[11px] font-black border-none bg-slate-50 rounded-lg focus:ring-0">
+              <SelectValue placeholder="대분류" />
+            </SelectTrigger>
+            <SelectContent className="bg-white rounded-xl border-slate-100 shadow-xl">
+              <SelectItem value="all" className="text-xs font-bold">전체 대분류</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat} className="text-xs font-bold">{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select 
+            value={subCategoryFilter} 
+            onValueChange={setSubCategoryFilter}
+            disabled={categoryFilter === "all"}
+          >
+            <SelectTrigger className="h-8 w-[110px] text-[11px] font-black border-none bg-slate-50 rounded-lg focus:ring-0">
+              <SelectValue placeholder="계정과목" />
+            </SelectTrigger>
+            <SelectContent className="bg-white rounded-xl border-slate-100 shadow-xl">
+              <SelectItem value="all" className="text-xs font-bold">전체 계정과목</SelectItem>
+              {availableSubCategories.map((sub) => (
+                <SelectItem key={sub} value={sub} className="text-xs font-bold">{sub}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+            <SelectTrigger className="h-8 w-[110px] text-[11px] font-black border-none bg-slate-50 rounded-lg focus:ring-0">
+              <SelectValue placeholder="결제방법" />
+            </SelectTrigger>
+            <SelectContent className="bg-white rounded-xl border-slate-100 shadow-xl">
+              <SelectItem value="all" className="text-xs font-bold">전체 결제</SelectItem>
+              {paymentMethods.map((method) => (
+                <SelectItem key={method} value={method} className="text-xs font-bold">{methodLabels[method] || method}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {(categoryFilter !== "all" || subCategoryFilter !== "all" || paymentMethodFilter !== "all") && (
             <Button
               variant="ghost"
@@ -363,7 +350,7 @@ export function ExpensesTable({
                 setSubCategoryFilter("all");
                 setPaymentMethodFilter("all");
               }}
-              className="h-8 text-xs text-slate-500 hover:text-slate-700"
+              className="h-8 px-2 text-[11px] font-black text-slate-400 hover:text-slate-600"
             >
               필터 초기화
             </Button>
@@ -372,19 +359,19 @@ export function ExpensesTable({
       </div>
 
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full border-collapse" style={{ borderSpacing: 0 }}>
+        <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-slate-100 border-b-2 border-slate-300 sticky top-0 z-10">
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[120px] border-r border-slate-300 bg-slate-100">날짜</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[100px] border-r border-slate-300 bg-slate-100">대분류</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[100px] border-r border-slate-300 bg-slate-100">계정과목</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[350px] border-r border-slate-300 bg-slate-100">내용</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[150px] border-r border-slate-300 bg-slate-100">금액</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[150px] border-r border-slate-300 bg-slate-100">결제</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[150px] border-r border-slate-300 bg-slate-100">예금주</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[150px] border-r border-slate-300 bg-slate-100">증빙</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap border-r border-slate-300 bg-slate-100">메모</th>
-              <th className="px-3 py-3 text-center text-[11px] font-black text-slate-700 uppercase tracking-wider whitespace-nowrap w-[50px] bg-slate-100"></th>
+            <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">날짜</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">대분류</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">계정과목</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">내용</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-rose-500 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">금액</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">결제</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">예금주</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap border-r border-slate-100/50">증빙</th>
+              <th className="px-4 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">메모</th>
+              <th className="px-2 py-4 w-[50px]"></th>
             </tr>
           </thead>
           <tbody>
@@ -547,56 +534,56 @@ export function ExpensesTable({
                   onDoubleClick={() => onStartEdit(expense)}
                   tabIndex={0}
                 >
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
                     <span className="text-xs font-bold text-slate-700">{formatDate(expense.expense_date)}</span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
                     <span className={cn(
-                      "px-2 py-1 rounded text-[10px] font-black",
+                      "px-2 py-1 rounded text-[10px] font-black shadow-sm",
                       expense.category === "운영비" ? "bg-slate-100 text-slate-600" :
-                      expense.category === "마케팅비" ? "bg-pink-50 text-pink-600" :
-                      expense.category === "인건비" ? "bg-blue-50 text-blue-600" :
-                      expense.category === "세금" ? "bg-red-50 text-red-600" :
-                      expense.category === "지원금" ? "bg-emerald-50 text-emerald-600" :
-                      expense.category === "예비비" ? "bg-amber-50 text-amber-600" :
-                      expense.category === "수익분배금" ? "bg-violet-50 text-violet-600" :
+                      expense.category === "마케팅비" ? "bg-pink-50 text-pink-600 border border-pink-100" :
+                      expense.category === "인건비" ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                      expense.category === "세금" ? "bg-red-50 text-red-600 border border-red-100" :
+                      expense.category === "지원금" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                      expense.category === "예비비" ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                      expense.category === "수익분배금" ? "bg-violet-50 text-violet-600 border border-violet-100" :
                       "bg-gray-100 text-gray-600"
                     )}>
                       {expense.category}
                     </span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-700">{expense.sub_category || "-"}</span>
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
+                    <span className="text-[10px] font-bold text-slate-600">{expense.sub_category || "-"}</span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-xs font-medium text-slate-900">{expense.description || "-"}</span>
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
+                    <span className="text-xs font-bold text-slate-900">{expense.description || "-"}</span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-sm font-black text-slate-900">{formatCurrency(expense.amount)}</span>
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
+                    <span className="text-sm font-black text-rose-600">{formatCurrency(expense.amount)}</span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
                     <span className="text-xs font-bold text-slate-700">{methodLabels[expense.payment_method] || expense.payment_method}</span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-xs font-medium text-slate-700">{expense.account_holder || "-"}</span>
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
+                    <span className="text-xs font-bold text-slate-700">{expense.account_holder || "-"}</span>
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
+                  <td className="px-2 py-3 text-center align-middle border-r border-slate-100/50">
                     {expense.payment_method === "card" ? (
                       expense.card_receipt_collected ? (
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">카드영수증</span>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100">카드영수증</span>
                       ) : (
-                        <span className="text-[10px] font-medium text-slate-400">-</span>
+                        <span className="text-[10px] font-bold text-slate-300">미수집</span>
                       )
                     ) : (
                       expense.tax_invoice_issued ? (
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">세금계산서</span>
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">세금계산서</span>
                       ) : (
-                        <span className="text-[10px] font-medium text-slate-400">-</span>
+                        <span className="text-[10px] font-bold text-slate-300">미발행</span>
                       )
                     )}
                   </td>
-                  <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-xs font-medium text-slate-600 truncate block mx-auto">{expense.receipt_memo || "-"}</span>
+                  <td className="px-2 py-3 text-center align-middle">
+                    <span className="text-[11px] font-medium text-slate-500 truncate block max-w-[150px] mx-auto">{expense.receipt_memo || "-"}</span>
                   </td>
                   <td className="px-1 py-3 text-center align-middle">
                     <Button

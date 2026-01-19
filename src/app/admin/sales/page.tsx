@@ -12,11 +12,13 @@ import { SalesStats } from "./components/SalesStats";
 import { ExpenseStats } from "./components/ExpenseStats";
 import { PaymentsTable } from "./components/PaymentsTable";
 import { ExpensesTable } from "./components/ExpensesTable";
+import { SalesAnalysis } from "./components/SalesAnalysis";
+import { DetailedAnalysis } from "./components/DetailedAnalysis";
 import { InquirySection } from "./components/InquirySection";
 import { RenewalSection } from "./components/RenewalSection";
 import { BEPCard } from "./components/BEPCard";
 import { exportSalesToExcel } from "./utils/excelExport";
-import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, Target, Award } from "lucide-react";
+import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, Target, Award, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -61,22 +63,22 @@ export default function SalesPage(props: {
   const { selectedGymId, gymName, selectedCompanyId, isInitialized } = useAdminFilter();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab = (searchParams.get("tab") as "sales" | "expenses" | "new_inquiries" | "renewals") || "sales";
+  const initialTab = (searchParams.get("tab") as "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis") || "sales";
   
-  const [activeTab, setActiveTab] = useState<"sales" | "expenses" | "new_inquiries" | "renewals">(initialTab);
+  const [activeTab, setActiveTab] = useState<"sales" | "expenses" | "new_inquiries" | "renewals" | "analysis">(initialTab);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [continuousMode, setContinuousMode] = useState(false); // 연속 입력 모드 (기본 OFF)
 
   // URL 파라미터와 탭 상태 동기화
   useEffect(() => {
-    const tab = searchParams.get("tab") as "sales" | "expenses" | "new_inquiries" | "renewals";
-    if (tab && ["sales", "expenses", "new_inquiries", "renewals"].includes(tab)) {
+    const tab = searchParams.get("tab") as "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis";
+    if (tab && ["sales", "expenses", "new_inquiries", "renewals", "analysis"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
 
   // 탭 변경 시 URL 업데이트
-  const handleTabChange = (tab: "sales" | "expenses" | "new_inquiries" | "renewals") => {
+  const handleTabChange = (tab: "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis") => {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
@@ -478,175 +480,135 @@ export default function SalesPage(props: {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 탭 네비게이션 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* 지점명 */}
-          <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-6 py-3 rounded-2xl">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-400">지점</span>
-            <span className="ml-2 text-lg font-black">{gymName || "선택 필요"}</span>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* 상단 통합 헤더 및 탭 */}
+      <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl shadow-xl shadow-slate-200">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">지점</span>
+              <span className="text-lg font-black">{gymName || "선택 필요"}</span>
+            </div>
+            
+            <div className="h-12 w-px bg-slate-100 hidden lg:block" />
+
+            <div className="bg-slate-50 p-1 rounded-2xl flex gap-1">
+              {[
+                { id: "sales", label: "매출 관리", icon: TrendingUp, color: "text-blue-600" },
+                { id: "expenses", label: "지출 관리", icon: TrendingDown, color: "text-rose-600" },
+                { id: "new_inquiries", label: "신규 관리", icon: MessageSquare, color: "text-indigo-600" },
+                { id: "renewals", label: "리뉴 관리", icon: Plus, color: "text-emerald-600" },
+                { id: "analysis", label: "실적성과표", icon: BarChart3, color: "text-purple-600" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id as any)}
+                  className={cn(
+                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
+                    activeTab === tab.id
+                      ? "bg-white shadow-md " + tab.color
+                      : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
+                  )}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {/* 탭 버튼 */}
-          <div className="bg-slate-100 p-1.5 rounded-2xl flex gap-1">
-            <button
-              onClick={() => handleTabChange("sales")}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
-                activeTab === "sales"
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-              )}
-            >
-              <TrendingUp className="w-4 h-4" />
-              매출 관리
-            </button>
-            <button
-              onClick={() => handleTabChange("expenses")}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
-                activeTab === "expenses"
-                  ? "bg-white text-rose-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-              )}
-            >
-              <TrendingDown className="w-4 h-4" />
-              지출 관리
-            </button>
-            <button
-              onClick={() => handleTabChange("new_inquiries")}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
-                activeTab === "new_inquiries"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-              )}
-            >
-              <MessageSquare className="w-4 h-4" />
-              신규 관리
-            </button>
-            <button
-              onClick={() => handleTabChange("renewals")}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
-                activeTab === "renewals"
-                  ? "bg-white text-emerald-600 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700 hover:bg-white/50"
-              )}
-            >
-              <Plus className="w-4 h-4" />
-              리뉴 관리
-            </button>
+
+          <div className="flex items-center gap-2">
+            {activeTab === "sales" && (
+              <>
+                <Button onClick={handleAddNewRow} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg shadow-blue-100 gap-2 transition-all hover:-translate-y-0.5">
+                  <Plus className="w-4 h-4" />
+                  매출 등록
+                </Button>
+                <div className="flex items-center gap-1.5 ml-2">
+                  <Button variant="outline" onClick={() => setIsSettingsOpen(true)} className="h-11 w-11 p-0 rounded-xl border-slate-200 hover:bg-slate-50">
+                    <Settings className="w-4 h-4 text-slate-500" />
+                  </Button>
+                  <Button variant="outline" onClick={handleExportExcel} className="h-11 w-11 p-0 rounded-xl border-slate-200 hover:bg-slate-50">
+                    <Download className="w-4 h-4 text-slate-500" />
+                  </Button>
+                </div>
+              </>
+            )}
+            {activeTab === "expenses" && (
+              <>
+                <Button onClick={expensesData.addNewRow} className="h-11 px-6 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black shadow-lg shadow-rose-100 gap-2 transition-all hover:-translate-y-0.5">
+                  <Plus className="w-4 h-4" />
+                  지출 등록
+                </Button>
+                <Button variant="outline" onClick={() => expensesData.setIsSettingsOpen(true)} className="h-11 w-11 p-0 rounded-xl border-slate-200 ml-2">
+                  <Settings className="w-4 h-4 text-slate-500" />
+                </Button>
+              </>
+            )}
           </div>
-        </div>
-        {/* 우측 액션 버튼 */}
-        <div className="flex items-center gap-2">
-          {activeTab === "sales" ? (
-            <>
-              <Button onClick={handleAddNewRow} className="h-11 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg shadow-blue-100 gap-2">
-                <Plus className="w-4 h-4" />
-                매출 추가
-              </Button>
-              <Button variant="outline" onClick={() => setIsSettingsOpen(true)} className="h-11 w-11 p-0 rounded-xl border-slate-200">
-                <Settings className="w-4 h-4 text-slate-500" />
-              </Button>
-              <Button variant="outline" onClick={handleExportExcel} className="h-11 w-11 p-0 rounded-xl border-slate-200">
-                <Download className="w-4 h-4 text-slate-500" />
-              </Button>
-            </>
-          ) : activeTab === "expenses" ? (
-            <>
-              <Button onClick={expensesData.addNewRow} className="h-11 px-5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black shadow-lg shadow-rose-100 gap-2">
-                <Plus className="w-4 h-4" />
-                지출 추가
-              </Button>
-              <Button variant="outline" onClick={() => expensesData.setIsSettingsOpen(true)} className="h-11 w-11 p-0 rounded-xl border-slate-200">
-                <Settings className="w-4 h-4 text-slate-500" />
-              </Button>
-            </>
-          ) : activeTab === "new_inquiries" ? (
-            <>
-              <Button className="h-11 px-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black shadow-lg shadow-indigo-100 gap-2">
-                <Plus className="w-4 h-4" />
-                문의 등록
-              </Button>
-            </>
-          ) : activeTab === "renewals" ? (
-            <>
-              <Button className="h-11 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-100 gap-2">
-                <Plus className="w-4 h-4" />
-                리뉴 대상 추가
-              </Button>
-            </>
-          ) : null}
         </div>
       </div>
 
       {activeTab === "sales" ? (
         <>
-          <SalesFilters
-            startDate={startDate}
-            endDate={endDate}
-            membershipTypeFilter={membershipTypeFilter}
-            registrationTypeFilter={registrationTypeFilter}
-            methodFilter={methodFilter}
-            quickSelect={quickSelect}
-            allMembershipTypes={allMembershipCategories}
-            allPaymentMethods={allPaymentMethods}
-            onStartDateChange={setStartDate}
-            onEndDateChange={setEndDate}
-            onMembershipTypeChange={setMembershipTypeFilter}
-            onRegistrationTypeChange={setRegistrationTypeFilter}
-            onMethodChange={setMethodFilter}
-            onQuickSelect={handleQuickSelect}
-          />
+          <div className="space-y-8">
+            {/* 상단 요약 영역 */}
+            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-2 h-6 bg-blue-600 rounded-full" />
+                <h3 className="text-lg font-black text-slate-900">매출 요약</h3>
+              </div>
+              <SalesStats stats={stats} onTotalClick={openSalesModal} layout="horizontal" />
+            </div>
 
-          <SalesStats stats={stats} onTotalClick={openSalesModal} />
+            {/* 통계 분석 영역 */}
+            <SalesAnalysis payments={filteredPayments} />
 
-          {/* BEP 달성률 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <BEPCard
-              title="FC (회원권) BEP 달성률"
-              progress={fcProgress}
-              target={Math.round((gymData?.fc_bep || 75000000) / 10000)}
-              icon={Target}
-              onClick={openFcModal}
-              helpText="BEP(손익분기점)는 이 금액 이상 매출이 나와야 손해를 보지 않는 기준입니다. FC는 회원권/부가상품 매출을 의미합니다."
-            />
-            <BEPCard
-              title="PT BEP 달성률"
-              progress={ptProgress}
-              target={Math.round((gymData?.pt_bep || 100000000) / 10000)}
-              icon={Award}
-              onClick={openPtModal}
-              helpText="PT(Personal Training) 매출의 손익분기점 달성률입니다. 100% 이상이면 목표 달성입니다."
-            />
+            {/* 하단 상세 내역 영역 */}
+            <div className="space-y-6">
+              <SalesFilters
+                startDate={startDate}
+                endDate={endDate}
+                membershipTypeFilter={membershipTypeFilter}
+                registrationTypeFilter={registrationTypeFilter}
+                methodFilter={methodFilter}
+                quickSelect={quickSelect}
+                allMembershipTypes={allMembershipCategories}
+                allPaymentMethods={allPaymentMethods}
+                onStartDateChange={setStartDate}
+                onEndDateChange={setEndDate}
+                onMembershipTypeChange={setMembershipTypeFilter}
+                onRegistrationTypeChange={setRegistrationTypeFilter}
+                onMethodChange={setMethodFilter}
+                onQuickSelect={handleQuickSelect}
+              />
+
+              <PaymentsTable
+                payments={tablePayments}
+                staffList={staffList}
+                allSaleTypes={allSaleTypes}
+                allMembershipCategories={allMembershipCategories}
+                allMembershipNames={allMembershipNames}
+                allPaymentMethods={allPaymentMethods}
+                defaultInstallments={defaultInstallments}
+                editingId={editingId}
+                editForm={editForm}
+                onStartEdit={handleStartEdit}
+                onCancelEdit={handleCancelEdit}
+                onSaveEdit={handleSaveEdit}
+                onDelete={handleDelete}
+                onEditFormChange={handleEditFormChange}
+                onSaveNewRow={handleSaveNewRow}
+                onCancelNewRow={handleCancelNewRow}
+                onNewRowChange={handleNewRowChange}
+                onAddOption={addCustomOption}
+                onAddNewRow={handleAddNewRow}
+                onViewMemberDetail={handleViewMemberDetail}
+                continuousMode={continuousMode}
+                onContinuousModeChange={setContinuousMode}
+              />
+            </div>
           </div>
-
-          <PaymentsTable
-            payments={tablePayments}
-            staffList={staffList}
-            allSaleTypes={allSaleTypes}
-            allMembershipCategories={allMembershipCategories}
-            allMembershipNames={allMembershipNames}
-            allPaymentMethods={allPaymentMethods}
-            defaultInstallments={defaultInstallments}
-            editingId={editingId}
-            editForm={editForm}
-            onStartEdit={handleStartEdit}
-            onCancelEdit={handleCancelEdit}
-            onSaveEdit={handleSaveEdit}
-            onDelete={handleDelete}
-            onEditFormChange={handleEditFormChange}
-            onSaveNewRow={handleSaveNewRow}
-            onCancelNewRow={handleCancelNewRow}
-            onNewRowChange={handleNewRowChange}
-            onAddOption={addCustomOption}
-            onAddNewRow={handleAddNewRow}
-            onViewMemberDetail={handleViewMemberDetail}
-            continuousMode={continuousMode}
-            onContinuousModeChange={setContinuousMode}
-          />
 
           <SalesSettingsModal
             isOpen={isSettingsOpen}
@@ -795,12 +757,20 @@ export default function SalesPage(props: {
           gymName={gymName || ""}
           isInitialized={isInitialized}
         />
-      ) : (
+      ) : activeTab === "renewals" ? (
         <RenewalSection
           selectedGymId={selectedGymId}
           selectedCompanyId={selectedCompanyId}
           gymName={gymName || ""}
           isInitialized={isInitialized}
+        />
+      ) : (
+        <DetailedAnalysis 
+          currentPayments={filteredPayments} 
+          previousPayments={[]} 
+          lastYearPayments={[]}
+          currentExpenses={filteredExpenses}
+          previousExpenses={[]}
         />
       )}
 
