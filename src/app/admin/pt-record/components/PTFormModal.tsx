@@ -83,8 +83,6 @@ export function PTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
 
     setIsSaving(true);
     try {
-      console.log("저장할 PT 데이터:", formData);
-
       if (onSave) {
         onSave(formData);
       }
@@ -140,7 +138,7 @@ export function PTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
                     placeholder="회원명 입력"
                     className="text-2xl font-bold tracking-tight bg-transparent border-none outline-none w-auto max-w-[200px] text-white placeholder:text-white/20"
                   />
-                  <h2 className="text-2xl font-bold tracking-tight">PT 코칭 관리</h2>
+                  <h2 className="text-2xl font-bold tracking-tight text-white !text-white" style={{ color: 'white' }}>PT 코칭 관리</h2>
                   <div className="flex items-center gap-1.5 px-3 py-1 bg-white/10 rounded-full border border-white/10 ml-2">
                     <span className="text-[10px] font-bold text-rose-200">기록률 {completionRate}%</span>
                   </div>

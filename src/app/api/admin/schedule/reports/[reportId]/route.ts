@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessGym, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function DELETE(
   request: Request,
@@ -100,14 +101,12 @@ export async function DELETE(
       );
     }
 
-    console.log(`[DeleteReport] 보고서 폐기 완료: ${reportId} (${report.year_month})`);
-
     return NextResponse.json({
       success: true,
       message: "보고서가 폐기되었습니다. 연관된 스케줄의 잠금이 해제되었습니다.",
     });
-  } catch (error: any) {
-    console.error("[DeleteReport] 예외 발생:", error);
-    return NextResponse.json({ error: error.message || "알 수 없는 오류" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[DeleteReport] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

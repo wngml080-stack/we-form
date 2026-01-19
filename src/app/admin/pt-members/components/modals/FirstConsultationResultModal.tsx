@@ -1,17 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  FileText, 
-  Save, 
-  X, 
-  ClipboardCheck, 
-  Target, 
-  Smile, 
-  AlertCircle, 
-  Zap, 
-  BarChart3,
-  Search,
+import {
+  Save,
+  X,
+  ClipboardCheck,
+  Target,
   Calendar as CalendarIcon,
   MapPin,
   CircleDollarSign,
@@ -106,7 +100,6 @@ export function FirstConsultationResultModal({ isOpen, onClose }: Props) {
   };
 
   const handleSave = () => {
-    console.log("상담 결과 저장:", formData);
     alert("상담 결과가 임시 저장되었습니다 (데모용)");
     onClose();
   };
@@ -124,7 +117,7 @@ export function FirstConsultationResultModal({ isOpen, onClose }: Props) {
                 <ClipboardCheck className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black !text-white tracking-tight">첫 상담 후 상담 결과</h2>
+                <h2 className="text-2xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>첫 상담 후 상담 결과</h2>
                 <p className="text-sm text-emerald-400/80 font-bold mt-1 uppercase tracking-widest">
                   Trainer Management Template
                 </p>

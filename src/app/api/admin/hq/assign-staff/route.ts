@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function POST(request: Request) {
   try {
@@ -64,8 +65,8 @@ export async function POST(request: Request) {
       success: true,
       message: "발령 완료!",
     });
-  } catch (error: any) {
-    console.error("[API] Error assigning staff:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[AssignStaff] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

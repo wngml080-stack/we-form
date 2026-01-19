@@ -8,6 +8,8 @@ export interface ChatUser {
   email: string;
   role: string;
   job_title: string | null;
+  gym_id: string | null;
+  gym_name: string | null;
 }
 
 interface UseChatUsersReturn {

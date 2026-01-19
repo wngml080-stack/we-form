@@ -106,12 +106,15 @@ export function NewChatModal({ isOpen, onClose, onCreated }: NewChatModalProps) 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4">
-          <DialogTitle className="text-lg font-bold">새 대화</DialogTitle>
+      <DialogContent className="max-w-md p-0 overflow-hidden rounded-[32px] sm:rounded-[40px] border-none shadow-2xl">
+        <DialogHeader className="px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800">
+          <DialogTitle className="text-lg font-bold text-white !text-white">새 대화</DialogTitle>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+            New Conversation
+          </p>
         </DialogHeader>
 
-        <div className="px-6 pb-4">
+        <div className="px-6 py-4">
           {/* 대화 유형 선택 */}
           <div className="flex gap-2 mb-4">
             <button

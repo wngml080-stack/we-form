@@ -165,7 +165,7 @@ export function KakaoChannelSettingsModal({
   if (isLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent>
+        <DialogContent className="p-3 xs:p-4 sm:p-6 rounded-xl sm:rounded-lg">
           <DialogTitle className="sr-only">카카오 채널 설정 로딩 중</DialogTitle>
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -177,7 +177,7 @@ export function KakaoChannelSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-3 xs:p-4 sm:p-6 rounded-xl sm:rounded-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-yellow-500" />

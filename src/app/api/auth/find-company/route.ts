@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getErrorMessage } from "@/types/common";
 
 export async function POST(request: Request) {
   try {
@@ -30,8 +31,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ found: true, company: data });
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[FindCompany] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 

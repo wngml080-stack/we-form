@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function PATCH(
   request: NextRequest,
@@ -70,9 +71,9 @@ export async function PATCH(
     }
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    console.error("급여 설정 수정 실패:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[SalarySettings] PATCH Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -125,8 +126,8 @@ export async function DELETE(
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("급여 설정 삭제 실패:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[SalarySettings] DELETE Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

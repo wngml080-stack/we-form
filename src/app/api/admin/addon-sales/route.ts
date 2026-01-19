@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 부가상품 매출 등록
 export async function POST(request: NextRequest) {
@@ -97,8 +98,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, payment: paymentData });
-  } catch (error: any) {
-    console.error("부가상품 매출 등록 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[AddonSales] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

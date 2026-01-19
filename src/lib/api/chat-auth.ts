@@ -1,14 +1,13 @@
 import { AuthenticatedStaff } from "./auth";
 
 /**
- * 본사 직원(HQ Staff) 권한 확인
- * gym_id가 null이고 company_admin 또는 system_admin 역할인 경우
+ * 메신저 접근 권한 확인
+ * - system_admin: 무조건 접근 가능
+ * - company_admin: gym_id가 null인 경우만 (본사 직원)
  */
 export function isHQStaff(staff: AuthenticatedStaff): boolean {
-  return (
-    staff.gym_id === null &&
-    ["company_admin", "system_admin"].includes(staff.role)
-  );
+  if (staff.role === "system_admin") return true;
+  return staff.gym_id === null && staff.role === "company_admin";
 }
 
 /**

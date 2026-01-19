@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym, isAdmin } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 트레이너 인계
 export async function POST(
@@ -234,9 +235,9 @@ export async function POST(
         data: newAssignment
       });
     }
-  } catch (error: any) {
-    console.error("[TrainerTransfer] 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[TrainerTransfer] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -297,8 +298,8 @@ export async function GET(
     }
 
     return NextResponse.json({ transfers: transfers || [] });
-  } catch (error: any) {
-    console.error("[TrainerTransfer] GET 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[TrainerTransfer] GET Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

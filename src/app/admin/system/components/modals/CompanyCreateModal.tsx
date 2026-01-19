@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { CreateCompanyForm } from "../../hooks/useSystemData";
-import { Building, User, Phone, ShieldCheck, X, Save, Sparkles, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Building, User, Phone, ShieldCheck, X, CheckCircle2 } from "lucide-react";
 
 interface CompanyCreateModalProps {
   isOpen: boolean;
@@ -29,7 +28,7 @@ export function CompanyCreateModal({ isOpen, onOpenChange, form, setForm, onSubm
                 <Building className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-white tracking-tight" style={{ color: 'white' }}>고객사 추가</h2>
+                <h2 className="text-xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>고객사 추가</h2>
                 <p className="text-blue-200/60 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">New Client Registration (v1.1)</p>
               </div>
             </div>

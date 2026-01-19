@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessCompany, canAccessGym, isAdmin } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 회원 등록
 export async function POST(request: NextRequest) {
@@ -43,26 +44,6 @@ export async function POST(request: NextRequest) {
     if (!company_id || !gym_id || !name) {
       return NextResponse.json({ error: "필수 필드가 누락되었습니다." }, { status: 400 });
     }
-
-    // 디버그: 받은 데이터 확인
-    console.log(`[Members API POST] 회원 등록 요청:`, {
-      name,
-      phone,
-      company_id,
-      gym_id,
-      hasPayment: !!payment,
-      paymentData: payment ? {
-        amount: payment.amount,
-        membership_type: payment.membership_type,
-        membership_name: payment.membership_name
-      } : null,
-      hasMembership: !!membership,
-      membershipData: membership ? {
-        name: membership.name,
-        total_sessions: membership.total_sessions
-      } : null,
-      hasSalesLog: !!sales_log
-    });
 
     const supabase = getSupabaseAdmin();
 
@@ -142,15 +123,6 @@ export async function POST(request: NextRequest) {
         ? new Date(payment.payment_date).toISOString()
         : new Date().toISOString();
 
-      console.log(`[Members API POST] 결제 정보 등록 시도:`, {
-        member_id: newMember.id,
-        member_name: name,
-        amount: payment.amount,
-        parsedAmount: paymentAmount,
-        paid_at: paymentDateTime,
-        membership_type: payment.membership_type
-      });
-
       const { data: newPayment, error: paymentError } = await supabase
         .from("member_payments")
         .insert({
@@ -176,24 +148,10 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (paymentError) {
-        console.error("[Members API POST] ❌ 결제 정보 등록 오류:", paymentError);
+        console.error("[Members API POST] 결제 정보 등록 오류:", paymentError);
       } else {
-        console.log(`[Members API POST] ✅ 결제 정보 등록 성공:`, {
-          payment_id: newPayment.id,
-          member_name: name,
-          amount: newPayment.amount
-        });
         paymentData = newPayment;
       }
-    } else {
-      console.log(`[Members API POST] ⚠️ 결제 정보 없음 또는 유효하지 않음:`, {
-        payment존재: !!payment,
-        newMember존재: !!newMember,
-        paymentAmount: paymentAmount,
-        isValidPayment: isValidPayment,
-        isNaN: isNaN(paymentAmount),
-        rawPaymentData: payment ? JSON.stringify(payment).substring(0, 200) : 'null'
-      });
     }
 
     // 4. 매출 로그 등록 (있는 경우)
@@ -367,9 +325,9 @@ export async function POST(request: NextRequest) {
         paymentCreated: !!paymentData
       }
     });
-  } catch (error: any) {
-    console.error("회원 등록 API 오류:", error);
-    return NextResponse.json({ error: error.message || "알 수 없는 오류" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Members API] 회원 등록 오류:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -533,8 +491,8 @@ export async function GET(request: Request) {
       stats,
       filter: { gymId, companyId, trainerId, status, search }
     });
-  } catch (error: any) {
-    console.error("회원 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Members API] 회원 조회 오류:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

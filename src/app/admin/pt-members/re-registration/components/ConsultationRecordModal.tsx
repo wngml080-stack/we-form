@@ -190,7 +190,7 @@ export function ConsultationRecordModal({
               </div>
               <div>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h2 className="text-2xl font-black !text-white tracking-tight">
+                  <h2 className="text-2xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>
                     재등록 상담 기록
                   </h2>
                   {formData.progressPercentage > 0 && formData.progressPercentage <= 30 && (

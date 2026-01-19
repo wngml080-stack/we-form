@@ -1,8 +1,40 @@
 // 스케줄 관련 CRUD 작업 커스텀 훅
 
 import { showSuccess, showError } from "@/lib/utils/error-handler";
-import { classifyScheduleType } from "@/lib/schedule-utils";
 import { SupabaseClient } from "@supabase/supabase-js";
+
+interface Member {
+  id: string;
+  name: string;
+  phone?: string;
+  [key: string]: unknown;
+}
+
+interface MemberMembership {
+  id: string;
+  member_id: string;
+  name: string;
+  total_sessions: number;
+  used_sessions: number;
+  service_sessions?: number;
+  used_service_sessions?: number;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
+interface Schedule {
+  id: string;
+  start_time: string;
+  end_time?: string;
+  status: string;
+  type?: string;
+  sub_type?: string;
+  member_id?: string;
+  [key: string]: unknown;
+}
+
+type MemberMembershipsMap = Record<string, MemberMembership[]>;
 
 interface UseScheduleOperationsParams {
   supabase: SupabaseClient;
@@ -11,10 +43,10 @@ interface UseScheduleOperationsParams {
   myStaffId: string | null;
   workStartTime: string | null;
   workEndTime: string | null;
-  members: any[];
-  memberMemberships: Record<string, any[]>;
-  setMemberMemberships: (data: Record<string, any[]>) => void;
-  fetchSchedules: (gymId: string, staffId: string, memberships?: Record<string, any[]>) => void;
+  members: Member[];
+  memberMemberships: MemberMembershipsMap;
+  setMemberMemberships: (data: MemberMembershipsMap) => void;
+  fetchSchedules: (gymId: string, staffId: string, memberships?: MemberMembershipsMap) => void;
   setIsLoading: (loading: boolean) => void;
   isLocked?: boolean;
   yearMonth: string;
@@ -42,7 +74,7 @@ export function useScheduleOperations({
     }
   };
 
-  const refreshMemberships = async (): Promise<Record<string, any[]>> => {
+  const refreshMemberships = async (): Promise<MemberMembershipsMap> => {
     if (!selectedGymId) return memberMemberships;
 
     const { data: membershipData } = await supabase
@@ -52,7 +84,7 @@ export function useScheduleOperations({
       .eq("status", "active");
 
     if (membershipData) {
-      const grouped = membershipData.reduce((acc: Record<string, any[]>, m) => {
+      const grouped = membershipData.reduce((acc: MemberMembershipsMap, m: MemberMembership) => {
         if (!acc[m.member_id]) acc[m.member_id] = [];
         acc[m.member_id].push(m);
         return acc;
@@ -64,7 +96,7 @@ export function useScheduleOperations({
   };
 
   // 빠른 상태 변경
-  const handleQuickStatusChange = async (selectedSchedule: any, newStatus: string, onSuccess: () => void) => {
+  const handleQuickStatusChange = async (selectedSchedule: Schedule, newStatus: string, onSuccess: () => void) => {
     if (!selectedSchedule) return;
 
     // 해당 스케줄의 날짜 기준 잠금 여부 재확인
@@ -131,7 +163,7 @@ export function useScheduleOperations({
   };
 
   // 빠른 서브타입 변경
-  const handleQuickSubTypeChange = async (selectedSchedule: any, newSubType: string, onSuccess: () => void) => {
+  const handleQuickSubTypeChange = async (selectedSchedule: Schedule, newSubType: string, onSuccess: () => void) => {
     if (!selectedSchedule) return;
 
     // 해당 스케줄의 날짜 기준 잠금 여부 재확인
@@ -160,7 +192,7 @@ export function useScheduleOperations({
   };
 
   // 스케줄 삭제
-  const handleDeleteSchedule = async (selectedSchedule: any, onSuccess: () => void) => {
+  const handleDeleteSchedule = async (selectedSchedule: Schedule, onSuccess: () => void) => {
     if (!selectedSchedule) return;
 
     // 해당 스케줄의 날짜 기준 잠금 여부 재확인

@@ -108,7 +108,7 @@ export function TrainerTransferModal({
               <ArrowRightLeft className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black !text-white tracking-tight">
+              <h2 className="text-2xl font-black text-white !text-white tracking-tight">
                 트레이너 인계
               </h2>
               <div className="flex items-center gap-2 mt-1">

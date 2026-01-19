@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForTokens, getGoogleUserInfo, GOOGLE_CONFIG } from "@/lib/google/config";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { encrypt } from "@/lib/utils/encryption";
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,8 +57,8 @@ export async function GET(request: NextRequest) {
         {
           staff_id: stateData.staffId,
           google_email: userInfo.email,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token || null,
+          access_token: encrypt(tokens.access_token),
+          refresh_token: tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
           token_expires_at: expiresAt.toISOString(),
           scopes: GOOGLE_CONFIG.scopes,
           updated_at: new Date().toISOString(),

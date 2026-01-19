@@ -115,14 +115,11 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
     const start = overrideStartDate || startDate;
     const end = overrideEndDate || endDate;
 
-    console.log("지출 조회:", { gymId, companyId, start, end });
-
     try {
       const response = await fetch(
         `/api/admin/expenses?gym_id=${gymId}&company_id=${companyId}&start_date=${start}&end_date=${end}`
       );
       const result = await response.json();
-      console.log("지출 조회 결과:", result);
 
       if (result.success && result.expenses) {
         const formattedExpenses: Expense[] = result.expenses.map((e: any) => ({
@@ -280,13 +277,9 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
       });
 
       const result = await response.json();
-      console.log("지출 저장 결과:", result);
 
       if (result.success) {
         setNewRows(prev => prev.filter(r => r.id !== id));
-        // 저장된 지출의 날짜가 필터 범위에 포함되는지 확인
-        const expenseDate = row.expense_date;
-        console.log("저장된 지출 날짜:", expenseDate, "필터 범위:", startDate, "~", endDate);
 
         // 약간의 딜레이 후 데이터 새로고침
         setTimeout(() => {

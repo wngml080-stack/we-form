@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function DELETE(request: Request) {
   try {
@@ -61,8 +62,8 @@ export async function DELETE(request: Request) {
       success: true,
       message: "지점이 삭제되었습니다.",
     });
-  } catch (error: any) {
-    console.error("[API] Error deleting gym:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[DeleteGym] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

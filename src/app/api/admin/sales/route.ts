@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 매출 생성
 export async function POST(request: NextRequest) {
@@ -100,7 +101,6 @@ export async function POST(request: NextRequest) {
           });
 
           if (rpcError) {
-            console.log("[Sales API] RPC 업데이트 실패, 직접 쿼리 시도:", rpcError.message);
             // RPC 실패 시 직접 쿼리 (fallback)
             const updateData: Record<string, any> = {};
             if (gender) updateData.gender = gender;
@@ -130,7 +130,6 @@ export async function POST(request: NextRequest) {
 
         if (!memberError && newMember) {
           memberId = newMember.id;
-          console.log("[Sales API] 신규 회원 생성:", memberId);
         }
       }
     }
@@ -177,14 +176,11 @@ export async function POST(request: NextRequest) {
     // - PT 외 카테고리 → OT 회원권 생성 (1회 기반, 스케줄 관리에서 OT 등록 가능)
     let membershipCreated = null;
 
-    console.log("[Sales API] 회원권 생성 체크 - memberId:", memberId, "category:", membership_category);
-
     // PT 카테고리 여부 판단 (PT, PT 10회, PT50 등 모두 PT로 인식)
     const isPTCategory = membership_category?.toUpperCase().includes("PT");
 
     if (memberId && isPTCategory) {
       // PT 카테고리: PT 회원권 자동 생성 (횟수가 없어도 생성)
-      console.log("[Sales API] ✅ PT 조건 충족! PT 회원권 생성 시작...");
       // 횟수가 없으면 기본값 10회 사용
       const totalSessions = parseInt(service_sessions) || 10;
       // 종료일 계산: 시작일 + (횟수 * 1회당 유효일수)
@@ -222,7 +218,6 @@ export async function POST(request: NextRequest) {
         // 회원권 생성 실패해도 매출은 정상 처리 (로그만 남김)
       } else {
         membershipCreated = newMembership;
-        console.log("[Sales API] PT 회원권 생성 완료:", newMembership?.id);
 
         // 활동 로그 기록 - PT 회원권 등록
         await supabase.from("member_activity_logs").insert({
@@ -248,7 +243,6 @@ export async function POST(request: NextRequest) {
       }
     } else if (memberId && membership_category && !isPTCategory) {
       // PT 외 카테고리 (헬스, 골프, 필라테스 등): OT 회원권 자동 생성 (무제한)
-      console.log("[Sales API] ✅ 비PT 카테고리! OT 회원권 생성 시작...");
       const startDate = membership_start_date ? new Date(membership_start_date) : new Date();
       // OT는 30일 유효기간
       const endDate = new Date(startDate);
@@ -281,7 +275,6 @@ export async function POST(request: NextRequest) {
         console.error("[Sales API] OT 회원권 생성 오류:", membershipError);
       } else {
         membershipCreated = newMembership;
-        console.log("[Sales API] OT 회원권 생성 완료:", newMembership?.id);
 
         // 활동 로그 기록 - OT/일반 회원권 등록
         await supabase.from("member_activity_logs").insert({
@@ -307,9 +300,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, payment, membership: membershipCreated, member_id: memberId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Sales API] 매출 생성 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -403,21 +396,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 성별/생년월일이 변경된 경우 members 테이블도 업데이트 (RPC 함수 사용 - 스키마 캐시 우회)
-    console.log("[Sales API] PUT updates:", updates);
-    console.log("[Sales API] gender/birth_date check:", {
-      hasGender: updates.gender !== undefined,
-      hasBirthDate: updates.birth_date !== undefined,
-      phone: existingPayment.phone
-    });
-
     if ((updates.gender !== undefined || updates.birth_date !== undefined) && existingPayment.phone) {
-      console.log("[Sales API] Updating member gender/birth_date via RPC:", {
-        gym_id: existingPayment.gym_id,
-        phone: existingPayment.phone,
-        gender: updates.gender,
-        birth_date: updates.birth_date
-      });
-
       // RPC 함수를 사용하여 업데이트 (스키마 캐시 우회)
       const { error: rpcError } = await supabase.rpc("update_member_gender_birthdate", {
         p_gym_id: existingPayment.gym_id,
@@ -443,15 +422,13 @@ export async function PUT(request: NextRequest) {
         if (directError) {
           console.error("[Sales API] 회원 정보 직접 수정 오류:", directError);
         }
-      } else {
-        console.log("[Sales API] 회원 gender/birth_date 업데이트 성공 (RPC)");
       }
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Sales API] 매출 수정 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -538,16 +515,14 @@ export async function DELETE(request: NextRequest) {
             .from("members")
             .delete()
             .eq("id", member.id);
-
-          console.log("[Sales API] 매출 삭제로 인한 회원 및 회원권 삭제:", member.id);
         }
       }
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Sales API] 매출 삭제 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -630,8 +605,6 @@ export async function GET(request: NextRequest) {
           rpcMembers = [rpcResult];
         }
 
-        console.log("[Sales API] RPC 원본:", typeof rpcResult, JSON.stringify(rpcResult).substring(0, 200));
-
         rpcMembers.forEach((m: any) => {
           if (m && m.phone) {
             const normalizedPhone = m.phone.replace(/-/g, "");
@@ -639,9 +612,7 @@ export async function GET(request: NextRequest) {
             membersMap[normalizedPhone] = { gender: m.gender, birth_date: m.birth_date };
           }
         });
-        console.log("[Sales API] RPC 조회 성공:", rpcMembers.length, "건, map:", Object.keys(membersMap).length);
       } else if (rpcError) {
-        console.log("[Sales API] RPC 조회 실패, 직접 쿼리 시도:", rpcError.message);
         // RPC 실패 시 직접 쿼리 (fallback)
         const { data: members } = await supabase
           .from("members")
@@ -666,21 +637,8 @@ export async function GET(request: NextRequest) {
     const payments = (data || []).map((p: any) => {
       const normalizedPhone = p.phone ? p.phone.replace(/-/g, "") : "";
       const memberInfo = membersMap[p.phone] || membersMap[normalizedPhone] || {};
-
-      // 디버그: 각 payment의 gender/birth_date 값 확인
       const finalGender = p.gender || memberInfo.gender || "";
       const finalBirthDate = p.birth_date || memberInfo.birth_date || "";
-      if (p.phone === "010-2222-2222") {
-        console.log("[Sales API] Payment 매핑:", {
-          phone: p.phone,
-          "p.gender": p.gender,
-          "memberInfo.gender": memberInfo.gender,
-          "finalGender": finalGender,
-          "p.birth_date": p.birth_date,
-          "memberInfo.birth_date": memberInfo.birth_date,
-          "finalBirthDate": finalBirthDate
-        });
-      }
 
       return {
         id: p.id,
@@ -715,8 +673,8 @@ export async function GET(request: NextRequest) {
       success: true,
       payments,
     });
-  } catch (error: any) {
-    console.error("매출 조회 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Sales API] 매출 조회 오류:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

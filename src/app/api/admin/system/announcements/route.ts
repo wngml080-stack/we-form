@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 시스템 공지사항 조회 (로그인한 사용자만)
 export async function GET() {
@@ -28,9 +29,9 @@ export async function GET() {
       success: true,
       announcements: data || [],
     });
-  } catch (error: any) {
-    console.error("[API] Error fetching announcements:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Announcements] GET Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -83,9 +84,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, announcement: data });
-  } catch (error: any) {
-    console.error("[API] Error creating announcement:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Announcements] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -133,9 +134,9 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ success: true, announcement: data });
-  } catch (error: any) {
-    console.error("[API] Error updating announcement:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Announcements] PATCH Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -174,8 +175,8 @@ export async function DELETE(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[API] Error deleting announcement:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Announcements] DELETE Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

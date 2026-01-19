@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function POST(request: Request) {
   try {
@@ -63,8 +64,8 @@ export async function POST(request: Request) {
       success: true,
       message: "직원 정보가 수정되었습니다.",
     });
-  } catch (error: any) {
-    console.error("[API] Error updating staff:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[HQUpdateStaff] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

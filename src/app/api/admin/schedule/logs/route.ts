@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: Request) {
   try {
@@ -42,7 +43,8 @@ export async function GET(request: Request) {
       }
     });
 
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleLogs] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

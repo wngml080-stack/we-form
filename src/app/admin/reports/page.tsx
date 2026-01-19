@@ -14,13 +14,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, XCircle, Calendar, User, Building, FileText, ChevronDown, ChevronUp, Clock, Trash2 } from "lucide-react";
 
+interface ReportStats {
+  pt_total_count?: number;
+  pt_inside_count?: number;
+  pt_outside_count?: number;
+  pt_weekend_count?: number;
+  ot_count?: number;
+  ot_inbody_count?: number;
+  inbody_count?: number;
+  [key: string]: number | undefined;
+}
+
+interface ReportSchedule {
+  id: string;
+  start_time: string;
+  end_time?: string;
+  schedule_type: string;
+  sub_type?: string;
+  status: string;
+  members?: { name: string } | null;
+}
+
 interface MonthlyReport {
   id: string;
   staff_id: string;
   gym_id: string;
   company_id: string;
   year_month: string;
-  stats: any;
+  stats: ReportStats | null;
   status: string;
   submitted_at: string;
   reviewed_at?: string;
@@ -53,9 +74,9 @@ export default function AdminReportsPage() {
 
   // 카드 확장 상태
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
-  const [expandedSchedules, setExpandedSchedules] = useState<any[]>([]);
-  const [expandedStats, setExpandedStats] = useState<any>(null);
-  const [calculatedStatsMap, setCalculatedStatsMap] = useState<Record<string, any>>({}); // 보고서별 실시간 통계 캐시
+  const [expandedSchedules, setExpandedSchedules] = useState<ReportSchedule[]>([]);
+  const [expandedStats, setExpandedStats] = useState<ReportStats | null>(null);
+  const [calculatedStatsMap, setCalculatedStatsMap] = useState<Record<string, ReportStats>>({}); // 보고서별 실시간 통계 캐시
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
 
   // Supabase 클라이언트 한 번만 생성 (메모이제이션)
@@ -117,7 +138,7 @@ export default function AdminReportsPage() {
       }
 
       // 관련된 staff, gym 정보 별도 조회 (API에서 staff 정보는 포함됨)
-      const gymIds = [...new Set(reportsData.map((r: any) => r.gym_id).filter(Boolean))];
+      const gymIds = [...new Set(reportsData.map((r: { gym_id: string }) => r.gym_id).filter(Boolean))];
 
       const { data: gymsData } = await supabase
         .from("gyms")
@@ -126,7 +147,7 @@ export default function AdminReportsPage() {
 
       const gymMap = new Map(gymsData?.map(g => [g.id, g]) || []);
 
-      const reportsWithRelations = reportsData.map((report: any) => ({
+      const reportsWithRelations = reportsData.map((report: MonthlyReport & { staffs?: { name: string; email: string } }) => ({
         ...report,
         staffs: report.staffs || { name: "-", email: "-" },
         gyms: gymMap.get(report.gym_id) || { name: "-" },
@@ -135,7 +156,7 @@ export default function AdminReportsPage() {
       setReports(reportsWithRelations as MonthlyReport[]);
 
       // 모든 보고서의 실시간 통계를 자동으로 가져오기
-      reportsWithRelations.forEach(async (report: any) => {
+      reportsWithRelations.forEach(async (report: MonthlyReport) => {
         try {
           const res = await fetch(`/api/admin/schedule/reports/${report.id}/schedules`);
           const result = await res.json();
@@ -192,7 +213,6 @@ export default function AdminReportsPage() {
             [reportId]: result.calculatedStats
           }));
         }
-        console.log("[Reports] calculatedStats from API:", result.calculatedStats);
       } else {
         toast.error(result.error || "스케줄 조회 실패");
       }
@@ -255,8 +275,8 @@ export default function AdminReportsPage() {
       );
       setIsReviewOpen(false);
       fetchReports();
-    } catch (error: any) {
-      toast.error(error.message || "처리 중 오류가 발생했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -279,8 +299,8 @@ export default function AdminReportsPage() {
       toast.success("보고서가 폐기되었습니다.");
       setIsReviewOpen(false);
       fetchReports();
-    } catch (error: any) {
-      toast.error(error.message || "폐기 처리 중 오류가 발생했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "폐기 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -561,9 +581,8 @@ export default function AdminReportsPage() {
         )}
       </div>
 
-      {/* 검토 모달 */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="bg-white max-w-3xl">
+        <DialogContent className="bg-white max-w-3xl p-3 xs:p-4 sm:p-6 rounded-xl sm:rounded-lg">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900">
               {selectedReport?.status === "approved" ? "보고서 수정요청" : "스케줄 보고서 검토"}

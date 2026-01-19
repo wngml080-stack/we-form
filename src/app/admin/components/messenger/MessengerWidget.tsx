@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { MessengerBubble } from "./MessengerBubble";
 import { MessengerPanel } from "./MessengerPanel";
@@ -10,19 +10,19 @@ export function MessengerWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [totalUnread, setTotalUnread] = useState(0);
 
-  // 일단 로그인한 사용자면 모두 표시 (테스트용)
-  // TODO: 나중에 HQ staff 조건 복원
-  const isHQStaff = !!user;
-
-  // 디버깅용 로그
-  console.log("[Messenger] user:", user);
-  console.log("[Messenger] isHQStaff:", isHQStaff);
+  // 메신저 접근 가능 조건:
+  // 1. system_admin은 무조건 접근 가능
+  // 2. company_admin이면서 gym_id가 없는 본사 직원
+  const canAccessMessenger =
+    user &&
+    (user.role === "system_admin" ||
+      (user.role === "company_admin" && (user.gym_id === "" || user.gym_id === null)));
 
   const handleUnreadChange = useCallback((count: number) => {
     setTotalUnread(count);
   }, []);
 
-  if (!isHQStaff) return null;
+  if (!canAccessMessenger) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50">

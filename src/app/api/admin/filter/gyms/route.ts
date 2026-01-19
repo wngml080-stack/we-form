@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { authenticateRequest, canAccessCompany, isAdmin } from "@/lib/api/auth";
+import { requireAdmin, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: Request) {
   try {
-    // 인증 확인
-    const { staff, error: authError } = await authenticateRequest();
+    // 인증 및 관리자 권한 확인
+    const { staff, error: authError } = await requireAdmin();
     if (authError) return authError;
-    if (!staff || !isAdmin(staff.role)) {
-      return NextResponse.json(
-        { error: "관리자 권한이 필요합니다." },
-        { status: 403 }
-      );
-    }
+    if (!staff) return NextResponse.json({ error: "인증 오류" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const companyId = searchParams.get("company_id");
@@ -62,8 +58,8 @@ export async function GET(request: Request) {
       success: true,
       gyms: data || [],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[API] Error fetching gyms:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

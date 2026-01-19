@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 기존 회원 매출 등록
 export async function POST(
@@ -64,7 +65,7 @@ export async function POST(
     }
 
     // 활성 회원권 찾기
-    const activeMembership = member.member_memberships?.find((m: any) => m.status === "active");
+    const activeMembership = member.member_memberships?.find((m: { status: string }) => m.status === "active");
 
     // 등록 타입에 따른 처리
     if (registration_type === "리뉴") {
@@ -215,18 +216,6 @@ export async function POST(
     // 결제일은 오늘 날짜+시간 사용 (timestamptz 타입에 맞게 ISO 형식)
     const paymentDate = new Date().toISOString();
 
-    console.log(`[Member Sales API] 결제 정보:`, {
-      memberId,
-      memberName: member.name,
-      paymentAmount,
-      paymentTotalAmount,
-      paymentDate,
-      method,
-      registration_type,
-      membership_type,
-      membership_name
-    });
-
     if (paymentAmount > 0) {
       const { data: paymentData, error: paymentError } = await supabase.from("member_payments").insert({
         company_id,
@@ -247,8 +236,6 @@ export async function POST(
 
       if (paymentError) {
         console.error("결제 정보 등록 오류:", paymentError);
-      } else {
-        console.log(`[Member Sales API] ✓ 결제 레코드 생성 성공:`, paymentData);
       }
 
       // 매출 로그
@@ -418,8 +405,8 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, member_id: memberId });
-  } catch (error: any) {
-    console.error("기존 회원 매출 등록 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MemberSales] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function POST(request: Request) {
   try {
@@ -78,7 +79,8 @@ export async function POST(request: Request) {
     // 스케줄 생성 시 회원권 차감 없음 (상태 변경 시 처리)
 
     return NextResponse.json({ success: true, schedule });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleCreate] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sparkles, TrendingUp, AlertCircle, CheckCircle2, ChevronRight, RefreshCw, ArrowRight, BarChart3, Users, Clock, Target, MessageSquare, ShieldCheck, Zap, X, Info } from "lucide-react";
+import { Sparkles, TrendingUp, AlertCircle, CheckCircle2, ChevronRight, RefreshCw, ArrowRight, BarChart3, Clock, Target, MessageSquare, ShieldCheck, Zap, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,8 +22,30 @@ interface Insight {
   priority: "high" | "medium" | "low";
 }
 
+interface MetricValue {
+  value: number;
+  label?: string;
+}
+
+interface AiRawData {
+  renewal_opportunity?: MetricValue;
+  churn_risk?: MetricValue;
+  no_show_rate?: MetricValue;
+  [key: string]: MetricValue | undefined;
+}
+
+interface GymStats {
+  totalMembers?: number;
+  activeMembers?: number;
+  expiringMembers?: number;
+  totalSchedules?: number;
+  completedSchedules?: number;
+  noShowCount?: number;
+  [key: string]: number | string | undefined;
+}
+
 interface AiInsightsWidgetProps {
-  stats: Record<string, unknown>;
+  stats: GymStats;
   gymName: string;
   gymId?: string;
 }
@@ -54,7 +76,7 @@ export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProp
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isActionPlanOpen, setIsActionPlanOpen] = useState(false);
   const [insights, setInsights] = useState<Insight[]>([]);
-  const [rawData, setRawData] = useState<Record<string, unknown> | null>(null);
+  const [rawData, setRawData] = useState<AiRawData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -257,7 +279,7 @@ export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProp
                 </div>
                 <div>
                   <div className="flex items-center gap-3">
-                    <h2 className="text-3xl font-black text-white tracking-tight" style={{ color: "white" }}>AI 경영 분석 리포트</h2>
+                    <h2 className="text-3xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>AI 경영 분석 리포트</h2>
                     <Badge className="bg-emerald-500 text-white border-none px-3 py-1 h-6 text-[10px] font-black uppercase tracking-widest">Claude AI</Badge>
                   </div>
                   <p className="text-white/80 text-sm font-bold mt-1.5 flex items-center gap-2">
@@ -293,7 +315,7 @@ export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProp
                       <p className="text-sm font-black text-slate-900">재등록 잠재 매출액 예측</p>
                       <p className="text-2xl font-black text-blue-600 tracking-tighter">
                         {rawData?.renewal_opportunity
-                          ? `${((rawData.renewal_opportunity as { value?: number })?.value || 0) * 150}만원 예상`
+                          ? `${(rawData.renewal_opportunity.value || 0) * 150}만원 예상`
                           : "분석 중"}
                       </p>
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
@@ -311,7 +333,7 @@ export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProp
                       <p className="text-sm font-black text-slate-900">회원권 업셀링 제안</p>
                       <p className="text-2xl font-black text-emerald-600 tracking-tighter">
                         {rawData?.renewal_opportunity
-                          ? `${(rawData.renewal_opportunity as { value?: number })?.value || 0}명 타겟팅`
+                          ? `${rawData.renewal_opportunity.value || 0}명 타겟팅`
                           : "분석 중"}
                       </p>
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
@@ -340,7 +362,7 @@ export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProp
                     </div>
                     <div>
                       <p className="text-lg font-black text-slate-900 tracking-tight">
-                        장기 미출석 회원 {(rawData?.churn_risk as { value?: number })?.value || 0}명 감지
+                        장기 미출석 회원 {rawData?.churn_risk?.value || 0}명 감지
                       </p>
                       <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Urgent Attention Required</p>
                     </div>
@@ -375,10 +397,10 @@ export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProp
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-black text-amber-600">
-                        {(rawData?.no_show_rate as { value?: number })?.value || 0}%
+                        {rawData?.no_show_rate?.value || 0}%
                       </p>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                        {((rawData?.no_show_rate as { value?: number })?.value || 0) > 10 ? "주의 필요" : "양호"}
+                        {(rawData?.no_show_rate?.value || 0) > 10 ? "주의 필요" : "양호"}
                       </p>
                     </div>
                   </div>

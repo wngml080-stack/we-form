@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 // 상품 ID로 상품명 조회하는 헬퍼 함수
-async function getProductName(supabaseAdmin: any, productId: string, fallbackName: string): Promise<string> {
+async function getProductName(supabaseAdmin: SupabaseClient, productId: string, fallbackName: string): Promise<string> {
   // UUID 형식인지 확인 (상품 ID인 경우)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(productId)) {
@@ -225,8 +227,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: "지원하지 않는 타입입니다." }, { status: 400 });
 
-  } catch (error: any) {
-    console.error("[API] Error registering:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleRegister] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

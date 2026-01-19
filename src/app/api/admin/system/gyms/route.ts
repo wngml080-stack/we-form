@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: Request) {
   try {
@@ -48,8 +49,8 @@ export async function GET(request: Request) {
       success: true,
       gyms: data || [],
     });
-  } catch (error: any) {
-    console.error("[API] Error fetching gyms:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[SystemGyms] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

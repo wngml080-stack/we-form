@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 지출 생성
 export async function POST(request: NextRequest) {
@@ -77,9 +78,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, expense });
-  } catch (error: any) {
-    console.error("[Expenses API] 지출 생성 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Expenses] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -159,9 +160,9 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[Expenses API] 지출 수정 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Expenses] PUT Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -215,9 +216,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[Expenses API] 지출 삭제 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Expenses] DELETE Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -263,7 +264,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const expenses = (data || []).map((e: any) => ({
+    const expenses = (data || []).map((e: Record<string, unknown>) => ({
       id: e.id,
       expense_date: e.expense_date,
       category: e.category || "",
@@ -283,8 +284,8 @@ export async function GET(request: NextRequest) {
       success: true,
       expenses,
     });
-  } catch (error: any) {
-    console.error("지출 조회 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Expenses] GET Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

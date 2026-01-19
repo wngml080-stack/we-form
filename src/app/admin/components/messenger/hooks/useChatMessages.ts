@@ -131,7 +131,14 @@ export function useChatMessages(roomId: string): UseChatMessagesReturn {
           throw new Error(data.error || "메시지 전송에 실패했습니다.");
         }
 
-        // 낙관적 업데이트 대신 실시간으로 받으므로 여기서는 추가하지 않음
+        // 전송 성공 시 메시지를 바로 추가 (실시간 구독이 안 될 경우 대비)
+        if (data.message) {
+          setMessages((prev) => {
+            // 중복 방지
+            if (prev.some((m) => m.id === data.message.id)) return prev;
+            return [...prev, data.message];
+          });
+        }
       } catch (err) {
         console.error("Send message error:", err);
         throw err;

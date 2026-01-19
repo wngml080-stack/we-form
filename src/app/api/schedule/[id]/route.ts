@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -82,8 +83,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     }
 
     return NextResponse.json({ success: true, message: "스케줄을 삭제했습니다." });
-  } catch (error: any) {
-    console.error("❌ delete 오류:", error?.message ?? error);
-    return NextResponse.json({ error: error?.message ?? "삭제 중 오류가 발생했습니다." }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleDelete] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

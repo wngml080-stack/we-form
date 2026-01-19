@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function POST(request: Request) {
   try {
@@ -46,8 +47,8 @@ export async function POST(request: Request) {
       success: true,
       message: `마이그레이션 ${filename}이(가) 성공적으로 실행되었습니다.`
     });
-  } catch (error: any) {
-    console.error('Migration error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('[RunMigration] Error:', error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

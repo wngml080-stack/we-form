@@ -225,6 +225,15 @@ CREATE POLICY "HQ staff can update own messages"
 -- PART 5: 트리거 함수
 -- ============================================
 
+-- updated_at 컬럼 자동 업데이트 함수 (없으면 생성)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 메시지 전송 시 채팅방 last_message 업데이트
 CREATE OR REPLACE FUNCTION update_chat_room_last_message()
 RETURNS TRIGGER AS $$

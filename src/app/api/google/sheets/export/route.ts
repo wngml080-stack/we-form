@@ -8,6 +8,7 @@ import {
   formatSalesForSheet,
   formatSchedulesForSheet,
 } from "@/lib/google/sheets";
+import { decrypt, encrypt } from "@/lib/utils/encryption";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -48,10 +49,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 암호화된 토큰 복호화
+    let accessToken = decrypt(tokenData.access_token);
+    const refreshToken = tokenData.refresh_token ? decrypt(tokenData.refresh_token) : null;
+
     // 토큰 만료 확인 및 갱신
-    let accessToken = tokenData.access_token;
     if (new Date(tokenData.token_expires_at) < new Date()) {
-      if (!tokenData.refresh_token) {
+      if (!refreshToken) {
         return NextResponse.json(
           { error: "Google 계정을 다시 연동해주세요.", needsConnect: true },
           { status: 400 }
@@ -59,14 +63,14 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const newTokens = await refreshAccessToken(tokenData.refresh_token);
+        const newTokens = await refreshAccessToken(refreshToken);
         accessToken = newTokens.access_token;
 
-        // 새 토큰 저장
+        // 새 토큰 저장 (암호화)
         await supabase
           .from("user_google_tokens")
           .update({
-            access_token: newTokens.access_token,
+            access_token: encrypt(newTokens.access_token),
             token_expires_at: new Date(
               Date.now() + newTokens.expires_in * 1000
             ).toISOString(),

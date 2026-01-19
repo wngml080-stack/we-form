@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 대량 트레이너 할당 API
 export async function POST(request: Request) {
@@ -37,8 +38,8 @@ export async function POST(request: Request) {
       updated: data?.length || 0,
       members: data
     });
-  } catch (error: any) {
-    console.error("대량 트레이너 할당 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[BulkTrainer] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

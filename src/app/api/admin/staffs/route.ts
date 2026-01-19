@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // Service Role로 RLS 우회해서 모든 직원 조회
 export async function GET(request: Request) {
@@ -62,8 +63,8 @@ export async function GET(request: Request) {
       staffs: data,
       count: data?.length || 0,
     });
-  } catch (error: any) {
-    console.error("[API] Error fetching staffs:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[AdminStaffs] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

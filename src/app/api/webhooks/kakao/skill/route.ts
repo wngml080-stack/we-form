@@ -13,7 +13,6 @@ import { getClaudeClient, CLAUDE_MODELS } from "@/lib/ai/claude";
 export async function POST(request: NextRequest) {
   try {
     const body: KakaoSkillRequest = await request.json();
-    console.log("[Kakao Skill] Request:", JSON.stringify(body, null, 2));
 
     const { intent, userRequest, action } = body;
     const userMessage = userRequest?.utterance || "";

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessGym, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function POST(req: NextRequest) {
   try {
@@ -119,8 +120,8 @@ export async function POST(req: NextRequest) {
         ? "승인되었습니다. 스케줄은 잠금 상태로 유지됩니다."
         : `거절되었습니다.${unlockOnReject ? " 스케줄 잠금이 해제되었습니다." : ""}`,
     });
-  } catch (error: any) {
-    console.error("❌ approve 오류:", error?.message ?? error);
-    return NextResponse.json({ error: error?.message ?? "승인 처리 중 오류가 발생했습니다." }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleApprove] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

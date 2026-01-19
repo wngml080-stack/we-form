@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 type YearMonth = `${number}-${"01"|"02"|"03"|"04"|"05"|"06"|"07"|"08"|"09"|"10"|"11"|"12"}`;
 
@@ -175,8 +176,8 @@ export async function POST(req: NextRequest) {
       stats,
       message: "월별 스케줄을 제출했습니다. 관리자가 승인할 때까지 잠금 상태입니다.",
     });
-  } catch (error: any) {
-    console.error("❌ submit 오류:", error?.message ?? error);
-    return NextResponse.json({ error: error?.message ?? "제출 중 오류가 발생했습니다." }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleSubmit] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

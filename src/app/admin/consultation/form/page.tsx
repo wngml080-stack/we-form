@@ -39,7 +39,6 @@ export default function ConsultationFormPage(props: {
     setIsSaving(true);
     try {
       // TODO: API 연동
-      console.log("저장할 데이터:", formData);
       alert("저장되었습니다.");
     } catch (error) {
       console.error("저장 실패:", error);

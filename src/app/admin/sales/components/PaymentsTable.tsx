@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Save, X, Plus, Banknote, Calendar, Info, MapPin, Clock, Star, Search, Gift } from "lucide-react";
+import { Trash2, Save, X, Plus, Banknote, Calendar, Info, MapPin, Clock, Star, Search, Gift, Zap, ZapOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber, formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
@@ -111,6 +111,8 @@ interface PaymentsTableProps {
   onAddOption?: (type: "sale_type" | "membership_category" | "membership_name", name: string) => void;
   onAddNewRow?: () => void;
   onViewMemberDetail?: (payment: Payment) => void;
+  continuousMode?: boolean;
+  onContinuousModeChange?: (enabled: boolean) => void;
 }
 
 // 추가 기능이 있는 Select 컴포넌트
@@ -212,7 +214,9 @@ export function PaymentsTable({
   onNewRowChange,
   onAddOption,
   onAddNewRow,
-  onViewMemberDetail
+  onViewMemberDetail,
+  continuousMode = true,
+  onContinuousModeChange
 }: PaymentsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const tableRef = useRef<HTMLTableElement>(null);
@@ -744,10 +748,13 @@ export function PaymentsTable({
                       <Input
                         value={editForm.memo || ""}
                         onChange={(e) => onChangeHandler("memo", e.target.value)}
-                        placeholder="메모"
+                        placeholder="메모 (Enter: 저장)"
                         className="h-9 w-full text-xs border border-slate-300 bg-white rounded-md font-medium text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         onKeyDown={(e) => {
-                          if (e.key === "Escape") {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            saveHandler();
+                          } else if (e.key === "Escape") {
                             e.preventDefault();
                             cancelHandler();
                           }
@@ -952,17 +959,43 @@ export function PaymentsTable({
       {/* 하단 매출 추가 버튼 - 엑셀 스타일 */}
       <div className="border-t-2 border-slate-300 bg-slate-50 p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <Info className="w-4 h-4" />
-            <span>더블클릭/Enter: 편집 | Enter/Tab: 다음 셀 | Delete: 삭제 | Esc: 취소 | 행 이탈: 자동저장</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+              <Info className="w-4 h-4" />
+              <span>Enter: 저장 후 다음 행 | Tab: 다음 셀 | Esc: 취소</span>
+            </div>
+            {/* 연속 입력 모드 토글 */}
+            <button
+              onClick={() => onContinuousModeChange?.(!continuousMode)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                continuousMode
+                  ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                  : "bg-slate-100 text-slate-500 border border-slate-200"
+              )}
+            >
+              {continuousMode ? (
+                <>
+                  <Zap className="w-3.5 h-3.5" />
+                  연속 입력 ON
+                </>
+              ) : (
+                <>
+                  <ZapOff className="w-3.5 h-3.5" />
+                  연속 입력 OFF
+                </>
+              )}
+            </button>
           </div>
-          <button
-            onClick={onAddNewRow}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-xs shadow-md transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            새 행 추가
-          </button>
+          {!continuousMode && (
+            <button
+              onClick={onAddNewRow}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-xs shadow-md transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              새 행 추가
+            </button>
+          )}
         </div>
       </div>
     </div>

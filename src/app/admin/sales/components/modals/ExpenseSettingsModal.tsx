@@ -59,7 +59,7 @@ export function ExpenseSettingsModal({
               <Settings className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight text-white">지출 카테고리 설정</h2>
+              <h2 className="text-xl font-black tracking-tight text-white !text-white" style={{ color: 'white' }}>지출 카테고리 설정</h2>
               <p className="text-rose-200/60 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">Expense Categories</p>
             </div>
           </div>

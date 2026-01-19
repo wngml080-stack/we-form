@@ -8,6 +8,7 @@ import {
   deleteCalendarEvent,
   reservationToCalendarEvent,
 } from "@/lib/google/calendar";
+import { decrypt, encrypt } from "@/lib/utils/encryption";
 
 // Google Calendar 동기화
 export async function POST(
@@ -59,21 +60,29 @@ export async function POST(
       );
     }
 
-    // 토큰 갱신 확인
-    let accessToken = tokenData.access_token;
+    // 암호화된 토큰 복호화
+    let accessToken = decrypt(tokenData.access_token);
+    const refreshToken = tokenData.refresh_token ? decrypt(tokenData.refresh_token) : null;
     const tokenExpiry = new Date(tokenData.expires_at);
 
     if (tokenExpiry < new Date()) {
       // 토큰 갱신
+      if (!refreshToken) {
+        return NextResponse.json(
+          { error: "Google 인증이 만료되었습니다. 다시 연결해주세요." },
+          { status: 401 }
+        );
+      }
+
       try {
-        const newTokens = await refreshAccessToken(tokenData.refresh_token);
+        const newTokens = await refreshAccessToken(refreshToken);
         accessToken = newTokens.access_token;
 
-        // 새 토큰 저장
+        // 새 토큰 저장 (암호화)
         await supabase
           .from("user_google_tokens")
           .update({
-            access_token: newTokens.access_token,
+            access_token: encrypt(newTokens.access_token),
             expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
           })
           .eq("user_id", staff.user_id);
@@ -120,9 +129,8 @@ export async function POST(
           reservation.google_calendar_event_id,
           calendarEvent
         );
-      } catch (updateError) {
+      } catch {
         // 이벤트가 없으면 새로 생성
-        console.log("Event not found, creating new one");
         eventResult = await createCalendarEvent(accessToken, calendarEvent);
       }
     } else {

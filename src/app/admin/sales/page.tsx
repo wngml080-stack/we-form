@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use, useEffect } from "react";
+import { useState, use, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -65,6 +65,7 @@ export default function SalesPage(props: {
   
   const [activeTab, setActiveTab] = useState<"sales" | "expenses" | "new_inquiries" | "renewals">(initialTab);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [continuousMode, setContinuousMode] = useState(false); // 연속 입력 모드 (기본 OFF)
 
   // URL 파라미터와 탭 상태 동기화
   useEffect(() => {
@@ -196,8 +197,6 @@ export default function SalesPage(props: {
       payment_date: editForm.payment_date || newRow.payment_date || new Date().toISOString().split("T")[0],
     };
 
-    console.log("저장할 데이터:", dataToSave);
-
     try {
       const response = await fetch("/api/admin/sales", {
         method: "POST",
@@ -226,7 +225,6 @@ export default function SalesPage(props: {
       });
 
       const result = await response.json();
-      console.log("저장 결과:", result);
 
       if (result.success) {
         // 새 행 제거
@@ -236,34 +234,61 @@ export default function SalesPage(props: {
         const savedMemberName = editForm.member_name || dataToSave.member_name;
         const savedPhone = editForm.phone || dataToSave.phone;
 
-        setEditForm({});
-
         // 데이터 새로고침
         if (selectedGymId && selectedCompanyId) {
           fetchPayments(selectedGymId, selectedCompanyId);
         }
 
-        // 회원 상세 모달 열기 (member_id가 있는 경우)
-        if (result.member_id && selectedGymId) {
-          try {
-            const detailResponse = await fetch(
-              `/api/admin/members/${result.member_id}/detail?gym_id=${selectedGymId}`
-            );
-            const detailResult = await detailResponse.json();
+        // 연속 모드일 때: 새 행 자동 추가 및 첫 번째 필드로 포커스 이동
+        if (continuousMode) {
+          // 새 행 추가
+          addNewRow();
+          setEditForm({
+            payment_date: new Date().toISOString().split("T")[0],
+            sale_type: "신규",
+            method: "card",
+            installment: 1,
+            service_sessions: 0,
+            bonus_sessions: 0,
+            validity_per_session: 0,
+            membership_start_date: new Date().toISOString().split("T")[0],
+            visit_route: "워크인",
+            expiry_type: "60일 이내"
+          });
 
-            if (detailResponse.ok) {
-              setSelectedMember({
-                id: result.member_id,
-                name: savedMemberName || "",
-                phone: savedPhone || "",
-              });
-              setMemberAllMemberships(detailResult.memberships || []);
-              setMemberPaymentHistory(detailResult.payments || []);
-              setMemberActivityLogs(detailResult.activityLogs || []);
-              setIsMemberDetailOpen(true);
+          // 첫 번째 입력 필드로 포커스 이동
+          setTimeout(() => {
+            const firstInput = document.querySelector('tr[data-payment-id^="new-"] input:first-of-type') as HTMLInputElement;
+            if (firstInput) {
+              firstInput.focus();
+              firstInput.select();
             }
-          } catch (error) {
-            console.error("회원 상세 조회 오류:", error);
+          }, 100);
+        } else {
+          setEditForm({});
+
+          // 연속 모드가 아닐 때만 회원 상세 모달 표시
+          if (result.member_id && selectedGymId) {
+            try {
+              const detailResponse = await fetch(
+                `/api/admin/members/${result.member_id}/detail?gym_id=${selectedGymId}`
+              );
+              const detailResult = await detailResponse.json();
+
+              if (detailResponse.ok) {
+                setSelectedMember({
+                  id: result.member_id,
+                  name: savedMemberName || "",
+                  phone: savedPhone || "",
+                });
+                setMemberAllMemberships(detailResult.memberships || []);
+                setMemberPaymentHistory(detailResult.payments || []);
+                setMemberActivityLogs(detailResult.activityLogs || []);
+                setIsMemberDetailOpen(true);
+              }
+            } catch (error) {
+              console.error("회원 상세 조회 오류:", error);
+            }
           }
         }
       } else {
@@ -619,6 +644,8 @@ export default function SalesPage(props: {
             onAddOption={addCustomOption}
             onAddNewRow={handleAddNewRow}
             onViewMemberDetail={handleViewMemberDetail}
+            continuousMode={continuousMode}
+            onContinuousModeChange={setContinuousMode}
           />
 
           <SalesSettingsModal

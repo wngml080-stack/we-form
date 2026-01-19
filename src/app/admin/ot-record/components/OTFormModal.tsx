@@ -85,8 +85,6 @@ export function OTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
 
     setIsSaving(true);
     try {
-      console.log("저장할 OT 데이터:", formData);
-
       if (onSave) {
         onSave(formData);
       }
@@ -138,7 +136,7 @@ export function OTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, 
                     placeholder="회원명 입력"
                     className="text-2xl font-black tracking-tight bg-transparent border-none outline-none w-auto max-w-[200px] text-white placeholder:text-white/20"
                   />
-                  <h2 className="text-2xl font-black tracking-tight">OT 수업 기록지</h2>
+                  <h2 className="text-2xl font-black tracking-tight text-white !text-white" style={{ color: 'white' }}>OT 수업 기록지</h2>
                   <div className="flex items-center gap-1.5 px-3 py-1 bg-white/10 rounded-full border border-white/10 ml-2">
                     <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
                     <span className="text-[10px] font-black text-emerald-200">PROGRESS {completionRate}%</span>

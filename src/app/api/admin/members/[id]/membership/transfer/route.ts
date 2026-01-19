@@ -482,7 +482,6 @@ export async function GET(
     const { data: transfers, error } = await query;
 
     if (error) {
-      console.log("[Transfer] 양도 이력 조회 실패:", error);
       return NextResponse.json({ transfers: [] });
     }
 

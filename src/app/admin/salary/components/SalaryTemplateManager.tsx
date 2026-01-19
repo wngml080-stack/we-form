@@ -126,10 +126,7 @@ export default function SalaryTemplateManager() {
                         .select("template_id, rule_id")
                         .limit(1);
 
-                    console.log("salary_template_items 체크:", { itemsCheck, itemsCheckError });
-
                     if (itemsCheckError) {
-                        console.warn("salary_template_items 테이블 없음:", itemsCheckError);
                         setTemplates(basicData.map(t => ({ ...t, items: [] })));
                         return;
                     }
@@ -143,8 +140,6 @@ export default function SalaryTemplateManager() {
                                 .select("rule_id")
                                 .eq("template_id", template.id);
 
-                            console.log(`템플릿 ${template.id} items:`, { templateItems, templateItemsError });
-
                             if (templateItemsError || !templateItems || templateItems.length === 0) {
                                 return { ...template, items: [] };
                             }
@@ -155,9 +150,6 @@ export default function SalaryTemplateManager() {
                                 .from("salary_rules")
                                 .select("*")
                                 .in("id", ruleIds);
-
-                            console.log(`규칙들:`, { rules, rulesError });
-                            console.log(`규칙 ID 확인:`, rules?.map(r => ({ id: r.id, name: r.name })));
 
                             if (rulesError || !rules) {
                                 return { ...template, items: [] };
@@ -190,7 +182,6 @@ export default function SalaryTemplateManager() {
     const handleOpenModal = (template?: SalaryTemplate) => {
         if (template) {
             const extractedRules = template.items?.map(i => i.rule) || [];
-            console.log("템플릿 열기 - 규칙 ID 확인:", extractedRules.map(r => ({ name: r.name, id: r.id, calculation_type: r.calculation_type })));
             setEditingTemplate({
                 id: template.id,
                 name: template.name,
@@ -333,10 +324,8 @@ export default function SalaryTemplateManager() {
             }
 
             // 4. 규칙 저장
-            console.log("저장 시 규칙 ID 확인:", editingTemplate.rules.map(r => ({ name: r.name, id: r.id, calculation_type: r.calculation_type })));
             for (const rule of editingTemplate.rules) {
                 let ruleId = rule.id;
-                console.log(`규칙 "${rule.name}" 처리 - ID: ${ruleId}, type: ${rule.calculation_type}`);
 
                 if (!ruleId) {
                     // 새 규칙: salary_components 처리
@@ -684,13 +673,11 @@ export default function SalaryTemplateManager() {
                                                             // functional update로 stale closure 방지
                                                             setEditingTemplate(prev => {
                                                                 const newRules = [...prev.rules];
-                                                                console.log(`calculation_type 변경 전 ID: ${newRules[index].id}`);
                                                                 newRules[index] = {
                                                                     ...newRules[index],
                                                                     calculation_type: val as CalculationType,
                                                                     default_parameters: newParams
                                                                 };
-                                                                console.log(`calculation_type 변경 후 ID: ${newRules[index].id}`);
                                                                 return { ...prev, rules: newRules };
                                                             });
                                                         }}

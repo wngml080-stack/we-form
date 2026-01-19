@@ -76,9 +76,7 @@ export function AttendanceSection({
 
   // 필터링된 스케줄
   const filteredSchedules = useMemo(() => {
-    console.log("[AttendanceSection] Received schedules:", schedules.length);
     let base = [...schedules]; // 모든 스케줄 (개인일정 포함)
-    console.log("[AttendanceSection] Base count:", base.length);
 
     if (viewMode === "daily") {
       base = base.filter(s => {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 부가상품 수정
 export async function PUT(
@@ -17,8 +18,6 @@ export async function PUT(
     const { id: memberId } = await params;
     const body = await request.json();
     const { paymentId, amount, method, memo, start_date, end_date } = body;
-
-    console.log("[AddonUpdate] 요청 데이터:", { paymentId, amount, method, memo, start_date, end_date, memberId });
 
     if (!paymentId) {
       return NextResponse.json({ error: "결제 ID가 필요합니다." }, { status: 400 });
@@ -107,10 +106,9 @@ export async function PUT(
       }
     }
 
-    console.log("[AddonUpdate] 수정 성공:", data);
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    console.error("부가상품 수정 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[AddonUpdate] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

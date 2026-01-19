@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 회원권 삭제
 export async function DELETE(
@@ -79,11 +80,10 @@ export async function DELETE(
       console.error("[MembershipDelete] 로그 기록 실패:", logError);
     }
 
-    console.log("[MembershipDelete] 삭제 성공:", membershipId);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("회원권 삭제 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MembershipDelete] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -186,10 +186,9 @@ export async function PUT(
       }
     }
 
-    console.log("[MembershipUpdate] 수정 성공:", data);
     return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    console.error("회원권 수정 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MembershipUpdate] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

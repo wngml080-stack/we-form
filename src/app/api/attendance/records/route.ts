@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 출석 기록 조회
 export async function GET(request: Request) {
@@ -81,9 +82,9 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    console.error("❌ 출석 기록 조회 실패:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[AttendanceRecords] GET Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -138,8 +139,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    console.error("❌ 출석 기록 생성 실패:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[AttendanceRecords] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

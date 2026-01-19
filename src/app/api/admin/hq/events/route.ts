@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessCompany } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 이벤트 생성/수정
 export async function POST(request: Request) {
@@ -61,9 +62,9 @@ export async function POST(request: Request) {
         message: "회사 일정 & 행사가 등록되었습니다.",
       });
     }
-  } catch (error: any) {
-    console.error("[API] Error saving event:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[HQEvents] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -125,9 +126,9 @@ export async function DELETE(request: Request) {
       success: true,
       message: "회사 일정 & 행사가 삭제되었습니다.",
     });
-  } catch (error: any) {
-    console.error("[API] Error deleting event:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[HQEvents] DELETE Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -189,8 +190,8 @@ export async function PATCH(request: Request) {
       success: true,
       message: "활성 상태가 변경되었습니다.",
     });
-  } catch (error: any) {
-    console.error("[API] Error toggling event active:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[HQEvents] PATCH Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -3,9 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { GymForm, CATEGORY_OPTIONS } from "../../hooks/useSystemData";
-import { Building2, Calendar, LayoutGrid, Ruler, X, Plus, Sparkles, CheckCircle2 } from "lucide-react";
+import { Building2, Calendar, Ruler, X, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface GymCreateModalProps {
@@ -29,7 +29,7 @@ export function GymCreateModal({ isOpen, onOpenChange, form, setForm, toggleCate
                 <Building2 className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-white tracking-tight" style={{ color: 'white' }}>새 지점 추가</h2>
+                <h2 className="text-xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>새 지점 추가</h2>
                 <p className="text-blue-200/60 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">Register New Branch (v1.1)</p>
               </div>
             </div>

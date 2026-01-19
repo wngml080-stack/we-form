@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function POST(request: Request) {
   try {
@@ -119,7 +120,6 @@ export async function POST(request: Request) {
             .eq("id", membership.id);
 
           membershipInfo = `${membership.name} (1회 환불)`;
-          console.log(`✅ 회원권 환불: ${membership.name}, ${usedSessions} → ${usedSessions - 1}`);
         } else if (!wasRegularDeducted && !wasService && willBeRegularDeducted && usedSessions < totalSessions) {
           // 비차감 → 일반 차감: 차감
           await supabase
@@ -128,7 +128,6 @@ export async function POST(request: Request) {
             .eq("id", membership.id);
 
           membershipInfo = `${membership.name} (1회 차감)`;
-          console.log(`✅ 회원권 차감: ${membership.name}, ${usedSessions} → ${usedSessions + 1}`);
         }
 
         // 서비스 세션 처리
@@ -140,7 +139,6 @@ export async function POST(request: Request) {
             .eq("id", membership.id);
 
           membershipInfo = `${membership.name} (서비스 1회 환불)`;
-          console.log(`✅ 서비스 세션 환불: ${membership.name}, ${usedServiceSessions} → ${usedServiceSessions - 1}`);
         } else if (!wasService && willBeService && usedServiceSessions < serviceSessions) {
           // 비서비스 → 서비스: 서비스 세션 차감
           await supabase
@@ -149,10 +147,6 @@ export async function POST(request: Request) {
             .eq("id", membership.id);
 
           membershipInfo = `${membership.name} (서비스 1회 차감)`;
-          console.log(`✅ 서비스 세션 차감: ${membership.name}, ${usedServiceSessions} → ${usedServiceSessions + 1}`);
-        } else if (!wasService && willBeService && usedServiceSessions >= serviceSessions) {
-          // 서비스 세션이 부족한 경우
-          console.log(`⚠️ 서비스 세션 부족: ${membership.name}, ${usedServiceSessions}/${serviceSessions}`);
         }
       }
     }
@@ -195,8 +189,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("❌ 상태 업데이트 실패:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleUpdateStatus] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

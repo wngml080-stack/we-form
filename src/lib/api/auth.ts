@@ -124,3 +124,78 @@ export async function requireAdmin(): Promise<{
 
   return { staff, error: null };
 }
+
+/**
+ * 인증만 확인 (관리자 권한 불필요)
+ * 인증 실패 시 에러 응답, 성공 시 staff 정보 반환
+ */
+export async function requireAuth(): Promise<{
+  staff: AuthenticatedStaff | null;
+  error: NextResponse | null;
+}> {
+  const { staff, error } = await authenticateRequest();
+
+  if (error) return { staff: null, error };
+
+  if (!staff) {
+    return {
+      staff: null,
+      error: NextResponse.json(
+        { error: "인증이 필요합니다." },
+        { status: 401 }
+      ),
+    };
+  }
+
+  return { staff, error: null };
+}
+
+/**
+ * 인증 + 특정 회사 접근 권한 확인
+ */
+export async function requireCompanyAccess(companyId: string): Promise<{
+  staff: AuthenticatedStaff | null;
+  error: NextResponse | null;
+}> {
+  const { staff, error } = await requireAuth();
+
+  if (error) return { staff: null, error };
+  if (!staff) return { staff: null, error: NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 }) };
+
+  if (!canAccessCompany(staff, companyId)) {
+    return {
+      staff: null,
+      error: NextResponse.json(
+        { error: "해당 회사에 대한 접근 권한이 없습니다." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { staff, error: null };
+}
+
+/**
+ * 인증 + 특정 지점 접근 권한 확인
+ */
+export async function requireGymAccess(gymId: string, gymCompanyId?: string): Promise<{
+  staff: AuthenticatedStaff | null;
+  error: NextResponse | null;
+}> {
+  const { staff, error } = await requireAuth();
+
+  if (error) return { staff: null, error };
+  if (!staff) return { staff: null, error: NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 }) };
+
+  if (!canAccessGym(staff, gymId, gymCompanyId)) {
+    return {
+      staff: null,
+      error: NextResponse.json(
+        { error: "해당 지점에 대한 접근 권한이 없습니다." },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { staff, error: null };
+}

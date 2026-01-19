@@ -76,9 +76,6 @@ export function ConsultationFormModal({ isOpen, onClose, onSave, memberName, mem
 
     setIsSaving(true);
     try {
-      // TODO: API 연동 - 현재는 콘솔에만 출력
-      console.log("저장할 데이터:", formData);
-
       // 저장 성공 시 콜백 호출 (전체 폼 데이터 전달)
       if (onSave) {
         onSave(formData);

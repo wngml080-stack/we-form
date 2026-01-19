@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: Request) {
   try {
@@ -77,8 +78,8 @@ export async function GET(request: Request) {
     }));
 
     return NextResponse.json({ success: true, reports: reportsWithStaff });
-  } catch (error: any) {
-    console.error("[API] Error fetching schedule reports:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[ScheduleReports] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

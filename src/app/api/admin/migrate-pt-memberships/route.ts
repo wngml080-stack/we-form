@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // PT 매출에 대한 회원권 일괄 생성 및 회원 정리
 export async function POST(request: NextRequest) {
@@ -40,8 +41,6 @@ export async function POST(request: NextRequest) {
     if (paymentError) {
       return NextResponse.json({ error: paymentError.message }, { status: 500 });
     }
-
-    console.log(`[Migration] PT 매출 ${ptPayments?.length || 0}건 조회`);
 
     const results: { created: string[]; skipped: string[]; errors: string[] } = {
       created: [],
@@ -133,9 +132,9 @@ export async function POST(request: NextRequest) {
       total_pt_payments: ptPayments?.length || 0,
       results,
     });
-  } catch (error: any) {
-    console.error("[Migration] 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MigratePTMemberships] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -156,8 +155,6 @@ async function cleanupOrphanMembers(gym_id: string, company_id: string, dry_run:
   if (memberError) {
     return NextResponse.json({ error: memberError.message }, { status: 500 });
   }
-
-  console.log(`[Cleanup] 총 회원 수: ${members?.length || 0}`);
 
   const results: { deleted: string[]; kept: string[]; errors: string[] } = {
     deleted: [],
@@ -208,7 +205,6 @@ async function cleanupOrphanMembers(gym_id: string, company_id: string, dry_run:
           results.errors.push(`${member.name}: 삭제 오류 - ${deleteError.message}`);
         } else {
           results.deleted.push(`${member.name}: 삭제 완료`);
-          console.log(`[Cleanup] 회원 삭제: ${member.name}`);
         }
       } else {
         results.deleted.push(`${member.name}: 삭제 예정`);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getErrorMessage } from "@/types/common";
 
 // 출석 상태 코드 조회 (공개 API - 인증 불필요)
 export async function GET() {
@@ -14,8 +15,8 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    console.error("❌ 출석 상태 조회 실패:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[AttendanceStatuses] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

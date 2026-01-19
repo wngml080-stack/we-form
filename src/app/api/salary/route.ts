@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,9 +34,9 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    console.error("급여 설정 조회 실패:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[SalarySettings] GET Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -89,8 +90,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    console.error("급여 설정 생성 실패:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[SalarySettings] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

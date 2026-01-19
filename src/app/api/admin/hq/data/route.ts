@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessCompany, isAdmin } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: Request) {
   try {
@@ -116,14 +117,6 @@ export async function GET(request: Request) {
       activeMembersCount = activeMemberIds.size;
     }
 
-    console.log("[HQ Data] 조회 결과:", {
-      companyId,
-      gymIds,
-      paymentsCount: payments.length,
-      monthlySales,
-      activeMembersCount
-    });
-
     // 전화번호 기준 중복 제거하여 회원 수 계산 (통합회원관리 방식)
     const uniquePhones = new Set<string>();
     payments.forEach((p: any) => {
@@ -139,15 +132,6 @@ export async function GET(request: Request) {
     const totalGymsCount = gyms.length;
     const totalStaffsCount = allStaffs.length;
     const totalMembersCount = uniquePhones.size;
-
-    console.log("[HQ Data] Stats:", {
-      totalGyms: totalGymsCount,
-      totalStaffs: totalStaffsCount,
-      totalMembers: totalMembersCount,
-      activeMembers: activeMembersCount,
-      monthlySales,
-      paymentsCount: payments.length
-    });
 
     // payments에서 고유 회원 목록 생성 (전화번호 기준)
     const memberMap = new Map<string, any>();
@@ -184,8 +168,8 @@ export async function GET(request: Request) {
         monthlySales: monthlySales || 0,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[API] Error fetching HQ data:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

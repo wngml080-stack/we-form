@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 전화번호로 회원 조회
 export async function GET(request: NextRequest) {
@@ -54,8 +55,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ member });
-  } catch (error: any) {
-    console.error("[Members API] 회원 조회 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MembersByPhone] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym, isAdmin } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 회원의 종목별 트레이너 목록 조회
 export async function GET(
@@ -59,9 +60,9 @@ export async function GET(
     }
 
     return NextResponse.json({ trainers: trainers || [] });
-  } catch (error: any) {
-    console.error("[MemberTrainers] GET 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MemberTrainers] GET Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -158,7 +159,7 @@ export async function POST(
     }
 
     // 활동 로그 기록
-    const trainerName = (newTrainer.trainer as any)?.name || "알 수 없음";
+    const trainerName = (newTrainer.trainer as { name?: string } | null)?.name || "알 수 없음";
     await supabase.from("member_activity_logs").insert({
       gym_id: member.gym_id,
       company_id: member.company_id,
@@ -170,9 +171,9 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, data: newTrainer });
-  } catch (error: any) {
-    console.error("[MemberTrainers] POST 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MemberTrainers] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -246,7 +247,7 @@ export async function DELETE(
     }
 
     // 활동 로그 기록
-    const trainerName = (trainerAssignment.trainer as any)?.name || "알 수 없음";
+    const trainerName = (trainerAssignment.trainer as { name?: string } | null)?.name || "알 수 없음";
     await supabase.from("member_activity_logs").insert({
       gym_id: member.gym_id,
       company_id: member.company_id,
@@ -258,8 +259,8 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("[MemberTrainers] DELETE 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MemberTrainers] DELETE Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

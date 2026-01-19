@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 회원 상세 정보 조회 (회원권, 결제이력, 활동로그)
 export async function GET(
@@ -54,12 +55,10 @@ export async function GET(
 
     if (membershipsError) {
       console.error("[MemberDetail API] membershipsError:", membershipsError);
-    } else {
-      console.log(`[MemberDetail API] Found ${memberships?.length || 0} memberships for member ${memberId}`);
     }
 
     // 1-2. member_payments에서도 회원권 정보 조회 (member_memberships가 비어있을 경우 대비)
-    let paymentsAsMemberships: any[] = [];
+    let paymentsAsMemberships: Record<string, unknown>[] = [];
     if (member.phone) {
       const normalizedPhone = member.phone.replace(/-/g, "");
       const { data: paymentMemberships } = await supabase
@@ -99,8 +98,8 @@ export async function GET(
     const finalMemberships = (memberships && memberships.length > 0) ? memberships : paymentsAsMemberships;
 
     // 2. 결제 이력 조회 - member_payments는 phone 기준으로 연결
-    let payments: any[] = [];
-    let paymentsError: any = null;
+    let payments: Record<string, unknown>[] = [];
+    let paymentsError: { message: string } | null = null;
 
     if (member.phone) {
       const normalizedPhone = member.phone.replace(/-/g, "");
@@ -118,7 +117,7 @@ export async function GET(
     }
 
     // 3. 활동 로그 조회 (변경자 정보 포함)
-    let activityLogs: any[] = [];
+    let activityLogs: Record<string, unknown>[] = [];
     try {
       const { data: logs, error: logsError } = await supabase
         .from("member_activity_logs")
@@ -161,8 +160,8 @@ export async function GET(
         payments: paymentsError?.message || null
       }
     });
-  } catch (error: any) {
-    console.error("회원 상세 조회 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MemberDetail] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

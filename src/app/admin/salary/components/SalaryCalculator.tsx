@@ -224,12 +224,6 @@ export default function SalaryCalculator() {
             // 개인 매출 데이터로 salesData 업데이트 (staff_id 기준)
             setSalesData(prev => ({ ...prev, ...salesByStaffId }));
 
-            console.log("[SalaryCalculator] 월별 PT 매출:", {
-                totalPTSales,
-                salesByRegistrar,
-                salesByStaffId,
-                staffNameToId
-            });
         } catch (error) {
             console.error("[SalaryCalculator] 월별 PT 매출 조회 오류:", error);
         }
@@ -367,7 +361,6 @@ export default function SalaryCalculator() {
                 .eq("gym_id", gymId);
 
             if (tmplError) {
-                console.log("[SalaryCalculator] 템플릿 조회 실패:", tmplError.message);
                 setTemplates([]);
                 return { loadedTemplates: [], loadedSettings: {} };
             }
@@ -411,7 +404,6 @@ export default function SalaryCalculator() {
                 };
             });
 
-            console.log("[SalaryCalculator] 템플릿 로드 완료:", templatesData.length, "개", templatesData.map(t => ({ name: t.name, itemsCount: t.items.length })));
             setTemplates(templatesData);
 
             // 4. 직원별 급여 설정 조회
@@ -420,7 +412,6 @@ export default function SalaryCalculator() {
                 .select("staff_id, template_id, personal_parameters");
 
             if (settingsError) {
-                console.log("[SalaryCalculator] 급여 설정 조회 실패:", settingsError.message);
                 return { loadedTemplates: templatesData, loadedSettings: {} };
             }
 
@@ -435,7 +426,6 @@ export default function SalaryCalculator() {
                 };
             });
 
-            console.log("[SalaryCalculator] 급여 설정 로드 완료:", Object.keys(settingsMap).length, "명", settingsMap);
             setStaffSalarySettings(settingsMap);
 
             return { loadedTemplates: templatesData, loadedSettings: settingsMap };
@@ -466,10 +456,6 @@ export default function SalaryCalculator() {
                     }
                 });
                 setPersonalParams(mergedParams);
-                console.log("[SalaryCalculator] 모달 열기 - 파라미터 병합:", {
-                    templateId: setting.template_id,
-                    mergedParams
-                });
             } else {
                 setPersonalParams(setting.personal_parameters || {});
             }
@@ -494,17 +480,6 @@ export default function SalaryCalculator() {
                 }
             });
             setPersonalParams(defaultParams);
-
-            console.log("[SalaryCalculator] 템플릿 변경:", {
-                templateId,
-                templateName: template.name,
-                rulesCount: template.items.length,
-                rules: template.items.map(({ rule }) => ({
-                    name: rule.name,
-                    type: rule.calculation_type,
-                    params: rule.default_parameters
-                }))
-            });
         } else {
             setPersonalParams({});
         }
@@ -761,8 +736,6 @@ export default function SalaryCalculator() {
                 return;
             }
 
-            console.log("[SalaryCalculator] 매출 저장 시도:", updates);
-
             // upsert
             const { error } = await supabase
                 .from("monthly_performance")
@@ -847,8 +820,6 @@ export default function SalaryCalculator() {
                 console.error("[SalaryCalculator] 직원 조회 에러:", staffError);
             }
 
-            console.log("[SalaryCalculator] 조회된 직원:", staffs?.length || 0, "명");
-
             // 1-2. 해당 월의 승인된 보고서 직접 조회
             const { data: approvedReports, error: reportError } = await supabase
                 .from("monthly_schedule_reports")
@@ -857,15 +828,7 @@ export default function SalaryCalculator() {
                 .eq("year_month", selectedMonth)
                 .eq("status", "approved");
 
-            console.log("[SalaryCalculator] 승인된 보고서 조회:", {
-                gymId,
-                selectedMonth,
-                approvedReports,
-                reportError
-            });
-
             const approvedStaffIds = new Set(approvedReports?.map(r => r.staff_id) || []);
-            console.log("[SalaryCalculator] 승인된 직원 IDs:", Array.from(approvedStaffIds));
 
             // 1-3. 해당 월 스케줄 조회 (통계용)
             const [year, month] = selectedMonth.split('-').map(Number);
@@ -883,16 +846,12 @@ export default function SalaryCalculator() {
             const calculatedResults: StaffSalaryResult[] = [];
             const staffList = staffs || [];
 
-            console.log("[SalaryCalculator] 승인된 직원과 매칭 시작, 직원수:", staffList.length, "승인된 ID수:", approvedStaffIds.size);
-
             for (const staff of staffList) {
                 // 승인된 직원만 정산 대상 (직접 조회한 데이터 사용)
                 const isApproved = approvedStaffIds.has(staff.id);
                 if (!isApproved) {
                     continue;
                 }
-
-                console.log("[SalaryCalculator] 승인된 직원 발견:", staff.name, staff.id);
 
                 // 승인된 직원: is_locked=true인 스케줄만 집계
                 const staffSchedules = schedules?.filter(s => {
@@ -922,17 +881,6 @@ export default function SalaryCalculator() {
                 const setting = settingsData[staff.id];
                 const template = setting ? templatesData.find(t => t.id === setting.template_id) : null;
                 const hasSalarySettings = template && template.items && template.items.length > 0;
-
-                console.log("[SalaryCalculator] 급여설정 조회:", {
-                    staffName: staff.name,
-                    hasSetting: !!setting,
-                    templateId: setting?.template_id,
-                    templateFound: !!template,
-                    itemsCount: template?.items?.length || 0,
-                    hasSalarySettings,
-                    templatesCount: templatesData.length,
-                    settingsCount: Object.keys(settingsData).length
-                });
 
                 if (hasSalarySettings && template) {
                     // 규칙 적용
@@ -1060,10 +1008,8 @@ export default function SalaryCalculator() {
                 }
 
                 calculatedResults.push(result);
-                console.log("[SalaryCalculator] 결과 추가:", result.staff_name, "PT:", result.stats.pt_total_count);
             }
 
-            console.log("[SalaryCalculator] 최종 결과:", calculatedResults.length, "명");
             setResults(calculatedResults);
             setIsSaved(false); // 재계산했으므로 저장되지 않은 상태로 변경 (사용자가 저장 버튼을 눌러야 함)
 

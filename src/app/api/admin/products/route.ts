@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, isAdmin } from "@/lib/api/auth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { getErrorMessage } from "@/types/common";
 
 // 상품 목록 조회
 export async function GET(request: NextRequest) {
@@ -31,8 +32,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ data: data || [] });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "알 수 없는 오류" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Products] GET Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -84,8 +86,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "알 수 없는 오류" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Products] POST Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -111,7 +114,7 @@ export async function PUT(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name.trim();
     if (membership_type !== undefined) updateData.membership_type = membership_type;
     if (default_sessions !== undefined) updateData.default_sessions = default_sessions || null;
@@ -140,8 +143,9 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json({ data });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "알 수 없는 오류" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Products] PUT Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -178,7 +182,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "알 수 없는 오류" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[Products] DELETE Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

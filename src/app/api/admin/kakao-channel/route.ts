@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { encrypt, decrypt } from "@/lib/utils/encryption";
 
 // 지점의 카카오 채널 설정 조회
 export async function GET(request: NextRequest) {
@@ -114,27 +115,27 @@ export async function POST(request: NextRequest) {
       alimtalk_sender_number: alimtalk_sender_number || null,
     };
 
-    // API 키들은 마스킹된 값(****)이 아닌 경우에만 업데이트
+    // API 키들은 마스킹된 값(****)이 아닌 경우에만 업데이트 (암호화하여 저장)
     if (rest_api_key && !rest_api_key.startsWith("****")) {
-      updateData.rest_api_key = rest_api_key;
+      updateData.rest_api_key = encrypt(rest_api_key);
     } else if (existing) {
       updateData.rest_api_key = existing.rest_api_key;
     }
 
     if (admin_key && !admin_key.startsWith("****")) {
-      updateData.admin_key = admin_key;
+      updateData.admin_key = encrypt(admin_key);
     } else if (existing) {
       updateData.admin_key = existing.admin_key;
     }
 
     if (webhook_secret && !webhook_secret.startsWith("****")) {
-      updateData.webhook_secret = webhook_secret;
+      updateData.webhook_secret = encrypt(webhook_secret);
     } else if (existing) {
       updateData.webhook_secret = existing.webhook_secret;
     }
 
     if (alimtalk_sender_key && !alimtalk_sender_key.startsWith("****")) {
-      updateData.alimtalk_sender_key = alimtalk_sender_key;
+      updateData.alimtalk_sender_key = encrypt(alimtalk_sender_key);
     } else if (existing) {
       updateData.alimtalk_sender_key = existing.alimtalk_sender_key;
     }
@@ -219,11 +220,14 @@ export async function PUT(request: NextRequest) {
       }
 
       try {
+        // 암호화된 admin_key 복호화
+        const decryptedAdminKey = decrypt(channel.admin_key);
+
         // 카카오 채널 정보 조회 API 호출 테스트
         const response = await fetch("https://kapi.kakao.com/v1/api/talk/channels", {
           method: "GET",
           headers: {
-            Authorization: `KakaoAK ${channel.admin_key}`,
+            Authorization: `KakaoAK ${decryptedAdminKey}`,
           },
         });
 

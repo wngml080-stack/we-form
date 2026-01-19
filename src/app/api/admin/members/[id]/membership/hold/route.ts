@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 회원권 홀딩 (일시 중단)
 // 홀딩 기간만큼 종료일이 자동으로 연장됨
@@ -116,9 +117,8 @@ export async function POST(
         new_end_date: newEndDateStr,
         created_by: staff.id,
       });
-    } catch (holdError) {
+    } catch {
       // 홀딩 테이블이 없는 경우 무시 (테이블 생성 필요)
-      console.log("[MembershipHold] 홀딩 기록 저장 실패 (테이블 없음):", holdError);
     }
 
     // 활동 로그 기록
@@ -151,9 +151,9 @@ export async function POST(
         newEndDate: newEndDateStr
       }
     });
-  } catch (error: any) {
-    console.error("회원권 홀딩 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MembershipHold] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -190,13 +190,12 @@ export async function GET(
 
     if (error) {
       // 테이블이 없는 경우 빈 배열 반환
-      console.log("[MembershipHold] 홀딩 이력 조회 실패:", error);
       return NextResponse.json({ holds: [] });
     }
 
     return NextResponse.json({ holds: holds || [] });
-  } catch (error: any) {
-    console.error("홀딩 이력 조회 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MembershipHoldHistory] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -103,7 +103,7 @@ export function FormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={`bg-white ${responsiveMaxWidth[maxWidth]} max-h-[85vh] xs:max-h-[90vh] overflow-y-auto`}>
+      <DialogContent className={`bg-white ${responsiveMaxWidth[maxWidth]} max-h-[85vh] xs:max-h-[90vh] overflow-y-auto p-3 xs:p-4 sm:p-6 rounded-xl sm:rounded-lg`}>
         <DialogHeader>
           <DialogTitle className="text-base xs:text-lg">{title}</DialogTitle>
           {description ? (

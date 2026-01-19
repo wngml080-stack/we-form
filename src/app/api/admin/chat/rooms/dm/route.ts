@@ -36,10 +36,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // 대상 직원이 같은 회사의 HQ 직원인지 확인
+    // 대상 직원이 같은 회사 직원인지 확인
     const { data: targetStaff, error: targetError } = await supabase
       .from("staffs")
-      .select("id, name, company_id, gym_id, role")
+      .select("id, name, company_id, employment_status")
       .eq("id", target_staff_id)
       .single();
 
@@ -50,13 +50,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (
-      targetStaff.company_id !== staff.company_id ||
-      targetStaff.gym_id !== null ||
-      !["company_admin", "system_admin"].includes(targetStaff.role)
-    ) {
+    // 같은 회사 직원인지, 퇴사자가 아닌지 확인
+    if (targetStaff.company_id !== staff.company_id) {
       return NextResponse.json(
         { error: "대화할 수 없는 상대입니다." },
+        { status: 403 }
+      );
+    }
+
+    if (targetStaff.employment_status === "퇴사") {
+      return NextResponse.json(
+        { error: "퇴사한 직원과는 대화할 수 없습니다." },
         { status: 403 }
       );
     }
@@ -71,7 +75,17 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (dmError) throw dmError;
+    if (dmError) {
+      console.error("[Chat DM API] find_or_create_dm_room error:", dmError);
+      // 함수가 없는 경우 (마이그레이션 미적용)
+      if (dmError.code === "42883" || dmError.message?.includes("does not exist")) {
+        return NextResponse.json(
+          { error: "채팅 기능이 아직 설정되지 않았습니다. 데이터베이스 마이그레이션을 실행해주세요." },
+          { status: 503 }
+        );
+      }
+      throw dmError;
+    }
 
     // 생성된 방 정보 조회
     const { data: room, error: roomError } = await supabase

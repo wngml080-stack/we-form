@@ -43,7 +43,7 @@ export function ApproveModal({ open, onOpenChange, report, onSubmit }: Props) {
               <ClipboardCheck className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-black !text-white tracking-tight">월간 스케줄 승인 검토</h2>
+                <h2 className="text-2xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>월간 스케줄 승인 검토</h2>
               <div className="flex items-center gap-2 mt-1">
                 <ReportStatusBadge status={report.status} />
                 <p className="text-sm text-white/80 font-bold ml-2">강사의 제출 내역을 확인하고 최종 승인합니다</p>

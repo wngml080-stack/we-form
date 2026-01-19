@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, isAdmin, canAccessCompany, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 /**
  * 직원 등록 API (Supabase Auth 방식)
@@ -96,8 +97,8 @@ export async function POST(request: Request) {
       message: "직원이 등록되었습니다. 해당 이메일로 로그인 시 자동 연결됩니다."
     });
 
-  } catch (error: any) {
-    console.error("[API] Error creating staff:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[CreateStaff] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -27,7 +27,19 @@ export async function GET(request: NextRequest) {
       .eq("staff_id", staff.id)
       .is("left_at", null);
 
-    if (membershipError) throw membershipError;
+    // 테이블이 없는 경우 빈 배열 반환
+    if (membershipError) {
+      console.error("[Chat Rooms API] Membership query error:", membershipError);
+      // 테이블이 없으면 빈 목록 반환
+      if (membershipError.code === "42P01" || membershipError.message?.includes("does not exist")) {
+        return NextResponse.json({
+          rooms: [],
+          totalUnread: 0,
+          error: "채팅 기능이 아직 설정되지 않았습니다. 데이터베이스 마이그레이션을 실행해주세요."
+        });
+      }
+      throw membershipError;
+    }
 
     const roomIds = myMemberships?.map((m) => m.room_id) || [];
 

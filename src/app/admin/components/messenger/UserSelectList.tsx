@@ -57,9 +57,16 @@ export function UserSelectList({
 
             {/* 정보 */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
-                {user.name}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-slate-900 truncate">
+                  {user.name}
+                </p>
+                {(user.gym_name || user.gym_id === null) && (
+                  <span className="text-[9px] px-1 py-0.5 bg-slate-100 text-slate-500 rounded shrink-0">
+                    {user.gym_name || "본사"}
+                  </span>
+                )}
+              </div>
               <p className="text-[10px] text-slate-400 truncate">
                 {user.job_title || user.role}
               </p>

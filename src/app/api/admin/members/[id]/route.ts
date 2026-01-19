@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
+import { getErrorMessage } from "@/types/common";
 
 // 회원 정보 수정
 export async function PUT(
@@ -45,7 +46,7 @@ export async function PUT(
     }
 
     // 업데이트 데이터 구성
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.phone !== undefined) updateData.phone = body.phone;
     if (body.birth_date !== undefined) updateData.birth_date = body.birth_date || null;
@@ -99,11 +100,10 @@ export async function PUT(
       }
     }
 
-    console.log("[MemberUpdate] 수정 성공:", updatedMember?.id);
     return NextResponse.json({ success: true, data: updatedMember });
-  } catch (error: any) {
-    console.error("회원 수정 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MemberUpdate] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -184,10 +184,9 @@ export async function DELETE(
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
-    console.log("[MemberDelete] 삭제 성공:", member.name);
     return NextResponse.json({ success: true, deleted: member.name });
-  } catch (error: any) {
-    console.error("회원 삭제 API 오류:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("[MemberDelete] Error:", error);
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

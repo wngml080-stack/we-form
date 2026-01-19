@@ -7,8 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AnnouncementForm } from "../../hooks/useSystemData";
-import { Bell, Clock, Save, X, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Bell, Save, X } from "lucide-react";
 
 interface AnnouncementCreateModalProps {
   isOpen: boolean;
@@ -30,7 +29,7 @@ export function AnnouncementCreateModal({ isOpen, onOpenChange, form, setForm, o
                 <Bell className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-white tracking-tight" style={{ color: 'white' }}>시스템 공지사항 추가</h2>
+                <h2 className="text-xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>시스템 공지사항 추가</h2>
                 <p className="text-orange-200/60 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">New System Announcement (v1.1)</p>
               </div>
             </div>

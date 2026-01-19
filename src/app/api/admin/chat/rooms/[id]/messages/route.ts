@@ -37,6 +37,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .single();
 
     if (roomError || !room) {
+      console.error("[Chat Messages GET] Room not found:", { roomId, error: roomError });
       return NextResponse.json(
         { error: "채팅방을 찾을 수 없습니다." },
         { status: 404 }
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     if (!canAccessChatRoom(staff, room.company_id)) {
+      console.error("[Chat Messages GET] Access denied:", { staffId: staff.id, roomCompanyId: room.company_id });
       return NextResponse.json(
         { error: "접근 권한이 없습니다." },
         { status: 403 }
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .single();
 
     if (membershipError || !membership) {
+      console.error("[Chat Messages GET] Not a member:", { roomId, staffId: staff.id, error: membershipError });
       return NextResponse.json(
         { error: "참여하지 않은 채팅방입니다." },
         { status: 403 }
@@ -126,9 +129,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { content } = await request.json();
 
+    // 메시지 유효성 검사
     if (!content || !content.trim()) {
       return NextResponse.json(
         { error: "메시지 내용을 입력해주세요." },
+        { status: 400 }
+      );
+    }
+
+    // 메시지 길이 제한 (5000자)
+    const MAX_MESSAGE_LENGTH = 5000;
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      return NextResponse.json(
+        { error: `메시지는 ${MAX_MESSAGE_LENGTH}자 이하로 입력해주세요.` },
         { status: 400 }
       );
     }

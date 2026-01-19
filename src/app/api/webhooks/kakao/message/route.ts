@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type { KakaoWebhookEvent } from "@/lib/kakao/config";
 import { getClaudeClient, CLAUDE_MODELS } from "@/lib/ai/claude";
+import { decrypt } from "@/lib/utils/encryption";
 import crypto from "crypto";
 
 interface GymKakaoChannel {
@@ -15,9 +16,14 @@ interface GymKakaoChannel {
 
 // 카카오 Webhook 서명 검증
 function verifySignature(body: string, signature: string, webhookSecret?: string): boolean {
+  // 개발 환경에서만 서명 검증 스킵 허용
   if (!webhookSecret) {
-    console.warn("[Kakao Webhook] Webhook secret이 설정되지 않았습니다.");
-    return true; // 검증 스킵
+    if (process.env.NODE_ENV === "development" && process.env.SKIP_WEBHOOK_SIGNATURE === "true") {
+      console.warn("[Kakao Webhook] 개발 환경에서 서명 검증을 스킵합니다.");
+      return true;
+    }
+    console.error("[Kakao Webhook] Webhook secret이 설정되지 않았습니다. 보안상 요청을 거부합니다.");
+    return false;
   }
 
   const hash = crypto
@@ -38,7 +44,14 @@ async function getGymByChannelId(supabase: ReturnType<typeof getSupabaseAdmin>, 
     .eq("is_verified", true)
     .maybeSingle();
 
-  if (data) return data;
+  if (data) {
+    // 암호화된 키 복호화
+    return {
+      ...data,
+      admin_key: data.admin_key ? decrypt(data.admin_key) : "",
+      webhook_secret: data.webhook_secret ? decrypt(data.webhook_secret) : undefined,
+    };
+  }
 
   // 채널 ID가 없으면 기본값 사용 (개발용)
   const defaultGymId = process.env.DEFAULT_GYM_ID;
@@ -65,7 +78,6 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("X-Kakao-Signature") || "";
 
     const event: KakaoWebhookEvent = JSON.parse(rawBody);
-    console.log("[Kakao Webhook] Event received:", event);
 
     const supabase = getSupabaseAdmin();
 
@@ -95,8 +107,6 @@ export async function POST(request: NextRequest) {
       case "blocked":
         await handleChannelBlocked(supabase, event);
         break;
-      default:
-        console.log("[Kakao Webhook] Unknown event:", event.event);
     }
 
     // 마지막 웹훅 수신 시간 업데이트
@@ -123,7 +133,6 @@ async function handleMessage(
   const { user_key, message, timestamp } = event;
 
   if (!message?.text) {
-    console.log("[Kakao Webhook] No text message");
     return;
   }
 
@@ -188,7 +197,6 @@ async function handleMessage(
 
   // 챗봇이 비활성화되어 있으면 여기서 종료
   if (!chatbot_enabled) {
-    console.log("[Kakao Webhook] Chatbot disabled for this gym");
     return;
   }
 
@@ -206,14 +214,12 @@ async function handleMessage(
 }
 
 // 채널 추가 처리
-async function handleChannelAdded(supabase: ReturnType<typeof getSupabaseAdmin>, event: KakaoWebhookEvent) {
-  console.log("[Kakao Webhook] Channel added:", event.user_key);
+async function handleChannelAdded(_supabase: ReturnType<typeof getSupabaseAdmin>, _event: KakaoWebhookEvent) {
   // 환영 메시지 발송 등 처리 가능
 }
 
 // 채널 차단 처리
-async function handleChannelBlocked(supabase: ReturnType<typeof getSupabaseAdmin>, event: KakaoWebhookEvent) {
-  console.log("[Kakao Webhook] Channel blocked:", event.user_key);
+async function handleChannelBlocked(_supabase: ReturnType<typeof getSupabaseAdmin>, _event: KakaoWebhookEvent) {
   // 관련 문의 상태 업데이트 등 처리 가능
 }
 
@@ -319,8 +325,6 @@ ${settings.pricing ? JSON.stringify(settings.pricing, null, 2) : "가격은 방�
     if (adminKey) {
       await sendChannelMessageWithKey(userKey, aiResponse, adminKey);
     }
-
-    console.log("[Kakao Webhook] AI response sent:", aiResponse);
   } catch (error) {
     console.error("[Kakao Webhook] AI response error:", error);
   }

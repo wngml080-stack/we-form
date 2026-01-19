@@ -15,11 +15,42 @@ import { Badge } from "@/components/ui/badge";
 import { Pencil, Plus, CheckCircle, Users } from "lucide-react";
 import { formatPhoneNumber, formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 
+interface Staff {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  job_title?: string;
+  employment_status: string;
+  joined_at?: string;
+  gym_id?: string;
+  work_start_time?: string;
+  work_end_time?: string;
+  gyms?: { name: string } | null;
+}
+
+interface Gym {
+  id: string;
+  name: string;
+}
+
+interface StaffUpdateData {
+  name: string;
+  email: string;
+  phone: string;
+  job_title: string;
+  employment_status: string;
+  joined_at: string;
+  gym_id: string | null;
+  work_start_time: string | null;
+  work_end_time: string | null;
+}
+
 const JOB_TITLES = ["대표", "이사", "실장", "지점장", "FC사원", "FC주임", "FC팀장", "PT팀장", "트레이너", "프리랜서", "필라팀장", "필라전임", "필라파트", "골프프로", "기타"];
 
 export default function AdminStaffPage(props: {
-  params: Promise<any>;
-  searchParams: Promise<any>;
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string>>;
 }) {
   // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
   use(props.params);
@@ -28,15 +59,15 @@ export default function AdminStaffPage(props: {
   const { user, isLoading: authLoading } = useAuth();
   const { staffFilter, isInitialized: filterInitialized } = useAdminFilter();
 
-  const [activeStaffs, setActiveStaffs] = useState<any[]>([]);
-  const [pendingStaffs, setPendingStaffs] = useState<any[]>([]);
+  const [activeStaffs, setActiveStaffs] = useState<Staff[]>([]);
+  const [pendingStaffs, setPendingStaffs] = useState<Staff[]>([]);
 
   // 지점 목록 (이동 발령용)
-  const [gymList, setGymList] = useState<any[]>([]);
+  const [gymList, setGymList] = useState<Gym[]>([]);
 
   // 모달 상태
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<any>(null);
+  const [editTarget, setEditTarget] = useState<Staff | null>(null);
 
   // 수정 폼 (gym_id, work_start_time, work_end_time 추가됨)
   const [editForm, setEditForm] = useState({
@@ -114,7 +145,7 @@ export default function AdminStaffPage(props: {
   };
 
   // 수정 모달 열기
-  const openEditModal = (staff: any) => {
+  const openEditModal = (staff: Staff) => {
     setEditTarget(staff);
     setEditForm({
       name: staff.name || "",
@@ -134,18 +165,12 @@ export default function AdminStaffPage(props: {
   const handleUpdate = async () => {
     if (!editTarget) return;
 
-    const updateData: any = { ...editForm };
-    // 'none'이나 빈값이면 null로 처리 (소속 없음)
-    if (updateData.gym_id === "none" || updateData.gym_id === "") {
-        updateData.gym_id = null;
-    }
-    // 빈 문자열은 time 타입에서 오류 발생하므로 null로 변환
-    if (updateData.work_start_time === "") {
-        updateData.work_start_time = null;
-    }
-    if (updateData.work_end_time === "") {
-        updateData.work_end_time = null;
-    }
+    const updateData: StaffUpdateData = {
+      ...editForm,
+      gym_id: editForm.gym_id === "none" || editForm.gym_id === "" ? null : editForm.gym_id,
+      work_start_time: editForm.work_start_time === "" ? null : editForm.work_start_time,
+      work_end_time: editForm.work_end_time === "" ? null : editForm.work_end_time,
+    };
 
     const { error } = await supabase.from("staffs").update(updateData).eq("id", editTarget.id);
     if (!error) {
@@ -175,7 +200,7 @@ export default function AdminStaffPage(props: {
         setIsCreateOpen(false);
         setCreateForm({ name: "", email: "", phone: "", job_title: "트레이너", joined_at: "" });
         fetchStaffs(selectedGymId, selectedCompanyId);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e) { toast.error(e instanceof Error ? e.message : "등록 실패"); }
     finally { setIsCreating(false); }
   };
 
@@ -328,7 +353,7 @@ export default function AdminStaffPage(props: {
                 <div className="w-12 h-12 rounded-[18px] bg-blue-600 flex items-center justify-center shadow-xl shadow-blue-900/20">
                   <Pencil className="w-6 h-6 text-white" />
                 </div>
-                <DialogTitle className="text-3xl font-black text-white tracking-tighter">직원 정보 수정</DialogTitle>
+                <DialogTitle className="text-3xl font-black text-white !text-white tracking-tighter">직원 정보 수정</DialogTitle>
               </div>
               <DialogDescription className="text-slate-400 font-bold text-base">
                 파트너의 개인 정보 및 업무 설정을 업데이트합니다.
@@ -432,7 +457,7 @@ export default function AdminStaffPage(props: {
                 <div className="w-12 h-12 rounded-[18px] bg-white flex items-center justify-center shadow-xl shadow-blue-900/20">
                   <Plus className="w-6 h-6 text-blue-600" />
                 </div>
-                <DialogTitle className="text-3xl font-black text-white tracking-tighter">신규 직원 등록</DialogTitle>
+                <DialogTitle className="text-3xl font-black text-white !text-white tracking-tighter">신규 직원 등록</DialogTitle>
               </div>
               <DialogDescription className="text-blue-100 font-bold text-base">
                 센터 운영을 함께할 새로운 파트너를 시스템에 등록합니다.

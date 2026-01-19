@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Phone, MessageSquare, X, Plus, CheckCircle2 } from "lucide-react";
+import { Phone, X, Plus, CheckCircle2 } from "lucide-react";
 
 interface CreateInquiryModalProps {
   isOpen: boolean;
@@ -86,7 +85,7 @@ export function CreateInquiryModal({
                 <Plus className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black !text-white tracking-tight">새 문의 등록</h2>
+                <h2 className="text-2xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>새 문의 등록</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Create New Inquiry</p>
               </div>
             </DialogTitle>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,7 +30,7 @@ interface SalesSettingsModalProps {
 }
 
 import { cn } from "@/lib/utils";
-import { Plus, X, Save, Settings, CreditCard, Ticket, Tags, ListTree } from "lucide-react";
+import { Plus, X, Settings, CreditCard, Ticket, Tags, ListTree } from "lucide-react";
 
 export function SalesSettingsModal({
   isOpen,
@@ -122,7 +122,7 @@ export function SalesSettingsModal({
               <Settings className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-black tracking-tight text-white">매출 항목 설정</h2>
+              <h2 className="text-xl font-black tracking-tight text-white !text-white" style={{ color: 'white' }}>매출 항목 설정</h2>
               <p className="text-blue-200/60 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">Sales Categories & Options</p>
             </div>
           </div>
