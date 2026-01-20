@@ -226,12 +226,26 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
   useEffect(() => {
     const fetchCurrentStaff = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+
       if (user) {
-        const { data, error } = await supabase
+        // user_id로 먼저 시도
+        let { data, error } = await supabase
           .from("staffs")
           .select("id, role")
           .eq("user_id", user.id)
           .maybeSingle();
+
+        // user_id로 못 찾으면 email로 시도
+        if (!data && user.email) {
+          const emailResult = await supabase
+            .from("staffs")
+            .select("id, role")
+            .eq("email", user.email)
+            .maybeSingle();
+
+          data = emailResult.data;
+          error = emailResult.error;
+        }
 
         if (error) {
           console.error("현재 스태프 조회 오류:", error);
@@ -247,13 +261,13 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     fetchCurrentStaff();
   }, [supabase]);
 
-  // 데이터 로드
+  // 데이터 로드 (currentStaffId, userRole이 설정된 후에만 실행)
   useEffect(() => {
-    if (filterInitialized && selectedGymId && selectedCompanyId) {
+    if (filterInitialized && selectedGymId && selectedCompanyId && currentStaffId !== null) {
       fetchPTMembers(selectedGymId, selectedCompanyId);
       fetchStaffList(selectedGymId);
     }
-  }, [filterInitialized, selectedGymId, selectedCompanyId, dateRange]);
+  }, [filterInitialized, selectedGymId, selectedCompanyId, dateRange, currentStaffId, userRole]);
 
   // PT 회원 조회
   const fetchPTMembers = async (gymId: string, companyId: string) => {
@@ -438,8 +452,14 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         amount: m.totalAmount
       }));
 
-      setPTMembers(members);
-      calculateExtendedStats(members, gymId, companyId);
+      // staff 역할인 경우 본인이 담당하는 회원만 필터링
+      let filteredMembers = members;
+      if (userRole === "staff" && currentStaffId) {
+        filteredMembers = members.filter(m => m.trainer_id === currentStaffId);
+      }
+
+      setPTMembers(filteredMembers);
+      calculateExtendedStats(filteredMembers, gymId, companyId);
     } catch (err) {
       console.error("PT 회원 조회 오류:", err);
       setPTMembers([]);

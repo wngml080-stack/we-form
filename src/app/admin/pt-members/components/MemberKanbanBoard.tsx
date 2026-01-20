@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Plus, FileText, Heart, RefreshCw, Book, Bot, Package, Filter, Search, Copy, Trash2, X, Users, Dumbbell, Share2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -94,7 +95,15 @@ interface BoardColumn {
   cards: BoardCard[];
 }
 
-const STORAGE_KEY = "pt-members-kanban-data";
+const BASE_STORAGE_KEY = "pt-members-kanban-data";
+
+// staff별 storage key 생성 (staff는 본인 ID 포함, 관리자는 기본 키 사용)
+const getStorageKey = (userRole: string, userId?: string): string => {
+  if (userRole === "staff" && userId) {
+    return `${BASE_STORAGE_KEY}-${userId}`;
+  }
+  return BASE_STORAGE_KEY;
+};
 
 // 초기 컬럼 데이터
 const getInitialColumns = (): BoardColumn[] => [
@@ -139,10 +148,10 @@ const getInitialColumns = (): BoardColumn[] => [
 ];
 
 // localStorage에서 데이터 로드
-function loadFromStorage(): BoardColumn[] | null {
+function loadFromStorage(storageKey: string): BoardColumn[] | null {
   if (typeof window === "undefined") return null;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       const data = JSON.parse(saved);
       // "만료" 컬럼 제거
@@ -155,18 +164,25 @@ function loadFromStorage(): BoardColumn[] | null {
 }
 
 // localStorage에 데이터 저장
-function saveToStorage(columns: BoardColumn[]) {
+function saveToStorage(storageKey: string, columns: BoardColumn[]) {
   if (typeof window === "undefined") return;
   try {
     // "만료" 컬럼 제외하고 저장
     const filteredColumns = columns.filter((col) => col.id !== "expired");
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredColumns));
+    localStorage.setItem(storageKey, JSON.stringify(filteredColumns));
   } catch (e) {
     console.error("Failed to save to localStorage:", e);
   }
 }
 
 export function MemberKanbanBoard() {
+  const { user } = useAuth();
+  const userRole = user?.role || "";
+  const userId = user?.id;
+
+  // staff별 storage key 계산
+  const storageKey = useMemo(() => getStorageKey(userRole, userId), [userRole, userId]);
+
   const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
   const [isOTModalOpen, setIsOTModalOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
@@ -191,23 +207,28 @@ export function MemberKanbanBoard() {
   const [selectedGoalTypes, setSelectedGoalTypes] = useState<string[]>([]);
   const [progressFilter, setProgressFilter] = useState<string>("all"); // all, low (0-50), medium (51-80), high (81-100)
 
-  // 컴포넌트 마운트 시 localStorage에서 데이터 로드
+  // 컴포넌트 마운트 시 localStorage에서 데이터 로드 (storageKey가 준비된 후)
   useEffect(() => {
-    const savedData = loadFromStorage();
+    if (!storageKey) return;
+
+    const savedData = loadFromStorage(storageKey);
     if (savedData) {
       // "만료" 컬럼 제거
       const filteredData = savedData.filter((col) => col.id !== "expired");
       setColumns(filteredData);
+    } else {
+      // 저장된 데이터가 없으면 초기 데이터 설정
+      setColumns(getInitialColumns());
     }
     setIsLoaded(true);
-  }, []);
+  }, [storageKey]);
 
   // columns 변경 시 localStorage에 저장
   useEffect(() => {
-    if (isLoaded) {
-      saveToStorage(columns);
+    if (isLoaded && storageKey) {
+      saveToStorage(storageKey, columns);
     }
-  }, [columns, isLoaded]);
+  }, [columns, isLoaded, storageKey]);
 
   const getIcon = (iconType?: string) => {
     switch (iconType) {

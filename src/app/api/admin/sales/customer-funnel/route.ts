@@ -49,16 +49,20 @@ export async function GET(request: NextRequest) {
     const defaultEndDate = endDate || now.toISOString().split("T")[0];
 
     // 1. 문의 데이터 조회
-    const { data: inquiries } = await supabase
+    const { data: inquiries, error: inquiriesError } = await supabase
       .from("inquiries")
-      .select("id, customer_name, customer_phone, channel, inquiry_type, status, created_at")
+      .select("*")
       .eq("gym_id", gymId)
       .eq("company_id", companyId)
       .gte("created_at", `${defaultStartDate}T00:00:00`)
       .lte("created_at", `${defaultEndDate}T23:59:59`);
 
+    if (inquiriesError) {
+      console.error("[CustomerFunnel] Inquiries error:", inquiriesError);
+    }
+
     // 2. 예약 데이터 조회
-    const { data: reservations } = await supabase
+    const { data: reservations, error: reservationsError } = await supabase
       .from("reservations")
       .select("id, customer_name, customer_phone, reservation_type, status, scheduled_date, created_at")
       .eq("gym_id", gymId)
@@ -66,21 +70,31 @@ export async function GET(request: NextRequest) {
       .gte("created_at", `${defaultStartDate}T00:00:00`)
       .lte("created_at", `${defaultEndDate}T23:59:59`);
 
+    if (reservationsError) {
+      console.error("[CustomerFunnel] Reservations error:", reservationsError);
+    }
+
     // 3. 등록(결제) 데이터 조회 - 신규만
-    const { data: registrations } = await supabase
+    const { data: registrations, error: registrationsError } = await supabase
       .from("member_payments")
-      .select("id, member_name, phone, membership_name, membership_category, amount, visit_route, created_at")
+      .select("*")
       .eq("gym_id", gymId)
       .eq("company_id", companyId)
       .eq("sale_type", "신규")
       .gte("created_at", `${defaultStartDate}T00:00:00`)
       .lte("created_at", `${defaultEndDate}T23:59:59`);
 
+    if (registrationsError) {
+      console.error("[CustomerFunnel] Registrations error:", registrationsError);
+    }
+
+    console.log("[CustomerFunnel] Data counts - Inquiries:", inquiries?.length || 0, "Reservations:", reservations?.length || 0, "Registrations:", registrations?.length || 0);
+
     // 전화번호 기준으로 고객 데이터 통합
     const customerMap = new Map<string, {
       phone: string;
       name: string;
-      inquiry: { id: string; channel: string; type: string; status: string; date: string } | null;
+      inquiry: { id: string; channel: string; channelOther?: string; type: string; typeOther?: string; status: string; content?: string; date: string } | null;
       reservation: { id: string; type: string; status: string; date: string } | null;
       registration: { id: string; membershipName: string; amount: number; visitRoute: string; date: string } | null;
       firstContactDate: string;
@@ -98,8 +112,11 @@ export async function GET(request: NextRequest) {
           existing.inquiry = {
             id: inq.id,
             channel: inq.channel,
+            channelOther: inq.channel_other || undefined,
             type: inq.inquiry_type,
+            typeOther: inq.inquiry_type_other || undefined,
             status: inq.status,
+            content: inq.content || undefined,
             date: inq.created_at
           };
         }
@@ -117,8 +134,11 @@ export async function GET(request: NextRequest) {
           inquiry: {
             id: inq.id,
             channel: inq.channel,
+            channelOther: inq.channel_other || undefined,
             type: inq.inquiry_type,
+            typeOther: inq.inquiry_type_other || undefined,
             status: inq.status,
+            content: inq.content || undefined,
             date: inq.created_at
           },
           reservation: null,

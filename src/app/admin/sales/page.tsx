@@ -19,7 +19,7 @@ import { InquirySection } from "./components/InquirySection";
 import { RenewalSection } from "./components/RenewalSection";
 import { BEPCard } from "./components/BEPCard";
 import { exportSalesToExcel } from "./utils/excelExport";
-import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, Target, Award, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, Target, Award, BarChart3, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,11 @@ const PtSalesModal = dynamic(
 
 const MemberDetailModal = dynamic(
   () => import("../pt-members/components/modals/MemberDetailModal").then(mod => ({ default: mod.MemberDetailModal })),
+  { ssr: false }
+);
+
+const ComparisonAnalysisModal = dynamic(
+  () => import("./components/modals/ComparisonAnalysisModal").then(mod => ({ default: mod.ComparisonAnalysisModal })),
   { ssr: false }
 );
 
@@ -100,6 +105,9 @@ export default function SalesPage(props: {
   const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]);
   const [memberAllMemberships, setMemberAllMemberships] = useState<any[]>([]);
   const [memberActivityLogs, setMemberActivityLogs] = useState<any[]>([]);
+
+  // 비교 분석 모달 상태
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
 
   const {
     filteredPayments,
@@ -528,6 +536,17 @@ export default function SalesPage(props: {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* 비교분석 버튼 (staff는 숨김) */}
+            {!isStaff && (
+              <button
+                onClick={() => setIsComparisonModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-black transition-all h-12 bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-200 hover:from-indigo-600 hover:to-blue-700"
+              >
+                <GitCompare className="w-4 h-4" />
+                비교분석
+              </button>
+            )}
+
             {/* 실적성과표 버튼 - 개별 배치 (staff는 숨김) */}
             {!isStaff && (
               <button
@@ -795,12 +814,15 @@ export default function SalesPage(props: {
           isInitialized={isInitialized}
         />
       ) : (
-        <DetailedAnalysis 
-          currentPayments={filteredPayments} 
-          previousPayments={previousMonthPayments} 
+        <DetailedAnalysis
+          currentPayments={filteredPayments}
+          previousPayments={previousMonthPayments}
           lastYearPayments={lastYearPayments}
           currentExpenses={expensesData.filteredExpenses}
           previousExpenses={expensesData.previousMonthExpenses}
+          selectedGymId={selectedGymId}
+          selectedCompanyId={selectedCompanyId}
+          isInitialized={isInitialized}
         />
       )}
 
@@ -823,6 +845,17 @@ export default function SalesPage(props: {
         onDeleteMembership={async () => {}}
         onEditAddon={() => {}}
         onTransferMembership={() => {}}
+      />
+
+      {/* 비교 분석 모달 */}
+      <ComparisonAnalysisModal
+        isOpen={isComparisonModalOpen}
+        onClose={() => setIsComparisonModalOpen(false)}
+        currentPayments={filteredPayments}
+        previousPayments={previousMonthPayments}
+        lastYearPayments={lastYearPayments}
+        selectedGymId={selectedGymId}
+        selectedCompanyId={selectedCompanyId}
       />
     </div>
   );

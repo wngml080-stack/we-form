@@ -104,18 +104,20 @@ function AdminLayoutContent({
     { name: "직원관리", href: "/admin/staff", icon: ClipboardCheck },
   ];
 
-  const getMenuItems = () => {
+  type MenuItem = { name: string; href: string; icon: typeof LayoutDashboard };
+
+  const getMenuItems = (): { main: MenuItem[]; branch: MenuItem[]; admin: MenuItem[] } => {
     if (userRole === "staff") {
       return {
         main: [{ name: "대시보드", href: "/admin", icon: LayoutDashboard }],
-        branch: [{ name: "급여 확인", href: "/admin/salary", icon: DollarSign }],
-        admin: []
+        branch: [] as MenuItem[], // 직원은 급여 확인 메뉴 없음
+        admin: [] as MenuItem[]
       };
     } else {
       return {
         main: [{ name: "대시보드", href: "/admin", icon: LayoutDashboard }],
-        branch: [], // 하위 메뉴로 이동됨
-        admin: []
+        branch: [] as MenuItem[], // 하위 메뉴로 이동됨
+        admin: [] as MenuItem[]
       };
     }
   };
@@ -156,44 +158,61 @@ function AdminLayoutContent({
           </Link>
         </div>
 
-        {/* 필터 */}
+        {/* 필터 - staff는 회사명과 본인 이름만 표시 */}
         {filterInitialized && (
           <div className="p-4 space-y-2">
-            {userRole === "system_admin" && (
-              <Select value={selectedCompanyId} onValueChange={setCompany}>
-                <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
-                  <SelectValue placeholder="회사 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            <Select value={selectedGymId} onValueChange={setGym}>
-              <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
-                <SelectValue placeholder="지점 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {gyms.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {userRole === "staff" ? (
+              // Staff 전용: 회사명과 본인 이름 표시
+              <div className="space-y-2">
+                <div className="px-3 py-2.5 bg-slate-50 rounded-lg">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">회사</p>
+                  <p className="text-xs font-bold text-slate-700">{companyName || "소속 회사"}</p>
+                </div>
+                <div className="px-3 py-2.5 bg-blue-50 rounded-lg">
+                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">내 정보</p>
+                  <p className="text-xs font-bold text-blue-700">{user?.name || "직원"}</p>
+                </div>
+              </div>
+            ) : (
+              // 관리자: 기존 필터 드롭다운
+              <>
+                {userRole === "system_admin" && (
+                  <Select value={selectedCompanyId} onValueChange={setCompany}>
+                    <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                      <SelectValue placeholder="회사 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
-            <Select value={selectedStaffId || "all"} onValueChange={(v) => setStaff(v === "all" ? "" : v)}>
-              <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
-                <SelectValue placeholder="직원 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 직원</SelectItem>
-                {staffs.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <Select value={selectedGymId} onValueChange={setGym}>
+                  <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                    <SelectValue placeholder="지점 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gyms.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedStaffId || "all"} onValueChange={(v) => setStaff(v === "all" ? "" : v)}>
+                  <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                    <SelectValue placeholder="직원 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">전체 직원</SelectItem>
+                    {staffs.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
         )}
 

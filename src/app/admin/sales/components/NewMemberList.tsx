@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Search, RefreshCw, Calendar, AlertCircle, ArrowRight, Filter
+  Search, RefreshCw, AlertCircle, ArrowRight, Filter, MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
@@ -16,11 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CustomerDetailModal } from "./modals/CustomerDetailModal";
 
 interface CustomerFunnel {
   phone: string;
   name: string;
-  inquiry: { id: string; channel: string; type: string; status: string; date: string } | null;
+  inquiry: { id: string; channel: string; channelOther?: string; type: string; typeOther?: string; status: string; content?: string; date: string } | null;
   reservation: { id: string; type: string; status: string; date: string } | null;
   registration: { id: string; membershipName: string; amount: number; visitRoute: string; date: string } | null;
   firstContactDate: string;
@@ -28,6 +29,38 @@ interface CustomerFunnel {
   conversionStatus: string;
   funnelStage: string;
 }
+
+const CHANNEL_LABELS: Record<string, string> = {
+  kakao: "카카오",
+  naver: "네이버",
+  phone: "전화",
+  walk_in: "방문",
+  website: "웹사이트",
+  instagram: "인스타그램",
+  other: "기타",
+};
+
+const CHANNEL_COLORS: Record<string, string> = {
+  kakao: "bg-yellow-100 text-yellow-800",
+  naver: "bg-green-100 text-green-800",
+  phone: "bg-blue-100 text-blue-800",
+  walk_in: "bg-purple-100 text-purple-800",
+  website: "bg-slate-100 text-slate-800",
+  instagram: "bg-pink-100 text-pink-800",
+  other: "bg-gray-100 text-gray-800",
+};
+
+const INQUIRY_TYPE_LABELS: Record<string, string> = {
+  price: "가격 문의",
+  schedule: "일정 문의",
+  location: "위치/교통",
+  trial: "체험 신청",
+  membership: "회원권",
+  pt: "PT 문의",
+  cancel: "해지/환불",
+  etc: "기타",
+  other: "기타",
+};
 
 interface FunnelStats {
   total: number;
@@ -60,6 +93,13 @@ export function NewMemberList({
     limit: 20,
     totalPages: 0
   });
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerFunnel | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const handleCustomerClick = (customer: CustomerFunnel) => {
+    setSelectedCustomer(customer);
+    setIsDetailModalOpen(true);
+  };
 
   // 날짜 필터 (최근 3개월)
   const now = new Date();
@@ -233,18 +273,20 @@ export function NewMemberList({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-100">
-                <th className="py-5 px-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">전환상태</th>
-                <th className="py-5 px-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">고객 정보</th>
-                <th className="py-5 px-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">퍼널 경로</th>
-                <th className="py-5 px-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">최근 활동</th>
-                <th className="py-5 px-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">등록 정보</th>
-                <th className="py-5 px-8 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">첫 접촉</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">전환상태</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">고객 정보</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">문의&등록날짜</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">퍼널 경로</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">문의채널</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">문의유형</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">등록 정보</th>
+                <th className="py-5 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">메모</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-24 text-center">
+                  <td colSpan={8} className="py-24 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
                       <p className="text-sm font-bold text-slate-400">불러오는 중...</p>
@@ -253,7 +295,7 @@ export function NewMemberList({
                 </tr>
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-24 text-center">
+                  <td colSpan={8} className="py-24 text-center">
                     <div className="flex flex-col items-center gap-4">
                       <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
                         <AlertCircle className="w-8 h-8 text-slate-200" />
@@ -268,40 +310,64 @@ export function NewMemberList({
                 customers.map((customer) => (
                   <tr
                     key={customer.phone}
+                    onClick={() => handleCustomerClick(customer)}
                     className={cn(
-                      "group hover:bg-blue-50/40 transition-all duration-300",
+                      "group hover:bg-blue-50/40 transition-all duration-300 cursor-pointer",
                       customer.conversionStatus === "not_converted" && "bg-rose-50/20"
                     )}
                   >
-                    <td className="py-6 px-8">
+                    <td className="py-5 px-6">
                       {getConversionBadge(customer)}
                     </td>
-                    <td className="py-6 px-8">
+                    <td className="py-5 px-6">
                       <div className="flex flex-col gap-0.5">
                         <span className="font-black text-slate-900 leading-none tracking-tightest">{customer.name || "-"}</span>
                         <span className="text-[10px] font-bold text-slate-400">{formatPhoneNumber(customer.phone)}</span>
                       </div>
                     </td>
-                    <td className="py-6 px-8">
-                      {getFunnelBadges(customer)}
-                    </td>
-                    <td className="py-6 px-8">
+                    <td className="py-5 px-6">
                       <div className="flex flex-col gap-1">
                         {customer.inquiry && (
-                          <div className="flex items-center gap-1.5 text-[10px]">
-                            <span className="text-blue-500 font-bold">문의</span>
-                            <span className="text-slate-400">{customer.inquiry.channel}</span>
+                          <div className="text-[10px] text-slate-500">
+                            <span className="text-blue-500 font-bold">문의</span> {formatDate(customer.inquiry.date)}
                           </div>
                         )}
-                        {customer.reservation && (
-                          <div className="flex items-center gap-1.5 text-[10px]">
-                            <span className="text-purple-500 font-bold">예약</span>
-                            <span className="text-slate-400">{customer.reservation.type === "consultation" ? "상담" : customer.reservation.type === "trial" ? "체험" : customer.reservation.type}</span>
+                        {customer.registration && (
+                          <div className="text-[10px] text-slate-500">
+                            <span className="text-emerald-500 font-bold">등록</span> {formatDate(customer.registration.date)}
                           </div>
+                        )}
+                        {!customer.inquiry && !customer.registration && (
+                          <span className="text-[10px] font-bold text-slate-300">-</span>
                         )}
                       </div>
                     </td>
-                    <td className="py-6 px-8">
+                    <td className="py-5 px-6">
+                      {getFunnelBadges(customer)}
+                    </td>
+                    <td className="py-5 px-6">
+                      {customer.inquiry ? (
+                        <Badge className={cn("text-[9px] font-bold px-2 py-0.5 rounded-md border-none", CHANNEL_COLORS[customer.inquiry.channel] || "bg-gray-100 text-gray-800")}>
+                          {customer.inquiry.channel === "other" && customer.inquiry.channelOther
+                            ? customer.inquiry.channelOther
+                            : CHANNEL_LABELS[customer.inquiry.channel] || customer.inquiry.channel}
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-300">-</span>
+                      )}
+                    </td>
+                    <td className="py-5 px-6">
+                      {customer.inquiry ? (
+                        <span className="text-xs font-bold text-slate-600">
+                          {customer.inquiry.type === "etc" && customer.inquiry.typeOther
+                            ? customer.inquiry.typeOther
+                            : INQUIRY_TYPE_LABELS[customer.inquiry.type] || customer.inquiry.type}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-300">-</span>
+                      )}
+                    </td>
+                    <td className="py-5 px-6">
                       {customer.registration ? (
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-bold text-slate-700">{customer.registration.membershipName}</span>
@@ -313,11 +379,17 @@ export function NewMemberList({
                         <span className="text-[10px] font-bold text-slate-300">-</span>
                       )}
                     </td>
-                    <td className="py-6 px-8">
-                      <div className="flex items-center gap-2 text-slate-500">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span className="text-xs font-black">{formatDate(customer.firstContactDate)}</span>
-                      </div>
+                    <td className="py-5 px-6">
+                      {customer.inquiry?.content ? (
+                        <div className="flex items-center gap-1.5 max-w-[150px]">
+                          <MessageSquare className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                          <span className="text-[10px] font-bold text-slate-500 truncate">
+                            {customer.inquiry.content}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-300">-</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -358,6 +430,16 @@ export function NewMemberList({
           </div>
         )}
       </div>
+
+      {/* 고객 상세 모달 */}
+      <CustomerDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedCustomer(null);
+        }}
+        customer={selectedCustomer}
+      />
     </div>
   );
 }

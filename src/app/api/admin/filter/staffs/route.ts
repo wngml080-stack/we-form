@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { requireAdmin, canAccessGym } from "@/lib/api/auth";
+import { requireAuth, canAccessGym } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: Request) {
   try {
-    // 인증 및 관리자 권한 확인
-    const { staff, error: authError } = await requireAdmin();
+    // 인증 확인 (staff 포함 모든 역할 허용)
+    const { staff, error: authError } = await requireAuth();
     if (authError) return authError;
     if (!staff) return NextResponse.json({ error: "인증 오류" }, { status: 401 });
 

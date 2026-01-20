@@ -74,6 +74,7 @@ export function isAdmin(role: StaffRole): boolean {
 
 /**
  * 특정 회사에 대한 접근 권한 확인
+ * staff 역할도 자신의 회사에 접근 가능
  */
 export function canAccessCompany(
   staff: AuthenticatedStaff,
@@ -81,11 +82,13 @@ export function canAccessCompany(
 ): boolean {
   if (staff.role === "system_admin") return true;
   if (!staff.company_id) return false;
+  // company_admin, admin, staff 모두 자신의 회사에 접근 가능
   return staff.company_id === companyId;
 }
 
 /**
  * 특정 지점에 대한 접근 권한 확인
+ * staff 역할은 자신의 지점만 접근 가능
  */
 export function canAccessGym(
   staff: AuthenticatedStaff,
@@ -97,6 +100,7 @@ export function canAccessGym(
     // company_admin은 같은 회사의 모든 지점 접근 가능
     return gymCompanyId ? staff.company_id === gymCompanyId : true;
   }
+  // admin, staff는 자신의 지점만 접근 가능
   if (!staff.gym_id) return false;
   return staff.gym_id === gymId;
 }

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { requireAdmin, canAccessCompany } from "@/lib/api/auth";
+import { requireAuth, canAccessCompany } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
 
 export async function GET(request: Request) {
   try {
-    // 인증 및 관리자 권한 확인
-    const { staff, error: authError } = await requireAdmin();
+    // 인증 확인 (staff 포함 모든 역할 허용)
+    const { staff, error: authError } = await requireAuth();
     if (authError) return authError;
     if (!staff) return NextResponse.json({ error: "인증 오류" }, { status: 401 });
 
@@ -30,8 +30,8 @@ export async function GET(request: Request) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    // admin 역할은 자기 지점만 반환
-    if (staff.role === "admin" && staff.gym_id) {
+    // admin, staff 역할은 자기 지점만 반환
+    if ((staff.role === "admin" || staff.role === "staff") && staff.gym_id) {
       const { data, error } = await supabaseAdmin
         .from("gyms")
         .select("id, name")

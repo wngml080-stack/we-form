@@ -34,10 +34,12 @@ export function CreateInquiryModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     channel: "phone",
+    channel_other: "",
     customer_name: "",
     customer_phone: "",
     customer_email: "",
     inquiry_type: "price",
+    inquiry_type_other: "",
     subject: "",
     content: "",
     priority: "normal",
@@ -49,6 +51,16 @@ export function CreateInquiryModal({
       return;
     }
 
+    if (formData.channel === "other" && !formData.channel_other.trim()) {
+      alert("기타 채널을 입력해주세요.");
+      return;
+    }
+
+    if (formData.inquiry_type === "etc" && !formData.inquiry_type_other.trim()) {
+      alert("기타 문의 유형을 입력해주세요.");
+      return;
+    }
+
     setIsSubmitting(true);
     const success = await onCreate(formData);
     setIsSubmitting(false);
@@ -56,10 +68,12 @@ export function CreateInquiryModal({
     if (success) {
       setFormData({
         channel: "phone",
+        channel_other: "",
         customer_name: "",
         customer_phone: "",
         customer_email: "",
         inquiry_type: "price",
+        inquiry_type_other: "",
         subject: "",
         content: "",
         priority: "normal",
@@ -108,7 +122,7 @@ export function CreateInquiryModal({
               </div>
               <Select
                 value={formData.channel}
-                onValueChange={(value) => setFormData({ ...formData, channel: value })}
+                onValueChange={(value) => setFormData({ ...formData, channel: value, channel_other: value !== "other" ? "" : formData.channel_other })}
               >
                 <SelectTrigger className="h-14 rounded-2xl bg-white border-slate-100 shadow-sm font-bold text-slate-700 focus:ring-blue-500">
                   <SelectValue placeholder="채널 선택" />
@@ -123,6 +137,14 @@ export function CreateInquiryModal({
                   <SelectItem value="other">기타</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.channel === "other" && (
+                <Input
+                  placeholder="기타 채널을 입력해주세요"
+                  value={formData.channel_other}
+                  onChange={(e) => setFormData({ ...formData, channel_other: e.target.value })}
+                  className="h-12 rounded-xl bg-white border-slate-200 focus:ring-blue-500 font-bold text-slate-600 mt-3"
+                />
+              )}
             </div>
 
             <div className="space-y-4">
@@ -132,7 +154,7 @@ export function CreateInquiryModal({
               </div>
               <Select
                 value={formData.inquiry_type}
-                onValueChange={(value) => setFormData({ ...formData, inquiry_type: value })}
+                onValueChange={(value) => setFormData({ ...formData, inquiry_type: value, inquiry_type_other: value !== "etc" ? "" : formData.inquiry_type_other })}
               >
                 <SelectTrigger className="h-14 rounded-2xl bg-white border-slate-100 shadow-sm font-bold text-slate-700 focus:ring-blue-500">
                   <SelectValue placeholder="유형 선택" />
@@ -148,6 +170,14 @@ export function CreateInquiryModal({
                   <SelectItem value="etc">기타</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.inquiry_type === "etc" && (
+                <Input
+                  placeholder="기타 문의 유형을 입력해주세요"
+                  value={formData.inquiry_type_other}
+                  onChange={(e) => setFormData({ ...formData, inquiry_type_other: e.target.value })}
+                  className="h-12 rounded-xl bg-white border-slate-200 focus:ring-blue-500 font-bold text-slate-600 mt-3"
+                />
+              )}
             </div>
           </div>
 

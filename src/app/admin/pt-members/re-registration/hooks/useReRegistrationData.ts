@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   ReRegistrationData,
   ReRegistrationConsultation,
@@ -12,7 +13,19 @@ import {
   createInitialConsultation,
 } from "../types";
 
-const STORAGE_KEY = "re-registration-data";
+const BASE_STORAGE_KEY = "re-registration-data";
+
+// staff별 storage key 생성 (staff는 본인 ID 포함, 관리자는 기본 키 사용)
+const getStorageKey = (userRole: string, userId?: string, gymId?: string | null): string => {
+  let key = BASE_STORAGE_KEY;
+  if (gymId) {
+    key = `${key}-${gymId}`;
+  }
+  if (userRole === "staff" && userId) {
+    key = `${key}-${userId}`;
+  }
+  return key;
+};
 
 interface UseReRegistrationDataProps {
   selectedGymId: string | null;
@@ -21,6 +34,16 @@ interface UseReRegistrationDataProps {
 export function useReRegistrationData({
   selectedGymId,
 }: UseReRegistrationDataProps) {
+  const { user } = useAuth();
+  const userRole = user?.role || "";
+  const userId = user?.id;
+
+  // staff별 storage key 계산
+  const storageKey = useMemo(
+    () => getStorageKey(userRole, userId, selectedGymId),
+    [userRole, userId, selectedGymId]
+  );
+
   const [data, setData] = useState<ReRegistrationData>(
     initialReRegistrationData
   );
@@ -29,13 +52,10 @@ export function useReRegistrationData({
 
   // LocalStorage에서 데이터 로드
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !storageKey) return;
 
     setIsLoading(true);
     try {
-      const storageKey = selectedGymId
-        ? `${STORAGE_KEY}-${selectedGymId}`
-        : STORAGE_KEY;
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         setData(JSON.parse(saved));
@@ -49,16 +69,13 @@ export function useReRegistrationData({
       setIsLoading(false);
       setIsLoaded(true);
     }
-  }, [selectedGymId]);
+  }, [storageKey]);
 
   // 데이터 변경 시 LocalStorage에 저장
   useEffect(() => {
-    if (!isLoaded || typeof window === "undefined") return;
+    if (!isLoaded || typeof window === "undefined" || !storageKey) return;
 
     try {
-      const storageKey = selectedGymId
-        ? `${STORAGE_KEY}-${selectedGymId}`
-        : STORAGE_KEY;
       const updatedData = {
         ...data,
         lastUpdated: new Date().toISOString(),
@@ -67,7 +84,7 @@ export function useReRegistrationData({
     } catch (e) {
       console.error("Failed to save re-registration data:", e);
     }
-  }, [data, isLoaded, selectedGymId]);
+  }, [data, isLoaded, storageKey]);
 
   // 재등록 대상자 필터링 (상태=진행중, 진행률>=70%, 재등록상담=미완료)
   const targetMembers = useMemo(() => {

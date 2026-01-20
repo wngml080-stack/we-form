@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/api/auth";
+import { requireAuth } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
 
 export async function GET() {
   try {
-    // 인증 및 관리자 권한 확인
-    const { staff, error: authError } = await requireAdmin();
+    // 인증 확인 (staff 포함 모든 역할 허용)
+    const { staff, error: authError } = await requireAuth();
     if (authError) return authError;
     if (!staff) return NextResponse.json({ error: "인증 오류" }, { status: 401 });
 
@@ -27,7 +27,7 @@ export async function GET() {
         companies: data || [],
       });
     } else {
-      // company_admin, admin은 자기 회사만 반환
+      // company_admin, admin, staff는 자기 회사만 반환
       if (!staff.company_id) {
         return NextResponse.json({
           success: true,
