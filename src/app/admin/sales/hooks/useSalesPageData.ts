@@ -21,6 +21,7 @@ interface Payment {
   registrar?: string;
   memo?: string;
   created_at: string;
+  payment_date: string;
   service_sessions?: number;
   bonus_sessions?: number;
   validity_per_session?: number;
@@ -282,6 +283,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
           registrar: p.registrar || "",
           memo: p.memo || "",
           created_at: p.paid_at || p.created_at,
+          payment_date: p.paid_at || p.created_at,
           service_sessions: p.service_sessions || 0,
           bonus_sessions: p.bonus_sessions || 0,
           validity_per_session: p.validity_per_session || 0,

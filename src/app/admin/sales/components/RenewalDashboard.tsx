@@ -251,9 +251,9 @@ export function RenewalDashboard({
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number, name: string, props: { payload: { amount: number } }) => [
-                        `${value}건 (${formatAmount(props.payload.amount)})`,
-                        name
+                      formatter={(value, name, props) => [
+                        `${value ?? 0}건 (${formatAmount((props?.payload as { amount?: number })?.amount ?? 0)})`,
+                        name ?? ""
                       ]}
                     />
                   </PieChart>
@@ -294,9 +294,9 @@ export function RenewalDashboard({
                 <XAxis type="number" fontSize={10} />
                 <YAxis type="category" dataKey="name" fontSize={10} width={60} />
                 <Tooltip
-                  formatter={(value: number, name: string) => [
-                    name === "건수" ? `${value}건` : formatAmount(value * 10000),
-                    name
+                  formatter={(value, name) => [
+                    name === "건수" ? `${value ?? 0}건` : formatAmount((value as number ?? 0) * 10000),
+                    name ?? ""
                   ]}
                 />
                 <Bar dataKey="건수" fill="#10B981" radius={[0, 4, 4, 0]} />
@@ -321,9 +321,9 @@ export function RenewalDashboard({
               <YAxis yAxisId="left" fontSize={10} />
               <YAxis yAxisId="right" orientation="right" fontSize={10} />
               <Tooltip
-                formatter={(value: number, name: string) => [
-                  name === "건수" ? `${value}건` : `${value}만원`,
-                  name
+                formatter={(value, name) => [
+                  name === "건수" ? `${value ?? 0}건` : `${value ?? 0}만원`,
+                  name ?? ""
                 ]}
               />
               <Legend />

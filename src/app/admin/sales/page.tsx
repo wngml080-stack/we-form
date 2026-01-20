@@ -123,7 +123,6 @@ export default function SalesPage(props: {
     newRows,
     addNewRow,
     updateNewRow,
-    saveNewRow,
     removeNewRow,
     deletePayment,
     updatePayment,

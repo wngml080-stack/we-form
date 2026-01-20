@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // 직접 content 제공 시
+      if (!staff.gym_id) {
+        return NextResponse.json({ error: "지점 정보가 없습니다." }, { status: 400 });
+      }
       gymId = staff.gym_id;
       inquiryContent = content;
     }

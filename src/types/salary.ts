@@ -262,10 +262,10 @@ export interface InbodyRecord {
 }
 
 // ============================================
-// 스케줄 (기존 타입 확장)
+// 스케줄 (급여 계산용 확장 타입)
 // ============================================
 
-export interface Schedule {
+export interface SalarySchedule {
   id: string;
   staff_id: string;
   member_id?: string;

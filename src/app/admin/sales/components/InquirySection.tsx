@@ -225,27 +225,31 @@ export function InquirySection({
         />
       )}
 
-      <ReservationModal
-        isOpen={isReservationModalOpen}
-        onClose={() => {
-          setIsReservationModalOpen(false);
-          setSelectedReservation(null);
-        }}
-        reservation={selectedReservation}
-        inquiry={selectedInquiry}
-        onCreate={createReservation}
-        onUpdate={updateReservation}
-        gymId={selectedGymId}
-        companyId={selectedCompanyId}
-      />
+      {selectedGymId && selectedCompanyId && (
+        <ReservationModal
+          isOpen={isReservationModalOpen}
+          onClose={() => {
+            setIsReservationModalOpen(false);
+            setSelectedReservation(null);
+          }}
+          reservation={selectedReservation}
+          inquiry={selectedInquiry}
+          onCreate={createReservation}
+          onUpdate={updateReservation}
+          gymId={selectedGymId}
+          companyId={selectedCompanyId}
+        />
+      )}
 
-      <KakaoChannelSettingsModal
-        isOpen={isKakaoSettingsOpen}
-        onClose={() => setIsKakaoSettingsOpen(false)}
-        gymId={selectedGymId}
-        companyId={selectedCompanyId}
-        gymName={gymName}
-      />
+      {selectedGymId && selectedCompanyId && (
+        <KakaoChannelSettingsModal
+          isOpen={isKakaoSettingsOpen}
+          onClose={() => setIsKakaoSettingsOpen(false)}
+          gymId={selectedGymId}
+          companyId={selectedCompanyId}
+          gymName={gymName}
+        />
+      )}
     </div>
   );
 }

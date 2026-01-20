@@ -185,7 +185,15 @@ export default function AdminAttendancePage() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setSchedules(data || []);
+
+      // staff 배열을 객체로 변환
+      const transformedData = (data || []).map((schedule: any) => ({
+        ...schedule,
+        staff: Array.isArray(schedule.staff) && schedule.staff.length > 0
+          ? schedule.staff[0]
+          : schedule.staff
+      }));
+      setSchedules(transformedData);
     } catch (error) {
       console.error("스케줄 조회 실패:", error);
       showError("스케줄을 불러오는데 실패했습니다.");

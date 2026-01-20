@@ -2,8 +2,7 @@
 // API 응답 타입 정의
 // ============================================
 
-import { ApiResponse } from "./common";
-import { Staff, Company, Gym, Member, Schedule } from "./database";
+import { ApiResponse, Staff, Company, Gym, Member, Schedule } from "./database";
 
 // ============================================
 // 필터 API 응답 타입

@@ -88,6 +88,7 @@ interface Payment {
   validity_per_session?: number;
   membership_start_date?: string;
   visit_route?: string;
+  visit_route_custom?: string;
   expiry_type?: string;
 }
 

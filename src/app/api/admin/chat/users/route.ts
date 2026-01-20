@@ -31,15 +31,15 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // gym 정보 포함하여 반환
-    const formattedUsers = users?.map((u) => ({
+    // gym 정보 포함하여 반환 (gyms는 배열로 반환됨)
+    const formattedUsers = users?.map((u: any) => ({
       id: u.id,
       name: u.name,
       email: u.email,
       role: u.role,
       job_title: u.job_title,
       gym_id: u.gym_id,
-      gym_name: u.gyms?.name || null,
+      gym_name: Array.isArray(u.gyms) && u.gyms.length > 0 ? u.gyms[0].name : (u.gyms?.name || null),
     }));
 
     return NextResponse.json({ users: formattedUsers || [] });

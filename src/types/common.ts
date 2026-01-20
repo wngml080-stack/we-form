@@ -30,15 +30,7 @@ export function getErrorMessage(error: unknown): string {
   return '알 수 없는 오류가 발생했습니다.';
 }
 
-/**
- * API 응답 타입
- */
-export interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-}
+// ApiResponse는 database.ts에 정의되어 있습니다
 
 /**
  * 로딩 상태 타입
@@ -48,44 +40,7 @@ export interface LoadingState {
   error: string | null;
 }
 
-// ============================================
-// 도메인 공통 타입
-// ============================================
-
-/**
- * 직원 역할 타입
- */
-export type StaffRole = 
-  | 'system_admin' 
-  | 'company_admin' 
-  | 'admin' 
-  | 'manager' 
-  | 'staff';
-
-/**
- * 재직 상태 타입
- */
-export type EmploymentStatus = 
-  | '재직' 
-  | '퇴사' 
-  | '가입대기' 
-  | '휴직';
-
-/**
- * 센터 상태 타입
- */
-export type GymStatus = 
-  | 'active' 
-  | 'pending' 
-  | 'inactive';
-
-/**
- * 회사 상태 타입
- */
-export type CompanyStatus = 
-  | 'active' 
-  | 'pending' 
-  | 'inactive';
+// 도메인 공통 타입은 database.ts에 정의되어 있습니다 (StaffRole, EmploymentStatus, GymStatus, CompanyStatus)
 
 /**
  * 출석 상태 코드 타입
@@ -97,14 +52,7 @@ export type AttendanceStatus =
   | 'service' 
   | 'cancelled';
 
-/**
- * 스케줄 상태 타입
- */
-export type ScheduleStatus = 
-  | 'scheduled' 
-  | 'completed' 
-  | 'cancelled' 
-  | 'no_show';
+// ScheduleStatus는 database.ts에 정의되어 있습니다
 
 /**
  * 회원 상태 타입

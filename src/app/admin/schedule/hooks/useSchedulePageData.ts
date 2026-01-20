@@ -19,6 +19,7 @@ export interface CreateFormData {
   duration: string;
   isPersonal: boolean;
   personalTitle: string;
+  inbody_checked?: boolean;
 }
 
 export interface EditFormData {

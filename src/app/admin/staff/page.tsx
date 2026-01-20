@@ -132,8 +132,13 @@ export default function AdminStaffPage(props: {
     }
 
     if (data) {
-      setPendingStaffs(data.filter(s => s.employment_status === '가입대기'));
-      setActiveStaffs(data.filter(s => s.employment_status !== '가입대기'));
+      // gyms 배열을 객체로 변환
+      const transformedData = data.map((s: any) => ({
+        ...s,
+        gyms: Array.isArray(s.gyms) && s.gyms.length > 0 ? s.gyms[0] : s.gyms
+      }));
+      setPendingStaffs(transformedData.filter(s => s.employment_status === '가입대기'));
+      setActiveStaffs(transformedData.filter(s => s.employment_status !== '가입대기'));
     }
   };
 

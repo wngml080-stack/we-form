@@ -89,7 +89,7 @@ export function useChatRealtime({
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         Object.keys(state).forEach((key) => {
-          const presence = state[key][0] as {
+          const presence = state[key][0] as unknown as {
             typing?: boolean;
             user_id: string;
           };

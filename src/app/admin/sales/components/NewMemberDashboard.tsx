@@ -271,9 +271,9 @@ export function NewMemberDashboard({
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number, name: string, props: { payload: { amount: number } }) => [
-                        `${value}명 (${formatAmount(props.payload.amount)})`,
-                        name
+                      formatter={(value, name, props) => [
+                        `${value ?? 0}명 (${formatAmount((props?.payload as { amount?: number })?.amount ?? 0)})`,
+                        name ?? ""
                       ]}
                     />
                   </PieChart>

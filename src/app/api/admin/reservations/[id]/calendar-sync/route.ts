@@ -16,9 +16,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { staff, error: authError } = await authenticateRequest();
+    const { staff, error: authError, userId } = await authenticateRequest();
     if (authError) return authError;
-    if (!staff) {
+    if (!staff || !userId) {
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     }
 
@@ -50,7 +50,7 @@ export async function POST(
     const { data: tokenData, error: tokenError } = await supabase
       .from("user_google_tokens")
       .select("*")
-      .eq("user_id", staff.user_id)
+      .eq("user_id", userId)
       .single();
 
     if (tokenError || !tokenData) {
@@ -85,7 +85,7 @@ export async function POST(
             access_token: encrypt(newTokens.access_token),
             expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
           })
-          .eq("user_id", staff.user_id);
+          .eq("user_id", userId);
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
         return NextResponse.json(
