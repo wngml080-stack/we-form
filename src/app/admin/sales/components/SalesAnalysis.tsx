@@ -2,15 +2,16 @@
 
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { 
-  ShoppingBag, 
-  UserPlus, 
-  Users2, 
-  MapPin, 
-  TrendingUp, 
+import {
+  ShoppingBag,
+  UserPlus,
+  Users2,
+  MapPin,
+  TrendingUp,
   BarChart3,
   ArrowRight
 } from "lucide-react";
+import { getCategoryColor } from "../utils/categoryColors";
 
 interface Payment {
   id: string;
@@ -143,30 +144,36 @@ export function SalesAnalysis({ payments }: SalesAnalysisProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {categoryStats.map((item) => (
-                <tr key={item.name} className="group hover:bg-slate-50/50 transition-colors">
-                  <td className="py-3">
-                    <span className="text-xs font-black text-slate-700">{item.name}</span>
-                  </td>
-                  <td className="py-3 text-right">
-                    <span className="text-xs font-bold text-slate-600">{item.count}건</span>
-                  </td>
-                  <td className="py-3 text-right">
-                    <span className="text-xs font-black text-blue-600">{formatCurrency(item.amount)}</span>
-                  </td>
-                  <td className="py-3 text-right">
-                    <span className="text-[11px] font-bold text-slate-500">{formatCurrency(item.avg)}</span>
-                  </td>
-                  <td className="py-3 text-right">
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-[11px] font-black text-slate-900">{formatPercent(item.share)}</span>
-                      <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500" style={{ width: `${item.share}%` }} />
+              {categoryStats.map((item) => {
+                const colors = getCategoryColor(item.name);
+                return (
+                  <tr key={item.name} className="group hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <div className={cn("w-2 h-2 rounded-full", colors.bg)} />
+                        <span className="text-xs font-black text-slate-700">{item.name}</span>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="py-3 text-right">
+                      <span className="text-xs font-bold text-slate-600">{item.count}건</span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <span className={cn("text-xs font-black", colors.text)}>{formatCurrency(item.amount)}</span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <span className="text-[11px] font-bold text-slate-500">{formatCurrency(item.avg)}</span>
+                    </td>
+                    <td className="py-3 text-right">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[11px] font-black text-slate-900">{formatPercent(item.share)}</span>
+                        <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
+                          <div className={cn("h-full", colors.bg)} style={{ width: `${item.share}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

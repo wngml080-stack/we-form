@@ -9,7 +9,6 @@ import { useAdminDashboardData } from "../hooks/useAdminDashboardData";
 const BranchAnnouncementsCard = dynamic(() => import("./BranchAnnouncementsCard").then(mod => ({ default: mod.BranchAnnouncementsCard })), { ssr: false });
 const TodaySchedulesCard = dynamic(() => import("./TodaySchedulesCard").then(mod => ({ default: mod.TodaySchedulesCard })), { ssr: false });
 const CompanyEventsCalendar = dynamic(() => import("./CompanyEventsCalendar").then(mod => ({ default: mod.CompanyEventsCalendar })), { ssr: false });
-const AiInsightsWidget = dynamic(() => import("./AiInsightsWidget").then(mod => ({ default: mod.AiInsightsWidget })), { ssr: false });
 const AiCommandCenter = dynamic(() => import("./AiCommandCenter").then(mod => ({ default: mod.AiCommandCenter })), { ssr: false });
 const SystemAnnouncementBanner = dynamic(() => import("./SystemAnnouncementBanner").then(mod => ({ default: mod.SystemAnnouncementBanner })), { ssr: false });
 const QuickActions = dynamic(() => import("./QuickActions").then(mod => ({ default: mod.QuickActions })), { ssr: false });
@@ -53,10 +52,6 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     // 유틸리티
     getStatusColor
   } = useAdminDashboardData();
-
-  const stats = {
-    // 필요한 경우 stats 객체 구성
-  };
 
   // 서버에서 가져온 이름 우선 사용 (LCP 최적화)
   const userName = serverUserName || clientUserName;
@@ -123,11 +118,6 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
             {/* Banner Widget */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400">
               <BannerWidget />
-            </div>
-
-            {/* AI Insights Widget */}
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-450">
-              <AiInsightsWidget stats={stats} gymName={gymName} gymId={selectedGymId} />
             </div>
 
             {/* Grid Layout */}

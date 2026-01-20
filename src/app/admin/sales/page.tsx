@@ -153,7 +153,9 @@ export default function SalesPage(props: {
     openPtModal,
     openSalesModal,
     handlePeriodChange,
-    fetchDetailedSales
+    fetchDetailedSales,
+    previousMonthPayments,
+    lastYearPayments
   } = useSalesPageData({
     selectedGymId,
     selectedCompanyId,
@@ -498,7 +500,6 @@ export default function SalesPage(props: {
                 { id: "expenses", label: "지출 관리", icon: TrendingDown, color: "text-rose-600" },
                 { id: "new_inquiries", label: "신규 관리", icon: MessageSquare, color: "text-indigo-600" },
                 { id: "renewals", label: "리뉴 관리", icon: Plus, color: "text-emerald-600" },
-                { id: "analysis", label: "실적성과표", icon: BarChart3, color: "text-purple-600" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -517,8 +518,25 @@ export default function SalesPage(props: {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {activeTab === "sales" && (
+          <div className="flex items-center gap-4">
+            {/* 실적성과표 버튼 - 개별 배치 */}
+            <button
+              onClick={() => handleTabChange("analysis")}
+              className={cn(
+                "flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-black transition-all h-12",
+                activeTab === "analysis"
+                  ? "bg-purple-600 text-white shadow-lg shadow-purple-100"
+                  : "bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-100"
+              )}
+            >
+              <BarChart3 className="w-4 h-4" />
+              실적성과표
+            </button>
+
+            <div className="h-8 w-px bg-slate-100 mx-2" />
+
+            <div className="flex items-center gap-2">
+              {activeTab === "sales" && (
               <>
                 <Button onClick={handleAddNewRow} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg shadow-blue-100 gap-2 transition-all hover:-translate-y-0.5">
                   <Plus className="w-4 h-4" />
@@ -546,6 +564,7 @@ export default function SalesPage(props: {
               </>
             )}
           </div>
+        </div>
         </div>
       </div>
 
@@ -767,10 +786,10 @@ export default function SalesPage(props: {
       ) : (
         <DetailedAnalysis 
           currentPayments={filteredPayments} 
-          previousPayments={[]} 
-          lastYearPayments={[]}
-          currentExpenses={filteredExpenses}
-          previousExpenses={[]}
+          previousPayments={previousMonthPayments} 
+          lastYearPayments={lastYearPayments}
+          currentExpenses={expensesData.filteredExpenses}
+          previousExpenses={expensesData.previousMonthExpenses}
         />
       )}
 

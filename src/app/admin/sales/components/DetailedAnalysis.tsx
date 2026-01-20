@@ -9,7 +9,13 @@ import {
   CreditCard, 
   LayoutGrid,
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  Target,
+  Coins,
+  Receipt,
+  PieChart,
+  CalendarDays,
+  UserCheck
 } from "lucide-react";
 
 interface Payment {
@@ -18,37 +24,9 @@ interface Payment {
   membership_category: string;
   sale_type: string;
   payment_date: string;
+  membership_name?: string;
   registrar?: string;
 }
-
-interface DetailedAnalysisProps {
-  currentPayments: Payment[];
-  previousPayments?: Payment[];
-  lastYearPayments?: Payment[];
-}
-
-export function DetailedAnalysis({ 
-  currentPayments, 
-  previousPayments = [], 
-  lastYearPayments = [] 
-}: DetailedAnalysisProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("ko-KR").format(Math.round(amount)) + "원";
-  };
-
-  const formatPercent = (current: number, compare: number) => {
-    if (compare === 0) return <span className="text-slate-400 font-bold">-</span>;
-    const value = ((current - compare) / compare) * 100;
-    const isPositive = value >= 0;
-    return (
-      <span className={cn(
-        "font-black font-heading",
-        isPositive ? "text-emerald-600" : "text-rose-600"
-      )}>
-        {isPositive ? "↑" : "↓"} {Math.abs(value).toFixed(1)}%
-      </span>
-    );
-  };
 
 interface Expense {
   id: string;
@@ -77,15 +55,15 @@ export function DetailedAnalysis({
   };
 
   const formatPercent = (current: number, compare: number) => {
-    if (compare === 0) return <span className="text-slate-400 font-bold">-</span>;
+    if (!compare || compare === 0) return <span className="text-slate-400 font-bold">-</span>;
     const value = ((current - compare) / compare) * 100;
     const isPositive = value >= 0;
     return (
       <span className={cn(
-        "font-black font-heading",
-        isPositive ? "text-emerald-600" : "text-rose-600"
+        "font-black font-heading text-[10px]",
+        isPositive ? "text-emerald-500" : "text-rose-500"
       )}>
-        {isPositive ? "↑" : "↓"} {Math.abs(value).toFixed(1)}%
+        {isPositive ? "▲" : "▼"} {Math.abs(value).toFixed(1)}%
       </span>
     );
   };
@@ -94,14 +72,42 @@ export function DetailedAnalysis({
   const getStats = (payments: Payment[], expenses: Expense[]) => {
     const fc = payments.filter(p => p.membership_category === "회원권" || p.membership_category === "헬스");
     const pt = payments.filter(p => p.membership_category?.toUpperCase().includes("PT"));
-    
+
+    const calculateFcDetailed = (list: Payment[]) => {
+      const newReg = list.filter(p => p.sale_type === "신규");
+      const renewal = list.filter(p => p.sale_type === "재등록" || p.sale_type === "리뉴");
+      const periodChange = list.filter(p => p.sale_type === "기간변경");
+      const addon = list.filter(p => p.sale_type === "부가상품");
+      const refund = list.filter(p => p.sale_type === "환불");
+
+      const total = list.reduce((sum, p) => sum + p.amount, 0);
+      const count = list.length;
+      const avg = count > 0 ? total / count : 0;
+
+      return { total, count, avg, categories: { newReg, renewal, periodChange, addon, refund } };
+    };
+
+    const calculatePtDetailed = (list: Payment[]) => {
+      const newReg = list.filter(p => p.sale_type === "신규");
+      const renewal = list.filter(p => p.sale_type === "재등록" || p.sale_type === "리뉴");
+      const sessionChange = list.filter(p => p.sale_type === "세션변경");
+      const transfer = list.filter(p => p.sale_type === "양도");
+      const refund = list.filter(p => p.sale_type === "환불");
+
+      const total = list.reduce((sum, p) => sum + p.amount, 0);
+      const count = list.length;
+      const avg = count > 0 ? total / count : 0;
+
+      return { total, count, avg, categories: { newReg, renewal, sessionChange, transfer, refund } };
+    };
+
     const calculate = (list: Payment[]) => {
       const total = list.reduce((sum, p) => sum + p.amount, 0);
       const count = list.length;
       const avg = count > 0 ? total / count : 0;
       const newReg = list.filter(p => p.sale_type === "신규");
       const renewal = list.filter(p => p.sale_type === "재등록" || p.sale_type === "리뉴");
-      
+
       const periods = {
         "1개월": list.filter(p => p.membership_name?.includes("1개월")),
         "3개월": list.filter(p => p.membership_name?.includes("3개월")),
@@ -115,11 +121,13 @@ export function DetailedAnalysis({
         "30회": list.filter(p => p.membership_name?.includes("30회")),
         "50회": list.filter(p => p.membership_name?.includes("50회")),
       };
-      
+
       return { total, count, avg, newReg, renewal, periods, sessions };
     };
 
-    // 지출 통계
+    const fcDetailed = calculateFcDetailed(fc);
+    const ptDetailed = calculatePtDetailed(pt);
+
     const expenseTotal = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const expenseByCategory = {
       "임대료/관리비": expenses.filter(e => e.category?.includes("임대") || e.category?.includes("관리")).reduce((s, e) => s + e.amount, 0),
@@ -129,22 +137,18 @@ export function DetailedAnalysis({
       "기타": expenses.filter(e => !["임대", "관리", "인건", "급여", "마케팅", "광고", "운영", "소모품"].some(k => e.category?.includes(k))).reduce((s, e) => s + e.amount, 0),
     };
 
-    // 세무 데이터 (추정치)
     const taxStats = {
-      vat: (payments.reduce((sum, p) => sum + p.amount, 0) / 1.1) * 0.1, // 매출 부가세 (10%)
-      withholding: expenseByCategory["인건비"] * 0.033, // 원천세 (3.3%)
-      incomeTax: (payments.reduce((sum, p) => sum + p.amount, 0) - expenseTotal) * 0.1, // 종합소득세 추정
+      vat: (payments.reduce((sum, p) => sum + p.amount, 0) / 1.1) * 0.1,
+      withholding: expenseByCategory["인건비"] * 0.033,
+      incomeTax: (payments.reduce((sum, p) => sum + p.amount, 0) - expenseTotal) * 0.1,
     };
 
-    // 직원별 통계
     const staffGroups: Record<string, { fc: number; pt: number; total: number }> = {};
     payments.forEach(p => {
       const name = p.registrar || "미지정";
       if (!staffGroups[name]) staffGroups[name] = { fc: 0, pt: 0, total: 0 };
-      
       const isFc = p.membership_category === "회원권" || p.membership_category === "헬스";
       const isPt = p.membership_category?.toUpperCase().includes("PT");
-      
       if (isFc) staffGroups[name].fc += p.amount;
       if (isPt) staffGroups[name].pt += p.amount;
       staffGroups[name].total += p.amount;
@@ -154,334 +158,335 @@ export function DetailedAnalysis({
       .map(([name, data]) => ({ name, ...data }))
       .sort((a, b) => b.total - a.total);
 
-    return { 
-      fc: calculate(fc), 
+    return {
+      fc: calculate(fc),
       pt: calculate(pt),
+      fcDetailed,
+      ptDetailed,
       staffStats,
       expenseTotal,
       expenseByCategory,
-      taxStats
+      taxStats,
+      totalSales: payments.reduce((sum, p) => sum + p.amount, 0)
     };
   };
 
   const current = useMemo(() => getStats(currentPayments, currentExpenses), [currentPayments, currentExpenses]);
   const prev = useMemo(() => getStats(previousPayments, previousExpenses), [previousPayments, previousExpenses]);
-  const lastYear = useMemo(() => getStats(lastYearPayments, []), [lastYearPayments]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="grid grid-cols-1 gap-8">
-        {/* 1. FC 세부성과 - 매출/인원 */}
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="bg-slate-900 px-6 py-4">
-            <h3 className="font-heading font-black text-white text-base tracking-tight">FC 세부성과 - 매출/인원 분석</h3>
+    <div className="space-y-10 animate-in fade-in duration-1000">
+      {/* 1. 최상단 요약 대시보드 - 더 세련된 카드 디자인 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* 총 매출 카드 (어두운 테마) */}
+        <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden group border border-slate-800">
+          <div className="absolute -right-6 -top-6 opacity-10 group-hover:scale-110 transition-transform duration-1000">
+            <TrendingUp size={160} />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-center font-black text-slate-400 border-r border-slate-100">구분</th>
-                  <th className="p-2 text-center font-black text-slate-500 border-r border-slate-100 bg-slate-100/30">리뉴 (당월)</th>
-                  <th className="p-2 text-center font-black text-slate-500 border-r border-slate-100 bg-slate-100/30">신규 (당월)</th>
-                  <th className="p-2 text-center font-black text-blue-600 border-r border-slate-100 bg-blue-50/30">합계 (당월)</th>
-                  <th className="p-2 text-center font-black text-slate-500 border-r border-slate-100">전월 합계</th>
-                  <th className="p-2 text-center font-black text-slate-500">전월대비 증감</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">FC 매출</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{formatCurrency(current.fc.renewal.reduce((s,p)=>s+p.amount,0))}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{formatCurrency(current.fc.newReg.reduce((s,p)=>s+p.amount,0))}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading font-black text-blue-600 bg-blue-50/5">{formatCurrency(current.fc.total)}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading text-slate-500">{formatCurrency(prev.fc.total)}</td>
-                  <td className="p-4 text-center">{formatPercent(current.fc.total, prev.fc.total)}</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">인원</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{current.fc.renewal.length}명</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{current.fc.newReg.length}명</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading font-black text-blue-600 bg-blue-50/5">{current.fc.count}명</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading text-slate-500">{prev.fc.count}명</td>
-                  <td className="p-4 text-center">{formatPercent(current.fc.count, prev.fc.count)}</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">객단가</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{formatCurrency(current.fc.renewal.reduce((s,p)=>s+p.amount,0)/(current.fc.renewal.length||1))}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{formatCurrency(current.fc.newReg.reduce((s,p)=>s+p.amount,0)/(current.fc.newReg.length||1))}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading font-black text-blue-600 bg-blue-50/5">{formatCurrency(current.fc.avg)}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading text-slate-500">{formatCurrency(prev.fc.avg)}</td>
-                  <td className="p-4 text-center">{formatPercent(current.fc.avg, prev.fc.avg)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 2. FC 세부성과 - 이용권 기간별 */}
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="bg-slate-800 px-6 py-4">
-            <h3 className="font-heading font-black text-white text-base tracking-tight">FC 세부성과 - 이용권 기간별 분석 (당월)</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-center font-black text-slate-400 border-r border-slate-100">구분</th>
-                  {["1개월", "3개월", "6개월", "12개월", "합계"].map(h => (
-                    <th key={h} className="p-2 text-center font-black text-slate-500 border-r border-slate-100">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">FC 매출</td>
-                  {["1개월", "3개월", "6개월", "12개월"].map(p => (
-                    <td key={p} className="p-4 text-right border-r border-slate-100 font-heading">
-                      {formatCurrency(current.fc.periods[p as keyof typeof current.fc.periods]?.reduce((s:any,i:any)=>s+i.amount,0)||0)}
-                    </td>
-                  ))}
-                  <td className="p-4 text-right font-black text-blue-600 bg-blue-50/5 font-heading">{formatCurrency(current.fc.total)}</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">인원</td>
-                  {["1개월", "3개월", "6개월", "12개월"].map(p => (
-                    <td key={p} className="p-4 text-right border-r border-slate-100 font-heading">
-                      {(current.fc.periods[p as keyof typeof current.fc.periods]?.length||0)}명
-                    </td>
-                  ))}
-                  <td className="p-4 text-right font-black text-blue-600 bg-blue-50/5 font-heading">{current.fc.count}명</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 3. PT 세부성과 - 매출/인원 */}
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="bg-emerald-900 px-6 py-4">
-            <h3 className="font-heading font-black text-white text-base tracking-tight">PT 세부성과 - 매출/인원 분석</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-center font-black text-slate-400 border-r border-slate-100">구분</th>
-                  <th className="p-2 text-center font-black text-slate-500 border-r border-slate-100 bg-emerald-50/10">리뉴 (당월)</th>
-                  <th className="p-2 text-center font-black text-slate-500 border-r border-slate-100 bg-emerald-50/10">신규 (당월)</th>
-                  <th className="p-2 text-center font-black text-emerald-600 border-r border-slate-100 bg-emerald-50/30">합계 (당월)</th>
-                  <th className="p-2 text-center font-black text-slate-500 border-r border-slate-100">전월 합계</th>
-                  <th className="p-2 text-center font-black text-slate-500">전월대비 증감</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">PT 매출</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{formatCurrency(current.pt.renewal.reduce((s,p)=>s+p.amount,0))}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{formatCurrency(current.pt.newReg.reduce((s,p)=>s+p.amount,0))}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading font-black text-emerald-600 bg-emerald-50/5">{formatCurrency(current.pt.total)}</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading text-slate-500">{formatCurrency(prev.pt.total)}</td>
-                  <td className="p-4 text-center">{formatPercent(current.pt.total, prev.pt.total)}</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">인원</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{current.pt.renewal.length}명</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading">{current.pt.newReg.length}명</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading font-black text-emerald-600 bg-emerald-50/5">{current.pt.count}명</td>
-                  <td className="p-4 text-right border-r border-slate-100 font-heading text-slate-500">{prev.pt.count}명</td>
-                  <td className="p-4 text-center">{formatPercent(current.pt.count, prev.pt.count)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 4. PT 세부성과 - 계약 세션별 */}
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="bg-emerald-800 px-6 py-4">
-            <h3 className="font-heading font-black text-white text-base tracking-tight">PT 세부성과 - 계약 세션별 분석 (당월)</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-center font-black text-slate-400 border-r border-slate-100">구분</th>
-                  {["10회", "20회", "30회", "50회", "합계"].map(h => (
-                    <th key={h} className="p-2 text-center font-black text-slate-500 border-r border-slate-100">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">PT 매출</td>
-                  {["10회", "20회", "30회", "50회"].map(s => (
-                    <td key={s} className="p-4 text-right border-r border-slate-100 font-heading">
-                      {formatCurrency(current.pt.sessions[s as keyof typeof current.pt.sessions]?.reduce((sum:any,i:any)=>sum+i.amount,0)||0)}
-                    </td>
-                  ))}
-                  <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50/5 font-heading">{formatCurrency(current.pt.total)}</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-black text-slate-700 border-r border-slate-100">인원</td>
-                  {["10회", "20회", "30회", "50회"].map(s => (
-                    <td key={s} className="p-4 text-right border-r border-slate-100 font-heading">
-                      {(current.pt.sessions[s as keyof typeof current.pt.sessions]?.length||0)}명
-                    </td>
-                  ))}
-                  <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50/5 font-heading">{current.pt.count}명</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 5. 직원별 매출 성과 요약 */}
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="bg-purple-900 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-white" />
+          <div className="relative z-10 space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Coins className="w-6 h-6 text-white" />
               </div>
-              <h3 className="font-heading font-black text-white text-base tracking-tight">직원별 매출 성과 요약 (당월)</h3>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Monthly Revenue</p>
+                <h3 className="text-xl font-heading font-black !text-white">총 매출 합계</h3>
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-heading font-black text-white tracking-tight">{formatCurrency(current.totalSales)}</p>
+              <div className="mt-2 flex items-center gap-2 bg-white/5 w-fit px-3 py-1 rounded-full border border-white/10">
+                {formatPercent(current.totalSales, prev.totalSales)}
+                <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">vs 전월</span>
+              </div>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-left font-black text-slate-400 border-r border-slate-100">직원명</th>
-                  <th className="p-4 text-right font-black text-blue-600 border-r border-slate-100 bg-blue-50/30 font-heading">FC 매출</th>
-                  <th className="p-4 text-right font-black text-emerald-600 border-r border-slate-100 bg-emerald-50/30 font-heading">PT 매출</th>
-                  <th className="p-4 text-right font-black text-slate-900 bg-slate-100/50 font-heading">합계 매출</th>
-                  <th className="p-4 text-right font-black text-slate-400">매출 비중</th>
+        </div>
+
+        {/* 총 지출 카드 */}
+        <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500">
+          <div className="absolute -right-6 -top-6 opacity-5 group-hover:scale-110 transition-transform duration-1000 text-rose-600">
+            <TrendingDown size={160} />
+          </div>
+          <div className="relative z-10 space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center border border-rose-100">
+                <Receipt className="w-6 h-6 text-rose-500" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Monthly Expenses</p>
+                <h3 className="text-xl font-heading font-black text-slate-900">총 지출 합계</h3>
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-heading font-black text-rose-600 tracking-tight">{formatCurrency(current.expenseTotal)}</p>
+              <div className="mt-2 flex items-center gap-2 bg-rose-50/50 w-fit px-3 py-1 rounded-full border border-rose-100">
+                {formatPercent(current.expenseTotal, prev.expenseTotal)}
+                <span className="text-[10px] text-slate-400 font-bold uppercase ml-1">vs 전월</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 예상 이익 카드 */}
+        <div className="bg-emerald-50 rounded-[32px] p-8 border border-emerald-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-500">
+          <div className="absolute -right-6 -top-6 opacity-10 group-hover:scale-110 transition-transform duration-1000 text-emerald-600">
+            <Target size={160} />
+          </div>
+          <div className="relative z-10 space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <LayoutGrid className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-emerald-600/60 uppercase tracking-[0.2em]">Monthly Net Profit</p>
+                <h3 className="text-xl font-heading font-black text-emerald-900">예상 영업 이익</h3>
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-heading font-black text-emerald-600 tracking-tight">
+                {formatCurrency(current.totalSales - current.expenseTotal)}
+              </p>
+              <div className="mt-2 text-[10px] text-emerald-600/60 font-black uppercase tracking-wider">
+                최종 정산 추정치 (세전 기준)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. FC (회원권) 성과 섹션 */}
+      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden p-8 space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <Users className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-heading font-black text-slate-900">FC 회원권 세부 성과</h3>
+            <p className="text-xs font-bold text-slate-400">신규/리뉴 등록 및 이용권 기간별 분석</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-8 overflow-hidden rounded-3xl border border-slate-100">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50/80 border-b border-slate-100">
+                <tr>
+                  <th className="p-5 text-left font-black text-slate-500 uppercase text-[10px] tracking-widest">항목 구분</th>
+                  <th className="p-5 text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">신규</th>
+                  <th className="p-5 text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">리뉴</th>
+                  <th className="p-5 text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">환불/기타</th>
+                  <th className="p-5 text-center font-black text-amber-600 bg-amber-50/50 uppercase text-[10px] tracking-widest">당월 합계</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {current.staffStats.map((staff, i) => (
-                  <tr key={`staff-${i}`} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-4 font-black text-slate-700 border-r border-slate-100">{staff.name}</td>
-                    <td className="p-4 text-right font-bold text-blue-600 border-r border-slate-100 bg-blue-50/5 font-heading">{formatCurrency(staff.fc)}</td>
-                    <td className="p-4 text-right font-bold text-emerald-600 border-r border-slate-100 bg-emerald-50/5 font-heading">{formatCurrency(staff.pt)}</td>
-                    <td className="p-4 text-right font-black text-slate-900 bg-slate-100/20 border-r border-slate-100 font-heading">{formatCurrency(staff.total)}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="font-black text-slate-600 font-heading">
-                          {current.fc.total + current.pt.total > 0 
-                            ? ((staff.total / (current.fc.total + current.pt.total)) * 100).toFixed(1)
-                            : 0}%
-                        </span>
-                        <div className="w-16 h-1 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-purple-500" 
-                            style={{ width: `${(staff.total / (current.fc.total + current.pt.total || 1)) * 100}%` }} 
-                          />
-                        </div>
+              <tbody className="divide-y divide-slate-100">
+                <tr className="hover:bg-slate-50/30 transition-colors">
+                  <td className="p-5 font-black text-slate-700 bg-slate-50/30">FC 매출</td>
+                  <td className="p-5 text-center font-heading font-bold">{formatCurrency(current.fcDetailed.categories.newReg.reduce((s,p)=>s+p.amount,0))}</td>
+                  <td className="p-5 text-center font-heading font-bold">{formatCurrency(current.fcDetailed.categories.renewal.reduce((s,p)=>s+p.amount,0))}</td>
+                  <td className="p-5 text-center font-heading font-bold text-rose-500">{formatCurrency(current.fcDetailed.categories.refund.reduce((s,p)=>s+p.amount,0))}</td>
+                  <td className="p-5 text-center font-heading font-black text-amber-600 bg-amber-50/30">{formatCurrency(current.fcDetailed.total)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50/30 transition-colors">
+                  <td className="p-5 font-black text-slate-700 bg-slate-50/30">등록건수</td>
+                  <td className="p-5 text-center font-heading font-bold">{current.fcDetailed.categories.newReg.length}건</td>
+                  <td className="p-5 text-center font-heading font-bold">{current.fcDetailed.categories.renewal.length}건</td>
+                  <td className="p-5 text-center font-heading font-bold">{current.fcDetailed.categories.refund.length}건</td>
+                  <td className="p-5 text-center font-heading font-black text-amber-600 bg-amber-50/30">{current.fcDetailed.count}건</td>
+                </tr>
+                <tr className="hover:bg-slate-50/30 transition-colors">
+                  <td className="p-5 font-black text-slate-700 bg-slate-50/30">비중%</td>
+                  <td className="p-5 text-center font-heading font-bold text-slate-400">{current.fcDetailed.total > 0 ? ((current.fcDetailed.categories.newReg.reduce((s,p)=>s+p.amount,0) / current.fcDetailed.total) * 100).toFixed(1) : 0}%</td>
+                  <td className="p-5 text-center font-heading font-bold text-slate-400">{current.fcDetailed.total > 0 ? ((current.fcDetailed.categories.renewal.reduce((s,p)=>s+p.amount,0) / current.fcDetailed.total) * 100).toFixed(1) : 0}%</td>
+                  <td className="p-5 text-center font-heading font-bold text-slate-400">-</td>
+                  <td className="p-5 text-center font-heading font-black text-amber-600 bg-amber-50/30">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="lg:col-span-4 space-y-4">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Period Analysis</h4>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(current.fc.periods).map(([period, items]) => {
+                const amount = (items as Payment[]).reduce((s, p) => s + p.amount, 0);
+                const count = (items as Payment[]).length;
+                return (
+                  <div key={period} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 transition-colors">
+                    <p className="text-[10px] font-black text-slate-400 mb-1">{period}</p>
+                    <p className="text-sm font-heading font-black text-slate-900">{count}건</p>
+                    <p className="text-[10px] font-heading font-bold text-amber-600">{formatCurrency(amount)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. PT (수업) 성과 섹션 */}
+      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden p-8 space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/20">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-heading font-black text-slate-900">PT 수업 세부 성과</h3>
+            <p className="text-xs font-bold text-slate-400">신규/리뉴 등록 및 세션별 분석</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-8 overflow-hidden rounded-3xl border border-slate-100">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50/80 border-b border-slate-100">
+                <tr>
+                  <th className="p-5 text-left font-black text-slate-500 uppercase text-[10px] tracking-widest">항목 구분</th>
+                  <th className="p-5 text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">신규</th>
+                  <th className="p-5 text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">리뉴</th>
+                  <th className="p-5 text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">환불/기타</th>
+                  <th className="p-5 text-center font-black text-blue-600 bg-blue-50/50 uppercase text-[10px] tracking-widest">당월 합계</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                <tr className="hover:bg-slate-50/30 transition-colors">
+                  <td className="p-5 font-black text-slate-700 bg-slate-50/30">PT 매출</td>
+                  <td className="p-5 text-center font-heading font-bold">{formatCurrency(current.ptDetailed.categories.newReg.reduce((s,p)=>s+p.amount,0))}</td>
+                  <td className="p-5 text-center font-heading font-bold">{formatCurrency(current.ptDetailed.categories.renewal.reduce((s,p)=>s+p.amount,0))}</td>
+                  <td className="p-5 text-center font-heading font-bold text-rose-500">{formatCurrency(current.ptDetailed.categories.refund.reduce((s,p)=>s+p.amount,0))}</td>
+                  <td className="p-5 text-center font-heading font-black text-blue-600 bg-blue-50/30">{formatCurrency(current.ptDetailed.total)}</td>
+                </tr>
+                <tr className="hover:bg-slate-50/30 transition-colors">
+                  <td className="p-5 font-black text-slate-700 bg-slate-50/30">등록건수</td>
+                  <td className="p-5 text-center font-heading font-bold">{current.ptDetailed.categories.newReg.length}건</td>
+                  <td className="p-5 text-center font-heading font-bold">{current.ptDetailed.categories.renewal.length}건</td>
+                  <td className="p-5 text-center font-heading font-bold">{current.ptDetailed.categories.refund.length}건</td>
+                  <td className="p-5 text-center font-heading font-black text-blue-600 bg-blue-50/30">{current.ptDetailed.count}건</td>
+                </tr>
+                <tr className="hover:bg-slate-50/30 transition-colors">
+                  <td className="p-5 font-black text-slate-700 bg-slate-50/30">비중%</td>
+                  <td className="p-5 text-center font-heading font-bold text-slate-400">{current.ptDetailed.total > 0 ? ((current.ptDetailed.categories.newReg.reduce((s,p)=>s+p.amount,0) / current.ptDetailed.total) * 100).toFixed(1) : 0}%</td>
+                  <td className="p-5 text-center font-heading font-bold text-slate-400">{current.ptDetailed.total > 0 ? ((current.ptDetailed.categories.renewal.reduce((s,p)=>s+p.amount,0) / current.ptDetailed.total) * 100).toFixed(1) : 0}%</td>
+                  <td className="p-5 text-center font-heading font-bold text-slate-400">-</td>
+                  <td className="p-5 text-center font-heading font-black text-blue-600 bg-blue-50/30">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="lg:col-span-4 space-y-4">
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Session Analysis</h4>
+            <div className="grid grid-cols-2 gap-4">
+              {Object.entries(current.pt.sessions).map(([session, items]) => {
+                const amount = (items as Payment[]).reduce((s, p) => s + p.amount, 0);
+                const count = (items as Payment[]).length;
+                return (
+                  <div key={session} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-colors">
+                    <p className="text-[10px] font-black text-slate-400 mb-1">{session}</p>
+                    <p className="text-sm font-heading font-black text-slate-900">{count}건</p>
+                    <p className="text-[10px] font-heading font-bold text-blue-600">{formatCurrency(amount)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* 4. 직원 성과 순위 - 랭킹 보드 스타일 */}
+        <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden p-8 space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-600/20">
+              <UserCheck className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-heading font-black text-slate-900">직원별 매출 기여도</h3>
+              <p className="text-xs font-bold text-slate-400">지점 매출 성과 랭킹 (FC + PT)</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {current.staffStats.map((staff, i) => {
+              const share = current.totalSales > 0 ? (staff.total / current.totalSales) * 100 : 0;
+              return (
+                <div key={staff.name} className="group p-4 rounded-3xl bg-slate-50 border border-slate-100 hover:bg-white hover:border-purple-200 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-500">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black",
+                        i === 0 ? "bg-amber-100 text-amber-600" : 
+                        i === 1 ? "bg-slate-200 text-slate-600" :
+                        i === 2 ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-400"
+                      )}>
+                        {i + 1}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span className="font-black text-slate-700">{staff.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-heading font-black text-slate-900">{formatCurrency(staff.total)}</p>
+                      <p className="text-[10px] font-black text-purple-600">{share.toFixed(1)}% 기여</p>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-purple-500 to-purple-400 transition-all duration-1000 ease-out" 
+                      style={{ width: `${share}%` }} 
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* 6. 지출 및 세무 분석 */}
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="bg-rose-900 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                <TrendingDown className="w-4 h-4 text-white" />
-              </div>
-              <h3 className="font-heading font-black text-white text-base tracking-tight">지출 분석 및 세무 데이터 (추정)</h3>
+        {/* 5. 지출 및 세무 요약 - 모던한 리포트 스타일 */}
+        <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden p-8 space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-600 flex items-center justify-center shadow-lg shadow-rose-600/20">
+              <PieChart className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-heading font-black text-slate-900">지출 구조 및 세무 추정</h3>
+              <p className="text-xs font-bold text-slate-400">항목별 지출 분석 및 예상 세금 추정치</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            {/* 지출 상세 */}
-            <div className="p-6 border-r border-slate-100">
-              <h4 className="text-xs font-black text-slate-400 mb-4 uppercase tracking-widest">분류별 지출 상세</h4>
-              <div className="space-y-4">
-                {Object.entries(current.expenseByCategory).map(([cat, amount]) => (
-                  <div key={cat} className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-600">{cat}</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-black text-slate-900 font-heading">{formatCurrency(amount as number)}</span>
-                      <div className="w-24 text-right">
+
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 gap-3">
+              {Object.entries(current.expenseByCategory).map(([cat, amount]) => {
+                const share = current.expenseTotal > 0 ? ((amount as number) / current.expenseTotal) * 100 : 0;
+                return (
+                  <div key={cat} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 border border-slate-100/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-rose-500 shadow-sm shadow-rose-500/50" />
+                      <span className="text-sm font-bold text-slate-600">{cat}</span>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-sm font-heading font-black text-slate-900">{formatCurrency(amount as number)}</p>
+                        <p className="text-[10px] font-black text-slate-400">{share.toFixed(1)}%</p>
+                      </div>
+                      <div className="w-16">
                         {formatPercent(amount as number, prev.expenseByCategory[cat as keyof typeof prev.expenseByCategory] as number)}
                       </div>
                     </div>
                   </div>
-                ))}
-                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-xs font-black text-rose-600">총 지출 합계</span>
-                  <span className="text-sm font-black text-rose-600 font-heading">{formatCurrency(current.expenseTotal)}</span>
-                </div>
-              </div>
+                );
+              })}
             </div>
-            {/* 세무 추정 */}
-            <div className="p-6 bg-slate-50/30">
-              <h4 className="text-xs font-black text-slate-400 mb-4 uppercase tracking-widest">세무/정산 추정치</h4>
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[11px] font-bold text-slate-500">매출 부가세 (10% 추정)</span>
-                    <span className="text-xs font-black text-slate-900 font-heading">{formatCurrency(current.taxStats.vat)}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400">당월 전체 매출 기준 부가세액</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-white border border-slate-100 shadow-sm">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[11px] font-bold text-slate-500">인건비 원천세 (3.3% 추정)</span>
-                    <span className="text-xs font-black text-slate-900 font-heading">{formatCurrency(current.taxStats.withholding)}</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400">지출 인건비 기준 프리랜서 원천세액</p>
-                </div>
-                <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 shadow-sm">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[11px] font-black text-indigo-600">예상 순수익 (매출-지출)</span>
-                    <span className="text-sm font-black text-indigo-700 font-heading">{formatCurrency(current.fc.total + current.pt.total - current.expenseTotal)}</span>
-                  </div>
-                  <p className="text-[10px] text-indigo-400">부가세 및 제세공과금 제외 전 단순 차액</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* 7. 종합 정산 리포트 요약 */}
-        <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
-            <TrendingUp size={120} />
-          </div>
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center">
-                <LayoutGrid className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-heading font-black">종합 실적 정산 리포트</h3>
-                <p className="text-xs text-slate-400 font-bold">Comprehensive Performance Report</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4 border-t border-white/10">
-              <div>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Sales</p>
-                <p className="text-2xl font-heading font-black text-blue-400">{formatCurrency(current.fc.total + current.pt.total)}</p>
-                <div className="mt-2 text-xs">
-                  {formatPercent(current.fc.total + current.pt.total, prev.fc.total + prev.pt.total)} <span className="text-slate-500">vs Last Month</span>
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+              <div className="p-5 rounded-[28px] bg-slate-900 text-white relative overflow-hidden group">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">VAT (10%)</p>
+                <p className="text-lg font-heading font-black text-white">{formatCurrency(current.taxStats.vat)}</p>
+                <div className="absolute -right-2 -bottom-2 opacity-10 group-hover:rotate-12 transition-transform duration-500">
+                  <Receipt size={48} />
                 </div>
               </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Expenses</p>
-                <p className="text-2xl font-heading font-black text-rose-400">{formatCurrency(current.expenseTotal)}</p>
-                <div className="mt-2 text-xs">
-                  {formatPercent(current.expenseTotal, prev.expenseTotal)} <span className="text-slate-500">vs Last Month</span>
-                </div>
-              </div>
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Estimated Net Profit</p>
-                <p className="text-2xl font-heading font-black text-emerald-400">{formatCurrency(current.fc.total + current.pt.total - current.expenseTotal)}</p>
-                <div className="mt-2 text-xs text-emerald-500/80 font-bold">
-                  최종 영업 이익 (추정치)
+              <div className="p-5 rounded-[28px] bg-blue-50 border border-blue-100 relative overflow-hidden group">
+                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Withholding (3.3%)</p>
+                <p className="text-lg font-heading font-black text-blue-600">{formatCurrency(current.taxStats.withholding)}</p>
+                <div className="absolute -right-2 -bottom-2 opacity-10 group-hover:rotate-12 transition-transform duration-500 text-blue-600">
+                  <Coins size={48} />
                 </div>
               </div>
             </div>

@@ -9,6 +9,7 @@ import { Trash2, Save, X, Plus, Banknote, Calendar, Info, MapPin, Clock, Star, S
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber, formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
+import { getCategoryColor } from "../utils/categoryColors";
 
 // 상품명에서 횟수 추출 (예: "PT 50회" → 50, "PT50" → 50, "50회" → 50)
 const extractSessionsFromName = (name: string): number | null => {
@@ -854,7 +855,14 @@ export function PaymentsTable({
                     </div>
                   </td>
                   <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
-                    <span className="text-xs font-bold text-slate-700">{payment.membership_category}</span>
+                    {(() => {
+                      const catColors = getCategoryColor(payment.membership_category);
+                      return (
+                        <span className={cn("text-xs font-bold px-2 py-1 rounded-lg", catColors.bgLight, catColors.text)}>
+                          {payment.membership_category}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-2 py-3 text-center align-middle border-r border-slate-200">
                     <div className="flex flex-col items-center gap-1">
@@ -862,19 +870,19 @@ export function PaymentsTable({
                       {payment.membership_category?.toUpperCase().includes("PT") && (
                         <div className="flex flex-wrap justify-center gap-1 mt-0.5">
                           {(payment.service_sessions ?? 0) > 0 && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold">
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px] font-bold">
                               <Star className="w-2.5 h-2.5" />
                               {payment.service_sessions}회
                             </div>
                           )}
                           {(payment.bonus_sessions ?? 0) > 0 && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-orange-50 text-orange-600 rounded text-[9px] font-bold">
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold">
                               <Gift className="w-2.5 h-2.5" />
                               서비스 {payment.bonus_sessions}회
                             </div>
                           )}
                           {(payment.service_sessions ?? 0) > 0 && (payment.validity_per_session ?? 0) > 0 && (
-                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[9px] font-bold">
+                            <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold">
                               <Clock className="w-2.5 h-2.5" />
                               총 {(payment.service_sessions ?? 0) * (payment.validity_per_session ?? 0)}일
                             </div>

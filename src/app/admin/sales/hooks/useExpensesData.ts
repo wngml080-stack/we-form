@@ -46,6 +46,7 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
 
   // 지출 데이터
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [previousMonthExpenses, setPreviousMonthExpenses] = useState<Expense[]>([]);
 
   // 필터
   const [startDate, setStartDate] = useState(() => {
@@ -99,16 +100,10 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
   useEffect(() => {
     if (filterInitialized && selectedGymId && selectedCompanyId) {
       fetchExpenses(selectedGymId, selectedCompanyId);
+      fetchPreviousMonthExpenses(selectedGymId, selectedCompanyId);
       fetchCustomCategories(selectedGymId);
     }
-  }, [filterInitialized, selectedGymId, selectedCompanyId]);
-
-  // 날짜 필터 변경 시
-  useEffect(() => {
-    if (selectedGymId && selectedCompanyId) {
-      fetchExpenses(selectedGymId, selectedCompanyId);
-    }
-  }, [startDate, endDate]);
+  }, [filterInitialized, selectedGymId, selectedCompanyId, startDate, endDate]);
 
   // 지출 데이터 조회
   const fetchExpenses = async (gymId: string, companyId: string, overrideStartDate?: string, overrideEndDate?: string) => {
@@ -148,6 +143,26 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
       setExpenses([]);
       setStats({ total: 0, card: 0, cash: 0, transfer: 0, count: 0, byCategory: {}, bySubCategory: {} });
     }
+  };
+
+  const fetchPreviousMonthExpenses = async (gymId: string, companyId: string) => {
+    const start = new Date(startDate);
+    start.setMonth(start.getMonth() - 1);
+    const end = new Date(endDate);
+    end.setMonth(end.getMonth() - 1);
+
+    const s = start.toISOString().split("T")[0];
+    const e = end.toISOString().split("T")[0];
+
+    try {
+      const response = await fetch(
+        `/api/admin/expenses?gym_id=${gymId}&company_id=${companyId}&start_date=${s}&end_date=${e}`
+      );
+      const result = await response.json();
+      if (result.success && result.expenses) {
+        setPreviousMonthExpenses(result.expenses);
+      }
+    } catch {}
   };
 
   const fetchCustomCategories = async (gymId: string) => {
@@ -416,10 +431,12 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
     addCustomCategory,
     deleteCustomCategory,
 
+    previousMonthExpenses,
     // 새로고침
     refreshData: () => {
       if (selectedGymId && selectedCompanyId) {
         fetchExpenses(selectedGymId, selectedCompanyId);
+        fetchPreviousMonthExpenses(selectedGymId, selectedCompanyId);
       }
     }
   };
