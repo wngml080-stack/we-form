@@ -14,8 +14,31 @@ function PendingContent() {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseClient(), []);
   const [email, setEmail] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
   const searchParams = useSearchParams();
   const type = searchParams.get("type");
+
+  // 승인 상태 체크 함수
+  const checkApprovalStatus = async (userEmail: string) => {
+    setIsChecking(true);
+    try {
+      const { data: staff, error } = await supabase
+        .from("staffs")
+        .select("employment_status")
+        .eq("email", userEmail)
+        .single();
+
+      if (!error && staff && staff.employment_status === "재직") {
+        // 승인됨! 대시보드로 이동
+        router.push("/admin");
+        return true;
+      }
+    } catch (e) {
+      console.error("승인 상태 체크 오류:", e);
+    }
+    setIsChecking(false);
+    return false;
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -23,6 +46,10 @@ function PendingContent() {
         router.push("/sign-in");
       } else {
         setEmail(session.user.email ?? null);
+        // 초기 로드 시 승인 상태 체크
+        if (session.user.email) {
+          checkApprovalStatus(session.user.email);
+        }
       }
     });
   }, [supabase, router]);
@@ -145,10 +172,11 @@ function PendingContent() {
           <div className="pt-6 flex flex-col gap-4">
             <Button
               className="h-16 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-[24px] font-black text-base shadow-2xl shadow-blue-200 gap-3 transition-all hover:-translate-y-1 active:scale-95"
-              onClick={() => window.location.reload()}
+              onClick={() => email && checkApprovalStatus(email)}
+              disabled={isChecking || !email}
             >
-              <RefreshCw className="w-6 h-6" />
-              승인 상태 실시간 새로고침
+              <RefreshCw className={cn("w-6 h-6", isChecking && "animate-spin")} />
+              {isChecking ? "확인 중..." : "승인 상태 확인하기"}
             </Button>
             
             <div className="flex items-center justify-center gap-2">

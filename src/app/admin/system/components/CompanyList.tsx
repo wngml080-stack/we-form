@@ -5,7 +5,7 @@ import { formatPhoneNumber } from "@/lib/utils/phone-format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building, Building2, Phone, User, Pencil, ChevronRight, ChevronDown, MapPin, Plus, Trash2, Dumbbell, Ruler, Calendar } from "lucide-react";
+import { Building, Building2, Phone, User, Pencil, ChevronRight, ChevronDown, MapPin, Plus, Trash2, Dumbbell, Ruler, Calendar, FileText } from "lucide-react";
 
 interface CompanyListProps {
   companies: any[];
@@ -85,6 +85,12 @@ export function CompanyList({
                         <Phone className="w-3.5 h-3.5 text-slate-300" />
                         <span className="text-xs font-bold tracking-tight">{comp.contact_phone ? formatPhoneNumber(comp.contact_phone) : "-"}</span>
                       </div>
+                      {comp.business_number && (
+                        <div className="flex items-center gap-2 text-slate-400">
+                          <FileText className="w-3.5 h-3.5 text-slate-300" />
+                          <span className="text-xs font-bold tracking-tight">{comp.business_number}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

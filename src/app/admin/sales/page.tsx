@@ -4,6 +4,7 @@ import { useState, use, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSalesPageData } from "./hooks/useSalesPageData";
 import { useExpensesData } from "./hooks/useExpensesData";
 import { SalesHeader } from "./components/SalesHeader";
@@ -61,21 +62,28 @@ export default function SalesPage(props: {
   use(props.searchParams);
 
   const { selectedGymId, gymName, selectedCompanyId, isInitialized } = useAdminFilter();
+  const { user } = useAuth();
+  const isStaff = user?.role === "staff";
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab = (searchParams.get("tab") as "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis") || "sales";
-  
+  // staff는 sales 탭만 접근 가능
+  const urlTab = searchParams.get("tab") as "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis";
+  const initialTab = isStaff ? "sales" : (urlTab || "sales");
+
   const [activeTab, setActiveTab] = useState<"sales" | "expenses" | "new_inquiries" | "renewals" | "analysis">(initialTab);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [continuousMode, setContinuousMode] = useState(false); // 연속 입력 모드 (기본 OFF)
 
-  // URL 파라미터와 탭 상태 동기화
+  // URL 파라미터와 탭 상태 동기화 (staff는 sales만 허용)
   useEffect(() => {
     const tab = searchParams.get("tab") as "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis";
-    if (tab && ["sales", "expenses", "new_inquiries", "renewals", "analysis"].includes(tab)) {
+    if (isStaff) {
+      // staff는 무조건 sales 탭
+      if (activeTab !== "sales") setActiveTab("sales");
+    } else if (tab && ["sales", "expenses", "new_inquiries", "renewals", "analysis"].includes(tab)) {
       setActiveTab(tab);
     }
-  }, [searchParams]);
+  }, [searchParams, isStaff, activeTab]);
 
   // 탭 변경 시 URL 업데이트
   const handleTabChange = (tab: "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis") => {
@@ -495,10 +503,12 @@ export default function SalesPage(props: {
 
             <div className="bg-slate-50 p-1 rounded-2xl flex gap-1">
               {[
-                { id: "sales", label: "매출 관리", icon: TrendingUp, color: "text-blue-600" },
-                { id: "expenses", label: "지출 관리", icon: TrendingDown, color: "text-rose-600" },
-                { id: "new_inquiries", label: "신규 관리", icon: MessageSquare, color: "text-indigo-600" },
-                { id: "renewals", label: "리뉴 관리", icon: Plus, color: "text-emerald-600" },
+                { id: "sales", label: isStaff ? "내 매출" : "매출 관리", icon: TrendingUp, color: "text-blue-600" },
+                ...(!isStaff ? [
+                  { id: "expenses", label: "지출 관리", icon: TrendingDown, color: "text-rose-600" },
+                  { id: "new_inquiries", label: "신규 관리", icon: MessageSquare, color: "text-indigo-600" },
+                  { id: "renewals", label: "리뉴 관리", icon: Plus, color: "text-emerald-600" },
+                ] : []),
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -518,21 +528,23 @@ export default function SalesPage(props: {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* 실적성과표 버튼 - 개별 배치 */}
-            <button
-              onClick={() => handleTabChange("analysis")}
-              className={cn(
-                "flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-black transition-all h-12",
-                activeTab === "analysis"
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-100"
-                  : "bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-100"
-              )}
-            >
-              <BarChart3 className="w-4 h-4" />
-              실적성과표
-            </button>
+            {/* 실적성과표 버튼 - 개별 배치 (staff는 숨김) */}
+            {!isStaff && (
+              <button
+                onClick={() => handleTabChange("analysis")}
+                className={cn(
+                  "flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-black transition-all h-12",
+                  activeTab === "analysis"
+                    ? "bg-purple-600 text-white shadow-lg shadow-purple-100"
+                    : "bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-100"
+                )}
+              >
+                <BarChart3 className="w-4 h-4" />
+                실적성과표
+              </button>
+            )}
 
-            <div className="h-8 w-px bg-slate-100 mx-2" />
+            {!isStaff && <div className="h-8 w-px bg-slate-100 mx-2" />}
 
             <div className="flex items-center gap-2">
               {activeTab === "sales" && (

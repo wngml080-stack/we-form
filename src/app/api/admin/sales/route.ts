@@ -162,6 +162,8 @@ export async function POST(request: NextRequest) {
         // 신규/재등록 전용 필드
         visit_route: visit_route || null,
         expiry_type: expiry_type || null,
+        // 등록자 ID (staff 본인 매출 조회용)
+        created_by_staff_id: staff.id,
       })
       .select()
       .single();
@@ -552,6 +554,11 @@ export async function GET(request: NextRequest) {
       .select("*")
       .eq("gym_id", gymId)
       .eq("company_id", companyId);
+
+    // staff 역할은 본인이 등록한 매출만 조회
+    if (staff.role === "staff") {
+      query = query.eq("created_by_staff_id", staff.id);
+    }
 
     // 날짜 필터 적용
     if (startDate) {
