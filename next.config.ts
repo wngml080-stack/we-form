@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   // Turbopack 루트 디렉토리 설정
@@ -14,6 +15,18 @@ const nextConfig: NextConfig = {
     } : false,
   },
 
+  // 이미지 최적화 설정
+  images: {
+    // 이미지 포맷 최적화
+    formats: ["image/avif", "image/webp"],
+    // 디바이스 사이즈
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    // 이미지 사이즈
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    // 최소화
+    minimumCacheTTL: 60 * 60 * 24, // 24시간
+  },
+
   // 실험적 기능 - 번들 최적화
   experimental: {
     // 패키지 import 최적화
@@ -21,10 +34,91 @@ const nextConfig: NextConfig = {
       "lucide-react",
       "@radix-ui/react-icons",
       "date-fns",
+      "recharts",
+      "@tanstack/react-table",
     ],
     // Critical CSS 인라인 - 렌더 차단 CSS 제거
     optimizeCss: true,
   },
+
+  // 보안 헤더 설정
+  async headers() {
+    return [
+      {
+        // 모든 라우트에 보안 헤더 적용
+        source: "/:path*",
+        headers: [
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+      {
+        // API 라우트에 추가 헤더
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-store, max-age=0",
+          },
+        ],
+      },
+      {
+        // 정적 에셋 캐싱 (1년)
+        source: "/:all*(svg|jpg|jpeg|png|gif|ico|webp|avif|woff|woff2)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        // JS/CSS 캐싱 (1년)
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
 };
 
-export default nextConfig;
+// Sentry 설정
+const sentryWebpackPluginOptions = {
+  // 소스맵 업로드 (프로덕션 빌드시에만)
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // 클라이언트 번들에서 소스맵 숨기기
+  hideSourceMaps: true,
+
+  // 자동 계측 비활성화 (필요시 활성화)
+  disableLogger: true,
+
+  // 터보팩 호환성
+  tunnelRoute: "/monitoring",
+};
+
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

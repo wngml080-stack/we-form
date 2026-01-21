@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
+import { validateBody, scheduleCreateSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
+    // Zod 입력 검증
+    const validation = validateBody(scheduleCreateSchema, body);
+    if (!validation.success) {
+      return validation.error;
+    }
+
     const {
       gym_id,
       member_id,
@@ -22,11 +30,7 @@ export async function POST(request: Request) {
       end_time,
       title,
       schedule_type,
-    } = body;
-
-    if (!gym_id || !start_time || !end_time) {
-      return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
-    }
+    } = validation.data;
 
     const supabase = getSupabaseAdmin();
 

@@ -4,12 +4,37 @@ import { AI_TOOLS } from "@/lib/ai/tools";
 import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
 import { executeAiTool } from "@/lib/ai/tool-executor";
 import { authenticateRequest, isAdmin } from "@/lib/api/auth";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting 체크 (AI API는 분당 20회 제한)
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(clientIP, {
+      ...RATE_LIMITS.ai,
+      prefix: "ai-chat",
+    });
+
+    if (!rateLimitResult.success) {
+      return new Response(
+        JSON.stringify({
+          error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+          retryAfter: rateLimitResult.retryAfter,
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": String(rateLimitResult.retryAfter),
+            "X-RateLimit-Remaining": String(rateLimitResult.remaining),
+          },
+        }
+      );
+    }
+
     // 인증 확인
     const { staff, error: authError } = await authenticateRequest();
     if (authError) {

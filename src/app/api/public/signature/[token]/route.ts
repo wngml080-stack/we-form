@@ -1,11 +1,29 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { checkRateLimit, getClientIP, RATE_LIMITS } from "@/lib/security";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    // Rate limiting (Public API: 분당 30회)
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(clientIP, {
+      ...RATE_LIMITS.public,
+      prefix: "public-signature",
+    });
+
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: "요청이 너무 많습니다.", retryAfter: rateLimitResult.retryAfter },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateLimitResult.retryAfter) },
+        }
+      );
+    }
+
     const { token } = await params;
 
     if (!token) {

@@ -1120,3 +1120,4 @@ export function ConsultationResultModal({ isOpen, onClose, membersWithData = [],
     </Dialog>
   );
 }
+

@@ -71,7 +71,7 @@ export default function OnboardingCompanyPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
@@ -82,6 +82,12 @@ export default function OnboardingCompanyPage() {
         } else {
           setErrorMsg(error.message);
         }
+        return;
+      }
+
+      // Supabase에서 이메일이 이미 존재하면 user는 반환되지만 identities가 비어있음
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setErrorMsg("이미 가입된 이메일입니다. 로그인해주세요.");
         return;
       }
 

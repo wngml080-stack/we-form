@@ -8,5 +8,13 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { checkEnvOnStartup } = await import("@/lib/env");
     checkEnvOnStartup();
+
+    // Sentry 서버 설정 로드
+    await import("../sentry.server.config");
+  }
+
+  // Edge 런타임 Sentry 설정
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("../sentry.edge.config");
   }
 }

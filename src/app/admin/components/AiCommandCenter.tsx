@@ -260,3 +260,4 @@ export function AiCommandCenter({ gymId }: AiCommandCenterProps) {
     </div>
   );
 }
+
