@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseClient } from "@/lib/supabase/client";
-import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { PWAInstallGuide } from "@/components/PWAInstallGuide";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -167,6 +167,9 @@ export default function SignInPage() {
           <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">© 2024 We:form. All rights reserved.</p>
         </div>
       </div>
+
+      {/* PWA 설치 가이드 */}
+      <PWAInstallGuide />
     </div>
   );
 }
