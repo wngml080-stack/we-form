@@ -243,7 +243,7 @@ export function ComparisonAnalysisModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-[32px] border-none shadow-2xl bg-gradient-to-b from-white to-slate-50 p-0">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col rounded-2xl xs:rounded-3xl sm:rounded-[32px] border-none shadow-2xl bg-gradient-to-b from-white to-slate-50 p-0">
         <DialogHeader className="px-8 pt-8 pb-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-purple-200">

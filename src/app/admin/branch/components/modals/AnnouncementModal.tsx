@@ -37,7 +37,7 @@ export function AnnouncementModal({
 }: AnnouncementModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -65,7 +65,7 @@ export function AnnouncementModal({
 
         <div className="flex-1 overflow-y-auto p-10 space-y-8 bg-[#f8fafc]">
           {/* 주요 정보 섹션 */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">1</div>
               <h3 className="text-lg font-black text-slate-900">기본 정보 설정</h3>
@@ -102,7 +102,7 @@ export function AnnouncementModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* 설정 섹션 */}
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black">2</div>
                 <h3 className="text-lg font-black text-slate-900">분류 및 대상</h3>
@@ -151,7 +151,7 @@ export function AnnouncementModal({
             </div>
 
             {/* 일정 섹션 */}
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-black">3</div>
                 <h3 className="text-lg font-black text-slate-900">게시 기간</h3>
@@ -178,7 +178,7 @@ export function AnnouncementModal({
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white border-none shadow-2xl rounded-[32px] overflow-hidden" align="start">
+                      <PopoverContent className="w-auto p-0 bg-white border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[32px] overflow-hidden" align="start">
                         <CalendarComponent
                           mode="single"
                           selected={announcementForm.start_date ? new Date(announcementForm.start_date) : undefined}
@@ -217,7 +217,7 @@ export function AnnouncementModal({
                           )}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-white border-none shadow-2xl rounded-[32px] overflow-hidden" align="start">
+                      <PopoverContent className="w-auto p-0 bg-white border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[32px] overflow-hidden" align="start">
                         <CalendarComponent
                           mode="single"
                           selected={announcementForm.end_date ? new Date(announcementForm.end_date) : undefined}

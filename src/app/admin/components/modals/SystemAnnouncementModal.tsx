@@ -14,7 +14,7 @@ interface SystemAnnouncementModalProps {
 export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }: SystemAnnouncementModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -51,7 +51,7 @@ export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }:
                 const style = priorityStyles[announcement.priority] || priorityStyles.general;
 
                 return (
-                  <div key={announcement.id} className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                  <div key={announcement.id} className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
                     <div className={cn("absolute top-0 left-0 w-1.5 h-full", style.bg)}></div>
                     
                     <div className="flex items-center justify-between mb-4">
@@ -86,7 +86,7 @@ export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }:
               })}
             </div>
           ) : (
-            <div className="h-64 bg-white rounded-[40px] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center p-10">
+            <div className="h-64 bg-white rounded-2xl xs:rounded-3xl sm:rounded-[40px] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center p-10">
               <div className="w-16 h-16 rounded-3xl bg-slate-50 flex items-center justify-center mb-4">
                 <Bell className="w-8 h-8 text-slate-200" />
               </div>

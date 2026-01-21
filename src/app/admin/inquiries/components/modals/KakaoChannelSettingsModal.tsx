@@ -177,7 +177,7 @@ export function KakaoChannelSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-3 xs:p-4 sm:p-6 rounded-xl sm:rounded-lg">
+      <DialogContent className="w-full max-w-2xl max-h-[90vh] overflow-y-auto p-3 xs:p-4 sm:p-6 rounded-xl sm:rounded-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5 text-yellow-500" />

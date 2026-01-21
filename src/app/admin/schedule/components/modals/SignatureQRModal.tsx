@@ -139,7 +139,7 @@ export function SignatureQRModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[calc(100%-1.5rem)] xs:w-[calc(100%-2rem)] sm:max-w-md bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px] gap-0">
+      <DialogContent className="w-[calc(100%-1.5rem)] xs:w-[calc(100%-2rem)] sm:max-w-md bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] gap-0">
         <DialogHeader className="px-8 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl -mr-24 -mt-24"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">

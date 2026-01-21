@@ -23,7 +23,7 @@ export function AddonModal({
 }: AddonModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -57,7 +57,7 @@ export function AddonModal({
                 </div>
                 <h3 className="text-lg font-black text-slate-900">고객 인적 사항</h3>
               </div>
-              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Customer Name *</Label>
                   <div className="relative group">
@@ -93,7 +93,7 @@ export function AddonModal({
                 </div>
                 <h3 className="text-lg font-black text-slate-900">판매 상품 정보</h3>
               </div>
-              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Product Name *</Label>
                   <Input 
@@ -143,7 +143,7 @@ export function AddonModal({
               </div>
               <h3 className="text-lg font-black text-slate-900">추가 기록 사항</h3>
             </div>
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm">
               <Input 
                 value={form.memo} 
                 onChange={(e) => setForm({ ...form, memo: e.target.value })} 
@@ -153,7 +153,7 @@ export function AddonModal({
             </div>
           </div>
 
-          <div className="p-6 bg-emerald-50 rounded-[32px] border border-emerald-100 flex items-start gap-4">
+          <div className="p-6 bg-emerald-50 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-emerald-100 flex items-start gap-4">
             <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
               <Info className="w-5 h-5 text-emerald-500" />
             </div>

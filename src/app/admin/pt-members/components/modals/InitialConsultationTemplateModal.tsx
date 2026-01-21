@@ -102,7 +102,7 @@ export function InitialConsultationTemplateModal({ isOpen, onClose }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 border-b bg-emerald-600 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <div className="flex items-center justify-between relative z-10">
@@ -126,7 +126,7 @@ export function InitialConsultationTemplateModal({ isOpen, onClose }: Props) {
 
         <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-[#f8fafc]">
           {/* 섹션 1: 상담 메모 */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
             <h3 className="flex items-center gap-3 text-lg font-black text-slate-900">
               <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm">1</div>
               📝 상담 메모
@@ -180,7 +180,7 @@ export function InitialConsultationTemplateModal({ isOpen, onClose }: Props) {
           </div>
 
           {/* 섹션 2: 등록 예측 */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
             <h3 className="flex items-center gap-3 text-lg font-black text-slate-900">
               <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm">2</div>
               📊 등록 예측
@@ -248,7 +248,7 @@ export function InitialConsultationTemplateModal({ isOpen, onClose }: Props) {
           </div>
 
           {/* 섹션 3: 체크리스트 */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
             <h3 className="flex items-center gap-3 text-lg font-black text-slate-900">
               <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center text-sm">3</div>
               ✅ 상담 완료 체크리스트

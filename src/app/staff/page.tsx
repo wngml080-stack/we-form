@@ -97,7 +97,7 @@ export default function StaffPage(props: {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] font-sans pb-10">
+    <div className="min-h-screen bg-[#F8F9FA] font-sans pb-10 safe-area-inset">
       {/* Header */}
       <StaffHeader
         myStaffName={myStaffName}
@@ -106,7 +106,7 @@ export default function StaffPage(props: {
       />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-3 xs:px-4 md:px-6 py-4 xs:py-6 space-y-4 xs:space-y-6">
         {/* Welcome & Quick Actions */}
         <WelcomeSection
           myStaffName={myStaffName}
@@ -175,9 +175,10 @@ export default function StaffPage(props: {
             setSelectedDate(new Date().toISOString().split('T')[0]);
             setIsAddModalOpen(true);
           }}
-          className="md:hidden fixed bottom-6 right-6 bg-[#2F80ED] text-white p-4 rounded-full shadow-xl shadow-blue-200 hover:bg-[#1c6cd7] transition-all active:scale-95 z-50 flex items-center justify-center"
+          className="md:hidden fixed bottom-6 right-4 xs:right-6 bg-[#2F80ED] text-white p-3.5 xs:p-4 rounded-full shadow-xl shadow-blue-200 hover:bg-[#1c6cd7] transition-all active:scale-95 z-50 flex items-center justify-center safe-area-bottom"
+          style={{ marginBottom: 'env(safe-area-inset-bottom, 0)' }}
         >
-          <Plus className="w-6 h-6 stroke-[3px]" />
+          <Plus className="w-5 xs:w-6 h-5 xs:h-6 stroke-[3px]" />
         </button>
       )}
 

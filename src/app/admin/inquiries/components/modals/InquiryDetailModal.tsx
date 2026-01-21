@@ -179,7 +179,7 @@ export function InquiryDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px] [&>button]:hidden">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <div className="flex items-center justify-between relative z-10">
@@ -255,7 +255,7 @@ export function InquiryDetailModal({
           </div>
 
           {/* 고객 정보 카드 */}
-          <div className="bg-white rounded-[32px] p-8 border border-white shadow-xl shadow-slate-200/50 relative overflow-hidden group/customer">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-white shadow-xl shadow-slate-200/50 relative overflow-hidden group/customer">
             <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -mr-16 -mt-16 transition-transform group-hover/customer:scale-110 duration-700"></div>
             <div className="flex items-start gap-6 relative z-10">
               <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-lg">
@@ -341,7 +341,7 @@ export function InquiryDetailModal({
 
           {/* 예약 정보 (있는 경우) */}
           {inquiry.reservation && (
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[32px] p-8 text-white shadow-xl shadow-blue-200 space-y-6">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 text-white shadow-xl shadow-blue-200 space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
@@ -403,7 +403,7 @@ export function InquiryDetailModal({
               )}
             </div>
             
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm">
               {isEditing ? (
                 <div className="space-y-4">
                   <Textarea

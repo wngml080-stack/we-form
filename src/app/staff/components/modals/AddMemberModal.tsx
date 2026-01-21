@@ -67,7 +67,7 @@ export function AddMemberModal({
   };
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="max-w-md bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-8 py-6 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
           <DialogTitle className="flex items-center gap-4 relative z-10">
@@ -106,7 +106,7 @@ export function AddMemberModal({
             </div>
 
             {memberSearchResults.length > 0 && (
-              <div className="bg-white rounded-[32px] border border-slate-100 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="px-5 py-3 bg-slate-50 border-b border-slate-100">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Search Results</p>
                 </div>
@@ -144,7 +144,7 @@ export function AddMemberModal({
           </div>
 
           {/* 직접 입력 섹션 */}
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-6">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">
                 <PlusCircle className="w-4 h-4" />

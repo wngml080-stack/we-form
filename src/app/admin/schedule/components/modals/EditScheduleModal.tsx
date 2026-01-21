@@ -279,7 +279,7 @@ export function EditScheduleModal({
           </div>
 
           {/* 일정 옵션 섹션 */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black">2</div>
               <h3 className="text-lg font-black text-slate-900">시간 및 상태 설정</h3>

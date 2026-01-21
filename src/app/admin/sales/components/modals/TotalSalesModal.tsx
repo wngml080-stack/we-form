@@ -83,7 +83,7 @@ export function TotalSalesModal({
 }: TotalSalesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl bg-[#f8fafc] max-h-[95vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
+      <DialogContent className="max-w-5xl bg-[#f8fafc] max-h-[95vh] overflow-y-auto p-0 border-none rounded-2xl xs:rounded-3xl sm:rounded-[40px] shadow-2xl">
         <VisuallyHidden>
           <DialogTitle>전체 매출 현황</DialogTitle>
         </VisuallyHidden>
@@ -164,7 +164,7 @@ export function TotalSalesModal({
           ) : (
             <>
               {/* 총 매출 요약 - 히어로 카드 */}
-              <div className="bg-white rounded-[40px] p-12 shadow-xl shadow-purple-100/50 border border-purple-50 relative overflow-hidden group">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[40px] p-12 shadow-xl shadow-purple-100/50 border border-purple-50 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-50 rounded-full -mr-40 -mt-40 transition-transform duration-1000 group-hover:scale-110"></div>
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
                   <div className="space-y-4 text-center md:text-left">
@@ -190,7 +190,7 @@ export function TotalSalesModal({
               {/* FC vs PT 상세 그리드 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* FC 상세 */}
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
                   <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
                     <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                       <Target className="w-5 h-5 text-blue-600" />
@@ -210,7 +210,7 @@ export function TotalSalesModal({
                 </div>
 
                 {/* PT 상세 */}
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
                   <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
                     <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
                       <Award className="w-5 h-5 text-orange-600" />
@@ -237,7 +237,7 @@ export function TotalSalesModal({
               </div>
 
               {/* 전월/전년 대비 비교 테이블 */}
-              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
                     <BarChart3 className="w-5 h-5 text-slate-600" />

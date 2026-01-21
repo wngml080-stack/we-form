@@ -58,7 +58,7 @@ export function StatusChangeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="max-w-md bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-8 py-6 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
           <DialogTitle className="flex items-center gap-4 relative z-10">
@@ -81,7 +81,7 @@ export function StatusChangeModal({
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-[#f8fafc]">
           {/* 일정 간략 정보 */}
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-xl">
               {isPersonal ? '📅' : '👤'}
             </div>

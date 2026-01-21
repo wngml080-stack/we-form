@@ -126,7 +126,7 @@ export function MemberDetailModal({
   if (!member) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+        <DialogContent className="w-full max-w-3xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
           <DialogHeader className="px-10 py-6 bg-white border-b border-slate-200 flex-shrink-0">
             <DialogTitle className="text-slate-900 text-xl font-bold">회원 정보 로딩 중...</DialogTitle>
             <DialogDescription className="sr-only">회원 정보를 불러오는 중입니다</DialogDescription>
@@ -270,7 +270,7 @@ export function MemberDetailModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-3xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+        <DialogContent className="w-full max-w-3xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
           <DialogHeader className="px-10 py-6 bg-white border-b border-slate-200 flex-shrink-0">
             <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -323,7 +323,7 @@ export function MemberDetailModal({
                 )}
               </div>
 
-              <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
                 {/* PT 담당 트레이너 */}
                 <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
                   <div className="flex items-center gap-4">
@@ -486,7 +486,7 @@ export function MemberDetailModal({
                 </button>
               </div>
 
-              <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm">
                 {activeHistoryTab === "payments" ? (
                   paymentHistory.length > 0 ? (
                     <div className="space-y-3">

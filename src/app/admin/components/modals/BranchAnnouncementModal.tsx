@@ -24,7 +24,7 @@ export function BranchAnnouncementModal({ isOpen, onOpenChange, announcement }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -68,7 +68,7 @@ export function BranchAnnouncementModal({ isOpen, onOpenChange, announcement }: 
           </div>
 
           {/* 본문 카드 */}
-          <div className="bg-white rounded-[40px] p-10 border border-slate-100 shadow-sm space-y-8 relative overflow-hidden">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[40px] p-10 border border-slate-100 shadow-sm space-y-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 opacity-5 -mr-10 -mt-10">
               <Bell className="w-48 h-48" />
             </div>
@@ -116,7 +116,7 @@ export function BranchAnnouncementModal({ isOpen, onOpenChange, announcement }: 
           </div>
 
           {/* 하단 안내 문구 */}
-          <div className="p-6 bg-slate-100 rounded-[32px] border border-slate-200 flex items-start gap-4">
+          <div className="p-6 bg-slate-100 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-200 flex items-start gap-4">
             <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
               <Info className="w-5 h-5 text-slate-400" />
             </div>

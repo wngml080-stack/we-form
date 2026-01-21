@@ -34,7 +34,7 @@ export function PtSalesModal({
 }: PtSalesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
+      <DialogContent className="w-full max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-y-auto p-0 border-none rounded-2xl xs:rounded-3xl sm:rounded-[40px] shadow-2xl">
         <VisuallyHidden>
           <DialogTitle>PT 매출 현황</DialogTitle>
         </VisuallyHidden>
@@ -116,25 +116,25 @@ export function PtSalesModal({
             <>
               {/* 첫 번째 행: 핵심 지표 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-4">PT BEP</div>
                   <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-orange-600 transition-colors">
                     {Math.round(ptStats.bep / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-4">PT TOTAL SALES</div>
                   <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-emerald-600 transition-colors">
                     {Math.round(ptStats.totalSales / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-purple-500 uppercase tracking-[0.2em] mb-4">BEP RATE</div>
                   <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-purple-600 transition-colors">
                     {Math.round(ptStats.bepRate)}<span className="text-base font-bold ml-1 opacity-40">%</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-4 flex items-center">
                     UNIT PRICE <HelpTooltip content="PT 1건당 평균 결제 금액입니다." iconClassName="w-3 h-3 ml-2" />
                   </div>
@@ -154,7 +154,7 @@ export function PtSalesModal({
 
               {/* 세 번째 행: 주요 매출 성과 - 2컬럼 레이아웃 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-orange-100/50 border border-orange-50 relative overflow-hidden group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[40px] p-10 shadow-xl shadow-orange-100/50 border border-orange-50 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-orange-50 rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110"></div>
                   <div className="relative z-10 space-y-4">
                     <h3 className="text-sm font-black text-orange-600 uppercase tracking-[0.3em]">New Registration</h3>
@@ -165,7 +165,7 @@ export function PtSalesModal({
                   </div>
                 </div>
 
-                <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-amber-100/50 border border-amber-50 relative overflow-hidden group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[40px] p-10 shadow-xl shadow-amber-100/50 border border-amber-50 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-amber-50 rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110"></div>
                   <div className="relative z-10 space-y-4">
                     <h3 className="text-sm font-black text-amber-600 uppercase tracking-[0.3em]">Re-registration</h3>

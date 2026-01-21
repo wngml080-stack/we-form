@@ -50,7 +50,7 @@ export function ExpenseSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-[#f8fafc] p-0 border-none rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <DialogContent className="w-full max-w-lg bg-[#f8fafc] p-0 border-none rounded-2xl xs:rounded-3xl sm:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* 헤더 */}
         <div className="bg-slate-900 p-8 text-white relative overflow-hidden flex-shrink-0">
           <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
@@ -66,7 +66,7 @@ export function ExpenseSettingsModal({
         </div>
 
         <div className="p-8 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
-          <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+          <div className="bg-white p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <FolderOpen className="w-4 h-4 text-slate-400" />
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">카테고리 목록</span>

@@ -313,51 +313,228 @@ export function PaymentsTable({
   };
 
   return (
-    <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-500 delay-500">
+    <div className="bg-white rounded-2xl xs:rounded-3xl lg:rounded-[32px] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-500 delay-500">
       {/* 테이블 헤더 영역 */}
-      <div className="bg-white px-6 py-5 border-b border-slate-100">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
-              <Banknote className="w-5 h-5 text-blue-600" />
+      <div className="bg-white px-3 xs:px-4 sm:px-6 py-3 xs:py-4 sm:py-5 border-b border-slate-100">
+        <div className="flex flex-col gap-3 xs:gap-4">
+          {/* 상단: 제목 + 카운트 */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 xs:gap-3">
+              <div className="w-8 xs:w-10 h-8 xs:h-10 rounded-xl xs:rounded-2xl bg-blue-50 flex items-center justify-center">
+                <Banknote className="w-4 xs:w-5 h-4 xs:h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-sm xs:text-base font-black text-slate-900 tracking-tight">매출 상세 내역</h3>
+                <p className="text-[10px] xs:text-[11px] font-bold text-slate-400">총 {filteredPayments.length}건</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-base font-black text-slate-900 tracking-tight">매출 상세 내역</h3>
-              <p className="text-[11px] font-bold text-slate-400">총 {filteredPayments.length}건의 매출이 조회되었습니다</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            {/* 테이블 내 검색 바 */}
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="결과 내 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 pl-9 pr-4 bg-slate-50 border-none rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
-            </div>
-            
-            <div className="h-8 w-px bg-slate-100 mx-1 hidden sm:block" />
 
-            {/* 연속 입력 모드 토글 */}
+            {/* 연속 입력 모드 토글 (모바일에서 아이콘만) */}
             <button
               onClick={() => onContinuousModeChange?.(!continuousMode)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all whitespace-nowrap",
+                "flex items-center gap-1.5 xs:gap-2 px-2.5 xs:px-4 py-2 xs:py-2.5 rounded-lg xs:rounded-xl text-[10px] xs:text-xs font-black transition-all whitespace-nowrap",
                 continuousMode
                   ? "bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm"
                   : "bg-slate-50 text-slate-400 border border-transparent hover:bg-slate-100"
               )}
             >
-              {continuousMode ? <Zap className="w-3.5 h-3.5" /> : <ZapOff className="w-3.5 h-3.5" />}
-              연속 입력 {continuousMode ? "ON" : "OFF"}
+              {continuousMode ? <Zap className="w-3 xs:w-3.5 h-3 xs:h-3.5" /> : <ZapOff className="w-3 xs:w-3.5 h-3 xs:h-3.5" />}
+              <span className="hidden xs:inline">연속 입력 {continuousMode ? "ON" : "OFF"}</span>
+              <span className="xs:hidden">{continuousMode ? "ON" : "OFF"}</span>
             </button>
+          </div>
+
+          {/* 하단: 검색바 */}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="회원명, 연락처, 금액으로 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 xs:h-10 pl-9 pr-4 bg-slate-50 border-none rounded-lg xs:rounded-xl text-xs font-bold focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all w-full"
+            />
           </div>
         </div>
       </div>
+
+      {/* 모바일 카드 뷰 */}
+      <div className="md:hidden">
+        <div className="p-3 xs:p-4 space-y-3">
+          {filteredPayments.map((payment) => {
+            const isEditing = editingId === payment.id || payment.isNew;
+
+            if (isEditing) {
+              // 모바일 편집 모드는 간소화
+              return (
+                <div key={payment.id} className={cn("mobile-card-item", payment.isNew ? "ring-2 ring-blue-500" : "ring-2 ring-amber-500")}>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10px] font-bold text-slate-500">회원명</Label>
+                        <Input
+                          value={editForm.member_name || ""}
+                          onChange={(e) => payment.isNew ? onNewRowChange("member_name", e.target.value) : onEditFormChange("member_name", e.target.value)}
+                          placeholder="회원명"
+                          className="h-9 text-xs mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-bold text-slate-500">연락처</Label>
+                        <Input
+                          value={editForm.phone || ""}
+                          onChange={(e) => payment.isNew ? onNewRowChange("phone", formatPhoneNumberOnChange(e.target.value)) : onEditFormChange("phone", formatPhoneNumberOnChange(e.target.value))}
+                          placeholder="010-0000-0000"
+                          className="h-9 text-xs mt-1"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10px] font-bold text-slate-500">상품분류</Label>
+                        <Select value={editForm.membership_category || ""} onValueChange={(v) => payment.isNew ? onNewRowChange("membership_category", v) : onEditFormChange("membership_category", v)}>
+                          <SelectTrigger className="h-9 text-xs mt-1">
+                            <SelectValue placeholder="분류" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allMembershipCategories.map(cat => (
+                              <SelectItem key={cat} value={cat} className="text-xs">{cat}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-bold text-slate-500">상품명</Label>
+                        <Select value={editForm.membership_name || ""} onValueChange={(v) => payment.isNew ? onNewRowChange("membership_name", v) : onEditFormChange("membership_name", v)}>
+                          <SelectTrigger className="h-9 text-xs mt-1">
+                            <SelectValue placeholder="상품" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allMembershipNames.map(name => (
+                              <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10px] font-bold text-slate-500">결제금액</Label>
+                        <Input
+                          type="number"
+                          value={editForm.amount || ""}
+                          onChange={(e) => payment.isNew ? onNewRowChange("amount", parseInt(e.target.value) || 0) : onEditFormChange("amount", parseInt(e.target.value) || 0)}
+                          placeholder="0"
+                          className="h-9 text-xs mt-1 font-black"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-bold text-slate-500">결제수단</Label>
+                        <Select value={editForm.method || "card"} onValueChange={(v) => payment.isNew ? onNewRowChange("method", v) : onEditFormChange("method", v)}>
+                          <SelectTrigger className="h-9 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allPaymentMethods.map(method => (
+                              <SelectItem key={method} value={method} className="text-xs">{methodLabels[method] || method}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        onClick={payment.isNew ? onSaveNewRow : onSaveEdit}
+                        className="flex-1 h-9 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black"
+                      >
+                        <Save className="w-3.5 h-3.5 mr-1.5" />
+                        저장
+                      </Button>
+                      <Button
+                        onClick={payment.isNew ? onCancelNewRow : onCancelEdit}
+                        variant="outline"
+                        className="flex-1 h-9 text-xs font-black"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1.5" />
+                        취소
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={payment.id}
+                className="mobile-card-item cursor-pointer active:bg-slate-50 transition-colors"
+                onClick={() => onStartEdit(payment)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-black text-slate-900 truncate">{payment.member_name}</span>
+                      <Badge variant="outline" className={cn("text-[9px] font-black px-1.5 py-0 border rounded shrink-0", getSaleTypeColor(payment.sale_type))}>
+                        {payment.sale_type}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                      <span>{formatDate(payment.payment_date)}</span>
+                      <span>|</span>
+                      <span>{payment.membership_category}</span>
+                      <span>|</span>
+                      <span>{payment.membership_name}</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-black text-blue-600">{formatCurrency(payment.amount)}</p>
+                    <p className="text-[10px] text-slate-500">{methodLabels[payment.method] || payment.method}</p>
+                  </div>
+                </div>
+                {payment.memo && (
+                  <p className="text-[10px] text-slate-400 mt-2 truncate">메모: {payment.memo}</p>
+                )}
+              </div>
+            );
+          })}
+
+          {filteredPayments.length === 0 && payments.length > 0 && (
+            <div className="py-12 text-center">
+              <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm font-black text-slate-700">검색 결과가 없습니다</p>
+              <p className="text-xs text-slate-500 mt-1">다른 검색어를 입력해주세요</p>
+            </div>
+          )}
+
+          {payments.length === 0 && (
+            <div className="py-16 text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Banknote className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-sm font-black text-slate-900">기록된 매출 내역이 없습니다</p>
+              <p className="text-xs text-slate-500 mt-1">매출을 등록해보세요</p>
+              <Button onClick={onAddNewRow} className="mt-6 h-10 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs gap-2">
+                <Plus className="w-4 h-4" />
+                매출 등록하기
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* 모바일 하단 추가 버튼 */}
+        {!continuousMode && filteredPayments.length > 0 && (
+          <div className="border-t border-slate-200 bg-slate-50 p-3 xs:p-4">
+            <Button onClick={onAddNewRow} className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs gap-2">
+              <Plus className="w-4 h-4" />
+              새 매출 등록
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* 데스크탑 테이블 뷰 */}
+      <div className="hidden md:block">
 
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full border-collapse">
@@ -968,9 +1145,10 @@ export function PaymentsTable({
           </tbody>
         </table>
       </div>
-      
-      {/* 하단 매출 추가 버튼 - 엑셀 스타일 */}
-      <div className="border-t-2 border-slate-300 bg-slate-50 p-4">
+      </div>
+
+      {/* 하단 매출 추가 버튼 - 엑셀 스타일 (데스크탑) */}
+      <div className="hidden md:block border-t-2 border-slate-300 bg-slate-50 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-500">

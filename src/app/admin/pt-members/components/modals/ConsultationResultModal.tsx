@@ -971,7 +971,7 @@ export function ConsultationResultModal({ isOpen, onClose, membersWithData = [],
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white border-none shadow-2xl rounded-[32px]">
+      <DialogContent className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[32px]">
         <DialogHeader className="px-8 py-6 border-b bg-emerald-600 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <div className="flex items-center justify-between relative z-10">

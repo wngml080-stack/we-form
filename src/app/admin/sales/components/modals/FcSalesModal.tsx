@@ -34,7 +34,7 @@ export function FcSalesModal({
 }: FcSalesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
+      <DialogContent className="w-full max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-y-auto p-0 border-none rounded-2xl xs:rounded-3xl sm:rounded-[40px] shadow-2xl">
         <VisuallyHidden>
           <DialogTitle>FC (회원권) 매출 현황</DialogTitle>
         </VisuallyHidden>
@@ -116,25 +116,25 @@ export function FcSalesModal({
             <>
               {/* 첫 번째 행: 핵심 지표 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-4">FC BEP</div>
                   <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-blue-600 transition-colors">
                     {Math.round(fcStats.bep / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-4">FC TOTAL SALES</div>
                   <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-emerald-600 transition-colors">
                     {Math.round(fcStats.totalSales / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-purple-500 uppercase tracking-[0.2em] mb-4">BEP RATE</div>
                   <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-purple-600 transition-colors">
                     {Math.round(fcStats.bepRate)}<span className="text-base font-bold ml-1 opacity-40">%</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
                   <div className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-4 flex items-center">
                     UNIT PRICE <HelpTooltip content="1건당 평균 결제 금액입니다." iconClassName="w-3 h-3 ml-2" />
                   </div>
@@ -154,7 +154,7 @@ export function FcSalesModal({
               </div>
 
               {/* 세 번째 행: 주요 매출 성과 - 그라데이션 박스 */}
-              <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-blue-100/50 border border-blue-50 relative overflow-hidden group">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[40px] p-10 shadow-xl shadow-blue-100/50 border border-blue-50 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50 rounded-full -mr-40 -mt-40 transition-transform duration-1000 group-hover:scale-110"></div>
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
                   <div className="space-y-2 text-center md:text-left">
@@ -166,7 +166,7 @@ export function FcSalesModal({
                       {salesPeriod === "thisMonth" ? "이번 달" : salesPeriod === "lastMonth" ? "지난 달" : "지정 기간"} 동안의 신규 유입 매출 성과입니다.
                     </p>
                   </div>
-                  <div className="w-32 h-32 bg-blue-600 rounded-[40px] flex items-center justify-center shadow-2xl shadow-blue-500/40 rotate-12 transition-transform duration-500 group-hover:rotate-0">
+                  <div className="w-32 h-32 bg-blue-600 rounded-2xl xs:rounded-3xl sm:rounded-[40px] flex items-center justify-center shadow-2xl shadow-blue-500/40 rotate-12 transition-transform duration-500 group-hover:rotate-0">
                     <TrendingUp className="w-16 h-16 text-white" />
                   </div>
                 </div>

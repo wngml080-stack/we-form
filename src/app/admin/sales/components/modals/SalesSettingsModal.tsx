@@ -113,7 +113,7 @@ export function SalesSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] p-0 border-none rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] p-0 border-none rounded-2xl xs:rounded-3xl sm:rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* 헤더 */}
         <div className="bg-slate-900 p-8 text-white relative overflow-hidden flex-shrink-0">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
@@ -147,7 +147,7 @@ export function SalesSettingsModal({
 
             {/* 유형 탭 */}
             <TabsContent value="sale_type" className="space-y-6 animate-in fade-in duration-300">
-              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {allSaleTypes.map(type => {
                     const isCustom = isCustomSaleType(type);
@@ -192,7 +192,7 @@ export function SalesSettingsModal({
 
             {/* 회원권 탭 */}
             <TabsContent value="category" className="space-y-6 animate-in fade-in duration-300">
-              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {allMembershipCategories.map(cat => {
                     const isCustom = isCustomCategory(cat);
@@ -237,7 +237,7 @@ export function SalesSettingsModal({
 
             {/* 회원권명 탭 */}
             <TabsContent value="name" className="space-y-6 animate-in fade-in duration-300">
-              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {allMembershipNames.map(name => {
                     const isCustom = isCustomName(name);
@@ -282,7 +282,7 @@ export function SalesSettingsModal({
 
             {/* 결제방법 탭 */}
             <TabsContent value="method" className="space-y-6 animate-in fade-in duration-300">
-              <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {allPaymentMethods.map(method => {
                     const isCustom = isCustomMethod(method);

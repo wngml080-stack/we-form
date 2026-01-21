@@ -54,7 +54,7 @@ export function DateAnnouncementsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -82,7 +82,7 @@ export function DateAnnouncementsModal({
 
         <div className="flex-1 overflow-y-auto p-10 space-y-4">
           {dateAnnouncements.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[32px] border border-slate-100 shadow-sm">
+            <div className="flex flex-col items-center justify-center py-24 bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm">
               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
                 <Bell className="w-10 h-10 text-slate-200" />
               </div>
@@ -94,7 +94,7 @@ export function DateAnnouncementsModal({
               <div 
                 key={announcement.id} 
                 className={cn(
-                  "bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group",
+                  "bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group",
                   !announcement.is_active && "opacity-60"
                 )}
               >

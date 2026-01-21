@@ -209,7 +209,7 @@ export function ReservationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px] [&>button]:hidden">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <div className="flex items-center justify-between relative z-10">
@@ -238,7 +238,7 @@ export function ReservationModal({
               <div className="w-1.5 h-5 bg-blue-500 rounded-full"></div>
               <h3 className="text-lg font-black text-slate-900">고객 정보</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-8 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm">
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">이름 *</Label>
                 <div className="relative">

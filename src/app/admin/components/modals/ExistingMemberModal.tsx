@@ -31,7 +31,7 @@ export function ExistingMemberModal({
 }: ExistingMemberModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -65,7 +65,7 @@ export function ExistingMemberModal({
               <h3 className="text-xl font-black text-slate-900 tracking-tight">대상 회원 검색</h3>
             </div>
 
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6 relative">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6 relative">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Search Member *</Label>
                 <div className="relative group">
@@ -132,7 +132,7 @@ export function ExistingMemberModal({
               <h3 className="text-xl font-black text-slate-900 tracking-tight">추가 상품 정보</h3>
             </div>
 
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Product *</Label>
                 <Select

@@ -71,7 +71,7 @@ export function AddClassModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="w-full max-w-lg bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-8 py-6 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl -mr-24 -mt-24"></div>
           <DialogTitle className="flex items-center gap-4 relative z-10">
@@ -93,7 +93,7 @@ export function AddClassModal({
 
         <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-[#f8fafc]">
           {/* 타입 선택 탭 */}
-          <div className="bg-white rounded-[32px] p-2 border border-slate-100 shadow-sm flex">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-2 border border-slate-100 shadow-sm flex">
             {['PT', 'personal', 'consulting'].map((type) => (
               <button
                 key={type}
@@ -111,7 +111,7 @@ export function AddClassModal({
           </div>
 
           {/* 주요 식별 정보 카드 */}
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-5">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-5">
             <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-2xl">
               {isPersonal ? '📅' : '👤'}
             </div>
@@ -136,7 +136,7 @@ export function AddClassModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* 일시 설정 섹션 */}
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-6">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black">1</div>
                 <h3 className="text-base font-black text-slate-900">시간 및 날짜</h3>
@@ -187,7 +187,7 @@ export function AddClassModal({
             </div>
 
             {/* 분류 설정 섹션 */}
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-6">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-black">2</div>
                 <h3 className="text-base font-black text-slate-900">상세 분류</h3>

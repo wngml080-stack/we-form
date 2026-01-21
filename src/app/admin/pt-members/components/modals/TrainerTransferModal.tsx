@@ -100,7 +100,7 @@ export function TrainerTransferModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="max-w-xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -142,7 +142,7 @@ export function TrainerTransferModal({
               </h3>
             </div>
 
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center">
                   <span className="text-lg font-black text-slate-600">
@@ -172,7 +172,7 @@ export function TrainerTransferModal({
               </h3>
             </div>
 
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm">
               <Select value={toTrainerId} onValueChange={setToTrainerId}>
                 <SelectTrigger className="h-14 bg-slate-50 border-none rounded-2xl font-black text-slate-900 focus:ring-2 focus:ring-indigo-100">
                   <SelectValue placeholder="트레이너를 선택하세요" />
@@ -203,7 +203,7 @@ export function TrainerTransferModal({
               </h3>
             </div>
 
-            <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
               <div className="flex flex-wrap gap-2">
                 {TRANSFER_REASONS.map((r) => (
                   <button

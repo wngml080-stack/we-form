@@ -118,24 +118,27 @@ export default function PTMembersPage(props: {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-4 xs:space-y-6">
+      <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-3 xs:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">통합 회원관리</h1>
-          <p className="text-slate-500 text-sm">{gymName} 지점의 회원 현황입니다.</p>
+          <h1 className="text-xl xs:text-2xl font-bold text-slate-900">통합 회원관리</h1>
+          <p className="text-slate-500 text-xs xs:text-sm">{gymName} 지점의 회원 현황입니다.</p>
         </div>
         <Link href="/admin/sales">
-          <Button className="bg-slate-900 text-white">신규 매출 등록</Button>
+          <Button className="bg-slate-900 text-white h-9 xs:h-10 text-xs xs:text-sm px-3 xs:px-4">신규 매출 등록</Button>
         </Link>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <TabsList className="bg-slate-100 p-1 rounded-xl h-12">
-            <TabsTrigger value="members" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">회원 리스트</TabsTrigger>
-            <TabsTrigger value="manual" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">코칭 현황</TabsTrigger>
-            <TabsTrigger value="re-registration" className="rounded-lg px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">재등록 관리</TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col gap-3 xs:gap-4 mb-4 xs:mb-6">
+          {/* 탭 리스트 - 모바일에서 가로 스크롤 */}
+          <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 xs:mx-0 xs:px-0">
+            <TabsList className="bg-slate-100 p-1 rounded-lg xs:rounded-xl h-10 xs:h-12 min-w-max">
+              <TabsTrigger value="members" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">회원</TabsTrigger>
+              <TabsTrigger value="manual" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">코칭</TabsTrigger>
+              <TabsTrigger value="re-registration" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">재등록</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* 일괄 변경 툴바 */}
           {selectedMemberIds.length > 0 && (
@@ -173,36 +176,38 @@ export default function PTMembersPage(props: {
           )}
         </div>
 
-        <TabsContent value="members" className="mt-0 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <TabsContent value="members" className="mt-0 space-y-4 xs:space-y-6">
+          {/* 카테고리 버튼 - 모바일 2열, 데스크탑 4열 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 xs:gap-3 sm:gap-4">
             {memberCategoryConfig.map(({ key, label, count, icon: Icon }) => (
               <Button
                 key={key}
                 variant={memberCategory === key ? "default" : "outline"}
                 onClick={() => setMemberCategory(key)}
-                className="h-24 flex flex-col items-center justify-center gap-2 rounded-xl"
+                className="h-16 xs:h-20 sm:h-24 flex flex-col items-center justify-center gap-1 xs:gap-2 rounded-lg xs:rounded-xl"
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-xs font-semibold">{label}</span>
-                <span className="text-lg font-bold">{count}명</span>
+                <Icon className="w-4 xs:w-5 h-4 xs:h-5" />
+                <span className="text-[10px] xs:text-xs font-semibold">{label}</span>
+                <span className="text-sm xs:text-lg font-bold">{count}명</span>
               </Button>
             ))}
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between gap-4">
-              <div className="relative flex-1">
+            {/* 검색/필터 영역 */}
+            <div className="p-3 xs:p-4 sm:p-6 border-b border-slate-100 flex flex-col gap-3">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="회원 검색"
-                  className="pl-10"
+                  className="pl-10 h-9 xs:h-10"
                 />
               </div>
               <div className="flex gap-2">
                 <Select value={trainerFilter} onValueChange={setTrainerFilter}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="flex-1 xs:w-32 sm:w-40 h-9 xs:h-10 text-xs xs:text-sm">
                     <SelectValue placeholder="트레이너" />
                   </SelectTrigger>
                   <SelectContent>
@@ -211,7 +216,7 @@ export default function PTMembersPage(props: {
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="flex-1 xs:w-28 sm:w-32 h-9 xs:h-10 text-xs xs:text-sm">
                     <SelectValue placeholder="상태" />
                   </SelectTrigger>
                   <SelectContent>

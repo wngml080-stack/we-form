@@ -91,7 +91,7 @@ export function GymDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="max-w-5xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
@@ -158,15 +158,15 @@ export function GymDetailModal({
 
           {/* 지점 기본 정보 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center"><Ruler className="w-5 h-5 text-slate-400" /></div>
               <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Size</p><p className="text-lg font-black text-slate-900">{selectedGymDetail.size || '-'}평</p></div>
             </div>
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center"><CalendarIcon className="w-5 h-5 text-slate-400" /></div>
               <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Open Date</p><p className="text-lg font-black text-slate-900">{selectedGymDetail.open_date || '-'}</p></div>
             </div>
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4 md:col-span-2">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm flex items-center gap-4 md:col-span-2">
               <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center"><MapPin className="w-5 h-5 text-slate-400" /></div>
               <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Categories</p><p className="text-lg font-black text-slate-900 truncate">{selectedGymDetail.category || '-'}</p></div>
             </div>
@@ -180,7 +180,7 @@ export function GymDetailModal({
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">FC 매출 상세 (회원권/부가상품)</h3>
               </div>
               
-              <div className="bg-white rounded-[40px] p-10 border border-slate-100 shadow-sm space-y-8 relative overflow-hidden">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[40px] p-10 border border-slate-100 shadow-sm space-y-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16"></div>
                 
                 <div className="grid grid-cols-2 gap-8">
@@ -232,7 +232,7 @@ export function GymDetailModal({
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">PT 매출 상세 (수업/수강권)</h3>
               </div>
               
-              <div className="bg-slate-900 rounded-[40px] p-10 shadow-2xl space-y-8 relative overflow-hidden">
+              <div className="bg-slate-900 rounded-2xl xs:rounded-3xl sm:rounded-[40px] p-10 shadow-2xl space-y-8 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full -mr-16 -mt-16"></div>
                 
                 <div className="grid grid-cols-2 gap-8 text-white">
@@ -289,7 +289,7 @@ export function GymDetailModal({
                 <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center"><Info className="w-5 h-5" /></div>
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">지점 특이사항 메모</h3>
               </div>
-              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm">
                 <p className="text-slate-600 font-bold leading-relaxed whitespace-pre-wrap">{selectedGymDetail.memo}</p>
               </div>
             </section>

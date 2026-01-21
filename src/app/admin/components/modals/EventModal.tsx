@@ -35,7 +35,7 @@ export function EventModal({ isOpen, onOpenChange, selectedDate, companyEvents }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-white">
+      <DialogContent className="w-full max-w-2xl bg-white">
         <DialogHeader>
           <DialogTitle>
             {selectedDate && format(selectedDate, "yyyy년 M월 d일 (EEE)", { locale: ko })} 행사

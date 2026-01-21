@@ -247,7 +247,7 @@ ${gymName}이 함께 하겠습니다!
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl bg-white p-0 border-none rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <DialogContent className="w-full max-w-2xl bg-white p-0 border-none rounded-2xl xs:rounded-3xl sm:rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <DialogTitle className="sr-only">{basicInfo.memberName} 상담 결과</DialogTitle>
         <DialogDescription className="sr-only">회원님께 전송할 상담 결과입니다.</DialogDescription>
 

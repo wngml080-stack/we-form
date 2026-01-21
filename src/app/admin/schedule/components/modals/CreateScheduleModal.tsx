@@ -167,7 +167,7 @@ export function CreateScheduleModal({
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) handleClose();
     }}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px] [&>button]:hidden">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle asChild>
@@ -200,7 +200,7 @@ export function CreateScheduleModal({
 
           {/* 일시 정보 카드 */}
           {selectedTimeSlot && (
-            <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between">
+            <div className="bg-white p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-slate-100 shadow-sm flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
                   <CalendarIcon className="w-6 h-6 text-blue-600" />
@@ -227,7 +227,7 @@ export function CreateScheduleModal({
               <button
                 onClick={() => setCreateForm({ ...createForm, isPersonal: false, member_id: "", personalTitle: "" })}
                 className={cn(
-                  "p-6 rounded-[32px] border-2 transition-all flex flex-col items-center gap-3",
+                  "p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border-2 transition-all flex flex-col items-center gap-3",
                   !createForm.isPersonal 
                     ? "bg-white border-blue-600 shadow-xl shadow-blue-100" 
                     : "bg-slate-50 border-transparent text-slate-400 hover:bg-white hover:border-slate-200"
@@ -242,7 +242,7 @@ export function CreateScheduleModal({
               <button
                 onClick={() => setCreateForm({ ...createForm, isPersonal: true, member_id: "", personalTitle: "" })}
                 className={cn(
-                  "p-6 rounded-[32px] border-2 transition-all flex flex-col items-center gap-3",
+                  "p-6 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border-2 transition-all flex flex-col items-center gap-3",
                   createForm.isPersonal 
                     ? "bg-white border-purple-600 shadow-xl shadow-purple-100" 
                     : "bg-slate-50 border-transparent text-slate-400 hover:bg-white hover:border-slate-200"

@@ -497,104 +497,110 @@ export default function SalesPage(props: {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-4 xs:space-y-6 lg:space-y-8 animate-in fade-in duration-700">
       {/* 상단 통합 헤더 및 탭 */}
-      <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="bg-slate-900 text-white px-5 py-2.5 rounded-2xl shadow-xl shadow-slate-200">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">지점</span>
-              <span className="text-lg font-black">{gymName || "선택 필요"}</span>
+      <div className="bg-white rounded-2xl xs:rounded-3xl lg:rounded-[32px] p-3 xs:p-4 sm:p-5 lg:p-6 shadow-sm border border-slate-100">
+        <div className="flex flex-col gap-4 lg:gap-6">
+          {/* 상단: 지점명 + 액션 버튼 */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="bg-slate-900 text-white px-3 xs:px-4 sm:px-5 py-2 xs:py-2.5 rounded-xl xs:rounded-2xl shadow-xl shadow-slate-200">
+              <span className="text-[8px] xs:text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">지점</span>
+              <span className="text-sm xs:text-base lg:text-lg font-black">{gymName || "선택 필요"}</span>
             </div>
-            
-            <div className="h-12 w-px bg-slate-100 hidden lg:block" />
 
-            <div className="bg-slate-50 p-1 rounded-2xl flex gap-1">
-              {[
-                { id: "sales", label: isStaff ? "내 매출" : "매출 관리", icon: TrendingUp, color: "text-blue-600" },
-                ...(!isStaff ? [
-                  { id: "expenses", label: "지출 관리", icon: TrendingDown, color: "text-rose-600" },
-                  { id: "new_inquiries", label: "신규 관리", icon: MessageSquare, color: "text-indigo-600" },
-                  { id: "renewals", label: "리뉴 관리", icon: Plus, color: "text-emerald-600" },
-                ] : []),
-              ].map((tab) => (
+            {/* 모바일: 액션 버튼 */}
+            <div className="flex items-center gap-1.5 xs:gap-2">
+              {activeTab === "sales" && (
+                <>
+                  <Button onClick={handleAddNewRow} className="h-9 xs:h-10 lg:h-11 px-3 xs:px-4 lg:px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg xs:rounded-xl font-black shadow-lg shadow-blue-100 gap-1.5 xs:gap-2 transition-all hover:-translate-y-0.5 text-xs xs:text-sm">
+                    <Plus className="w-3.5 xs:w-4 h-3.5 xs:h-4" />
+                    <span className="hidden xs:inline">매출 등록</span>
+                    <span className="xs:hidden">등록</span>
+                  </Button>
+                  <div className="flex items-center gap-1 xs:gap-1.5">
+                    <Button variant="outline" onClick={() => setIsSettingsOpen(true)} className="h-9 xs:h-10 lg:h-11 w-9 xs:w-10 lg:w-11 p-0 rounded-lg xs:rounded-xl border-slate-200 hover:bg-slate-50">
+                      <Settings className="w-3.5 xs:w-4 h-3.5 xs:h-4 text-slate-500" />
+                    </Button>
+                    <Button variant="outline" onClick={handleExportExcel} className="h-9 xs:h-10 lg:h-11 w-9 xs:w-10 lg:w-11 p-0 rounded-lg xs:rounded-xl border-slate-200 hover:bg-slate-50">
+                      <Download className="w-3.5 xs:w-4 h-3.5 xs:h-4 text-slate-500" />
+                    </Button>
+                  </div>
+                </>
+              )}
+              {activeTab === "expenses" && (
+                <>
+                  <Button onClick={expensesData.addNewRow} className="h-9 xs:h-10 lg:h-11 px-3 xs:px-4 lg:px-6 bg-rose-600 hover:bg-rose-700 text-white rounded-lg xs:rounded-xl font-black shadow-lg shadow-rose-100 gap-1.5 xs:gap-2 transition-all hover:-translate-y-0.5 text-xs xs:text-sm">
+                    <Plus className="w-3.5 xs:w-4 h-3.5 xs:h-4" />
+                    <span className="hidden xs:inline">지출 등록</span>
+                    <span className="xs:hidden">등록</span>
+                  </Button>
+                  <Button variant="outline" onClick={() => expensesData.setIsSettingsOpen(true)} className="h-9 xs:h-10 lg:h-11 w-9 xs:w-10 lg:w-11 p-0 rounded-lg xs:rounded-xl border-slate-200">
+                    <Settings className="w-3.5 xs:w-4 h-3.5 xs:h-4 text-slate-500" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* 하단: 탭 네비게이션 + 추가 버튼 */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* 탭 네비게이션 - 모바일에서 가로 스크롤 */}
+            <div className="overflow-x-auto scrollbar-hide -mx-3 xs:-mx-4 sm:mx-0 px-3 xs:px-4 sm:px-0">
+              <div className="bg-slate-50 p-1 rounded-xl xs:rounded-2xl flex gap-1 min-w-max">
+                {[
+                  { id: "sales", label: isStaff ? "내 매출" : "매출 관리", shortLabel: isStaff ? "매출" : "매출", icon: TrendingUp, color: "text-blue-600" },
+                  ...(!isStaff ? [
+                    { id: "expenses", label: "지출 관리", shortLabel: "지출", icon: TrendingDown, color: "text-rose-600" },
+                    { id: "new_inquiries", label: "신규 관리", shortLabel: "신규", icon: MessageSquare, color: "text-indigo-600" },
+                    { id: "renewals", label: "리뉴 관리", shortLabel: "리뉴", icon: Plus, color: "text-emerald-600" },
+                  ] : []),
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabChange(tab.id as any)}
+                    className={cn(
+                      "flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 lg:px-5 py-2 xs:py-2.5 rounded-lg xs:rounded-xl text-xs xs:text-sm font-black transition-all whitespace-nowrap",
+                      activeTab === tab.id
+                        ? "bg-white shadow-md " + tab.color
+                        : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
+                    )}
+                  >
+                    <tab.icon className="w-3.5 xs:w-4 h-3.5 xs:h-4" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden">{tab.shortLabel}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 추가 액션 버튼들 (비교분석, 실적성과표) */}
+            {!isStaff && (
+              <div className="flex items-center gap-2 xs:gap-3">
                 <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id as any)}
+                  onClick={() => setIsComparisonModalOpen(true)}
+                  className="flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 lg:px-5 py-2 xs:py-2.5 rounded-xl xs:rounded-2xl text-xs xs:text-sm font-black transition-all h-9 xs:h-10 lg:h-12 bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-200 hover:from-indigo-600 hover:to-blue-700"
+                >
+                  <GitCompare className="w-3.5 xs:w-4 h-3.5 xs:h-4" />
+                  <span className="hidden xs:inline">비교분석</span>
+                  <span className="xs:hidden">비교</span>
+                </button>
+
+                <button
+                  onClick={() => handleTabChange("analysis")}
                   className={cn(
-                    "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-black transition-all",
-                    activeTab === tab.id
-                      ? "bg-white shadow-md " + tab.color
-                      : "text-slate-400 hover:text-slate-600 hover:bg-white/50"
+                    "flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 lg:px-6 py-2 xs:py-2.5 rounded-xl xs:rounded-2xl text-xs xs:text-sm font-black transition-all h-9 xs:h-10 lg:h-12",
+                    activeTab === "analysis"
+                      ? "bg-purple-600 text-white shadow-lg shadow-purple-100"
+                      : "bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-100"
                   )}
                 >
-                  <tab.icon className="w-4 h-4" />
-                  {tab.label}
+                  <BarChart3 className="w-3.5 xs:w-4 h-3.5 xs:h-4" />
+                  <span className="hidden xs:inline">실적성과표</span>
+                  <span className="xs:hidden">실적</span>
                 </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* 비교분석 버튼 (staff는 숨김) */}
-            {!isStaff && (
-              <button
-                onClick={() => setIsComparisonModalOpen(true)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-black transition-all h-12 bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg shadow-indigo-200 hover:from-indigo-600 hover:to-blue-700"
-              >
-                <GitCompare className="w-4 h-4" />
-                비교분석
-              </button>
-            )}
-
-            {/* 실적성과표 버튼 - 개별 배치 (staff는 숨김) */}
-            {!isStaff && (
-              <button
-                onClick={() => handleTabChange("analysis")}
-                className={cn(
-                  "flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-black transition-all h-12",
-                  activeTab === "analysis"
-                    ? "bg-purple-600 text-white shadow-lg shadow-purple-100"
-                    : "bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-100"
-                )}
-              >
-                <BarChart3 className="w-4 h-4" />
-                실적성과표
-              </button>
-            )}
-
-            {!isStaff && <div className="h-8 w-px bg-slate-100 mx-2" />}
-
-            <div className="flex items-center gap-2">
-              {activeTab === "sales" && (
-              <>
-                <Button onClick={handleAddNewRow} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black shadow-lg shadow-blue-100 gap-2 transition-all hover:-translate-y-0.5">
-                  <Plus className="w-4 h-4" />
-                  매출 등록
-                </Button>
-                <div className="flex items-center gap-1.5 ml-2">
-                  <Button variant="outline" onClick={() => setIsSettingsOpen(true)} className="h-11 w-11 p-0 rounded-xl border-slate-200 hover:bg-slate-50">
-                    <Settings className="w-4 h-4 text-slate-500" />
-                  </Button>
-                  <Button variant="outline" onClick={handleExportExcel} className="h-11 w-11 p-0 rounded-xl border-slate-200 hover:bg-slate-50">
-                    <Download className="w-4 h-4 text-slate-500" />
-                  </Button>
-                </div>
-              </>
-            )}
-            {activeTab === "expenses" && (
-              <>
-                <Button onClick={expensesData.addNewRow} className="h-11 px-6 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black shadow-lg shadow-rose-100 gap-2 transition-all hover:-translate-y-0.5">
-                  <Plus className="w-4 h-4" />
-                  지출 등록
-                </Button>
-                <Button variant="outline" onClick={() => expensesData.setIsSettingsOpen(true)} className="h-11 w-11 p-0 rounded-xl border-slate-200 ml-2">
-                  <Settings className="w-4 h-4 text-slate-500" />
-                </Button>
-              </>
+              </div>
             )}
           </div>
-        </div>
         </div>
       </div>
 
@@ -719,59 +725,64 @@ export default function SalesPage(props: {
       ) : activeTab === "expenses" ? (
         <>
           {/* 지출 필터 */}
-          <div className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-sm animate-in fade-in duration-500">
-            <div className="flex flex-wrap items-center gap-4">
-              {/* 빠른 선택 */}
-              <div className="flex gap-2">
-                {[
-                  { value: "today", label: "오늘" },
-                  { value: "thisWeek", label: "이번 주" },
-                  { value: "thisMonth", label: "이번 달" },
-                  { value: "lastMonth", label: "지난 달" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => expensesData.handleQuickSelect(option.value)}
-                    className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-black transition-all",
-                      expensesData.quickSelect === option.value
-                        ? "bg-rose-600 text-white shadow-sm"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+          <div className="bg-white rounded-2xl xs:rounded-3xl lg:rounded-[28px] p-3 xs:p-4 lg:p-5 border border-gray-100 shadow-sm animate-in fade-in duration-500">
+            <div className="flex flex-col gap-3 xs:gap-4">
+              {/* 빠른 선택 - 모바일에서 가로 스크롤 */}
+              <div className="overflow-x-auto scrollbar-hide -mx-3 xs:-mx-4 lg:mx-0 px-3 xs:px-4 lg:px-0">
+                <div className="flex gap-1.5 xs:gap-2 min-w-max">
+                  {[
+                    { value: "today", label: "오늘" },
+                    { value: "thisWeek", label: "이번 주" },
+                    { value: "thisMonth", label: "이번 달" },
+                    { value: "lastMonth", label: "지난 달" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => expensesData.handleQuickSelect(option.value)}
+                      className={cn(
+                        "px-3 xs:px-4 py-2 rounded-lg xs:rounded-xl text-[10px] xs:text-xs font-black transition-all whitespace-nowrap",
+                        expensesData.quickSelect === option.value
+                          ? "bg-rose-600 text-white shadow-sm"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* 날짜 필터 */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={expensesData.startDate}
-                  onChange={(e) => expensesData.setStartDate(e.target.value)}
-                  className="h-10 px-3 rounded-xl border border-slate-200 text-sm font-bold"
-                />
-                <span className="text-slate-400">~</span>
-                <input
-                  type="date"
-                  value={expensesData.endDate}
-                  onChange={(e) => expensesData.setEndDate(e.target.value)}
-                  className="h-10 px-3 rounded-xl border border-slate-200 text-sm font-bold"
-                />
-              </div>
+              {/* 날짜 + 카테고리 필터 */}
+              <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2 xs:gap-3">
+                {/* 날짜 필터 */}
+                <div className="flex items-center gap-1.5 xs:gap-2 flex-1 xs:flex-none">
+                  <input
+                    type="date"
+                    value={expensesData.startDate}
+                    onChange={(e) => expensesData.setStartDate(e.target.value)}
+                    className="h-9 xs:h-10 px-2 xs:px-3 rounded-lg xs:rounded-xl border border-slate-200 text-xs xs:text-sm font-bold flex-1 xs:flex-none xs:w-32 lg:w-36"
+                  />
+                  <span className="text-slate-400 text-xs">~</span>
+                  <input
+                    type="date"
+                    value={expensesData.endDate}
+                    onChange={(e) => expensesData.setEndDate(e.target.value)}
+                    className="h-9 xs:h-10 px-2 xs:px-3 rounded-lg xs:rounded-xl border border-slate-200 text-xs xs:text-sm font-bold flex-1 xs:flex-none xs:w-32 lg:w-36"
+                  />
+                </div>
 
-              {/* 카테고리 필터 */}
-              <select
-                value={expensesData.categoryFilter}
-                onChange={(e) => expensesData.setCategoryFilter(e.target.value)}
-                className="h-10 px-3 rounded-xl border border-slate-200 text-sm font-bold bg-white"
-              >
-                <option value="all">전체 카테고리</option>
-                {expensesData.allCategories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                {/* 카테고리 필터 */}
+                <select
+                  value={expensesData.categoryFilter}
+                  onChange={(e) => expensesData.setCategoryFilter(e.target.value)}
+                  className="h-9 xs:h-10 px-2 xs:px-3 rounded-lg xs:rounded-xl border border-slate-200 text-xs xs:text-sm font-bold bg-white"
+                >
+                  <option value="all">전체 카테고리</option>
+                  {expensesData.allCategories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

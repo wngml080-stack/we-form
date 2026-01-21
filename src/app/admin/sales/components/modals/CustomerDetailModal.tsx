@@ -125,7 +125,7 @@ export function CustomerDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[40px] [&>button]:hidden">
+      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
         <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <div className="flex items-center justify-between relative z-10">
@@ -158,7 +158,7 @@ export function CustomerDetailModal({
           </div>
 
           {/* 퍼널 경로 */}
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">퍼널 경로</h4>
             <div className="flex items-center gap-3">
               {customer.inquiry && (
@@ -195,7 +195,7 @@ export function CustomerDetailModal({
                 <div className="w-1.5 h-5 bg-blue-500 rounded-full"></div>
                 <h3 className="text-lg font-black text-slate-900">문의 정보</h3>
               </div>
-              <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">문의 채널</p>
@@ -241,7 +241,7 @@ export function CustomerDetailModal({
                 <div className="w-1.5 h-5 bg-purple-500 rounded-full"></div>
                 <h3 className="text-lg font-black text-slate-900">예약 정보</h3>
               </div>
-              <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">예약 유형</p>
@@ -282,7 +282,7 @@ export function CustomerDetailModal({
                 <div className="w-1.5 h-5 bg-emerald-500 rounded-full"></div>
                 <h3 className="text-lg font-black text-slate-900">등록 정보</h3>
               </div>
-              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-[32px] p-6 text-white shadow-xl shadow-emerald-200">
+              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 text-white shadow-xl shadow-emerald-200">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest mb-1">상품명</p>
@@ -314,7 +314,7 @@ export function CustomerDetailModal({
           )}
 
           {/* 활동 기록 */}
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-6 border border-slate-100 shadow-sm">
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">활동 기록</h4>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3">

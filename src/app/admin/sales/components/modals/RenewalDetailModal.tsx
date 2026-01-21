@@ -64,7 +64,7 @@ export function RenewalDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md w-[calc(100%-2rem)] bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[32px] sm:rounded-[40px] [&>button]:hidden">
+      <DialogContent className="max-w-md w-[calc(100%-2rem)] bg-[#f8fafc] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
         {/* 헤더 */}
         <DialogHeader className="px-6 sm:px-8 py-5 sm:py-6 bg-slate-900 flex-shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
