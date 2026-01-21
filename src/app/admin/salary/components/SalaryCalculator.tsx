@@ -5,19 +5,7 @@ import { useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
     Select,
     SelectContent,
@@ -25,71 +13,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { calculateMonthlyStats } from "@/lib/schedule-utils";
-import { Calculator, Download, Save, AlertTriangle, CheckCircle, ExternalLink, Settings, Info, Plus, BarChart3 } from "lucide-react";
+import { Calculator, Download, Save, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
 import Link from "next/link";
-
-// 타입 정의
-type StaffSalaryResult = {
-    staff_id: string;
-    staff_name: string;
-    job_position?: string;
-    base_salary: number; // 기본급 합계
-    incentive_salary: number; // 인센티브 합계
-    class_salary: number; // 수업료 합계
-    tax_deduction: number; // 세금 공제 합계 (음수로 저장)
-    total_salary: number; // 세전 총 급여
-    net_salary: number; // 세후 실수령액 (total_salary - tax_deduction)
-    details: {
-        rule_name: string;
-        amount: number;
-        calculation: string; // "50회 x 20,000원" 등 설명
-        isDeduction?: boolean; // 공제 항목 여부
-    }[];
-    stats: any; // 근무 통계
-    reportStatus: 'approved' | 'submitted' | 'rejected' | 'none'; // 보고서 승인 상태
-};
-
-type SalaryTemplate = {
-    id: string;
-    name: string;
-    items: { rule: { id: string; name: string; calculation_type: string; default_parameters: any } }[];
-};
-
-type StaffSalarySetting = {
-    staff_id: string;
-    template_id: string | null;
-    template_name?: string;
-    personal_parameters: any;
-};
-
-// 직원별 실적 통계 타입
-type StaffStats = {
-    staff_id: string;
-    staff_name: string;
-    job_position?: string;
-    pt_total_count: number;
-    pt_inside_count: number;
-    pt_outside_count: number;
-    pt_weekend_count: number;
-    pt_holiday_count: number;
-    ot_count: number;
-    ot_inbody_count: number;
-    personal_inside_count: number;
-    personal_outside_count: number;
-    reserved_pt_count: number;
-    reserved_ot_count: number;
-    cancelled_pt_count: number;
-    reportStatus: 'approved' | 'submitted' | 'rejected' | 'none';
-};
+import { SalaryResultsTable, SalaryTotalFooter } from "./SalaryResultsTable";
+import { SalaryMobileCards } from "./SalaryMobileCards";
+import { SalarySettingsModal } from "./SalarySettingsModal";
+import type {
+    StaffSalaryResult,
+    SalaryTemplate,
+    StaffSalarySetting,
+    StaffStats,
+    ReportApprovalStatus,
+} from "../types";
 
 export default function SalaryCalculator() {
     const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
@@ -138,8 +74,6 @@ export default function SalaryCalculator() {
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
     const [personalParams, setPersonalParams] = useState<any>({});
     const [staffSalarySettings, setStaffSalarySettings] = useState<Record<string, StaffSalarySetting>>({});
-    const [calcAmount, setCalcAmount] = useState("");
-    const [calcRate, setCalcRate] = useState("");
 
     const supabase = createSupabaseClient();
 
@@ -466,48 +400,8 @@ export default function SalaryCalculator() {
         setIsSettingModalOpen(true);
     };
 
-    // 템플릿 변경
-    const handleTemplateChange = (templateId: string) => {
-        setSelectedTemplateId(templateId);
-
-        // 선택한 템플릿의 기본값으로 personalParams 초기화
-        const template = templates.find(t => t.id === templateId);
-        if (template && template.items) {
-            const defaultParams: Record<string, any> = {};
-            template.items.forEach(({ rule }) => {
-                if (rule.default_parameters) {
-                    defaultParams[rule.id] = { ...rule.default_parameters };
-                }
-            });
-            setPersonalParams(defaultParams);
-        } else {
-            setPersonalParams({});
-        }
-    };
-
-    // 파라미터 변경
-    const handleParamChange = (ruleId: string, key: string, value: any) => {
-        if (key === 'tiers') {
-            setPersonalParams((prev: any) => ({
-                ...prev,
-                [ruleId]: { ...prev[ruleId], [key]: value }
-            }));
-            return;
-        }
-
-        let finalValue = value;
-        if (typeof value === 'string' && !isNaN(Number(value)) && value !== "") {
-            finalValue = Number(value);
-        }
-
-        setPersonalParams((prev: any) => ({
-            ...prev,
-            [ruleId]: { ...prev[ruleId], [key]: finalValue }
-        }));
-    };
-
-    // 급여 설정 저장
-    const handleSaveSalarySetting = async () => {
+    // 급여 설정 저장 (모달에서 호출)
+    const handleSaveSettingFromModal = async (templateId: string, params: Record<string, any>) => {
         if (!selectedStaffForSetting) return;
 
         try {
@@ -529,8 +423,8 @@ export default function SalaryCalculator() {
 
             if (existing) {
                 const { error: updateError } = await supabase.from("staff_salary_settings").update({
-                    template_id: selectedTemplateId || null,
-                    personal_parameters: personalParams,
+                    template_id: templateId || null,
+                    personal_parameters: params,
                     valid_from: new Date().toISOString()
                 }).eq("id", existing.id);
 
@@ -538,8 +432,8 @@ export default function SalaryCalculator() {
             } else {
                 const { error: insertError } = await supabase.from("staff_salary_settings").insert({
                     staff_id: selectedStaffForSetting.staff_id,
-                    template_id: selectedTemplateId || null,
-                    personal_parameters: personalParams,
+                    template_id: templateId || null,
+                    personal_parameters: params,
                     valid_from: new Date().toISOString()
                 });
 
@@ -557,39 +451,6 @@ export default function SalaryCalculator() {
             toast.error(`저장 실패: ${errorMessage}`);
         }
     };
-
-    // 그룹핑 함수 - calculation_type 기반으로 분류
-    const currentTemplate = templates.find(t => t.id === selectedTemplateId);
-    const groupedRules = {
-        basic: [] as any[],      // 기본급, 지원금, 시급, 기타
-        class: [] as any[],      // 수업료
-        incentive: [] as any[],  // 매출인센티브, 개인인센티브, 상금
-        deduction: [] as any[],  // 세금 공제
-        others: [] as any[]
-    };
-
-    if (currentTemplate) {
-        currentTemplate.items.forEach(({ rule }) => {
-            const type = rule.calculation_type;
-            // 기본급, 지원금, 시급, 기타 → basic 그룹
-            if (['base_salary', 'allowance', 'hourly', 'etc', 'fixed'].includes(type)) {
-                groupedRules.basic.push(rule);
-            // 수업료 → class 그룹
-            } else if (type === 'class_fee') {
-                groupedRules.class.push(rule);
-            // 매출인센티브, 개인인센티브, 상금 → incentive 그룹
-            } else if (['sales_incentive', 'personal_incentive', 'bonus', 'percentage_total', 'percentage_personal'].includes(type)) {
-                groupedRules.incentive.push(rule);
-            // 세금 공제 → deduction 그룹
-            } else if (type === 'tax_deduction') {
-                groupedRules.deduction.push(rule);
-            } else {
-                groupedRules.others.push(rule);
-            }
-        });
-    }
-
-    const calculatedIncentive = (parseFloat(calcAmount || "0") * (parseFloat(calcRate || "0") / 100)).toLocaleString();
 
     // 월별 보고서 승인 상태 확인
     const checkReportApprovalStatus = async () => {
@@ -1166,693 +1027,39 @@ export default function SalaryCalculator() {
                     <div className="bg-white rounded-xl xs:rounded-2xl sm:rounded-[40px] border border-gray-100 shadow-xl shadow-slate-100/50 overflow-hidden h-full flex flex-col transition-all duration-500 hover:shadow-2xl hover:shadow-blue-100/30">
                         {/* 모바일 카드 뷰 */}
                         <div className="md:hidden">
-                            {isLoading ? (
-                                <div className="flex flex-col items-center justify-center py-16 xs:py-20 animate-pulse">
-                                    <Calculator className="w-10 h-10 xs:w-12 xs:h-12 text-blue-200 mb-3 xs:mb-4" />
-                                    <p className="text-slate-400 font-black text-[10px] xs:text-xs uppercase tracking-widest">Calculating...</p>
-                                </div>
-                            ) : results.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 xs:py-16 px-4">
-                                    <div className="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 bg-amber-50 rounded-xl xs:rounded-2xl flex items-center justify-center mb-4 xs:mb-6">
-                                        <AlertTriangle className="w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 text-amber-400" />
-                                    </div>
-                                    <h4 className="text-sm xs:text-base sm:text-lg font-black text-slate-700 tracking-tight mb-1.5 xs:mb-2 text-center">승인된 보고서가 없습니다</h4>
-                                    <p className="text-xs xs:text-sm font-bold text-slate-400 mb-4 xs:mb-6 text-center">
-                                        급여 정산을 위해 먼저 직원 보고서를 승인해주세요.
-                                    </p>
-                                    <Link href="/admin/reports">
-                                        <Button className="h-8 xs:h-9 sm:h-10 px-3 xs:px-4 sm:px-5 bg-[#2F80ED] hover:bg-[#1c6cd7] text-white rounded-lg xs:rounded-xl font-black text-[10px] xs:text-xs shadow-lg shadow-blue-100 flex items-center gap-1.5 xs:gap-2 transition-all">
-                                            <ExternalLink className="w-3.5 h-3.5 xs:w-4 xs:h-4" />
-                                            보고서 승인하러 가기
-                                        </Button>
-                                    </Link>
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-slate-100">
-                                    {results.map((result) => (
-                                        <div key={result.staff_id} className="p-3 xs:p-4 space-y-2 xs:space-y-3">
-                                            {/* 직원 정보 + 실수령액 */}
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center gap-1.5 xs:gap-2 flex-wrap">
-                                                        <span className="font-black text-slate-900 text-sm xs:text-base tracking-tighter">{result.staff_name}</span>
-                                                        {result.total_salary === 0 && result.details.some(d => d.rule_name === "설정 없음") && (
-                                                            <Badge className="bg-amber-50 text-amber-600 border border-amber-100 font-black text-[8px] xs:text-[9px] px-1 xs:px-1.5 py-0 rounded-md">
-                                                                템플릿 미설정
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-[9px] xs:text-[10px] font-bold text-slate-400">
-                                                        {result.job_position || "Staff"}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-start gap-2">
-                                                    <div className="text-right shrink-0">
-                                                        <div className="text-base xs:text-lg sm:text-xl font-black text-blue-600 tracking-tighter">
-                                                            {result.net_salary.toLocaleString()}
-                                                        </div>
-                                                        <span className="text-[8px] xs:text-[10px] font-bold text-slate-300 uppercase">실수령액</span>
-                                                    </div>
-                                                    <Button
-                                                        onClick={() => handleOpenSettingModal(result)}
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all shrink-0"
-                                                    >
-                                                        <Settings className="w-3.5 h-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            {/* PT/OT/개인 실적 섹션 */}
-                                            <div className="space-y-1.5">
-                                                {/* PT */}
-                                                <div className="bg-blue-50/50 rounded-lg px-2.5 py-1.5">
-                                                    <div className="flex items-center gap-1.5 flex-wrap text-[9px]">
-                                                        <span className="text-blue-600 font-black">PT</span>
-                                                        <span className="text-slate-300">|</span>
-                                                        <span><span className="text-blue-600 font-bold">근무내</span> {result.stats.pt_inside_count}회</span>
-                                                        <span className="text-slate-300">/</span>
-                                                        <span><span className="text-orange-500 font-bold">근무외</span> {result.stats.pt_outside_count}회</span>
-                                                        <span className="text-slate-300">/</span>
-                                                        <span><span className="text-purple-600 font-bold">주말</span> {result.stats.pt_weekend_count}회</span>
-                                                        <span className="text-slate-300">/</span>
-                                                        <span><span className="text-slate-400 font-bold">서비스</span> {result.stats.cancelled_pt_count || 0}회</span>
-                                                    </div>
-                                                </div>
-                                                {/* OT & 개인일정 */}
-                                                <div className="flex gap-1.5">
-                                                    <div className="flex-1 bg-teal-50/50 rounded-lg px-2.5 py-1.5">
-                                                        <div className="flex items-center gap-1.5 text-[9px]">
-                                                            <span className="text-teal-600 font-black">OT</span>
-                                                            <span className="text-slate-300">|</span>
-                                                            <span>OT {result.stats.ot_count || 0}회</span>
-                                                            <span className="text-slate-300">/</span>
-                                                            <span>인바디 {result.stats.ot_inbody_count || 0}회</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-1 bg-indigo-50/50 rounded-lg px-2.5 py-1.5">
-                                                        <div className="flex items-center gap-1.5 text-[9px]">
-                                                            <span className="text-indigo-500 font-black">개인</span>
-                                                            <span className="text-slate-300">|</span>
-                                                            <span>내 {result.stats.personal_inside_count || 0}h</span>
-                                                            <span className="text-slate-300">/</span>
-                                                            <span>외 {result.stats.personal_outside_count || 0}h</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                {/* PT 매출 */}
-                                                <div className="bg-emerald-50/50 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
-                                                    <span className="text-emerald-600 font-black text-[9px]">PT 매출</span>
-                                                    <span className="text-emerald-700 font-black text-xs">{(monthlySalesByTrainer[result.staff_id] || 0).toLocaleString()}원</span>
-                                                </div>
-                                            </div>
-
-                                            {/* 급여 내역 */}
-                                            <div className="grid grid-cols-4 gap-1 xs:gap-1.5 text-center">
-                                                <div className="bg-slate-50 rounded-lg p-1.5 xs:p-2">
-                                                    <p className="text-[7px] xs:text-[8px] font-black text-slate-400 mb-0.5">기본급</p>
-                                                    <p className="text-[10px] xs:text-[11px] font-bold text-slate-600">{result.base_salary.toLocaleString()}<span className="text-[7px] ml-0.5">원</span></p>
-                                                </div>
-                                                <div className="bg-emerald-50 rounded-lg p-1.5 xs:p-2">
-                                                    <p className="text-[7px] xs:text-[8px] font-black text-emerald-500 mb-0.5">수업료</p>
-                                                    <p className="text-[10px] xs:text-[11px] font-bold text-emerald-600">{result.class_salary.toLocaleString()}<span className="text-[7px] ml-0.5">원</span></p>
-                                                </div>
-                                                <div className="bg-orange-50 rounded-lg p-1.5 xs:p-2">
-                                                    <p className="text-[7px] xs:text-[8px] font-black text-orange-400 mb-0.5">인센티브</p>
-                                                    <p className="text-[10px] xs:text-[11px] font-bold text-orange-500">{result.incentive_salary.toLocaleString()}<span className="text-[7px] ml-0.5">원</span></p>
-                                                </div>
-                                                <div className="bg-red-50 rounded-lg p-1.5 xs:p-2">
-                                                    <p className="text-[7px] xs:text-[8px] font-black text-red-400 mb-0.5">공제</p>
-                                                    <p className="text-[10px] xs:text-[11px] font-bold text-red-500">{result.tax_deduction > 0 ? `-${result.tax_deduction.toLocaleString()}원` : '-'}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            <SalaryMobileCards
+                                results={results as StaffSalaryResult[]}
+                                isLoading={isLoading}
+                                monthlySalesByTrainer={monthlySalesByTrainer}
+                                onOpenSettings={handleOpenSettingModal}
+                            />
                         </div>
 
                         {/* 데스크톱 테이블 뷰 */}
                         <div className="hidden md:block overflow-x-auto flex-1">
-                            <Table className="border-collapse w-full">
-                                <TableHeader>
-                                    <TableRow className="bg-slate-50/80 border-b border-gray-100 hover:bg-slate-50/80">
-                                        <TableHead className="px-4 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">직원 정보</TableHead>
-                                        <TableHead className="px-2 py-5 text-center text-xs font-black text-blue-600 uppercase tracking-widest whitespace-nowrap">PT 세션</TableHead>
-                                        <TableHead className="px-2 py-5 text-center text-xs font-black text-teal-600 uppercase tracking-widest whitespace-nowrap">OT 세션</TableHead>
-                                        <TableHead className="px-2 py-5 text-center text-xs font-black text-indigo-500 uppercase tracking-widest whitespace-nowrap">개인 일정</TableHead>
-                                        <TableHead className="px-4 py-5 text-center text-xs font-black text-emerald-600 uppercase tracking-widest whitespace-nowrap">PT 매출액</TableHead>
-                                        <TableHead className="px-3 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">기본급</TableHead>
-                                        <TableHead className="px-3 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">수업료</TableHead>
-                                        <TableHead className="px-3 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">인센티브</TableHead>
-                                        <TableHead className="px-3 py-5 text-center text-xs font-black text-rose-500 uppercase tracking-widest whitespace-nowrap">공제액</TableHead>
-                                        <TableHead className="px-6 py-5 text-center text-xs font-black text-[#2F80ED] uppercase tracking-widest whitespace-nowrap">실수령액 (예상)</TableHead>
-                                        <TableHead className="px-2 py-5 w-12"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {isLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={11} className="px-8 py-40 text-center">
-                                                <div className="flex flex-col items-center justify-center animate-pulse">
-                                                    <Calculator className="w-12 h-12 text-blue-200 mb-4" />
-                                                    <p className="text-slate-400 font-black text-xs uppercase tracking-widest">Calculating...</p>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : results.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={11} className="px-8 py-32 text-center">
-                                                <div className="flex flex-col items-center justify-center">
-                                                    <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-6">
-                                                        <AlertTriangle className="w-8 h-8 text-amber-400" />
-                                                    </div>
-                                                    <h4 className="text-lg font-black text-slate-700 tracking-tight mb-2">승인된 보고서가 없습니다</h4>
-                                                    <p className="text-sm font-bold text-slate-400 mb-6">
-                                                        급여 정산을 위해 먼저 직원 보고서를 승인해주세요.
-                                                    </p>
-                                                    <Link href="/admin/reports">
-                                                        <Button className="h-10 px-5 bg-[#2F80ED] hover:bg-[#1c6cd7] text-white rounded-xl font-black text-xs shadow-lg shadow-blue-100 flex items-center gap-2 transition-all hover:-translate-y-0.5">
-                                                            <ExternalLink className="w-4 h-4" />
-                                                            보고서 승인하러 가기
-                                                        </Button>
-                                                    </Link>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : results.map((result) => (
-                                        <TableRow key={result.staff_id} className="group hover:bg-blue-50/40 transition-all duration-300 border-b border-slate-50">
-                                            {/* 직원 정보 */}
-                                            <TableCell className="px-4 py-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                                                        {result.staff_name.charAt(0)}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-black text-slate-900 text-sm tracking-tight">{result.staff_name}</span>
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{result.job_position || "Staff"}</span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* PT 섹션: 근무내/근무외/주말&휴일/서비스,취소,노쇼 */}
-                                            {/* PT 섹션 */}
-                                            <TableCell className="px-2 py-6 text-center">
-                                                <div className="inline-flex flex-col gap-1 bg-blue-50/30 px-3 py-2 rounded-xl border border-blue-50 min-w-[120px]">
-                                                    <div className="flex items-center justify-center gap-2 text-[10px]">
-                                                        <span className="text-blue-600 font-black">내</span>
-                                                        <span className="font-black text-slate-700">{result.stats.pt_inside_count}</span>
-                                                        <span className="text-orange-500 font-black ml-1">외</span>
-                                                        <span className="font-black text-slate-700">{result.stats.pt_outside_count}</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-center gap-2 text-[10px]">
-                                                        <span className="text-purple-600 font-black">주</span>
-                                                        <span className="font-black text-slate-700">{result.stats.pt_weekend_count}</span>
-                                                        <span className="text-slate-400 font-black ml-1">서</span>
-                                                        <span className="font-black text-slate-500">{result.stats.cancelled_pt_count || 0}</span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* OT 섹션: OT/인바디 */}
-                                            {/* OT 섹션 */}
-                                            <TableCell className="px-2 py-6 text-center">
-                                                <div className="inline-flex flex-col gap-1 bg-teal-50/30 px-3 py-2 rounded-xl border border-teal-50 min-w-[80px]">
-                                                    <div className="flex items-center justify-center gap-2 text-[10px]">
-                                                        <span className="text-teal-600 font-black">OT</span>
-                                                        <span className="font-black text-slate-700">{result.stats.ot_count || 0}</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-center gap-2 text-[10px]">
-                                                        <span className="text-teal-500 font-black">IB</span>
-                                                        <span className="font-black text-slate-700">{result.stats.ot_inbody_count || 0}</span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* 개인일정 섹션: 근무내/근무외 */}
-                                            <TableCell className="px-2 py-6 text-center">
-                                                <div className="inline-flex flex-col gap-1 bg-indigo-50/30 px-3 py-2 rounded-xl border border-indigo-50 min-w-[90px]">
-                                                    <div className="flex items-center justify-center gap-2 text-[10px]">
-                                                        <span className="text-indigo-500 font-black">내</span>
-                                                        <span className="font-black text-slate-700">{result.stats.personal_inside_count || 0}h</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-center gap-2 text-[10px]">
-                                                        <span className="text-indigo-400 font-black">외</span>
-                                                        <span className="font-black text-slate-700">{result.stats.personal_outside_count || 0}h</span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* PT 매출 */}
-                                            <TableCell className="px-4 py-6 text-center">
-                                                <div className="text-sm font-black text-emerald-600">
-                                                    {(monthlySalesByTrainer[result.staff_id] || 0).toLocaleString()}<span className="text-[10px] font-bold text-emerald-400 ml-0.5">원</span>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* 기본급 */}
-                                            <TableCell className="px-2 py-6 text-center">
-                                                <div className="inline-block px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 font-bold text-slate-500 text-sm min-w-[80px]">
-                                                    {result.base_salary.toLocaleString()}
-                                                </div>
-                                            </TableCell>
-
-                                            {/* 수업료 */}
-                                            <TableCell className="px-2 py-6 text-center">
-                                                <div className="inline-block px-3 py-1.5 bg-emerald-50/50 rounded-lg border border-emerald-100 font-bold text-emerald-600 text-sm min-w-[80px]">
-                                                    {result.class_salary.toLocaleString()}
-                                                </div>
-                                            </TableCell>
-
-                                            {/* 인센티브 */}
-                                            <TableCell className="px-2 py-6 text-center">
-                                                <div className="inline-block px-3 py-1.5 bg-orange-50/50 rounded-lg border border-orange-100 font-bold text-orange-500 text-sm min-w-[80px]">
-                                                    {result.incentive_salary.toLocaleString()}
-                                                </div>
-                                            </TableCell>
-
-                                            {/* 공제액 */}
-                                            <TableCell className="px-2 py-6 text-center text-rose-500 font-bold text-sm">
-                                                {result.tax_deduction > 0 ? `-${result.tax_deduction.toLocaleString()}` : '-'}
-                                            </TableCell>
-
-                                            {/* 실수령액 */}
-                                            <TableCell className="px-6 py-6 text-center">
-                                                <div className="text-base font-black text-slate-900 tracking-tighter group-hover:text-[#2F80ED] transition-colors">
-                                                    {result.net_salary.toLocaleString()}
-                                                    <span className="text-[9px] ml-1 opacity-30 font-bold uppercase tracking-widest">KRW</span>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* 설정 버튼 */}
-                                            <TableCell className="px-2 py-6 text-center">
-                                                <Button
-                                                    onClick={() => handleOpenSettingModal(result)}
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-9 w-9 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
-                                                >
-                                                    <Settings className="w-4.5 h-4.5" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                            <SalaryResultsTable
+                                results={results as StaffSalaryResult[]}
+                                isLoading={isLoading}
+                                monthlySalesByTrainer={monthlySalesByTrainer}
+                                onOpenSettings={handleOpenSettingModal}
+                            />
                         </div>
 
-                        {results.length > 0 && (
-                            <div className="p-3 xs:p-4 sm:p-6 lg:p-8 bg-slate-50/50 border-t border-slate-100 flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2 xs:gap-4">
-                                <p className="text-[10px] xs:text-xs text-slate-400 font-bold leading-relaxed order-2 xs:order-1">
-                                    세금 공제가 반영된 실수령액입니다.<br className="hidden xs:block" />
-                                    <span className="xs:hidden"> </span>정산 확정 시 각 직원의 실적으로 반영됩니다.
-                                </p>
-                                <div className="space-y-0.5 xs:space-y-1 text-right order-1 xs:order-2 w-full xs:w-auto">
-                                    <p className="text-[8px] xs:text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Net Payroll (실수령 합계)</p>
-                                    <div className="text-xl xs:text-2xl sm:text-3xl font-black text-slate-900 tracking-tighter">
-                                        {results.reduce((acc, curr) => acc + curr.net_salary, 0).toLocaleString()}
-                                        <span className="text-xs xs:text-sm sm:text-base ml-1 opacity-30 font-bold uppercase tracking-widest">KRW</span>
-                                    </div>
-                                    {results.reduce((acc, curr) => acc + curr.tax_deduction, 0) > 0 && (
-                                        <div className="flex items-center justify-end gap-2 xs:gap-3 text-[10px] xs:text-xs font-bold text-slate-400 mt-1">
-                                            <span>세전: {results.reduce((acc, curr) => acc + curr.total_salary, 0).toLocaleString()}원</span>
-                                            <span className="text-red-500">공제: -{results.reduce((acc, curr) => acc + curr.tax_deduction, 0).toLocaleString()}원</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                        {/* 합계 푸터 */}
+                        <SalaryTotalFooter results={results as StaffSalaryResult[]} />
                     </div>
             </div>
 
             {/* 급여 설정 모달 */}
-            <Dialog open={isSettingModalOpen} onOpenChange={setIsSettingModalOpen}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white text-slate-900 border-none shadow-2xl p-0 rounded-[40px]">
-                    <div className="p-6 xs:p-8 lg:p-12 space-y-6 xs:space-y-8 lg:space-y-10">
-                        <DialogHeader>
-                            <div className="flex items-center gap-3 xs:gap-4 mb-3 xs:mb-4">
-                                <div className="w-12 h-12 xs:w-16 xs:h-16 rounded-xl xs:rounded-[24px] bg-blue-600 flex items-center justify-center shadow-xl shadow-blue-500/20">
-                                    <Calculator className="w-6 h-6 xs:w-8 xs:h-8 text-white" />
-                                </div>
-                                <div>
-                                    <DialogTitle className="text-xl xs:text-2xl lg:text-3xl font-black text-slate-900 tracking-tighter">급여 템플릿 적용</DialogTitle>
-                                    <DialogDescription className="text-slate-500 font-bold text-sm xs:text-base mt-1">
-                                        <span className="text-blue-600">{selectedStaffForSetting?.staff_name}</span> / {selectedStaffForSetting?.job_position || "Staff"}
-                                        <span className="block text-xs text-slate-400 mt-1">금액은 템플릿에서 설정됩니다. 수정하려면 템플릿 설계 탭에서 변경하세요.</span>
-                                    </DialogDescription>
-                                </div>
-                            </div>
-                        </DialogHeader>
-
-                        <div className="space-y-6 xs:space-y-8 lg:space-y-10">
-                            {/* 템플릿 선택 */}
-                            <div className="space-y-3 xs:space-y-4 bg-slate-50 p-4 xs:p-6 lg:p-8 rounded-xl xs:rounded-2xl lg:rounded-[32px] border border-slate-100">
-                                <Label className="text-[10px] xs:text-xs font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div>
-                                    Step 01. 급여 템플릿 적용
-                                </Label>
-                                {templates.length > 0 ? (
-                                    <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
-                                        <SelectTrigger className="h-12 xs:h-14 bg-white border border-slate-200 rounded-xl xs:rounded-2xl text-slate-900 font-black text-sm xs:text-lg focus:ring-2 focus:ring-blue-500/50 transition-all shadow-sm">
-                                            <SelectValue placeholder="적용할 템플릿을 선택하세요" />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-white border-slate-200 text-slate-900 rounded-xl xs:rounded-2xl p-1 xs:p-2 shadow-2xl">
-                                            {templates.map(t => (
-                                                <SelectItem key={t.id} value={t.id} className="rounded-lg xs:rounded-xl font-bold py-2 xs:py-3 text-sm focus:bg-blue-600 focus:text-white">
-                                                    {t.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                ) : (
-                                    <div className="bg-white rounded-xl xs:rounded-2xl p-4 xs:p-6 border border-dashed border-slate-200">
-                                        <p className="text-slate-600 font-bold text-xs xs:text-sm mb-1 xs:mb-2">등록된 급여 템플릿이 없습니다.</p>
-                                        <p className="text-slate-400 text-[10px] xs:text-xs">먼저 &quot;급여 템플릿 설계&quot; 탭에서 템플릿을 생성해주세요.</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {currentTemplate ? (
-                                <div className="space-y-6 xs:space-y-8 lg:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    {/* 기본 정보 설정 - 읽기 전용 */}
-                                    {groupedRules.basic.length > 0 && (
-                                        <section className="space-y-4 xs:space-y-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 xs:gap-3">
-                                                    <div className="w-6 h-6 xs:w-8 xs:h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                                                        <Info className="w-3 h-3 xs:w-4 xs:h-4 text-slate-500" />
-                                                    </div>
-                                                    <h4 className="text-base xs:text-lg lg:text-xl font-black text-slate-900 tracking-tight">기본 정보 및 지원금</h4>
-                                                </div>
-                                                <span className="text-[9px] xs:text-[10px] text-slate-400 font-bold uppercase tracking-wider">템플릿 설정값</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xs:gap-6">
-                                                {groupedRules.basic.map(rule => (
-                                                    <div key={rule.id} className="space-y-2 xs:space-y-3 p-4 xs:p-6 bg-slate-50 rounded-xl xs:rounded-2xl lg:rounded-[28px] border border-slate-100">
-                                                        <Label className="text-[10px] xs:text-xs font-black text-slate-500 uppercase tracking-widest ml-1">{rule.name}</Label>
-                                                        {renderParamInputs(rule, { ...rule.default_parameters, ...(personalParams[rule.id] || {}) }, (key, val) => handleParamChange(rule.id, key, val))}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-
-                                    {/* 수업료 설정 - 읽기 전용 */}
-                                    {groupedRules.class.length > 0 && (
-                                        <section className="space-y-4 xs:space-y-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 xs:gap-3">
-                                                    <div className="w-6 h-6 xs:w-8 xs:h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                                                        <Calculator className="w-3 h-3 xs:w-4 xs:h-4 text-emerald-600" />
-                                                    </div>
-                                                    <h4 className="text-base xs:text-lg lg:text-xl font-black text-slate-900 tracking-tight">수업료(단가) 설정</h4>
-                                                </div>
-                                                <span className="text-[9px] xs:text-[10px] text-emerald-500 font-bold uppercase tracking-wider">템플릿 설정값</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xs:gap-6">
-                                                {groupedRules.class.map(rule => (
-                                                    <div key={rule.id} className="space-y-2 xs:space-y-3 p-4 xs:p-6 bg-emerald-50/50 rounded-xl xs:rounded-2xl lg:rounded-[28px] border border-emerald-100">
-                                                        <Label className="text-[10px] xs:text-xs font-black text-emerald-600 uppercase tracking-widest ml-1">{rule.name}</Label>
-                                                        {renderParamInputs(rule, { ...rule.default_parameters, ...(personalParams[rule.id] || {}) }, (key, val) => handleParamChange(rule.id, key, val))}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-
-                                    {/* 인센티브 설정 - 읽기 전용 */}
-                                    {groupedRules.incentive.length > 0 && (
-                                        <section className="space-y-4 xs:space-y-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 xs:gap-3">
-                                                    <div className="w-6 h-6 xs:w-8 xs:h-8 rounded-lg bg-orange-50 flex items-center justify-center">
-                                                        <Plus className="w-3 h-3 xs:w-4 xs:h-4 text-orange-600" />
-                                                    </div>
-                                                    <h4 className="text-base xs:text-lg lg:text-xl font-black text-slate-900 tracking-tight">인센티브 및 요율 설정</h4>
-                                                </div>
-                                                <span className="text-[9px] xs:text-[10px] text-orange-500 font-bold uppercase tracking-wider">템플릿 설정값</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xs:gap-6">
-                                                {groupedRules.incentive.map(rule => (
-                                                    <div key={rule.id} className="space-y-2 xs:space-y-3 p-4 xs:p-6 bg-orange-50/50 rounded-xl xs:rounded-2xl lg:rounded-[28px] border border-orange-100">
-                                                        <Label className="text-[10px] xs:text-xs font-black text-orange-600 uppercase tracking-widest ml-1">{rule.name}</Label>
-                                                        {renderParamInputs(rule, { ...rule.default_parameters, ...(personalParams[rule.id] || {}) }, (key, val) => handleParamChange(rule.id, key, val))}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </section>
-                                    )}
-
-                                    {/* 세금 공제 설정 - 읽기 전용 */}
-                                    {groupedRules.deduction.length > 0 && (
-                                        <section className="space-y-4 xs:space-y-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 xs:gap-3">
-                                                    <div className="w-6 h-6 xs:w-8 xs:h-8 rounded-lg bg-red-50 flex items-center justify-center">
-                                                        <AlertTriangle className="w-3 h-3 xs:w-4 xs:h-4 text-red-600" />
-                                                    </div>
-                                                    <h4 className="text-base xs:text-lg lg:text-xl font-black text-slate-900 tracking-tight">세금 공제 설정</h4>
-                                                </div>
-                                                <span className="text-[9px] xs:text-[10px] text-red-500 font-bold uppercase tracking-wider">템플릿 설정값</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 xs:gap-6">
-                                                {groupedRules.deduction.map(rule => (
-                                                    <div key={rule.id} className="space-y-2 xs:space-y-3 p-4 xs:p-6 bg-red-50/50 rounded-xl xs:rounded-2xl lg:rounded-[28px] border border-red-100">
-                                                        <Label className="text-[10px] xs:text-xs font-black text-red-600 uppercase tracking-widest ml-1">{rule.name}</Label>
-                                                        {renderParamInputs(rule, { ...rule.default_parameters, ...(personalParams[rule.id] || {}) }, (key, val) => handleParamChange(rule.id, key, val))}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <p className="text-[10px] xs:text-xs text-red-400 font-bold ml-1">
-                                                세금 공제는 총 급여(세전)에서 자동으로 계산되어 차감됩니다.
-                                            </p>
-                                        </section>
-                                    )}
-
-                                    {/* 간편 인센티브 계산기 */}
-                                    <section className="bg-slate-50 rounded-xl xs:rounded-2xl lg:rounded-[32px] p-4 xs:p-6 lg:p-8 border border-slate-100 shadow-sm relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 w-48 xs:w-64 h-48 xs:h-64 bg-blue-600/5 rounded-full -mr-16 xs:-mr-20 -mt-16 xs:-mt-20 blur-3xl group-hover:bg-blue-600/10 transition-all duration-700"></div>
-                                        <div className="relative z-10 space-y-4 xs:space-y-6">
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="font-black text-slate-900 flex items-center gap-2 xs:gap-3 text-sm xs:text-base lg:text-lg tracking-tight">
-                                                    <div className="w-8 h-8 xs:w-10 xs:h-10 bg-white rounded-lg xs:rounded-xl flex items-center justify-center shadow-sm">
-                                                        <Calculator className="w-4 h-4 xs:w-5 xs:h-5 text-blue-600" />
-                                                    </div>
-                                                    실시간 요율 계산기
-                                                </h4>
-                                                <Badge className="bg-blue-600/10 text-blue-600 border-none font-black text-[8px] xs:text-[10px] tracking-widest px-2 xs:px-3 py-1">PREVIEW</Badge>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 xs:gap-6">
-                                                <div className="space-y-1 xs:space-y-2">
-                                                    <Label className="text-[9px] xs:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sales Amount</Label>
-                                                    <Input
-                                                        value={calcAmount}
-                                                        onChange={e => setCalcAmount(e.target.value)}
-                                                        placeholder="예: 10,000,000"
-                                                        className="h-10 xs:h-12 bg-white border border-slate-200 rounded-lg xs:rounded-xl text-slate-900 font-black text-right pr-3 xs:pr-4 focus:ring-2 focus:ring-blue-500/50 transition-all shadow-sm text-xs xs:text-sm"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1 xs:space-y-2">
-                                                    <Label className="text-[9px] xs:text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Incentive Rate (%)</Label>
-                                                    <Input
-                                                        value={calcRate}
-                                                        onChange={e => setCalcRate(e.target.value)}
-                                                        placeholder="예: 5"
-                                                        className="h-10 xs:h-12 bg-white border border-slate-200 rounded-lg xs:rounded-xl text-slate-900 font-black text-right pr-3 xs:pr-4 focus:ring-2 focus:ring-blue-500/50 transition-all shadow-sm text-xs xs:text-sm"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="text-center bg-white p-4 xs:p-6 rounded-xl xs:rounded-2xl border border-slate-100 shadow-sm">
-                                                <p className="text-slate-400 text-[10px] xs:text-xs font-bold uppercase tracking-widest mb-1">Estimated Result</p>
-                                                <div className="text-xl xs:text-2xl lg:text-3xl font-black text-[#F2994A] tracking-tighter">
-                                                    {calculatedIncentive} <span className="text-xs xs:text-sm text-slate-400 ml-1 font-bold">KRW</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </section>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-16 xs:py-24 lg:py-32 bg-slate-50 rounded-xl xs:rounded-2xl lg:rounded-[40px] border border-dashed border-slate-200">
-                                    <Calculator className="w-12 h-12 xs:w-16 xs:h-16 text-slate-200 mb-4 xs:mb-6" />
-                                    <p className="text-slate-400 font-black text-sm xs:text-base lg:text-lg">템플릿을 먼저 선택해주세요.</p>
-                                    <p className="text-slate-300 font-bold text-xs xs:text-sm mt-1 xs:mt-2">직원의 기본 급여 체계를 선택하면 세부 설정이 활성화됩니다.</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <DialogFooter className="pt-6 xs:pt-8 lg:pt-10 border-t border-slate-100 flex flex-col xs:flex-row gap-3 xs:gap-4">
-                            <Button
-                                variant="ghost"
-                                onClick={() => setIsSettingModalOpen(false)}
-                                className="h-12 xs:h-14 lg:h-16 px-6 xs:px-8 lg:px-10 rounded-xl xs:rounded-2xl font-black text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all w-full xs:w-auto text-sm xs:text-base"
-                            >
-                                창 닫기
-                            </Button>
-                            <Button
-                                onClick={handleSaveSalarySetting}
-                                className="h-12 xs:h-14 lg:h-16 px-8 xs:px-10 lg:px-12 bg-[#2F80ED] hover:bg-blue-600 text-white rounded-xl xs:rounded-2xl font-black text-sm xs:text-base lg:text-lg shadow-2xl shadow-blue-500/20 transition-all hover:-translate-y-1 active:scale-95 w-full xs:w-auto"
-                            >
-                                설정 정보 저장하기
-                            </Button>
-                        </DialogFooter>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <SalarySettingsModal
+                isOpen={isSettingModalOpen}
+                onClose={() => setIsSettingModalOpen(false)}
+                staff={selectedStaffForSetting}
+                templates={templates}
+                initialTemplateId={selectedTemplateId}
+                initialParams={personalParams}
+                onSave={handleSaveSettingFromModal}
+            />
         </div>
     );
-}
-
-// 계산 타입 라벨 함수
-function getCalculationTypeLabel(type: string): string {
-    switch(type) {
-        case 'base_salary': return '기본급';
-        case 'allowance': return '지원금';
-        case 'hourly': return '시급';
-        case 'class_fee': return '수업료';
-        case 'sales_incentive': return '매출인센티브';
-        case 'personal_incentive': return '개인인센티브';
-        case 'bonus': return '상금';
-        case 'etc': return '기타';
-        case 'tax_deduction': return '세금공제';
-        case 'fixed': return '고정급';
-        case 'percentage_total': return '매출인센티브';
-        case 'percentage_personal': return '개인인센티브';
-        default: return type;
-    }
-}
-
-// 파라미터 입력 렌더링 함수 - 읽기 전용 (템플릿 값 락)
-function renderParamInputs(rule: any, values: any, onChange: (key: string, value: any) => void) {
-    const typeLabel = getCalculationTypeLabel(rule.calculation_type);
-
-    // 값 표시용 스타일 (읽기 전용)
-    const valueDisplayClass = "bg-slate-100 border border-slate-200 text-slate-700 h-10 xs:h-12 rounded-lg xs:rounded-xl font-black text-right pr-8 xs:pr-10 shadow-inner text-xs xs:text-sm flex items-center justify-end px-3 xs:px-4";
-
-    switch(rule.calculation_type) {
-        // 고정 금액 타입들 (amount)
-        case 'base_salary':
-        case 'fixed':
-        case 'allowance':
-        case 'bonus':
-        case 'etc':
-            const fixedAmount = Number(values.amount || 0);
-            return (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-[9px] xs:text-[10px] font-black rounded-md uppercase tracking-wider">{typeLabel}</span>
-                        <span className="text-[9px] xs:text-[10px] text-slate-400 font-bold">(고정금액)</span>
-                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-600 text-[8px] xs:text-[9px] font-black rounded uppercase tracking-wider">LOCKED</span>
-                    </div>
-                    <div className="relative">
-                        <div className={valueDisplayClass}>
-                            {fixedAmount > 0 ? fixedAmount.toLocaleString() : "0"}
-                        </div>
-                        <span className="absolute right-3 xs:right-4 top-2.5 xs:top-3.5 text-[10px] xs:text-xs font-black text-slate-400">원</span>
-                    </div>
-                    {fixedAmount > 0 && (
-                        <div className="text-right text-[10px] xs:text-xs text-blue-600 font-black">
-                            = {fixedAmount.toLocaleString()}원
-                        </div>
-                    )}
-                </div>
-            );
-        case 'hourly':
-            const hourlyRate = Number(values.rate || 0);
-            return (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-[9px] xs:text-[10px] font-black rounded-md uppercase tracking-wider">{typeLabel}</span>
-                        <span className="text-[9px] xs:text-[10px] text-slate-400 font-bold">(시급 × 근무시간)</span>
-                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-600 text-[8px] xs:text-[9px] font-black rounded uppercase tracking-wider">LOCKED</span>
-                    </div>
-                    <div className="relative">
-                        <div className={valueDisplayClass}>
-                            {hourlyRate > 0 ? hourlyRate.toLocaleString() : "0"}
-                        </div>
-                        <span className="absolute right-3 xs:right-4 top-2.5 xs:top-3.5 text-[10px] xs:text-xs font-black text-slate-400">원/시간</span>
-                    </div>
-                    {hourlyRate > 0 && (
-                        <div className="text-right text-[10px] xs:text-xs text-blue-600 font-black">
-                            시급 {hourlyRate.toLocaleString()}원
-                        </div>
-                    )}
-                </div>
-            );
-        case 'class_fee':
-            const classRate = Number(values.rate || 0);
-            return (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] xs:text-[10px] font-black rounded-md uppercase tracking-wider">{typeLabel}</span>
-                        <span className="text-[9px] xs:text-[10px] text-slate-400 font-bold">(횟수 × 단가)</span>
-                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-600 text-[8px] xs:text-[9px] font-black rounded uppercase tracking-wider">LOCKED</span>
-                    </div>
-                    <div className="relative">
-                        <div className={valueDisplayClass}>
-                            {classRate > 0 ? classRate.toLocaleString() : "0"}
-                        </div>
-                        <span className="absolute right-3 xs:right-4 top-2.5 xs:top-3.5 text-[10px] xs:text-xs font-black text-slate-400">원/회</span>
-                    </div>
-                    {classRate > 0 && (
-                        <div className="text-right text-[10px] xs:text-xs text-emerald-600 font-black">
-                            회당 {classRate.toLocaleString()}원
-                        </div>
-                    )}
-                </div>
-            );
-        // 퍼센트 타입들 (rate)
-        case 'sales_incentive':
-        case 'personal_incentive':
-        case 'percentage_total':
-        case 'percentage_personal':
-            const incentiveRate = Number(values.rate || 0);
-            const isPersonal = rule.calculation_type === 'personal_incentive' || rule.calculation_type === 'percentage_personal';
-            return (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[9px] xs:text-[10px] font-black rounded-md uppercase tracking-wider">{typeLabel}</span>
-                        <span className="text-[9px] xs:text-[10px] text-slate-400 font-bold">({isPersonal ? '개인매출' : '매출'} × %)</span>
-                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-600 text-[8px] xs:text-[9px] font-black rounded uppercase tracking-wider">LOCKED</span>
-                    </div>
-                    <div className="relative">
-                        <div className={valueDisplayClass}>
-                            {incentiveRate > 0 ? incentiveRate : "0"}
-                        </div>
-                        <span className="absolute right-3 xs:right-4 top-2.5 xs:top-3.5 text-[10px] xs:text-xs font-black text-slate-400">%</span>
-                    </div>
-                    {incentiveRate > 0 && (
-                        <div className="text-right text-[10px] xs:text-xs text-orange-600 font-black">
-                            {isPersonal ? '개인매출' : '매출'}의 {incentiveRate}%
-                        </div>
-                    )}
-                </div>
-            );
-        case 'tax_deduction':
-            const deductionRate = Number(values.rate || 0);
-            // 공제 항목 전용 스타일 (빨간색 배경)
-            const deductionDisplayClass = "bg-red-50 border border-red-200 text-red-600 h-10 xs:h-12 rounded-lg xs:rounded-xl font-black text-right pr-8 xs:pr-10 shadow-inner text-xs xs:text-sm flex items-center justify-end px-3 xs:px-4";
-            return (
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 bg-red-500 text-white text-[9px] xs:text-[10px] font-black rounded-md uppercase tracking-wider">공제</span>
-                        <span className="text-[9px] xs:text-[10px] text-red-400 font-bold">(총급여 × %)</span>
-                        <span className="px-1.5 py-0.5 bg-amber-100 text-amber-600 text-[8px] xs:text-[9px] font-black rounded uppercase tracking-wider">LOCKED</span>
-                    </div>
-                    <div className="relative">
-                        <div className={deductionDisplayClass}>
-                            {deductionRate > 0 ? `-${deductionRate}` : "0"}
-                        </div>
-                        <span className="absolute right-3 xs:right-4 top-2.5 xs:top-3.5 text-[10px] xs:text-xs font-black text-red-400">%</span>
-                    </div>
-                    {deductionRate > 0 && (
-                        <div className="text-right text-[10px] xs:text-xs text-red-600 font-black">
-                            총급여의 <span className="text-red-700">-{deductionRate}%</span> 차감
-                        </div>
-                    )}
-                </div>
-            );
-        default:
-            return <div className="text-[10px] xs:text-xs text-slate-400 font-bold py-2 px-1">자동 계산 혹은 기본값 사용</div>;
-    }
 }

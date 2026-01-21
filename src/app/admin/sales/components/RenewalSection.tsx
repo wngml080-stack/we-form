@@ -22,97 +22,14 @@ import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
 import { RenewalDashboard } from "./RenewalDashboard";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
-
-// 활동 상태 타입
-type ActivityStatus = 'absent' | 'rejected' | 'will_register' | 'considering' | 'contacted' | 'other';
-
-// 활동 상태 라벨
-const activityStatusLabels: Record<ActivityStatus, string> = {
-  absent: '부재',
-  rejected: '거절',
-  will_register: '등록예정',
-  considering: '고민중',
-  contacted: '연락완료',
-  other: '기타'
-};
-
-// 활동 상태 색상
-const activityStatusColors: Record<ActivityStatus, string> = {
-  absent: 'bg-slate-100 text-slate-600',
-  rejected: 'bg-rose-100 text-rose-600',
-  will_register: 'bg-emerald-100 text-emerald-600',
-  considering: 'bg-amber-100 text-amber-600',
-  contacted: 'bg-blue-100 text-blue-600',
-  other: 'bg-purple-100 text-purple-600'
-};
-
-// 활동 기록 타입
-interface ActivityRecord {
-  date: string;
-  content: string;
-  status?: ActivityStatus;
-  staffName?: string;
-  reason?: string;
-  expectedDate?: string;
-}
-
-// 리뉴 대상자 인터페이스 (확장)
-interface RenewalMember {
-  id: string;
-  name: string;
-  phone: string;
-  membershipName: string;
-  endDate: string;
-  trainerName: string;
-  memo?: string;
-  // 활동 기록 (1차~4차)
-  activity1?: ActivityRecord;
-  activity2?: ActivityRecord;
-  activity3?: ActivityRecord;
-  activity4?: ActivityRecord;
-}
-
-// 만기 분류 타입
-type ExpiryType = 'this_month' | 'next_month' | 'after_next_month' | 'expired';
-
-// 만기 분류 함수
-function getExpiryType(endDate: string): ExpiryType {
-  const today = new Date();
-  const end = new Date(endDate);
-
-  // 당월 시작일과 마지막일
-  const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-  const thisMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-  // 익월 시작일과 마지막일
-  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-  const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 0);
-
-  // 당월 이전이면 만료자
-  if (end < thisMonthStart) {
-    return 'expired';
-  }
-  // 당월 1일~말일 → 당월 만기자
-  if (end >= thisMonthStart && end <= thisMonthEnd) {
-    return 'this_month';
-  }
-  // 익월 1일~말일 → 익월 만기자
-  if (end >= nextMonthStart && end <= nextMonthEnd) {
-    return 'next_month';
-  }
-  // 그 이후 → 익월 이외 만기자
-  return 'after_next_month';
-}
-
-// 만기 분류 라벨
-function getExpiryTypeLabel(type: ExpiryType): string {
-  switch (type) {
-    case 'this_month': return '당월만기';
-    case 'next_month': return '익월만기';
-    case 'after_next_month': return '익월이외';
-    case 'expired': return '만료자';
-  }
-}
+import type { ActivityStatus, ActivityRecord, RenewalMember, ExpiryType } from "../types/renewal";
+import {
+  activityStatusLabels,
+  activityStatusColors,
+  getExpiryType,
+  getExpiryTypeLabel,
+  getDday,
+} from "../utils/renewal";
 
 // 만기 분류 뱃지 색상
 function getExpiryTypeBadge(type: ExpiryType) {
@@ -128,26 +45,7 @@ function getExpiryTypeBadge(type: ExpiryType) {
   }
 }
 
-// D-day 계산 함수
-function getDday(endDate: string): { text: string; color: string } {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
-  end.setHours(0, 0, 0, 0);
-
-  const diffTime = end.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return { text: 'D-Day', color: 'text-rose-600 font-black' };
-  } else if (diffDays > 0) {
-    return { text: `D-${diffDays}`, color: diffDays <= 7 ? 'text-rose-500' : diffDays <= 30 ? 'text-amber-500' : 'text-slate-500' };
-  } else {
-    return { text: `D+${Math.abs(diffDays)}`, color: 'text-slate-400' };
-  }
-}
-
-// 현재 활동 상태 계산
+// 현재 활동 상태 계산 (content 기반 - utils 버전과 다름)
 function getCurrentActivityStatus(member: RenewalMember): { label: string; color: string } {
   if (member.activity4?.content) {
     return { label: '4차 완료', color: 'bg-emerald-100 text-emerald-600' };

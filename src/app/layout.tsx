@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 export const dynamic = 'force-dynamic';
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +7,26 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "We:form - 피트니스 센터 관리",
   description: "피트니스 센터 통합 관리 시스템",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "We:form",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a2e" },
+  ],
 };
 
 export default function RootLayout({
@@ -17,8 +37,6 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* Viewport for proper mobile scaling - prevents horizontal scroll */}
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         {/* jsDelivr CDN preconnect for Pretendard font */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
       </head>
