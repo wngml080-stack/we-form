@@ -253,11 +253,14 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
 
   useEffect(() => {
     if (filterInitialized && selectedGymId && selectedCompanyId) {
-      fetchPayments(selectedGymId, selectedCompanyId);
-      fetchComparisonPayments(selectedGymId, selectedCompanyId);
-      fetchCustomOptions(selectedGymId);
-      fetchStaffList(selectedGymId);
-      fetchGymData(selectedGymId);
+      // 모든 API 요청을 병렬로 실행 (성능 최적화)
+      Promise.all([
+        fetchPayments(selectedGymId, selectedCompanyId),
+        fetchComparisonPayments(selectedGymId, selectedCompanyId),
+        fetchCustomOptions(selectedGymId),
+        fetchStaffList(selectedGymId),
+        fetchGymData(selectedGymId)
+      ]).catch(console.error);
     }
   }, [filterInitialized, selectedGymId, selectedCompanyId, startDate, endDate, fetchGymData]);
 

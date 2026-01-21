@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -59,6 +59,27 @@ const moveToNextCell = (currentElement: HTMLElement): boolean => {
 
   return false;
 };
+
+// ========================================
+// 상수 정의 (컴포넌트 외부 - 재생성 방지)
+// ========================================
+
+// 결제 수단 라벨
+const METHOD_LABELS: Record<string, string> = {
+  card: "카드",
+  cash: "현금",
+  transfer: "계좌이체"
+};
+
+// 방문 경로 옵션
+const VISIT_ROUTES = {
+  offline: ["간판", "족자&현수막", "전단지", "게시판"],
+  online: ["웹검색", "블로그", "플레이스", "네이버광고 파워링크", "카카오채널", "인스타&스레드", "당근"],
+  other: ["지인소개", "쿠폰", "타종목신규", "기타"]
+} as const;
+
+// 만기 유형 옵션
+const EXPIRY_TYPES = ["30일이내 만기자", "60일이내 만기자", "90일이내 만기자", "90일이외 만기자", "기타"] as const;
 
 interface Staff {
   id: string;
@@ -196,7 +217,7 @@ function SelectWithAdd({
   );
 }
 
-export function PaymentsTable({
+export const PaymentsTable = memo(function PaymentsTable({
   payments,
   staffList,
   allSaleTypes,
@@ -228,11 +249,8 @@ export function PaymentsTable({
   const [membershipCategoryFilter, setMembershipCategoryFilter] = useState<string>("all");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
 
-  const methodLabels: Record<string, string> = {
-    card: "카드",
-    cash: "현금",
-    transfer: "계좌이체"
-  };
+  // 상수 참조 (컴포넌트 외부 정의됨)
+  const methodLabels = METHOD_LABELS;
 
   // 검색 및 필터링
   const filteredPayments = payments.filter(payment => {
@@ -715,7 +733,7 @@ export function PaymentsTable({
                                 {/* 오프라인 그룹 */}
                                 <SelectGroup>
                                   <SelectLabel className="text-[9px] text-orange-600 bg-orange-50 rounded-md mx-1 px-2 py-1">🏢 오프라인</SelectLabel>
-                                  {["간판", "족자&현수막", "전단지", "게시판"].map(route => (
+                                  {VISIT_ROUTES.offline.map(route => (
                                     <SelectItem key={route} value={route} className="text-[10px] pl-4">
                                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-orange-400 mr-2" />
                                       {route}
@@ -726,7 +744,7 @@ export function PaymentsTable({
                                 {/* 온라인 그룹 */}
                                 <SelectGroup>
                                   <SelectLabel className="text-[9px] text-blue-600 bg-blue-50 rounded-md mx-1 px-2 py-1">🌐 온라인</SelectLabel>
-                                  {["웹검색", "블로그", "플레이스", "네이버광고 파워링크", "카카오채널", "인스타&스레드", "당근"].map(route => (
+                                  {VISIT_ROUTES.online.map(route => (
                                     <SelectItem key={route} value={route} className="text-[10px] pl-4">
                                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 mr-2" />
                                       {route}
@@ -737,7 +755,7 @@ export function PaymentsTable({
                                 {/* 기타 그룹 */}
                                 <SelectGroup>
                                   <SelectLabel className="text-[9px] text-slate-600 bg-slate-100 rounded-md mx-1 px-2 py-1">📋 기타</SelectLabel>
-                                  {["지인소개", "쿠폰", "타종목신규", "기타"].map(route => (
+                                  {VISIT_ROUTES.other.map(route => (
                                     <SelectItem key={route} value={route} className="text-[10px] pl-4">
                                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-400 mr-2" />
                                       {route}
@@ -767,7 +785,7 @@ export function PaymentsTable({
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-white rounded-lg border border-slate-200 shadow-xl">
-                              {["30일이내 만기자", "60일이내 만기자", "90일이내 만기자", "90일이외 만기자", "기타"].map(type => (
+                              {EXPIRY_TYPES.map(type => (
                                 <SelectItem key={type} value={type} className="text-[10px]">{type}</SelectItem>
                               ))}
                             </SelectContent>
@@ -1191,4 +1209,7 @@ export function PaymentsTable({
       </div>
     </div>
   );
-}
+});
+
+// displayName 설정 (React DevTools에서 표시용)
+PaymentsTable.displayName = "PaymentsTable";

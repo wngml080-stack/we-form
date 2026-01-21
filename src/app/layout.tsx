@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 export const dynamic = 'force-dynamic';
 import { Toaster } from "@/components/ui/toaster";
+import { PWAInstallGuide } from "@/components/PWAInstallGuide";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -39,10 +40,13 @@ export default function RootLayout({
       <head>
         {/* jsDelivr CDN preconnect for Pretendard font */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        {/* Apple Touch Icon for iOS */}
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body className="font-sans antialiased">
         {children}
         <Toaster />
+        <PWAInstallGuide />
       </body>
     </html>
   );
