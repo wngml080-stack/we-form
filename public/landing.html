@@ -7,6 +7,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#0064FF">
+  <link rel="apple-touch-icon" href="/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png">
+  <link rel="manifest" href="/manifest.json">
   <title>We:form - 스마트 피트니스 센터 관리 시스템</title>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
   <style>
@@ -156,6 +160,15 @@
       font-size: 0.9rem;
       flex-shrink: 1;
       min-width: 0;
+    }
+
+    /* 모바일/데스크탑 프로모 텍스트 전환 */
+    .promo-mobile {
+      display: none;
+    }
+
+    .promo-desktop {
+      display: flex;
     }
 
     .promo-cta i {
@@ -1984,49 +1997,58 @@
         padding-bottom: env(safe-area-inset-bottom);
       }
 
-      /* Navigation - 헤더 깨짐 수정 */
+      /* Navigation - 완전히 재설계 */
       nav.promo-nav {
-        padding: 8px 12px;
-        padding-top: calc(8px + env(safe-area-inset-top));
+        padding: 10px 12px;
+        padding-top: calc(10px + env(safe-area-inset-top));
       }
 
       .nav-content {
-        gap: 8px;
+        gap: 10px;
       }
 
       .promo-banner {
         flex: 1;
         min-width: 0;
-        font-size: 0.65rem;
-        gap: 4px;
-      }
-
-      .promo-cta {
-        font-size: 0.65rem;
-        white-space: nowrap;
+        gap: 6px;
         overflow: hidden;
-        text-overflow: ellipsis;
       }
 
-      .promo-cta strong {
-        display: none;
+      /* 모바일에서 간결한 버전만 표시 */
+      .promo-desktop {
+        display: none !important;
+      }
+
+      .promo-mobile {
+        display: flex !important;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+      }
+
+      .promo-mobile i {
+        font-size: 1rem;
+        animation: bounce 1s ease infinite;
       }
 
       .promo-badge {
-        font-size: 0.55rem;
-        padding: 2px 4px;
+        font-size: 0.6rem;
+        padding: 3px 8px;
         white-space: nowrap;
+        flex-shrink: 0;
       }
 
       .login-btn {
-        padding: 6px 10px;
-        font-size: 0.75rem;
+        padding: 10px 16px;
+        font-size: 0.85rem;
         flex-shrink: 0;
-        gap: 4px;
+        gap: 6px;
+        border-radius: 10px;
       }
 
       .login-btn i {
-        font-size: 0.9rem;
+        font-size: 1rem;
       }
 
       /* Hero Section */
@@ -2299,32 +2321,30 @@
       }
     }
 
-    /* Extra Small (320px) */
+    /* Extra Small (360px 이하) */
     @media (max-width: 360px) {
       nav.promo-nav {
-        padding: 6px 8px;
-        padding-top: calc(6px + env(safe-area-inset-top));
+        padding: 8px 10px;
+        padding-top: calc(8px + env(safe-area-inset-top));
       }
 
-      .promo-cta {
-        font-size: 0.6rem;
+      .promo-mobile {
+        font-size: 0.75rem;
+        gap: 4px;
       }
 
-      .promo-cta i {
-        display: none;
+      .promo-mobile i {
+        font-size: 0.9rem;
       }
 
       .promo-badge {
-        display: none;
+        font-size: 0.55rem;
+        padding: 2px 6px;
       }
 
       .login-btn {
-        padding: 5px 8px;
-        font-size: 0.7rem;
-      }
-
-      .login-btn span {
-        display: none;
+        padding: 8px 12px;
+        font-size: 0.75rem;
       }
 
       .hero {
@@ -2364,6 +2384,37 @@
       }
     }
 
+    /* Ultra Small (iPhone SE 320px 이하) */
+    @media (max-width: 320px) {
+      nav.promo-nav {
+        padding: 6px 8px;
+        padding-top: calc(6px + env(safe-area-inset-top));
+      }
+
+      .promo-mobile {
+        font-size: 0.7rem;
+      }
+
+      .promo-badge {
+        font-size: 0.5rem;
+        padding: 2px 4px;
+      }
+
+      .login-btn {
+        padding: 6px 10px;
+        font-size: 0.7rem;
+        gap: 4px;
+      }
+
+      .login-btn i {
+        font-size: 0.9rem;
+      }
+
+      .hero h1 {
+        font-size: 2.2rem;
+      }
+    }
+
     /* Animations */
     .fade-up {
       opacity: 0;
@@ -2382,9 +2433,12 @@
   <nav class="promo-nav">
     <div class="nav-content">
       <div class="promo-banner">
+        <!-- 데스크탑 전용 -->
         <span class="promo-hook">엑셀로 회원 관리, 아직도요? <strong>보고만 받는 시스템 멈추세요!</strong></span>
         <span class="promo-divider">|</span>
-        <span class="promo-cta"><i class="ri-gift-line"></i> <strong>데이터 기반 경영 파트너</strong> 무료 센터 신청하기! <span class="promo-badge">선착순 20개 지점</span></span>
+        <span class="promo-cta promo-desktop"><i class="ri-gift-line"></i> <strong>데이터 기반 경영 파트너</strong> 무료 센터 신청하기! <span class="promo-badge">선착순 20개 지점</span></span>
+        <!-- 모바일 전용 (간결한 텍스트) -->
+        <span class="promo-cta promo-mobile"><i class="ri-gift-line"></i> 무료 신청 <span class="promo-badge">20개 지점</span></span>
       </div>
       <a href="/sign-in" class="login-btn">
         <i class="ri-login-box-line"></i>
