@@ -2,7 +2,11 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0064FF">
   <title>We:form - 스마트 피트니스 센터 관리 시스템</title>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
   <style>
@@ -121,6 +125,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
     }
 
     .promo-banner {
@@ -129,6 +134,9 @@
       gap: 16px;
       color: white;
       font-size: 0.9rem;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
     }
 
     .promo-hook {
@@ -146,6 +154,8 @@
       align-items: center;
       gap: 8px;
       font-size: 0.9rem;
+      flex-shrink: 1;
+      min-width: 0;
     }
 
     .promo-cta i {
@@ -213,6 +223,8 @@
       border-radius: 8px;
       transition: all 0.3s ease;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+      white-space: nowrap;
     }
 
     .login-btn:hover {
@@ -1959,6 +1971,396 @@
 
       .trainer-intro, .feature-card, .integration-section {
         padding: 30px 24px;
+      }
+    }
+
+    /* PWA & Mobile S (320px) */
+    @media (max-width: 480px) {
+      /* PWA Safe Area Support */
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+
+      /* Navigation - 헤더 깨짐 수정 */
+      nav.promo-nav {
+        padding: 8px 12px;
+        padding-top: calc(8px + env(safe-area-inset-top));
+      }
+
+      .nav-content {
+        gap: 8px;
+      }
+
+      .promo-banner {
+        flex: 1;
+        min-width: 0;
+        font-size: 0.65rem;
+        gap: 4px;
+      }
+
+      .promo-cta {
+        font-size: 0.65rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .promo-cta strong {
+        display: none;
+      }
+
+      .promo-badge {
+        font-size: 0.55rem;
+        padding: 2px 4px;
+        white-space: nowrap;
+      }
+
+      .login-btn {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+        gap: 4px;
+      }
+
+      .login-btn i {
+        font-size: 0.9rem;
+      }
+
+      /* Hero Section */
+      .hero {
+        min-height: auto;
+        padding: 70px 16px 60px;
+        padding-top: calc(70px + env(safe-area-inset-top));
+      }
+
+      .hero-badge {
+        padding: 10px 16px;
+        font-size: 0.75rem;
+        gap: 6px;
+      }
+
+      .hero h1 {
+        font-size: clamp(2.8rem, 15vw, 4rem);
+        letter-spacing: -2px;
+        margin-bottom: 12px;
+      }
+
+      .hero p {
+        font-size: 0.95rem;
+        padding: 0 8px;
+        margin-bottom: 20px;
+        line-height: 1.6;
+      }
+
+      .hero-flow {
+        gap: 12px;
+        margin-top: 30px;
+      }
+
+      .hero-flow-step {
+        padding: 16px 20px;
+        min-width: auto;
+        width: 100%;
+        max-width: 280px;
+        border-radius: 14px;
+      }
+
+      .hero-flow-step i {
+        font-size: 1.5rem;
+        margin-bottom: 6px;
+      }
+
+      .hero-flow-step h4 {
+        font-size: 0.85rem;
+      }
+
+      .hero-flow-step p {
+        font-size: 0.7rem;
+      }
+
+      .hero-flow-arrow {
+        font-size: 1rem;
+      }
+
+      /* Section Headers */
+      .section-header {
+        padding: 0 8px;
+      }
+
+      .section-badge {
+        font-size: 0.7rem;
+        padding: 6px 12px;
+      }
+
+      .section-title {
+        font-size: clamp(1.6rem, 8vw, 2rem) !important;
+        line-height: 1.3;
+      }
+
+      .section-desc {
+        font-size: 0.85rem;
+        line-height: 1.5;
+      }
+
+      /* Role Tabs */
+      .role-tabs-wrapper {
+        padding: 0 8px;
+      }
+
+      .role-tabs {
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .role-tab {
+        padding: 12px 16px;
+        font-size: 0.8rem;
+        gap: 8px;
+        border-radius: 12px;
+      }
+
+      .role-tab i {
+        font-size: 1rem;
+      }
+
+      .faq-quick-link {
+        font-size: 0.8rem;
+        padding: 10px 16px;
+      }
+
+      /* Feature Cards & Sections */
+      .trainer-intro,
+      .feature-card,
+      .integration-section {
+        padding: 20px 16px;
+        border-radius: 16px;
+        margin: 0 8px;
+      }
+
+      .trainer-intro h3 {
+        font-size: 1.1rem;
+      }
+
+      .trainer-intro p {
+        font-size: 0.85rem;
+      }
+
+      .feature-text {
+        padding: 20px 16px;
+      }
+
+      .feature-text h4 {
+        font-size: 1rem;
+      }
+
+      .feature-text p {
+        font-size: 0.85rem;
+      }
+
+      .feature-icon {
+        width: 40px;
+        height: 40px;
+      }
+
+      .feature-icon i {
+        font-size: 1.1rem;
+      }
+
+      .feature-image {
+        min-height: 200px;
+      }
+
+      /* AI Highlight Box */
+      .ai-highlight {
+        padding: 14px;
+        gap: 10px;
+        border-radius: 12px;
+      }
+
+      .ai-highlight i {
+        font-size: 1.3rem;
+      }
+
+      .ai-highlight h5 {
+        font-size: 0.8rem;
+      }
+
+      .ai-highlight p {
+        font-size: 0.75rem;
+      }
+
+      /* Step Flow */
+      .step-flow {
+        padding: 16px;
+        border-radius: 14px;
+        margin: 12px 0;
+      }
+
+      .step-flow-title {
+        font-size: 0.8rem;
+      }
+
+      .step-item {
+        gap: 10px;
+      }
+
+      .step-number {
+        width: 24px;
+        height: 24px;
+        font-size: 0.7rem;
+      }
+
+      .step-content h5 {
+        font-size: 0.8rem;
+      }
+
+      .step-content p {
+        font-size: 0.7rem;
+      }
+
+      /* Quick Navigation */
+      .quick-nav {
+        gap: 10px;
+        padding: 0 8px;
+      }
+
+      .quick-nav-item {
+        padding: 16px 20px;
+        min-width: 110px;
+        border-radius: 16px;
+      }
+
+      .quick-nav-item i {
+        font-size: 1.5rem;
+      }
+
+      .quick-nav-item span {
+        font-size: 0.8rem;
+      }
+
+      /* Roadmap */
+      .roadmap-timeline {
+        gap: 16px;
+        padding: 0 8px;
+      }
+
+      .roadmap-card {
+        padding: 20px 16px;
+        border-radius: 16px;
+      }
+
+      .roadmap-card h4 {
+        font-size: 0.9rem;
+      }
+
+      .roadmap-card p {
+        font-size: 0.8rem;
+      }
+
+      /* FAQ Section */
+      .faq-item {
+        padding: 16px;
+        border-radius: 12px;
+      }
+
+      .faq-question {
+        font-size: 0.85rem;
+        gap: 10px;
+      }
+
+      .faq-answer {
+        font-size: 0.8rem;
+        padding-left: 28px;
+      }
+
+      /* Footer */
+      footer {
+        padding: 40px 16px;
+        padding-bottom: calc(40px + env(safe-area-inset-bottom));
+      }
+
+      footer p {
+        font-size: 0.85rem;
+      }
+
+      /* Container */
+      .container {
+        padding: 0 12px;
+      }
+
+      /* Floating Shapes - 모바일에서 축소 */
+      .floating-shape {
+        opacity: 0.5;
+        transform: scale(0.6);
+      }
+    }
+
+    /* Extra Small (320px) */
+    @media (max-width: 360px) {
+      nav.promo-nav {
+        padding: 6px 8px;
+        padding-top: calc(6px + env(safe-area-inset-top));
+      }
+
+      .promo-cta {
+        font-size: 0.6rem;
+      }
+
+      .promo-cta i {
+        display: none;
+      }
+
+      .promo-badge {
+        display: none;
+      }
+
+      .login-btn {
+        padding: 5px 8px;
+        font-size: 0.7rem;
+      }
+
+      .login-btn span {
+        display: none;
+      }
+
+      .hero {
+        padding: 60px 12px 50px;
+      }
+
+      .hero h1 {
+        font-size: 2.5rem;
+      }
+
+      .hero p {
+        font-size: 0.9rem;
+      }
+
+      .hero-badge {
+        padding: 8px 12px;
+        font-size: 0.7rem;
+      }
+
+      .hero-flow-step {
+        padding: 14px 16px;
+      }
+
+      .section-title {
+        font-size: 1.5rem !important;
+      }
+
+      .role-tab {
+        padding: 10px 12px;
+        font-size: 0.75rem;
+      }
+
+      .trainer-intro,
+      .feature-card,
+      .integration-section {
+        padding: 16px 12px;
       }
     }
 
