@@ -96,12 +96,14 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
     });
   }, [expenses, categoryFilter]);
 
-  // 데이터 로드
+  // 데이터 로드 (모든 API 병렬 실행 - 성능 최적화)
   useEffect(() => {
     if (filterInitialized && selectedGymId && selectedCompanyId) {
-      fetchExpenses(selectedGymId, selectedCompanyId);
-      fetchPreviousMonthExpenses(selectedGymId, selectedCompanyId);
-      fetchCustomCategories(selectedGymId);
+      Promise.all([
+        fetchExpenses(selectedGymId, selectedCompanyId),
+        fetchPreviousMonthExpenses(selectedGymId, selectedCompanyId),
+        fetchCustomCategories(selectedGymId)
+      ]).catch(console.error);
     }
   }, [filterInitialized, selectedGymId, selectedCompanyId, startDate, endDate]);
 

@@ -11,14 +11,39 @@ import { SalesHeader } from "./components/SalesHeader";
 import { SalesFilters } from "./components/SalesFilters";
 import { SalesStats } from "./components/SalesStats";
 import { ExpenseStats } from "./components/ExpenseStats";
-import { PaymentsTable } from "./components/PaymentsTable";
-import { ExpensesTable } from "./components/ExpensesTable";
-import { SalesAnalysis } from "./components/SalesAnalysis";
-import { DetailedAnalysis } from "./components/DetailedAnalysis";
-import { InquirySection } from "./components/InquirySection";
-import { RenewalSection } from "./components/RenewalSection";
 import { BEPCard } from "./components/BEPCard";
 import { exportSalesToExcel } from "./utils/excelExport";
+
+// 대형 컴포넌트 lazy loading (성능 최적화)
+const PaymentsTable = dynamic(
+  () => import("./components/PaymentsTable").then(mod => ({ default: mod.PaymentsTable })),
+  { ssr: false, loading: () => <div className="bg-white rounded-3xl p-8 animate-pulse h-96" /> }
+);
+
+const ExpensesTable = dynamic(
+  () => import("./components/ExpensesTable").then(mod => ({ default: mod.ExpensesTable })),
+  { ssr: false, loading: () => <div className="bg-white rounded-3xl p-8 animate-pulse h-96" /> }
+);
+
+const DetailedAnalysis = dynamic(
+  () => import("./components/DetailedAnalysis").then(mod => ({ default: mod.DetailedAnalysis })),
+  { ssr: false, loading: () => <div className="bg-white rounded-3xl p-8 animate-pulse h-96" /> }
+);
+
+const InquirySection = dynamic(
+  () => import("./components/InquirySection").then(mod => ({ default: mod.InquirySection })),
+  { ssr: false, loading: () => <div className="bg-white rounded-3xl p-8 animate-pulse h-64" /> }
+);
+
+const RenewalSection = dynamic(
+  () => import("./components/RenewalSection").then(mod => ({ default: mod.RenewalSection })),
+  { ssr: false, loading: () => <div className="bg-white rounded-3xl p-8 animate-pulse h-64" /> }
+);
+
+const SalesAnalysis = dynamic(
+  () => import("./components/SalesAnalysis").then(mod => ({ default: mod.SalesAnalysis })),
+  { ssr: false, loading: () => <div className="bg-white rounded-3xl p-8 animate-pulse h-64" /> }
+);
 import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, Target, Award, BarChart3, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
