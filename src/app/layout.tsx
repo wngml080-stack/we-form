@@ -1,6 +1,4 @@
 import type { Metadata, Viewport } from "next";
-
-export const dynamic = 'force-dynamic';
 import { Toaster } from "@/components/ui/toaster";
 import { PWAInstallGuide } from "@/components/PWAInstallGuide";
 import "./globals.css";
