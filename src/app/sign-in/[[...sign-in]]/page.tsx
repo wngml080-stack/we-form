@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -16,6 +13,30 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  // 이미 로그인된 사용자 체크 후 빠르게 리다이렉트
+  useEffect(() => {
+    const checkSession = async () => {
+      const supabase = createSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        router.replace("/admin");
+      } else {
+        setIsCheckingSession(false);
+      }
+    };
+    checkSession();
+  }, [router]);
+
+  // 세션 체크 중이면 로딩 화면 표시
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2563eb]" />
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,81 +69,74 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] relative overflow-hidden py-12 px-5">
       {/* 배경 장식 요소 */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-50 rounded-full blur-[120px] opacity-60"></div>
 
-      <div className="relative z-10 w-full max-w-[480px] px-6">
+      <div className="relative z-10 w-full max-w-[400px]">
         {/* 로고 섹션 */}
-        <div className="flex flex-col items-center mb-10 space-y-4">
-          <div className="w-16 h-16 rounded-[24px] bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-100 animate-in zoom-in duration-500">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2.5"/>
-              <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth="2.5"/>
-              <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-              <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <div className="text-center space-y-1">
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-              We<span className="text-blue-600">:</span>form
-            </h1>
-            <p className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em]">Smart Management System</p>
-          </div>
+        <div className="flex flex-col items-center mb-6">
+          <h1 className="text-3xl tracking-tight" style={{ color: '#0f172a', fontWeight: 900 }}>
+            We<span style={{ color: '#2563eb' }}>:</span>form
+          </h1>
+          <p className="text-xs uppercase tracking-[0.15em] mt-1" style={{ color: '#94a3b8', fontWeight: 600 }}>Smart Management System</p>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-xl shadow-2xl shadow-slate-200/50 rounded-[48px] border border-white p-10 relative overflow-hidden">
+        <div className="bg-white shadow-xl rounded-[24px] border border-[#e2e8f0] p-6 relative overflow-hidden">
           {/* 상단 장식 바 */}
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-50 overflow-hidden">
-            <div className="h-full bg-blue-600 w-1/3 animate-progress-loop"></div>
+          <div className="absolute top-0 left-0 w-full h-1 bg-[#f1f5f9] overflow-hidden">
+            <div className="h-full bg-[#2563eb] w-1/3"></div>
           </div>
 
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-full text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3 border border-blue-100/50">
-              <Sparkles className="w-3 h-3" /> Welcome Back
+          <div className="text-center mb-6 pt-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#eff6ff] rounded-full text-[9px] uppercase tracking-widest mb-2 border border-[#dbeafe]" style={{ color: '#2563eb', fontWeight: 700 }}>
+              <Sparkles className="w-2.5 h-2.5" /> Welcome Back
             </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">서비스 로그인</h2>
-            <p className="text-slate-400 font-bold text-sm mt-2">등록된 계정 정보로 로그인해주세요.</p>
+            <h2 className="text-xl tracking-tight" style={{ color: '#0f172a', fontWeight: 800 }}>서비스 로그인</h2>
+            <p className="text-sm mt-1" style={{ color: '#64748b', fontWeight: 500 }}>등록된 계정 정보로 로그인해주세요.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</Label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-blue-600 transition-colors" />
-                <Input
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="text-[10px] uppercase tracking-widest ml-1 block" style={{ color: '#64748b', fontWeight: 600 }}>Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#94a3b8' }} />
+                <input
                   id="email"
                   type="email"
                   placeholder="example@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-14 pl-12 rounded-2xl border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50/50 font-bold transition-all"
+                  className="w-full h-12 pl-11 text-sm rounded-xl border-2 border-[#e2e8f0] bg-[#f8fafc] focus:bg-white focus:border-[#2563eb] focus:outline-none transition-all"
+                  style={{ color: '#0f172a', fontWeight: 500 }}
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between ml-1">
-                <Label htmlFor="password" className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Password</Label>
-                <Link href="/forgot-password" className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Forgot Password?</Link>
+                <label htmlFor="password" className="text-[10px] uppercase tracking-widest" style={{ color: '#64748b', fontWeight: 600 }}>Password</label>
+                <Link href="/forgot-password" className="text-[10px] uppercase tracking-widest hover:underline" style={{ color: '#2563eb', fontWeight: 600 }}>Forgot Password?</Link>
               </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-blue-600 transition-colors" />
-                <Input
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#94a3b8' }} />
+                <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-14 pl-12 pr-12 rounded-2xl border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-blue-50/50 font-bold transition-all"
+                  className="w-full h-12 pl-11 pr-11 text-sm rounded-xl border-2 border-[#e2e8f0] bg-[#f8fafc] focus:bg-white focus:border-[#2563eb] focus:outline-none transition-all"
+                  style={{ color: '#0f172a', fontWeight: 500 }}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: '#94a3b8' }}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -130,31 +144,32 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <div className="p-4 bg-rose-50 rounded-2xl border border-rose-100 flex items-center gap-3 animate-in shake duration-300">
-                <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div className="p-3 bg-[#fef2f2] rounded-xl border border-[#fecaca] flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-[#fee2e2] flex items-center justify-center shrink-0" style={{ color: '#dc2626' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
-                <p className="text-sm font-black text-rose-600">{error}</p>
+                <p className="text-xs" style={{ color: '#dc2626', fontWeight: 600 }}>{error}</p>
               </div>
             )}
 
-            <Button
+            <button
               type="submit"
               disabled={isLoading}
-              className="h-14 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-sm shadow-xl shadow-blue-100 gap-3 transition-all hover:-translate-y-1"
+              className="h-12 w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              style={{ fontWeight: 700 }}
             >
               {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>로그인하기 <ArrowRight className="w-4 h-4" /></>
               )}
-            </Button>
+            </button>
           </form>
 
-          <div className="mt-10 text-center">
-            <p className="text-sm font-bold text-slate-400">
+          <div className="mt-5 text-center">
+            <p className="text-sm" style={{ color: '#64748b', fontWeight: 500 }}>
               아직 계정이 없으신가요?{" "}
-              <Link href="/onboarding" className="text-blue-600 hover:text-blue-700 font-black ml-1 transition-colors">
+              <Link href="/onboarding" className="ml-1 transition-colors hover:underline" style={{ color: '#2563eb', fontWeight: 600 }}>
                 회원가입 시작하기
               </Link>
             </p>
@@ -162,8 +177,8 @@ export default function SignInPage() {
         </div>
 
         {/* 푸터 정보 */}
-        <div className="mt-12 text-center">
-          <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">© 2024 We:form. All rights reserved.</p>
+        <div className="mt-6 text-center">
+          <p className="text-[9px] uppercase tracking-[0.15em]" style={{ color: '#94a3b8', fontWeight: 600 }}>© 2024 We:form. All rights reserved.</p>
         </div>
       </div>
     </div>

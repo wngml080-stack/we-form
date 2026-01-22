@@ -22,10 +22,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a1a2e" },
-  ],
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -34,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="light" style={{ colorScheme: "light" }}>
       <head>
         {/* jsDelivr CDN preconnect for Pretendard font */}
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />

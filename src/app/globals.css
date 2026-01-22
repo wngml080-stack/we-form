@@ -159,18 +159,6 @@
   --gradient-brand: linear-gradient(135deg, #2F80ED 0%, #14b8a6 100%);
 }
 
-/* 다크모드 */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --background-secondary: #1e293b;
-    --foreground: #f1f5f9;
-    --foreground-muted: #94a3b8;
-    --glass-bg: rgba(30, 41, 59, 0.7);
-    --glass-border: rgba(51, 65, 85, 0.5);
-    --glass-shadow: rgba(0, 0, 0, 0.3);
-  }
-}
 
 /* Tailwind 4 테마 토큰 매핑 */
 @theme inline {
