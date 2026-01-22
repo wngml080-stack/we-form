@@ -14,7 +14,7 @@
   <title>We:form - 스마트 피트니스 센터 관리 시스템</title>
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
   <style>
-    /* Pretendard 폰트 */
+    /* Pretendard 폰트 - 최적화: 3가지 무게만 로드 */
     @font-face {
       font-family: 'Pretendard';
       src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Regular.woff2') format('woff2');
@@ -23,13 +23,8 @@
     }
     @font-face {
       font-family: 'Pretendard';
-      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Medium.woff2') format('woff2');
-      font-weight: 500;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: 'Pretendard';
       src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-SemiBold.woff2') format('woff2');
+      font-weight: 500;
       font-weight: 600;
       font-display: swap;
     }
@@ -37,17 +32,7 @@
       font-family: 'Pretendard';
       src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Bold.woff2') format('woff2');
       font-weight: 700;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: 'Pretendard';
-      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-ExtraBold.woff2') format('woff2');
       font-weight: 800;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: 'Pretendard';
-      src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Black.woff2') format('woff2');
       font-weight: 900;
       font-display: swap;
     }
@@ -2575,7 +2560,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/02_dashboard.png" alt="대시보드">
+              <img loading="lazy" src="/02_dashboard.png" alt="대시보드">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2623,7 +2608,7 @@
               </div>
             </div>
             <div class="feature-image" style="max-height: 480px;" onclick="openLightbox('/15_schedule_timetable_kimsoyeon.png', '스케줄 관리', '담당 회원의 PT 스케줄을 드래그 앤 드롭으로 관리합니다.')">
-              <img src="/15_schedule_timetable_kimsoyeon.png" alt="스케줄 관리">
+              <img loading="lazy" src="/15_schedule_timetable_kimsoyeon.png" alt="스케줄 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2664,7 +2649,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/14_re_registration_management.png" alt="재등록 관리">
+              <img loading="lazy" src="/14_re_registration_management.png" alt="재등록 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2711,7 +2696,7 @@
               </div>
             </div>
             <div class="feature-image" onclick="openLightbox('/13_coaching_kanban.png', '코칭 현황', '담당 회원들의 코칭 진행 상태를 칸반보드로 관리합니다.')">
-              <img src="/13_coaching_kanban.png" alt="코칭 현황">
+              <img loading="lazy" src="/13_coaching_kanban.png" alt="코칭 현황">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2740,7 +2725,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/16_portfolio_main.png" alt="포트폴리오">
+              <img loading="lazy" src="/16_portfolio_main.png" alt="포트폴리오">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2775,7 +2760,49 @@
               </p>
             </div>
             <div class="feature-image">
-              <img src="/17_salary_main.png" alt="급여 관리">
+              <img loading="lazy" src="/17_salary_main.png" alt="급여 관리">
+              <div class="feature-image-overlay">
+                <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. Member Management -->
+          <div class="feature-row fade-up" onclick="openLightbox('/12_member_list.png', '회원 관리', '담당 회원의 모든 정보를 통합 관리합니다.')">
+            <div class="feature-text">
+              <div class="feature-text-header">
+                <div class="feature-icon" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); box-shadow: 0 20px 40px -12px rgba(14, 165, 233, 0.35);">
+                  <i class="ri-user-heart-line"></i>
+                </div>
+                <h4>회원 관리 - 통합 정보 시스템</h4>
+              </div>
+              <p>
+                담당 회원의 모든 정보를 한 곳에서 관리합니다.
+                회원 기본 정보, 결제 내역, 수업 히스토리, 메모까지
+                필요한 모든 데이터를 즉시 확인하고 관리할 수 있습니다.
+              </p>
+              <div class="step-flow">
+                <div class="step-flow-title">회원 정보 관리 항목</div>
+                <div class="step-items" style="flex-wrap: wrap;">
+                  <span class="step-item">기본 정보</span>
+                  <span class="step-item">결제 내역</span>
+                  <span class="step-item">수업 기록</span>
+                  <span class="step-item">상담 메모</span>
+                  <span class="step-item">인바디 기록</span>
+                </div>
+              </div>
+              <p style="margin-top: 16px; color: var(--success); font-weight: 600;">
+                <i class="ri-checkbox-circle-fill"></i> 회원 검색, 필터링, 정렬 기능으로 원하는 회원을 빠르게 찾을 수 있습니다.
+              </p>
+              <div class="feature-tags">
+                <span class="feature-tag">회원 정보</span>
+                <span class="feature-tag">결제 내역</span>
+                <span class="feature-tag">수업 히스토리</span>
+                <span class="feature-tag">메모 관리</span>
+              </div>
+            </div>
+            <div class="feature-image">
+              <img loading="lazy" src="/12_member_list.png" alt="회원 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2804,10 +2831,13 @@
             </div>
           </div>
         </div>
+
+        <!-- Screenshots -->
+        <h3 style="margin-top: 60px; margin-bottom: 30px; font-size: 1.5rem;">관련 화면</h3>
         <div class="screenshot-grid">
           <div class="screenshot-card" onclick="openLightbox('/02_dashboard.png', '대시보드', '오늘의 수업, 매출 순위, 회사/지점 공지를 한눈에 확인합니다.')">
             <div class="screenshot-image-wrapper">
-              <img src="/02_dashboard.png" alt="대시보드" class="screenshot-image">
+              <img loading="lazy" src="/02_dashboard.png" alt="대시보드" class="screenshot-image">
               <div class="screenshot-overlay">
                 <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2821,7 +2851,7 @@
 
           <div class="screenshot-card" onclick="openLightbox('/15_schedule_timetable_kimsoyeon.png', '스케줄 관리', '담당 회원의 PT 스케줄을 드래그 앤 드롭으로 관리합니다.')">
             <div class="screenshot-image-wrapper">
-              <img src="/15_schedule_timetable_kimsoyeon.png" alt="스케줄 관리" class="screenshot-image">
+              <img loading="lazy" src="/15_schedule_timetable_kimsoyeon.png" alt="스케줄 관리" class="screenshot-image">
               <div class="screenshot-overlay">
                 <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2835,7 +2865,7 @@
 
           <div class="screenshot-card" onclick="openLightbox('/13_coaching_kanban.png', '코칭 현황', '담당 회원들의 코칭 진행 상태를 칸반보드로 관리합니다.')">
             <div class="screenshot-image-wrapper">
-              <img src="/13_coaching_kanban.png" alt="코칭 현황" class="screenshot-image">
+              <img loading="lazy" src="/13_coaching_kanban.png" alt="코칭 현황" class="screenshot-image">
               <div class="screenshot-overlay">
                 <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2849,7 +2879,7 @@
 
           <div class="screenshot-card" onclick="openLightbox('/14_re_registration_management.png', '재등록 관리', '70% 소진 시 자동으로 재등록 대상자로 분류됩니다.')">
             <div class="screenshot-image-wrapper">
-              <img src="/14_re_registration_management.png" alt="재등록 관리" class="screenshot-image">
+              <img loading="lazy" src="/14_re_registration_management.png" alt="재등록 관리" class="screenshot-image">
               <div class="screenshot-overlay">
                 <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2863,7 +2893,7 @@
 
           <div class="screenshot-card" onclick="openLightbox('/16_portfolio_main.png', '포트폴리오', '비포/애프터 사진으로 즉시 세일즈가 가능합니다.')">
             <div class="screenshot-image-wrapper">
-              <img src="/16_portfolio_main.png" alt="포트폴리오" class="screenshot-image">
+              <img loading="lazy" src="/16_portfolio_main.png" alt="포트폴리오" class="screenshot-image">
               <div class="screenshot-overlay">
                 <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2877,7 +2907,7 @@
 
           <div class="screenshot-card" onclick="openLightbox('/12_member_list.png', '회원 상세', '담당 회원의 상세 정보와 히스토리를 확인합니다.')">
             <div class="screenshot-image-wrapper">
-              <img src="/12_member_list.png" alt="회원 상세" class="screenshot-image">
+              <img loading="lazy" src="/12_member_list.png" alt="회원 상세" class="screenshot-image">
               <div class="screenshot-overlay">
                 <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2924,7 +2954,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/18_staff_list.png" alt="직원 관리">
+              <img loading="lazy" src="/18_staff_list.png" alt="직원 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -2972,7 +3002,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/03_sales_main.png" alt="매출 관리">
+              <img loading="lazy" src="/03_sales_main.png" alt="매출 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3015,13 +3045,13 @@
             </div>
             <div class="feature-image" style="display: flex; flex-direction: column; gap: 8px; min-height: 500px;">
               <div style="flex: 1; min-height: 200px; position: relative; cursor: pointer;" onclick="openLightbox('/06_new_inquiry_main.png', '신규 문의 대시보드', '신규 문의 현황을 한눈에 파악합니다.')">
-                <img src="/06_new_inquiry_main.png" alt="신규 문의 대시보드" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
+                <img loading="lazy" src="/06_new_inquiry_main.png" alt="신규 문의 대시보드" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
                 <div class="feature-image-overlay">
                   <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 대시보드</div>
                 </div>
               </div>
               <div style="flex: 1; min-height: 200px; position: relative; cursor: pointer;" onclick="openLightbox('/06-1_new_member_management.png', '신규 회원 관리', '신규 회원 리스트를 관리합니다.')">
-                <img src="/06-1_new_member_management.png" alt="신규 회원 관리" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
+                <img loading="lazy" src="/06-1_new_member_management.png" alt="신규 회원 관리" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
                 <div class="feature-image-overlay">
                   <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 회원 관리</div>
                 </div>
@@ -3065,13 +3095,13 @@
             </div>
             <div class="feature-image" style="display: flex; flex-direction: column; gap: 8px; min-height: 500px;">
               <div style="flex: 1; min-height: 200px; position: relative; cursor: pointer;" onclick="openLightbox('/09_renewal_main.png', '리뉴 관리', '리뉴 대상자 현황을 관리합니다.')">
-                <img src="/09_renewal_main.png" alt="리뉴 관리" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
+                <img loading="lazy" src="/09_renewal_main.png" alt="리뉴 관리" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
                 <div class="feature-image-overlay">
                   <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 리뉴 관리</div>
                 </div>
               </div>
               <div style="flex: 1; min-height: 200px; position: relative; cursor: pointer;" onclick="openLightbox('/10_renewal_targets.png', '리뉴 대상자', '분류된 대상자 리스트입니다.')">
-                <img src="/10_renewal_targets.png" alt="리뉴 대상자" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
+                <img loading="lazy" src="/10_renewal_targets.png" alt="리뉴 대상자" style="width: 100%; height: 100%; object-fit: cover; object-position: top left;">
                 <div class="feature-image-overlay">
                   <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 대상자 리스트</div>
                 </div>
@@ -3106,7 +3136,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/11_performance_analysis.png" alt="실적성과표">
+              <img loading="lazy" src="/11_performance_analysis.png" alt="실적성과표">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3134,7 +3164,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/04_sales_comparison_modal.png" alt="비교분석">
+              <img loading="lazy" src="/04_sales_comparison_modal.png" alt="비교분석">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3171,7 +3201,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/05_expenses_main.png" alt="지출 관리">
+              <img loading="lazy" src="/05_expenses_main.png" alt="지출 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3211,7 +3241,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/17_salary_main.png" alt="급여 관리">
+              <img loading="lazy" src="/17_salary_main.png" alt="급여 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3248,7 +3278,7 @@
               </div>
             </div>
             <div class="feature-image" style="max-height: 420px;">
-              <img src="/22_messenger.png" alt="사내 메신저">
+              <img loading="lazy" src="/22_messenger.png" alt="사내 메신저">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3284,10 +3314,32 @@
               </div>
             </div>
             <div class="feature-image" style="max-height: 420px;">
-              <img src="/08_kakao_integration_modal.png" alt="외부 채널 연동">
+              <img loading="lazy" src="/08_kakao_integration_modal.png" alt="외부 채널 연동">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Integration -->
+        <div class="integration-section fade-up">
+          <h4><i class="ri-link"></i> 외부 서비스 연동</h4>
+          <div class="integration-grid">
+            <div class="integration-item">
+              <i class="ri-google-fill"></i>
+              <h5>Google 스프레드시트</h5>
+              <p>모든 데이터를 스프레드시트와 실시간 동기화하여 추가 분석이 가능합니다.</p>
+            </div>
+            <div class="integration-item">
+              <i class="ri-calendar-line"></i>
+              <h5>Google 캘린더</h5>
+              <p>스케줄을 Google 캘린더와 연동하여 어디서든 일정을 확인하세요.</p>
+            </div>
+            <div class="integration-item">
+              <i class="ri-kakao-talk-fill"></i>
+              <h5>카카오 알림톡</h5>
+              <p>회원에게 수업 알림, 만료 예정 알림을 자동으로 발송합니다.</p>
             </div>
           </div>
         </div>
@@ -3297,7 +3349,7 @@
         <div class="screenshot-grid">
           <div class="screenshot-card" onclick="openLightbox('/03_sales_main.png', '매출 관리', '매출 관리가 곧 업무일지가 됩니다.')">
             <div class="screenshot-image-wrapper">
-              <img src="/03_sales_main.png" alt="매출 관리" class="screenshot-image">
+              <img loading="lazy" src="/03_sales_main.png" alt="매출 관리" class="screenshot-image">
               <div class="screenshot-overlay"><div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div></div>
             </div>
             <div class="screenshot-content">
@@ -3308,7 +3360,7 @@
           </div>
           <div class="screenshot-card" onclick="openLightbox('/11_performance_analysis.png', '실적성과표', '자동 생성되는 실적 분석')">
             <div class="screenshot-image-wrapper">
-              <img src="/11_performance_analysis.png" alt="실적성과표" class="screenshot-image">
+              <img loading="lazy" src="/11_performance_analysis.png" alt="실적성과표" class="screenshot-image">
               <div class="screenshot-overlay"><div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div></div>
             </div>
             <div class="screenshot-content">
@@ -3319,7 +3371,7 @@
           </div>
           <div class="screenshot-card" onclick="openLightbox('/17_salary_main.png', '급여 관리', '반려/승인/명세서 전송')">
             <div class="screenshot-image-wrapper">
-              <img src="/17_salary_main.png" alt="급여 관리" class="screenshot-image">
+              <img loading="lazy" src="/17_salary_main.png" alt="급여 관리" class="screenshot-image">
               <div class="screenshot-overlay"><div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div></div>
             </div>
             <div class="screenshot-content">
@@ -3330,7 +3382,7 @@
           </div>
           <div class="screenshot-card" onclick="openLightbox('/18_staff_list.png', '직원 관리', '재직/휴직/퇴사 상태 관리')">
             <div class="screenshot-image-wrapper">
-              <img src="/18_staff_list.png" alt="직원 관리" class="screenshot-image">
+              <img loading="lazy" src="/18_staff_list.png" alt="직원 관리" class="screenshot-image">
               <div class="screenshot-overlay"><div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div></div>
             </div>
             <div class="screenshot-content">
@@ -3341,7 +3393,7 @@
           </div>
           <div class="screenshot-card" onclick="openLightbox('/04_sales_comparison_modal.png', '비교분석', '월별 비교 분석')">
             <div class="screenshot-image-wrapper">
-              <img src="/04_sales_comparison_modal.png" alt="비교분석" class="screenshot-image">
+              <img loading="lazy" src="/04_sales_comparison_modal.png" alt="비교분석" class="screenshot-image">
               <div class="screenshot-overlay"><div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div></div>
             </div>
             <div class="screenshot-content">
@@ -3352,7 +3404,7 @@
           </div>
           <div class="screenshot-card" onclick="openLightbox('/06_new_inquiry_main.png', '신규 관리', '다채널 신규 문의 통합')">
             <div class="screenshot-image-wrapper">
-              <img src="/06_new_inquiry_main.png" alt="신규 관리" class="screenshot-image">
+              <img loading="lazy" src="/06_new_inquiry_main.png" alt="신규 관리" class="screenshot-image">
               <div class="screenshot-overlay"><div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div></div>
             </div>
             <div class="screenshot-content">
@@ -3395,7 +3447,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/01_login.png" alt="시스템 관리">
+              <img loading="lazy" src="/01_login.png" alt="시스템 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3422,7 +3474,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/20_hq_main.png" alt="본사 관리">
+              <img loading="lazy" src="/20_hq_main.png" alt="본사 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3461,7 +3513,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/18_staff_list.png" alt="직원 관리">
+              <img loading="lazy" src="/18_staff_list.png" alt="직원 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3497,10 +3549,56 @@
               </div>
             </div>
             <div class="feature-image" style="max-height: 420px;">
-              <img src="/08_kakao_integration_modal.png" alt="외부 채널 연동">
+              <img loading="lazy" src="/08_kakao_integration_modal.png" alt="외부 채널 연동">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshots -->
+        <h3 style="margin-top: 60px; margin-bottom: 30px; font-size: 1.5rem;">관련 화면</h3>
+        <div class="screenshot-grid">
+          <div class="screenshot-card" onclick="openLightbox('/20_hq_main.png', '본사 관리', '다중 지점을 통합 관리합니다.')">
+            <div class="screenshot-image-wrapper">
+              <img loading="lazy" src="/20_hq_main.png" alt="본사 관리" class="screenshot-image">
+              <div class="screenshot-overlay">
+                <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
+              </div>
+            </div>
+            <div class="screenshot-content">
+              <div class="screenshot-number">20</div>
+              <h4 class="screenshot-title">본사 관리</h4>
+              <p class="screenshot-desc">다중 지점 통합 대시보드</p>
+            </div>
+          </div>
+
+          <div class="screenshot-card" onclick="openLightbox('/18_staff_list.png', '직원 관리', '전체 직원을 통합 관리합니다.')">
+            <div class="screenshot-image-wrapper">
+              <img loading="lazy" src="/18_staff_list.png" alt="직원 관리" class="screenshot-image">
+              <div class="screenshot-overlay">
+                <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
+              </div>
+            </div>
+            <div class="screenshot-content">
+              <div class="screenshot-number">18</div>
+              <h4 class="screenshot-title">직원 관리</h4>
+              <p class="screenshot-desc">전체 직원 통합 관리</p>
+            </div>
+          </div>
+
+          <div class="screenshot-card" onclick="openLightbox('/08_kakao_integration_modal.png', '외부 연동', '카카오, 네이버 등 외부 채널 연동')">
+            <div class="screenshot-image-wrapper">
+              <img loading="lazy" src="/08_kakao_integration_modal.png" alt="외부 연동" class="screenshot-image">
+              <div class="screenshot-overlay">
+                <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
+              </div>
+            </div>
+            <div class="screenshot-content">
+              <div class="screenshot-number">08</div>
+              <h4 class="screenshot-title">외부 연동</h4>
+              <p class="screenshot-desc">다채널 통합 연동</p>
             </div>
           </div>
         </div>
@@ -3548,7 +3646,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/21_system_settings.png" alt="시스템 설정">
+              <img loading="lazy" src="/21_system_settings.png" alt="시스템 설정">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3576,7 +3674,7 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/01_login.png" alt="시스템 관리">
+              <img loading="lazy" src="/01_login.png" alt="시스템 관리">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
@@ -3613,10 +3711,42 @@
               </div>
             </div>
             <div class="feature-image">
-              <img src="/21_system_settings.png" alt="시스템 설정">
+              <img loading="lazy" src="/21_system_settings.png" alt="시스템 설정">
               <div class="feature-image-overlay">
                 <div class="feature-image-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screenshots -->
+        <h3 style="margin-top: 60px; margin-bottom: 30px; font-size: 1.5rem;">관련 화면</h3>
+        <div class="screenshot-grid">
+          <div class="screenshot-card" onclick="openLightbox('/21_system_settings.png', '시스템 설정', '시스템 전체 설정을 관리합니다.')">
+            <div class="screenshot-image-wrapper">
+              <img loading="lazy" src="/21_system_settings.png" alt="시스템 설정" class="screenshot-image">
+              <div class="screenshot-overlay">
+                <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
+              </div>
+            </div>
+            <div class="screenshot-content">
+              <div class="screenshot-number">21</div>
+              <h4 class="screenshot-title">시스템 설정</h4>
+              <p class="screenshot-desc">전체 시스템 관리</p>
+            </div>
+          </div>
+
+          <div class="screenshot-card" onclick="openLightbox('/01_login.png', '고객사 관리', '고객사 및 인프라를 관리합니다.')">
+            <div class="screenshot-image-wrapper">
+              <img loading="lazy" src="/01_login.png" alt="고객사 관리" class="screenshot-image">
+              <div class="screenshot-overlay">
+                <div class="view-btn"><i class="ri-zoom-in-line"></i> 크게 보기</div>
+              </div>
+            </div>
+            <div class="screenshot-content">
+              <div class="screenshot-number">01</div>
+              <h4 class="screenshot-title">고객사 관리</h4>
+              <p class="screenshot-desc">업체 승인 및 관리</p>
             </div>
           </div>
         </div>
@@ -4076,7 +4206,7 @@
         <i class="ri-close-line"></i>
       </button>
       <div class="lightbox-image-wrapper" id="lightbox-wrapper">
-        <img src="" alt="" class="lightbox-image" id="lightbox-image">
+        <img loading="lazy" src="" alt="" class="lightbox-image" id="lightbox-image">
         <div class="zoom-hint"><i class="ri-drag-move-line"></i> 드래그하여 이동</div>
       </div>
       <div class="lightbox-info">
