@@ -3,15 +3,16 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export interface InputProps extends React.ComponentProps<"input"> {
-  variant?: "default" | "neumorphic" | "glass"
+  variant?: "default" | "filled"
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, variant = "default", ...props }, ref) => {
     const variants = {
-      default: "flex h-11 w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-2.5 text-base font-medium transition-all duration-300 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-slate-700 placeholder:text-slate-400 focus-visible:outline-none focus-visible:border-[#2F80ED] focus-visible:ring-4 focus-visible:ring-[#2F80ED]/10 focus-visible:shadow-[0_4px_12px_rgba(47,128,237,0.15)] disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-slate-50 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04),0_1px_2px_rgba(255,255,255,0.8)] md:text-sm",
-      neumorphic: "flex h-11 w-full rounded-xl border-none bg-[#f0f4f8] px-4 py-2.5 text-base font-medium transition-all duration-300 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-slate-700 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2F80ED]/10 disabled:cursor-not-allowed disabled:opacity-50 shadow-[inset_4px_4px_8px_rgba(0,0,0,0.08),inset_-4px_-4px_8px_rgba(255,255,255,0.9)] focus:shadow-[inset_6px_6px_12px_rgba(0,0,0,0.1),inset_-6px_-6px_12px_rgba(255,255,255,0.95),0_0_0_3px_rgba(47,128,237,0.1)] md:text-sm",
-      glass: "flex h-11 w-full rounded-xl border border-white/50 bg-white/70 backdrop-blur-xl px-4 py-2.5 text-base font-medium transition-all duration-300 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-slate-700 placeholder:text-slate-400 focus-visible:outline-none focus-visible:border-[#2F80ED] focus-visible:ring-4 focus-visible:ring-[#2F80ED]/10 focus-visible:bg-white/80 disabled:cursor-not-allowed disabled:opacity-50 shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)] md:text-sm",
+      // 토스 스타일 기본 인풋
+      default: "flex h-12 w-full rounded-xl border-2 border-[#E5E8EB] bg-white px-4 py-3 text-base text-[#191F28] transition-all duration-200 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[#4E5968] placeholder:text-[#B0B8C1] focus-visible:outline-none focus-visible:border-[#3182F6] focus-visible:bg-[#F0F6FF] focus-visible:ring-4 focus-visible:ring-[#3182F6]/10 disabled:cursor-not-allowed disabled:opacity-60 disabled:bg-[#F4F5F7] md:text-sm",
+      // 토스 스타일 채워진 인풋
+      filled: "flex h-12 w-full rounded-xl border-none bg-[#F4F5F7] px-4 py-3 text-base text-[#191F28] transition-all duration-200 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[#4E5968] placeholder:text-[#B0B8C1] focus-visible:outline-none focus-visible:bg-[#EBEDF0] focus-visible:ring-4 focus-visible:ring-[#3182F6]/10 disabled:cursor-not-allowed disabled:opacity-60 md:text-sm",
     }
 
     return (
