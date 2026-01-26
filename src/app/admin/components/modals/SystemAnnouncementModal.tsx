@@ -14,11 +14,11 @@ interface SystemAnnouncementModalProps {
 export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }: SystemAnnouncementModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
-        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+      <DialogContent className="w-full max-w-2xl bg-[var(--background)] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[32px]">
+        <DialogHeader className="px-10 py-8 bg-[var(--foreground)] flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary-hex)]/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--primary-hex)] to-[var(--primary-active-hex)] flex items-center justify-center shadow-[0_4px_16px_rgba(49,130,246,0.3)]">
               <Bell className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -38,7 +38,7 @@ export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }:
           </button>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-10 space-y-6 bg-[#f8fafc]">
+        <div className="flex-1 overflow-y-auto p-10 space-y-6 bg-[var(--background)]">
           {announcements.length > 0 ? (
             <div className="space-y-6">
               {announcements.map((announcement) => {

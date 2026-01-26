@@ -33,14 +33,14 @@ export function FcSalesModal({
 }: FcSalesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
+      <DialogContent className="max-w-4xl bg-[var(--background)] max-h-[90vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
         {/* 헤더 - 프리미엄 디자인 */}
-        <div className="bg-slate-900 p-10 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+        <div className="bg-[var(--foreground)] p-10 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary-hex)]/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <div className="w-12 h-12 bg-[var(--primary-hex)] rounded-2xl flex items-center justify-center shadow-[0_4px_16px_rgba(49,130,246,0.3)]">
                   <Target className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -94,7 +94,7 @@ export function FcSalesModal({
                 onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
                 className="h-11 bg-white border-none rounded-xl font-bold text-slate-900"
               />
-              <Button onClick={onCustomSearch} className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black">
+              <Button onClick={onCustomSearch} className="h-11 px-6 bg-[var(--primary-hex)] hover:bg-[var(--primary-active-hex)] text-white rounded-xl font-black">
                 <Search className="w-5 h-5" />
               </Button>
             </div>
@@ -112,29 +112,29 @@ export function FcSalesModal({
             <>
               {/* 첫 번째 행: 핵심 지표 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
-                  <div className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-4">FC BEP</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-blue-600 transition-colors">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
+                  <div className="text-[10px] font-black text-[var(--primary-hex)] uppercase tracking-[0.2em] mb-4">FC BEP</div>
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-[var(--primary-hex)] transition-colors">
                     {Math.round(fcStats.bep / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
-                  <div className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-4">FC TOTAL SALES</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-emerald-600 transition-colors">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
+                  <div className="text-[10px] font-black text-[var(--secondary-hex)] uppercase tracking-[0.2em] mb-4">FC TOTAL SALES</div>
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-[var(--secondary-hex)] transition-colors">
                     {Math.round(fcStats.totalSales / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
                   <div className="text-[10px] font-black text-purple-500 uppercase tracking-[0.2em] mb-4">BEP RATE</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-purple-600 transition-colors">
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-purple-600 transition-colors">
                     {Math.round(fcStats.bepRate)}<span className="text-base font-bold ml-1 opacity-40">%</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
                   <div className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-4 flex items-center">
                     UNIT PRICE <HelpTooltip content="1건당 평균 결제 금액입니다." iconClassName="w-3 h-3 ml-2" />
                   </div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-indigo-600 transition-colors">
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-indigo-600 transition-colors">
                     {Math.round(fcStats.avgPrice / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
@@ -150,19 +150,19 @@ export function FcSalesModal({
               </div>
 
               {/* 세 번째 행: 주요 매출 성과 - 그라데이션 박스 */}
-              <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-blue-100/50 border border-blue-50 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50 rounded-full -mr-40 -mt-40 transition-transform duration-1000 group-hover:scale-110"></div>
+              <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-[var(--primary-light-hex)] border border-[var(--primary-hex)]/10 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-[var(--primary-light-hex)] rounded-full -mr-40 -mt-40 transition-transform duration-1000 group-hover:scale-110"></div>
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-8">
                   <div className="space-y-2 text-center md:text-left">
-                    <h3 className="text-sm font-black text-blue-600 uppercase tracking-[0.3em]">Monthly Performance</h3>
-                    <div className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter">
-                      FC 신규 매출 <span className="text-blue-600">{Math.round(fcStats.newSales / 10000).toLocaleString()}</span>만원
+                    <h3 className="text-sm font-black text-[var(--primary-hex)] uppercase tracking-[0.3em]">Monthly Performance</h3>
+                    <div className="text-4xl md:text-5xl font-black text-[var(--foreground)] tracking-tighter">
+                      FC 신규 매출 <span className="text-[var(--primary-hex)]">{Math.round(fcStats.newSales / 10000).toLocaleString()}</span>만원
                     </div>
-                    <p className="text-slate-400 font-bold text-base">
+                    <p className="text-[var(--foreground-muted)] font-bold text-base">
                       {salesPeriod === "thisMonth" ? "이번 달" : salesPeriod === "lastMonth" ? "지난 달" : "지정 기간"} 동안의 신규 유입 매출 성과입니다.
                     </p>
                   </div>
-                  <div className="w-32 h-32 bg-blue-600 rounded-[40px] flex items-center justify-center shadow-2xl shadow-blue-500/40 rotate-12 transition-transform duration-500 group-hover:rotate-0">
+                  <div className="w-32 h-32 bg-[var(--primary-hex)] rounded-[40px] flex items-center justify-center shadow-2xl shadow-[var(--primary-hex)]/40 rotate-12 transition-transform duration-500 group-hover:rotate-0">
                     <TrendingUp className="w-16 h-16 text-white" />
                   </div>
                 </div>
@@ -172,7 +172,7 @@ export function FcSalesModal({
         </div>
 
         <div className="p-10 pt-0 flex justify-end">
-          <Button onClick={() => onOpenChange(false)} variant="ghost" className="h-14 px-10 rounded-2xl font-black text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all">
+          <Button onClick={() => onOpenChange(false)} variant="ghost" className="h-14 px-10 rounded-2xl font-black text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] transition-all">
             CLOSE
           </Button>
         </div>
@@ -191,11 +191,11 @@ function DetailStatCard({ label, value, color, tooltip }: { label: string, value
   };
 
   return (
-    <div className={cn("rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all", colorMap[color] || "bg-gray-50")}>
+    <div className={cn("rounded-3xl p-6 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all", colorMap[color] || "bg-gray-50")}>
       <div className="text-[9px] font-black uppercase tracking-[0.2em] mb-2 flex items-center opacity-60">
         {label} {tooltip && <HelpTooltip content={tooltip} iconClassName="w-2.5 h-2.5 ml-1.5" />}
       </div>
-      <div className="text-xl font-black tracking-tight text-slate-900">{value}</div>
+      <div className="text-xl font-black tracking-tight text-[var(--foreground)]">{value}</div>
     </div>
   );
 }

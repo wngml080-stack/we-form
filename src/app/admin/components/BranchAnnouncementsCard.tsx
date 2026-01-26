@@ -16,38 +16,50 @@ export function BranchAnnouncementsCard({ announcements, onAnnouncementClick }: 
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col h-full">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          <Bell className="w-5 h-5 text-primary" />
+    <div className="bg-white rounded-[32px] p-8 shadow-sm border border-[var(--border)] flex flex-col h-full hover:shadow-toss transition-all duration-300">
+      <div className="flex justify-between items-center mb-8">
+        <h3 className="text-xl font-bold text-[var(--foreground)] flex items-center gap-3 tracking-tight">
+          <Bell className="w-6 h-6 text-[var(--accent-hex)]" />
           지점 공지사항
         </h3>
-        <span className="text-xs text-slate-400">{announcements.length}건</span>
+        <div className="px-3 py-1.5 bg-[var(--background-secondary)] rounded-full text-xs text-[var(--foreground-muted)] font-bold">
+          {announcements.length}건
+        </div>
       </div>
-      
-      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+
+      <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar">
         {announcements.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-            <p className="text-sm">등록된 공지사항이 없습니다.</p>
+          <div className="flex flex-col items-center justify-center py-16 text-[var(--foreground-subtle)] space-y-3">
+            <div className="w-16 h-16 bg-[var(--background-secondary)] rounded-full flex items-center justify-center">
+              <Bell className="w-8 h-8 opacity-20" />
+            </div>
+            <p className="text-sm font-bold tracking-tight">등록된 공지사항이 없습니다.</p>
           </div>
         ) : (
           announcements.map((announcement) => (
             <div
               key={announcement.id}
-              className="p-4 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              className="p-5 bg-[var(--background)] hover:bg-[var(--background-secondary)] border border-transparent hover:border-[var(--border)] rounded-[24px] transition-all duration-300 cursor-pointer active:scale-[0.98] group"
               onClick={() => onAnnouncementClick(announcement)}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                  announcement.priority === 'urgent' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'
+              <div className="flex items-center gap-3 mb-2">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold tracking-widest ${
+                  announcement.priority === 'urgent' 
+                    ? 'bg-rose-50 text-rose-500 border border-rose-100' 
+                    : 'bg-blue-50 text-blue-500 border border-blue-100'
                 }`}>
                   {priorityLabels[announcement.priority]}
                 </span>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[11px] text-[var(--foreground-subtle)] font-bold">
                   {new Date(announcement.created_at).toLocaleDateString('ko-KR')}
                 </span>
               </div>
-              <div className="font-semibold text-slate-800 text-sm truncate">{announcement.title}</div>
+              <div className="font-bold text-[var(--foreground)] text-base tracking-tight truncate group-hover:text-[var(--primary-hex)] transition-colors">
+                {announcement.title}
+              </div>
+              <div className="mt-1 text-sm text-[var(--foreground-muted)] line-clamp-1 opacity-70">
+                {announcement.content || "공지사항 내용을 확인해주세요."}
+              </div>
             </div>
           ))
         )}

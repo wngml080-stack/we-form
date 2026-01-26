@@ -30,10 +30,20 @@ export async function POST(request: Request) {
       if (!authUser) {
         return NextResponse.json({ error: "회원가입이 완료되지 않았습니다. 먼저 계정을 생성해주세요." }, { status: 401 });
       }
+
+      // 이메일 인증 여부 확인
+      if (!authUser.email_confirmed_at) {
+        return NextResponse.json({ error: "이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요." }, { status: 401 });
+      }
     } else {
       // 세션 사용자가 있으면 이메일 일치 확인
       if (email !== sessionUser.email) {
         return NextResponse.json({ error: "인증 정보가 일치하지 않습니다." }, { status: 403 });
+      }
+
+      // 세션 사용자의 이메일 인증 여부 확인
+      if (!sessionUser.email_confirmed_at) {
+        return NextResponse.json({ error: "이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요." }, { status: 401 });
       }
     }
 

@@ -71,45 +71,44 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
   };
 
   return (
-    <div className="min-h-full bg-[#f8fafc] animate-in fade-in duration-700">
+    <div className="min-h-full bg-[var(--background)] animate-in fade-in duration-700">
       {/* 시스템 공지 배너 */}
       <SystemAnnouncementBanner
         announcements={systemAnnouncements}
         onBannerClick={() => setIsAnnouncementModalOpen(true)}
       />
 
-      <div className="p-2 xs:p-3 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 xs:space-y-6 lg:space-y-10">
+      <div className="space-y-6 xs:space-y-8 lg:space-y-12 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-100">
         {/* AI Command Center - 자연어 검색바 */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-250">
           <AiCommandCenter gymId={selectedGymId} />
         </div>
 
-        {/* Welcome Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 xs:gap-4 md:gap-6">
-          <div className="space-y-1 xs:space-y-2">
-            <p className="text-xs xs:text-sm text-slate-500 font-medium">{todayDate}</p>
-            <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-slate-900">
-              {userName}님, {getGreeting()} 👋
+        {/* Welcome Header - Toss 스타일 */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 xs:gap-6 md:gap-8">
+          <div className="space-y-2 xs:space-y-3">
+            <p className="text-xs xs:text-sm text-[var(--foreground-subtle)] font-bold uppercase tracking-[0.2em]">{todayDate}</p>
+            <h1 className="text-2xl xs:text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[var(--foreground)] tracking-tight leading-tight">
+              {userName}님, <br className="sm:hidden" /> {getGreeting()} 👋
             </h1>
-            <p className="text-xs xs:text-sm text-slate-500">
-              오늘도 <span className="text-primary font-semibold">{gymName || "We:form"}</span>의 성공적인 운영을 위해 힘내세요!
+            <p className="text-sm xs:text-base text-[var(--foreground-muted)] font-medium">
+              오늘도 <span className="text-[var(--primary-hex)] font-bold decoration-2 underline-offset-4">{gymName || "We:form"}</span>의 성공적인 운영을 위해 함께해요.
             </p>
           </div>
-
         </div>
 
         {isLoading ? (
-          <div className="space-y-4 xs:space-y-6 lg:space-y-8">
-            <div className="h-16 xs:h-20 sm:h-24 bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
-            <div className="h-28 xs:h-32 sm:h-40 bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 xs:gap-4 sm:gap-6 lg:gap-8">
-              <div className="h-[280px] xs:h-[320px] sm:h-[400px] bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
-              <div className="h-[280px] xs:h-[320px] sm:h-[400px] bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
-              <div className="h-[280px] xs:h-[320px] sm:h-[400px] bg-gray-100 rounded-2xl xs:rounded-3xl animate-pulse" />
+          <div className="space-y-6 xs:space-y-8 lg:space-y-12">
+            <div className="h-20 xs:h-24 sm:h-28 bg-[var(--background-secondary)] rounded-3xl animate-pulse" />
+            <div className="h-32 xs:h-40 sm:h-48 bg-[var(--background-secondary)] rounded-3xl animate-pulse" />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 xs:gap-6 sm:gap-8 lg:gap-10">
+              <div className="h-[320px] xs:h-[360px] sm:h-[440px] bg-[var(--background-secondary)] rounded-3xl animate-pulse" />
+              <div className="h-[320px] xs:h-[360px] sm:h-[440px] bg-[var(--background-secondary)] rounded-3xl animate-pulse" />
+              <div className="h-[320px] xs:h-[360px] sm:h-[440px] bg-[var(--background-secondary)] rounded-3xl animate-pulse" />
             </div>
           </div>
         ) : (
-          <div className="space-y-4 xs:space-y-6 lg:space-y-10">
+          <div className="space-y-8 xs:space-y-10 lg:space-y-16">
             {/* Quick Actions */}
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
               <QuickActions />
@@ -121,7 +120,7 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
             </div>
 
             {/* Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 xs:gap-4 sm:gap-6 lg:gap-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 xs:gap-6 sm:gap-8 lg:gap-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
               {/* Left Column - 지점 공지 */}
               <div className="h-full">
                 <BranchAnnouncementsCard

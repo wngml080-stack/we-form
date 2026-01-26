@@ -28,34 +28,34 @@ export function CompanyEventsCalendar({
   });
 
   const eventTypeColors: Record<string, string> = {
-    general: "bg-blue-500",
-    training: "bg-purple-500",
-    meeting: "bg-orange-500",
-    holiday: "bg-red-500",
-    celebration: "bg-pink-500"
+    general: "bg-blue-400",
+    training: "bg-purple-400",
+    meeting: "bg-orange-400",
+    holiday: "bg-rose-400",
+    celebration: "bg-pink-400"
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col h-full">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-purple-600" />
+    <div className="bg-white rounded-[32px] p-8 shadow-sm border border-[var(--border)] flex flex-col h-full hover:shadow-toss transition-all duration-300">
+      <div className="flex justify-between items-center mb-8">
+        <h3 className="text-xl font-bold text-[var(--foreground)] flex items-center gap-3 tracking-tight">
+          <Calendar className="w-6 h-6 text-[var(--secondary-hex)]" />
           회사 일정
         </h3>
       </div>
 
-      <div className="flex items-center justify-between mb-4 px-2">
+      <div className="flex items-center justify-between mb-6 px-2">
         <button
           onClick={() => {
             const prev = new Date(currentMonth);
             prev.setMonth(prev.getMonth() - 1);
             setCurrentMonth(prev);
           }}
-          className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+          className="w-10 h-10 flex items-center justify-center hover:bg-[var(--background-secondary)] rounded-full transition-all active:scale-90"
         >
-          <ChevronLeft className="w-4 h-4 text-slate-400" />
+          <ChevronLeft className="w-5 h-5 text-[var(--foreground-muted)]" />
         </button>
-        <span className="text-sm font-bold text-slate-900">
+        <span className="text-base font-extrabold text-[var(--foreground)] tracking-tight">
           {format(currentMonth, "yyyy년 MM월", { locale: ko })}
         </span>
         <button
@@ -64,21 +64,21 @@ export function CompanyEventsCalendar({
             next.setMonth(next.getMonth() + 1);
             setCurrentMonth(next);
           }}
-          className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+          className="w-10 h-10 flex items-center justify-center hover:bg-[var(--background-secondary)] rounded-full transition-all active:scale-90"
         >
-          <ChevronRight className="w-4 h-4 text-slate-400" />
+          <ChevronRight className="w-5 h-5 text-[var(--foreground-muted)]" />
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 mb-2">
+      <div className="grid grid-cols-7 gap-2 mb-3">
         {["일", "월", "화", "수", "목", "금", "토"].map((day, idx) => (
-          <div key={idx} className={cn("text-center text-[10px] font-bold py-1", idx === 0 ? "text-red-400" : idx === 6 ? "text-blue-400" : "text-slate-300")}>
+          <div key={idx} className={cn("text-center text-[11px] font-extrabold py-1 tracking-widest uppercase", idx === 0 ? "text-rose-400" : idx === 6 ? "text-blue-400" : "text-[var(--foreground-subtle)]")}>
             {day}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {Array.from({ length: startDayOfWeek }).map((_, i) => (
           <div key={`empty-${i}`} className="aspect-square"></div>
         ))}
@@ -93,18 +93,27 @@ export function CompanyEventsCalendar({
             <div
               key={dateKey}
               className={cn(
-                "aspect-square p-1 rounded-lg cursor-pointer transition-colors flex flex-col items-center justify-center relative",
-                isToday ? "bg-primary text-white shadow-sm" : "hover:bg-slate-50",
-                !isCurrentMonth && "opacity-20 pointer-events-none"
+                "aspect-square rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center justify-center relative group active:scale-90",
+                isToday 
+                  ? "bg-[var(--primary-hex)] text-white shadow-lg shadow-[var(--primary-hex)]/20" 
+                  : "hover:bg-[var(--background-secondary)] text-[var(--foreground)]",
+                !isCurrentMonth && "opacity-10 pointer-events-none"
               )}
               onClick={() => dayEvents.length > 0 && onDateClick(date, dayEvents)}
             >
-              <div className="text-[11px] font-bold">{format(date, "d")}</div>
+              <div className={cn("text-xs font-bold tracking-tight", isToday ? "text-white" : "text-[var(--foreground)]")}>
+                {format(date, "d")}
+              </div>
               {dayEvents.length > 0 && (
-                <div className="flex gap-0.5 mt-0.5">
-                  {dayEvents.slice(0, 2).map((event, idx) => (
-                    <div key={idx} className={cn("w-1 h-1 rounded-full", isToday ? "bg-white" : (eventTypeColors[event.event_type] || "bg-slate-400"))} />
+                <div className="absolute bottom-1.5 flex gap-1">
+                  {dayEvents.slice(0, 3).map((event, idx) => (
+                    <div key={idx} className={cn("w-1 h-1 rounded-full", isToday ? "bg-white" : (eventTypeColors[event.event_type] || "bg-[var(--foreground-subtle)]"))} />
                   ))}
+                </div>
+              )}
+              {dayEvents.length > 3 && (
+                <div className={cn("absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold border border-white", isToday ? "bg-white text-[var(--primary-hex)]" : "bg-[var(--primary-hex)] text-white")}>
+                  {dayEvents.length}
                 </div>
               )}
             </div>

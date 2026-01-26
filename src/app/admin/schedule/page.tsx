@@ -421,18 +421,18 @@ export default function AdminSchedulePage(props: {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2F80ED]"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-hex)]"></div>
       </div>
     );
   }
 
   return (
     <div className="p-4 sm:p-6 lg:p-10 xl:p-12 max-w-[1920px] mx-auto space-y-6 sm:space-y-10 relative">
-      {/* Background Decor */}
+      {/* Background Decor - Toss 스타일 */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-[-1] overflow-hidden">
-        <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-50/40 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[5%] left-[-5%] w-[30%] h-[30%] bg-indigo-50/30 rounded-full blur-[100px]"></div>
+        <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-[var(--primary-light-hex)]/40 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[5%] left-[-5%] w-[30%] h-[30%] bg-[var(--secondary-light-hex)]/30 rounded-full blur-[100px]"></div>
       </div>
 
       <ScheduleHeader
@@ -490,7 +490,7 @@ export default function AdminSchedulePage(props: {
         <StaffSelectionPrompt />
       ) : (
         <div className="space-y-8 animate-in fade-in duration-1000 delay-300">
-          <div className="bg-white/40 backdrop-blur-xl rounded-[40px] p-1.5 shadow-2xl shadow-slate-200/50 border border-white/60">
+          <div className="bg-white rounded-[32px] p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200">
             <WeeklyTimetable
               schedules={schedules}
               onScheduleClick={handleScheduleClick}

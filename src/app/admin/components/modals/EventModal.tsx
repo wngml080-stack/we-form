@@ -15,10 +15,10 @@ interface EventModalProps {
 
 export function EventModal({ isOpen, onOpenChange, selectedDate, companyEvents }: EventModalProps) {
   const eventTypeColors: Record<string, string> = {
-    general: "bg-blue-100 text-blue-600",
+    general: "bg-[var(--primary-light-hex)] text-[var(--primary-hex)]",
     training: "bg-purple-100 text-purple-600",
-    meeting: "bg-orange-100 text-orange-600",
-    holiday: "bg-red-100 text-red-600",
+    meeting: "bg-[var(--accent-light-hex)] text-[var(--accent-hex)]",
+    holiday: "bg-[var(--error-light-hex)] text-[var(--error-hex)]",
     celebration: "bg-pink-100 text-pink-600"
   };
 
@@ -44,28 +44,28 @@ export function EventModal({ isOpen, onOpenChange, selectedDate, companyEvents }
         </DialogHeader>
         <div className="space-y-3 py-4">
           {dayEvents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+            <div className="flex flex-col items-center justify-center py-12 text-[var(--foreground-muted)]">
               <Calendar className="w-12 h-12 mb-3 opacity-20" />
               <p className="text-sm">이 날짜에 등록된 행사가 없습니다.</p>
             </div>
           ) : (
             dayEvents.map((event) => (
-              <div key={event.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50">
+              <div key={event.id} className="p-4 rounded-xl border border-[#E5E8EB] bg-[var(--background-secondary)] hover:bg-[var(--background-tertiary)] transition-colors duration-200">
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold ${eventTypeColors[event.event_type]}`}>
+                  <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${eventTypeColors[event.event_type]}`}>
                     {eventTypeLabels[event.event_type]}
                   </span>
                   {event.gym_id ? (
-                    <span className="text-xs text-gray-500">특정 지점</span>
+                    <span className="text-xs text-[var(--foreground-muted)]">특정 지점</span>
                   ) : (
-                    <span className="text-xs text-green-600 font-semibold">전사</span>
+                    <span className="text-xs text-[var(--secondary-hex)] font-semibold">전사</span>
                   )}
                 </div>
-                <div className="font-bold text-gray-800 mb-2">{event.title}</div>
+                <div className="font-bold text-[var(--foreground)] mb-2">{event.title}</div>
                 {event.description && (
-                  <div className="text-sm text-gray-600 mb-3 whitespace-pre-wrap">{event.description}</div>
+                  <div className="text-sm text-[var(--foreground-secondary)] mb-3 whitespace-pre-wrap">{event.description}</div>
                 )}
-                <div className="flex items-center gap-3 text-sm text-gray-500">
+                <div className="flex items-center gap-3 text-sm text-[var(--foreground-muted)]">
                   {event.start_time && <span>🕐 {event.start_time.substring(0, 5)}</span>}
                   {event.location && <span>📍 {event.location}</span>}
                 </div>

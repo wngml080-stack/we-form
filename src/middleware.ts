@@ -35,12 +35,10 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute = pathname.startsWith("/admin") || pathname.startsWith("/staff");
   const isAuthRoute = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
 
-  // 인증이 필요한 경우에만 세션 확인 (성능 최적화)
+  // 세션 갱신 - getUser()로 토큰 검증 및 갱신
+  // 보호된 경로와 인증 경로에서만 실행 (성능 최적화)
   if (isProtectedRoute || isAuthRoute) {
-    // getSession()은 쿠키에서 읽기만 하므로 빠름 (서버 요청 없음)
-    // getUser()는 서버 검증이 필요해 100-500ms 소요
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
+    const { data: { user } } = await supabase.auth.getUser();
 
     // 보호된 라우트에 미인증 사용자 접근 시 로그인으로 리다이렉트
     if (isProtectedRoute && !user) {

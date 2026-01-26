@@ -73,22 +73,22 @@
    ======================================== */
 :root {
   /* 배경/전경 기본 - 토스 스타일 */
-  --background: #FAFBFC;
-  --background-secondary: #F4F5F7;
-  --background-tertiary: #EBEDF0;
+  --background: #F9FAFB;
+  --background-secondary: #F2F4F6;
+  --background-tertiary: #E5E8EB;
   --foreground: #191F28;
-  --foreground-secondary: #4E5968;
-  --foreground-muted: #8B95A1;
-  --foreground-subtle: #B0B8C1;
+  --foreground-secondary: #333D4B;
+  --foreground-muted: #4E5968;
+  --foreground-subtle: #8B95A1;
 
   /* Primary: 토스 블루 (#3182F6 기반) */
-  --primary: 211 90% 58%;
+  --primary: 216 98% 58%;
   --primary-hex: #3182F6;
-  --primary-hover: 211 90% 50%;
-  --primary-hover-hex: #1A6CE8;
-  --primary-active: 211 90% 42%;
-  --primary-active-hex: #1558C5;
-  --primary-light: 211 90% 97%;
+  --primary-hover: 216 98% 52%;
+  --primary-hover-hex: #1B64DA;
+  --primary-active: 216 98% 45%;
+  --primary-active-hex: #124BA3;
+  --primary-light: 216 98% 97%;
   --primary-light-hex: #F0F6FF;
   --primary-foreground: 0 0% 100%;
 
@@ -135,17 +135,18 @@
   --info-light-hex: #f0f9ff;
 
   /* UI 컬러 */
-  --point: 24 95% 58%;
-  --ring: 213 84% 56%;
-  --border: #e2e8f0;
-  --border-light: #f1f5f9;
-  --border-dark: #cbd5e1;
+  --point: 216 98% 58%;
+  --ring: 216 98% 58%;
+  --border: #E5E8EB;
+  --border-light: #F2F4F6;
+  --border-dark: #D1D6DB;
 
-  /* 그림자 컬러 */
-  --shadow-primary: rgba(47, 128, 237, 0.35);
-  --shadow-secondary: rgba(20, 184, 166, 0.35);
-  --shadow-accent: rgba(249, 115, 22, 0.35);
-  --shadow-dark: rgba(15, 23, 42, 0.25);
+  /* 그림자 컬러 - 더 부드럽게 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  --shadow-toss: 0 8px 16px rgba(0, 0, 0, 0.04);
   --shadow-light: rgba(255, 255, 255, 0.9);
   --glass-bg: rgba(255, 255, 255, 0.8);
   --glass-border: rgba(255, 255, 255, 0.5);

@@ -193,9 +193,9 @@ export default function PTMembersPage(props: {
             ))}
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] overflow-hidden hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200">
             {/* 검색/필터 영역 */}
-            <div className="p-3 xs:p-4 sm:p-6 border-b border-slate-100 flex flex-col gap-3">
+            <div className="p-3 xs:p-4 sm:p-6 border-b border-[#E5E8EB] flex flex-col gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
@@ -231,7 +231,7 @@ export default function PTMembersPage(props: {
 
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500">
+                <thead className="bg-[var(--background-secondary)] text-[var(--foreground-secondary)]">
                   <tr>
                     <th className="px-6 py-3 text-left font-semibold">
                       <Checkbox 
@@ -254,13 +254,13 @@ export default function PTMembersPage(props: {
                     <th className="px-6 py-3 text-center font-semibold">상태</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-[#E5E8EB]">
                   {ptMembers.map((member) => (
                     <tr
                       key={member.id}
                       className={cn(
-                        "hover:bg-slate-50 transition-colors cursor-pointer",
-                        selectedMemberIds.includes(member.id) && "bg-blue-50/50"
+                        "hover:bg-[var(--background-secondary)] transition-colors duration-200 cursor-pointer",
+                        selectedMemberIds.includes(member.id) && "bg-[var(--primary-light-hex)]"
                       )}
                       onDoubleClick={() => openMemberDetailModal(member)}
                     >

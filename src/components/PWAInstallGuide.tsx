@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { HelpCircle, Smartphone, Monitor, Apple, Chrome, Share, Plus, MoreVertical, Download } from "lucide-react";
+import { HelpCircle, Smartphone, Monitor, Apple, Share, Plus, MoreVertical, Download } from "lucide-react";
 
 export function PWAInstallGuide() {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,14 +15,13 @@ export function PWAInstallGuide() {
   return (
     <>
       {/* 도움말 버튼 */}
-      <Button
-        variant="ghost"
-        size="icon"
+      <button
+        type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed left-4 bottom-4 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg border border-slate-100 text-slate-400 hover:text-blue-600 hover:bg-white z-50"
+        className="fixed left-4 bottom-4 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm shadow-lg border border-slate-100 text-slate-400 hover:text-blue-600 hover:bg-white z-50 inline-flex items-center justify-center transition-colors"
       >
         <HelpCircle className="w-5 h-5" />
-      </Button>
+      </button>
 
       {/* 설치 가이드 모달 */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

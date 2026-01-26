@@ -524,7 +524,7 @@ export default function SalesPage(props: {
   return (
     <div className="space-y-4 xs:space-y-6 lg:space-y-8 animate-in fade-in duration-700">
       {/* 상단 통합 헤더 및 탭 */}
-      <div className="bg-white rounded-2xl xs:rounded-3xl lg:rounded-[32px] p-3 xs:p-4 sm:p-5 lg:p-6 shadow-sm border border-slate-100">
+      <div className="bg-white rounded-2xl xs:rounded-3xl lg:rounded-[32px] p-3 xs:p-4 sm:p-5 lg:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200">
         <div className="flex flex-col gap-4 lg:gap-6">
           {/* 상단: 지점명 + 액션 버튼 */}
           <div className="flex items-center justify-between gap-3">
@@ -633,10 +633,10 @@ export default function SalesPage(props: {
         <>
           <div className="space-y-8">
             {/* 상단 요약 영역 */}
-            <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-[32px] p-6 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200">
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-2 h-6 bg-blue-600 rounded-full" />
-                <h3 className="text-lg font-black text-slate-900">매출 요약</h3>
+                <div className="w-2 h-6 bg-[var(--primary-hex)] rounded-full" />
+                <h3 className="text-lg font-black text-[var(--foreground)]">매출 요약</h3>
               </div>
               <SalesStats stats={stats} onTotalClick={openSalesModal} layout="horizontal" />
             </div>
@@ -750,7 +750,7 @@ export default function SalesPage(props: {
       ) : activeTab === "expenses" ? (
         <>
           {/* 지출 필터 */}
-          <div className="bg-white rounded-2xl xs:rounded-3xl lg:rounded-[28px] p-3 xs:p-4 lg:p-5 border border-gray-100 shadow-sm animate-in fade-in duration-500">
+          <div className="bg-white rounded-2xl xs:rounded-3xl lg:rounded-[28px] p-3 xs:p-4 lg:p-5 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] animate-in fade-in duration-500">
             <div className="flex flex-col gap-3 xs:gap-4">
               {/* 빠른 선택 - 모바일에서 가로 스크롤 */}
               <div className="overflow-x-auto scrollbar-hide -mx-3 xs:-mx-4 lg:mx-0 px-3 xs:px-4 lg:px-0">

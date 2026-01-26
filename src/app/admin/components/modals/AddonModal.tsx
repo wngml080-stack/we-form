@@ -23,17 +23,17 @@ export function AddonModal({
 }: AddonModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
-        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+      <DialogContent className="w-full max-w-2xl bg-[var(--background)] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
+        <DialogHeader className="px-10 py-8 bg-[var(--foreground)] flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--secondary-hex)]/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--secondary-hex)] to-teal-600 flex items-center justify-center shadow-[0_4px_16px_rgba(34,197,94,0.3)]">
               <Package className="w-7 h-7 text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-black text-white tracking-tight">회원 외 부가상품 등록</h2>
               <div className="flex items-center gap-2 mt-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--secondary-hex)] animate-pulse"></span>
                 <p className="text-sm text-slate-400 font-bold">비회원(워크인) 고객의 단발성 상품 판매 등록</p>
               </div>
             </div>
@@ -47,21 +47,21 @@ export function AddonModal({
           </button>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-10 space-y-8 bg-[#f8fafc]">
+        <div className="flex-1 overflow-y-auto p-10 space-y-8 bg-[var(--background)]">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* 고객 정보 섹션 */}
             <div className="space-y-6">
               <div className="flex items-center gap-3 px-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">
+                <div className="w-8 h-8 rounded-xl bg-[var(--primary-light-hex)] text-[var(--primary-hex)] flex items-center justify-center text-xs font-black">
                   <User className="w-4 h-4" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900">고객 인적 사항</h3>
+                <h3 className="text-lg font-black text-[var(--foreground)]">고객 인적 사항</h3>
               </div>
-              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] space-y-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Customer Name *</Label>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-[var(--primary-hex)] transition-colors" />
                     <Input 
                       value={form.customer_name} 
                       onChange={(e) => setForm({ ...form, customer_name: e.target.value })} 
@@ -73,7 +73,7 @@ export function AddonModal({
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</Label>
                   <div className="relative group">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-[var(--primary-hex)] transition-colors" />
                     <Input 
                       value={form.customer_phone} 
                       onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} 
@@ -88,19 +88,19 @@ export function AddonModal({
             {/* 상품 정보 섹션 */}
             <div className="space-y-6">
               <div className="flex items-center gap-3 px-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-black">
+                <div className="w-8 h-8 rounded-xl bg-[var(--secondary-light-hex)] text-[var(--secondary-hex)] flex items-center justify-center text-xs font-black">
                   <ShoppingBag className="w-4 h-4" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900">판매 상품 정보</h3>
+                <h3 className="text-lg font-black text-[var(--foreground)]">판매 상품 정보</h3>
               </div>
-              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-6">
+              <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] space-y-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Product Name *</Label>
                   <Input 
                     value={form.product_name} 
                     onChange={(e) => setForm({ ...form, product_name: e.target.value })} 
                     placeholder="운동복, 단백질 쉐이크 등..."
-                    className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100"
+                    className="h-12 bg-[var(--background-secondary)] border-none rounded-2xl font-bold focus:ring-2 focus:ring-[var(--secondary-hex)]/20"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -112,7 +112,7 @@ export function AddonModal({
                         value={form.amount} 
                         onChange={(e) => setForm({ ...form, amount: e.target.value })} 
                         placeholder="50,000"
-                        className="h-12 bg-slate-50 border-none rounded-2xl font-black text-xl pr-10 focus:ring-2 focus:ring-emerald-100"
+                        className="h-12 bg-[var(--background-secondary)] border-none rounded-2xl font-black text-xl pr-10 focus:ring-2 focus:ring-[var(--secondary-hex)]/20"
                       />
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 font-black text-xs">원</span>
                     </div>
@@ -120,7 +120,7 @@ export function AddonModal({
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Payment</Label>
                     <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
-                      <SelectTrigger className="h-12 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-emerald-100">
+                      <SelectTrigger className="h-12 bg-[var(--background-secondary)] border-none rounded-2xl font-bold focus:ring-2 focus:ring-[var(--secondary-hex)]/20">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white rounded-xl">
@@ -138,12 +138,12 @@ export function AddonModal({
           {/* 메모 섹션 */}
           <div className="space-y-6">
             <div className="flex items-center gap-3 px-2">
-              <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-black">
+              <div className="w-8 h-8 rounded-xl bg-[var(--background-secondary)] text-[var(--foreground-secondary)] flex items-center justify-center text-xs font-black">
                 <History className="w-4 h-4" />
               </div>
-              <h3 className="text-lg font-black text-slate-900">추가 기록 사항</h3>
+              <h3 className="text-lg font-black text-[var(--foreground)]">추가 기록 사항</h3>
             </div>
-            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
               <Input 
                 value={form.memo} 
                 onChange={(e) => setForm({ ...form, memo: e.target.value })} 
@@ -153,28 +153,28 @@ export function AddonModal({
             </div>
           </div>
 
-          <div className="p-6 bg-emerald-50 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-emerald-100 flex items-start gap-4">
+          <div className="p-6 bg-[var(--secondary-light-hex)] rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-[var(--secondary-hex)]/20 flex items-start gap-4">
             <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
-              <Info className="w-5 h-5 text-emerald-500" />
+              <Info className="w-5 h-5 text-[var(--secondary-hex)]" />
             </div>
-            <p className="text-xs font-bold text-emerald-700 leading-relaxed">
-              본 등록은 <span className="underline underline-offset-4 decoration-emerald-200">회원이 아닌 고객</span>에게 부가상품을 직접 판매할 때 사용합니다. 판매된 내역은 금일 매출 및 월간 매출 통계에 즉시 반영됩니다.
+            <p className="text-xs font-bold text-[var(--secondary-hex)] leading-relaxed">
+              본 등록은 <span className="underline underline-offset-4 decoration-[var(--secondary-hex)]/30">회원이 아닌 고객</span>에게 부가상품을 직접 판매할 때 사용합니다. 판매된 내역은 금일 매출 및 월간 매출 통계에 즉시 반영됩니다.
             </p>
           </div>
         </div>
 
-        <DialogFooter className="px-10 py-8 bg-white border-t flex items-center justify-end gap-3 flex-shrink-0">
+        <DialogFooter className="px-10 py-8 bg-white border-t border-[#E5E8EB] flex items-center justify-end gap-3 flex-shrink-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-14 px-8 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
+            className="h-14 px-8 rounded-2xl font-black text-[var(--foreground-secondary)] border-[#E5E8EB] hover:bg-[var(--background-secondary)] transition-all"
           >
             취소
           </Button>
           <Button
             onClick={onSubmit}
             disabled={isSaving}
-            className="h-14 px-10 rounded-2xl bg-emerald-600 hover:bg-emerald-700 font-black gap-3 shadow-xl shadow-emerald-100 hover:-translate-y-1 transition-all text-white"
+            className="h-14 px-10 rounded-2xl bg-[var(--secondary-hex)] hover:bg-[var(--secondary-active-hex)] font-black gap-3 shadow-xl shadow-[var(--secondary-light-hex)] hover:-translate-y-1 transition-all text-white"
           >
             {isSaving ? (
               <span className="flex items-center gap-2">등록 중...</span>

@@ -33,14 +33,14 @@ export function PtSalesModal({
 }: PtSalesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
+      <DialogContent className="max-w-4xl bg-[var(--background)] max-h-[90vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
         {/* 헤더 - 프리미엄 디자인 */}
-        <div className="bg-slate-900 p-10 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+        <div className="bg-[var(--foreground)] p-10 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent-hex)]/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <div className="w-12 h-12 bg-[var(--accent-hex)] rounded-2xl flex items-center justify-center shadow-[0_4px_16px_rgba(249,115,22,0.3)]">
                   <Award className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -94,7 +94,7 @@ export function PtSalesModal({
                 onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
                 className="h-11 bg-white border-none rounded-xl font-bold text-slate-900"
               />
-              <Button onClick={onCustomSearch} className="h-11 px-6 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-black">
+              <Button onClick={onCustomSearch} className="h-11 px-6 bg-[var(--accent-hex)] hover:bg-[var(--accent-active-hex)] text-white rounded-xl font-black">
                 <Search className="w-5 h-5" />
               </Button>
             </div>
@@ -112,29 +112,29 @@ export function PtSalesModal({
             <>
               {/* 첫 번째 행: 핵심 지표 */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
-                  <div className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] mb-4">PT BEP</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-orange-600 transition-colors">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
+                  <div className="text-[10px] font-black text-[var(--accent-hex)] uppercase tracking-[0.2em] mb-4">PT BEP</div>
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-[var(--accent-hex)] transition-colors">
                     {Math.round(ptStats.bep / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
-                  <div className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-4">PT TOTAL SALES</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-emerald-600 transition-colors">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
+                  <div className="text-[10px] font-black text-[var(--secondary-hex)] uppercase tracking-[0.2em] mb-4">PT TOTAL SALES</div>
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-[var(--secondary-hex)] transition-colors">
                     {Math.round(ptStats.totalSales / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
                   <div className="text-[10px] font-black text-purple-500 uppercase tracking-[0.2em] mb-4">BEP RATE</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-purple-600 transition-colors">
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-purple-600 transition-colors">
                     {Math.round(ptStats.bepRate)}<span className="text-base font-bold ml-1 opacity-40">%</span>
                   </div>
                 </div>
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 group">
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-500 group">
                   <div className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-4 flex items-center">
                     UNIT PRICE <HelpTooltip content="PT 1건당 평균 결제 금액입니다." iconClassName="w-3 h-3 ml-2" />
                   </div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-indigo-600 transition-colors">
+                  <div className="text-3xl font-black text-[var(--foreground)] tracking-tighter group-hover:text-indigo-600 transition-colors">
                     {Math.round(ptStats.avgPrice / 10000).toLocaleString()}<span className="text-base font-bold ml-1 opacity-40">만원</span>
                   </div>
                 </div>
@@ -150,13 +150,13 @@ export function PtSalesModal({
 
               {/* 세 번째 행: 주요 매출 성과 - 2컬럼 레이아웃 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-orange-100/50 border border-orange-50 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-orange-50 rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110"></div>
+                <div className="bg-white rounded-[40px] p-10 shadow-xl shadow-[var(--accent-light-hex)] border border-[var(--accent-hex)]/10 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent-light-hex)] rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110"></div>
                   <div className="relative z-10 space-y-4">
-                    <h3 className="text-sm font-black text-orange-600 uppercase tracking-[0.3em]">New Registration</h3>
-                    <div className="text-4xl font-black text-slate-900 tracking-tighter">
+                    <h3 className="text-sm font-black text-[var(--accent-hex)] uppercase tracking-[0.3em]">New Registration</h3>
+                    <div className="text-4xl font-black text-[var(--foreground)] tracking-tighter">
                       신규 등록 매출 <br/>
-                      <span className="text-orange-600">{Math.round(ptStats.newSales / 10000).toLocaleString()}</span>만원
+                      <span className="text-[var(--accent-hex)]">{Math.round(ptStats.newSales / 10000).toLocaleString()}</span>만원
                     </div>
                   </div>
                 </div>
@@ -165,7 +165,7 @@ export function PtSalesModal({
                   <div className="absolute top-0 right-0 w-64 h-64 bg-amber-50 rounded-full -mr-32 -mt-32 transition-transform duration-1000 group-hover:scale-110"></div>
                   <div className="relative z-10 space-y-4">
                     <h3 className="text-sm font-black text-amber-600 uppercase tracking-[0.3em]">Re-registration</h3>
-                    <div className="text-4xl font-black text-slate-900 tracking-tighter">
+                    <div className="text-4xl font-black text-[var(--foreground)] tracking-tighter">
                       재등록 매출 <br/>
                       <span className="text-amber-600">{Math.round(ptStats.renewSales / 10000).toLocaleString()}</span>만원
                     </div>
@@ -177,7 +177,7 @@ export function PtSalesModal({
         </div>
 
         <div className="p-10 pt-0 flex justify-end">
-          <Button onClick={() => onOpenChange(false)} variant="ghost" className="h-14 px-10 rounded-2xl font-black text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all">
+          <Button onClick={() => onOpenChange(false)} variant="ghost" className="h-14 px-10 rounded-2xl font-black text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] transition-all">
             CLOSE
           </Button>
         </div>
@@ -196,11 +196,11 @@ function DetailStatCard({ label, value, color, tooltip }: { label: string, value
   };
 
   return (
-    <div className={cn("rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all", colorMap[color] || "bg-gray-50")}>
+    <div className={cn("rounded-3xl p-6 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all", colorMap[color] || "bg-gray-50")}>
       <div className="text-[9px] font-black uppercase tracking-[0.2em] mb-2 flex items-center opacity-60">
         {label} {tooltip && <HelpTooltip content={tooltip} iconClassName="w-2.5 h-2.5 ml-1.5" />}
       </div>
-      <div className="text-xl font-black tracking-tight text-slate-900">{value}</div>
+      <div className="text-xl font-black tracking-tight text-[var(--foreground)]">{value}</div>
     </div>
   );
 }

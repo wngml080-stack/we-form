@@ -24,11 +24,11 @@ export function NewMemberModal({
 }: NewMemberModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
-        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+      <DialogContent className="w-full max-w-2xl bg-[var(--background)] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
+        <DialogHeader className="px-10 py-8 bg-[var(--foreground)] flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary-hex)]/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
           <DialogTitle className="flex items-center gap-5 relative z-10">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--primary-hex)] to-[var(--primary-active-hex)] flex items-center justify-center shadow-[0_4px_16px_rgba(49,130,246,0.3)]">
               <UserPlus className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -48,17 +48,17 @@ export function NewMemberModal({
           </button>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-[#f8fafc]">
+        <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-[var(--background)]">
           {/* 1. 기본 인적 사항 */}
           <section className="space-y-6">
             <div className="flex items-center gap-3 px-2">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black">
+              <div className="w-10 h-10 rounded-xl bg-[var(--primary-light-hex)] text-[var(--primary-hex)] flex items-center justify-center text-xs font-black">
                 <User className="w-5 h-5" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">신규 회원 정보</h3>
+              <h3 className="text-xl font-black text-[var(--foreground)] tracking-tight">신규 회원 정보</h3>
             </div>
 
-            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Member Name *</Label>
@@ -91,13 +91,13 @@ export function NewMemberModal({
           {/* 2. 이용 상품 정보 */}
           <section className="space-y-6">
             <div className="flex items-center gap-3 px-2">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-black">
+              <div className="w-10 h-10 rounded-xl bg-[var(--secondary-light-hex)] text-[var(--secondary-hex)] flex items-center justify-center text-xs font-black">
                 <ShoppingBag className="w-5 h-5" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 tracking-tight">선택 이용권 정보</h3>
+              <h3 className="text-xl font-black text-[var(--foreground)] tracking-tight">선택 이용권 정보</h3>
             </div>
 
-            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+            <div className="bg-white rounded-2xl xs:rounded-3xl sm:rounded-[32px] p-8 border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)] space-y-8">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Product *</Label>
                 <Select
@@ -199,28 +199,28 @@ export function NewMemberModal({
             </div>
           </section>
 
-          <div className="p-6 bg-blue-50 rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-blue-100 flex items-start gap-4">
+          <div className="p-6 bg-[var(--primary-light-hex)] rounded-2xl xs:rounded-3xl sm:rounded-[32px] border border-[var(--primary-hex)]/20 flex items-start gap-4">
             <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
-              <Sparkles className="w-5 h-5 text-blue-500" />
+              <Sparkles className="w-5 h-5 text-[var(--primary-hex)]" />
             </div>
-            <p className="text-xs font-bold text-blue-700 leading-relaxed">
-              신규 회원 등록 시 <span className="underline underline-offset-4 decoration-blue-200">자동으로 관리 대상 회원으로 분류</span>되며, 담당 트레이너 및 센터 관리자에게 등록 알림이 전송됩니다.
+            <p className="text-xs font-bold text-[var(--primary-hex)] leading-relaxed">
+              신규 회원 등록 시 <span className="underline underline-offset-4 decoration-[var(--primary-hex)]/30">자동으로 관리 대상 회원으로 분류</span>되며, 담당 트레이너 및 센터 관리자에게 등록 알림이 전송됩니다.
             </p>
           </div>
         </div>
 
-        <DialogFooter className="px-10 py-8 bg-white border-t flex items-center justify-end gap-3 flex-shrink-0">
+        <DialogFooter className="px-10 py-8 bg-white border-t border-[#E5E8EB] flex items-center justify-end gap-3 flex-shrink-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-14 px-8 rounded-2xl font-black text-slate-600 border-slate-200 hover:bg-slate-50 transition-all"
+            className="h-14 px-8 rounded-2xl font-black text-[var(--foreground-secondary)] border-[#E5E8EB] hover:bg-[var(--background-secondary)] transition-all"
           >
             취소
           </Button>
           <Button
             onClick={onSubmit}
             disabled={isSaving}
-            className="h-14 px-10 rounded-2xl bg-slate-900 hover:bg-black font-black gap-3 shadow-xl shadow-slate-100 hover:-translate-y-1 transition-all text-white"
+            className="h-14 px-10 rounded-2xl bg-[var(--foreground)] hover:bg-black font-black gap-3 shadow-xl shadow-slate-100 hover:-translate-y-1 transition-all text-white"
           >
             {isSaving ? (
               <span className="flex items-center gap-2">등록 처리 중...</span>

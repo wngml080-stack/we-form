@@ -39,9 +39,9 @@ export function TotalSalesModal({
 }: TotalSalesModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl bg-[#f8fafc] max-h-[95vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
+      <DialogContent className="max-w-5xl bg-[var(--background)] max-h-[95vh] overflow-y-auto p-0 border-none rounded-[40px] shadow-2xl">
         {/* 헤더 - 프리미엄 디자인 */}
-        <div className="bg-slate-900 p-10 text-white relative overflow-hidden">
+        <div className="bg-[var(--foreground)] p-10 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="space-y-2">
@@ -143,12 +143,12 @@ export function TotalSalesModal({
               {/* FC vs PT 상세 그리드 */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* FC 상세 */}
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
-                  <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
-                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                      <Target className="w-5 h-5 text-blue-600" />
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] space-y-6 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200">
+                  <div className="flex items-center gap-3 pb-4 border-b border-[#E5E8EB]">
+                    <div className="w-10 h-10 bg-[var(--primary-light-hex)] rounded-xl flex items-center justify-center">
+                      <Target className="w-5 h-5 text-[var(--primary-hex)]" />
                     </div>
-                    <h4 className="text-lg font-black text-slate-900">FC 회원권 상세</h4>
+                    <h4 className="text-lg font-black text-[var(--foreground)]">FC 회원권 상세</h4>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <DetailItem label="FC BEP" value={`${Math.round(fcStats.bep / 10000).toLocaleString()}만원`} color="blue" />
@@ -156,19 +156,19 @@ export function TotalSalesModal({
                     <DetailItem label="BEP RATE" value={`${Math.round(fcStats.bepRate)}%`} color="purple" />
                     <DetailItem label="UNIT PRICE" value={`${Math.round(fcStats.avgPrice / 10000).toLocaleString()}만원`} color="indigo" />
                   </div>
-                  <div className="bg-blue-600 rounded-2xl p-5 text-center shadow-lg shadow-blue-100">
+                  <div className="bg-[var(--primary-hex)] rounded-2xl p-5 text-center shadow-lg shadow-[var(--primary-light-hex)]">
                     <div className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">FC NEW SALES</div>
                     <div className="text-2xl font-black text-white">{Math.round(fcStats.newSales / 10000).toLocaleString()}만원</div>
                   </div>
                 </div>
 
                 {/* PT 상세 */}
-                <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 space-y-6">
-                  <div className="flex items-center gap-3 pb-4 border-b border-gray-50">
-                    <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                      <Award className="w-5 h-5 text-orange-600" />
+                <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] space-y-6 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200">
+                  <div className="flex items-center gap-3 pb-4 border-b border-[#E5E8EB]">
+                    <div className="w-10 h-10 bg-[var(--accent-light-hex)] rounded-xl flex items-center justify-center">
+                      <Award className="w-5 h-5 text-[var(--accent-hex)]" />
                     </div>
-                    <h4 className="text-lg font-black text-slate-900">PT 트레이닝 상세</h4>
+                    <h4 className="text-lg font-black text-[var(--foreground)]">PT 트레이닝 상세</h4>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <DetailItem label="PT BEP" value={`${Math.round(ptStats.bep / 10000).toLocaleString()}만원`} color="orange" />
@@ -190,19 +190,19 @@ export function TotalSalesModal({
               </div>
 
               {/* 전월/전년 대비 비교 테이블 */}
-              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
+              <div className="bg-white rounded-[32px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-[#E5E8EB] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200">
                 <div className="flex items-center gap-3 mb-8">
-                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
-                    <BarChart3 className="w-5 h-5 text-slate-600" />
+                  <div className="w-10 h-10 bg-[var(--background-secondary)] rounded-xl flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-[var(--foreground-secondary)]" />
                   </div>
-                  <h4 className="text-lg font-black text-slate-900">전월/전년 대비 성장률</h4>
+                  <h4 className="text-lg font-black text-[var(--foreground)]">전월/전년 대비 성장률</h4>
                 </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-gray-50">
-                        <th className="px-4 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">구분</th>
+                      <tr className="border-b border-[#E5E8EB]">
+                        <th className="px-4 py-4 text-left text-[10px] font-black text-[var(--foreground-muted)] uppercase tracking-widest">구분</th>
                         <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">현재</th>
                         <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">전월</th>
                         <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">전월대비</th>
@@ -210,7 +210,7 @@ export function TotalSalesModal({
                         <th className="px-4 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">전년대비</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-[#E5E8EB]">
                       <GrowthRow label="총 매출" current={salesSummary.totalRevenue} prevMonth={comparisonData.prevMonth.totalSales} prevYear={comparisonData.prevYear.totalSales} isTotal />
                       <GrowthRow label="FC 매출" current={fcStats.totalSales} prevMonth={comparisonData.prevMonth.fcSales} prevYear={comparisonData.prevYear.fcSales} color="blue" />
                       <GrowthRow label="PT 매출" current={ptStats.totalSales} prevMonth={comparisonData.prevMonth.ptSales} prevYear={comparisonData.prevYear.ptSales} color="orange" />
@@ -223,7 +223,7 @@ export function TotalSalesModal({
         </div>
 
         <div className="p-10 pt-0 flex justify-end">
-          <Button onClick={() => onOpenChange(false)} variant="ghost" className="h-14 px-10 rounded-2xl font-black text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all">
+          <Button onClick={() => onOpenChange(false)} variant="ghost" className="h-14 px-10 rounded-2xl font-black text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] transition-all">
             CLOSE
           </Button>
         </div>
@@ -242,7 +242,7 @@ function DetailItem({ label, value, color }: { label: string, value: string, col
   };
 
   return (
-    <div className={cn("p-4 rounded-2xl border border-gray-100 shadow-sm", colorMap[color])}>
+    <div className={cn("p-4 rounded-2xl border border-[#E5E8EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)]", colorMap[color])}>
       <div className="text-[9px] font-black uppercase tracking-widest mb-1 opacity-60">{label}</div>
       <div className="text-lg font-black tracking-tight">{value}</div>
     </div>
@@ -260,8 +260,8 @@ function GrowthRow({ label, current, prevMonth, prevYear, isTotal, color }: { la
   const yearChange = calculateChange(current, prevYear);
 
   return (
-    <tr className="group hover:bg-slate-50/50 transition-colors">
-      <td className={cn("px-4 py-5 font-black text-sm", isTotal ? "text-slate-900" : (color === 'blue' ? "text-blue-600" : "text-orange-600"))}>{label}</td>
+    <tr className="group hover:bg-[var(--background-secondary)]/50 transition-colors">
+      <td className={cn("px-4 py-5 font-black text-sm", isTotal ? "text-[var(--foreground)]" : (color === 'blue' ? "text-[var(--primary-hex)]" : "text-[var(--accent-hex)]"))}>{label}</td>
       <td className="px-4 py-5 text-right font-black text-sm">{Math.round(current / 10000).toLocaleString()}만</td>
       <td className="px-4 py-5 text-right font-bold text-slate-400 text-xs">{Math.round(prevMonth / 10000).toLocaleString()}만</td>
       <td className="px-4 py-5 text-right font-black text-xs">

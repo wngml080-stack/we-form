@@ -79,27 +79,27 @@ export function AnnouncementCalendar({
       <div
         key={day}
         className={cn(
-          "h-32 bg-white border border-slate-100 rounded-2xl p-3 cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-indigo-100 hover:-translate-y-1 group relative overflow-hidden",
-          isToday && "bg-indigo-50 border-indigo-200 ring-2 ring-indigo-100"
+          "h-36 bg-white border border-[var(--border-light)] rounded-[24px] p-4 cursor-pointer transition-all duration-300 hover:shadow-toss hover:-translate-y-1 group relative overflow-hidden active:scale-[0.98]",
+          isToday && "bg-[var(--primary-light-hex)] border-[var(--primary-hex)]/30 ring-4 ring-[var(--primary-hex)]/5"
         )}
         onClick={() => onDateClick(date, dayAnnouncements.length > 0)}
       >
         <div className={cn(
-          "text-sm font-black mb-2 transition-all group-hover:scale-110 origin-left",
-          isToday ? "text-indigo-600" : "text-slate-400"
+          "text-sm font-extrabold mb-3 transition-all group-hover:scale-110 origin-left tracking-tight",
+          isToday ? "text-[var(--primary-hex)]" : "text-[var(--foreground-subtle)]"
         )}>
           {day}
         </div>
         
-        <div className="space-y-1.5 overflow-y-auto max-h-[calc(100%-24px)] custom-scrollbar pr-1">
+        <div className="space-y-1.5 overflow-y-auto max-h-[calc(100%-28px)] custom-scrollbar pr-0.5">
           {dayAnnouncements.map((ann, idx) => (
             <div
               key={idx}
               className={cn(
-                "text-[10px] font-black px-2 py-1 rounded-lg truncate border shadow-sm",
-                ann.priority === "urgent" ? "bg-red-50 text-red-600 border-red-100" :
-                ann.priority === "normal" ? "bg-indigo-50 text-indigo-600 border-indigo-100" :
-                "bg-slate-50 text-slate-500 border-slate-100"
+                "text-[10px] font-bold px-2 py-1.5 rounded-lg truncate border shadow-sm transition-colors",
+                ann.priority === "urgent" ? "bg-rose-50 text-rose-500 border-rose-100" :
+                ann.priority === "normal" ? "bg-blue-50 text-blue-500 border-blue-100" :
+                "bg-[var(--background-secondary)] text-[var(--foreground-muted)] border-[var(--border-light)]"
               )}
             >
               {ann.title}
@@ -108,73 +108,73 @@ export function AnnouncementCalendar({
         </div>
         
         {isToday && (
-          <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-indigo-600 animate-ping"></div>
+          <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-[var(--primary-hex)] shadow-[0_0_8px_var(--primary-hex)]"></div>
         )}
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-[40px] shadow-xl shadow-slate-100/50 overflow-hidden border border-gray-100 transition-all duration-500 hover:shadow-2xl">
-      <div className="bg-white px-10 py-8 border-b border-slate-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-sm shadow-indigo-100/50">
-            <Bell className="w-7 h-7 text-indigo-600" />
+    <div className="bg-white rounded-[40px] shadow-sm overflow-hidden border border-[var(--border)] transition-all duration-500 hover:shadow-toss">
+      <div className="bg-white px-10 py-10 border-b border-[var(--border-light)] flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+        <div className="flex items-center gap-6">
+          <div className="w-16 h-16 bg-[var(--primary-light-hex)] rounded-[24px] flex items-center justify-center shadow-sm">
+            <Bell className="w-8 h-8 text-[var(--primary-hex)]" />
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tighter">지점 공지사항</h3>
-              <span className="bg-slate-50 text-slate-400 text-[10px] font-black px-3 py-1 rounded-lg border border-slate-100 tracking-widest uppercase">
-                {announcements.length} Total
-              </span>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-4">
+              <h3 className="text-3xl font-extrabold text-[var(--foreground)] tracking-tight">지점 공지사항</h3>
+              <div className="bg-[var(--background-secondary)] text-[var(--foreground-subtle)] text-[11px] font-extrabold px-3 py-1 rounded-full border border-[var(--border-light)] tracking-widest uppercase">
+                {announcements.length}건
+              </div>
             </div>
-            <p className="text-sm text-slate-400 font-bold tracking-tight">전체 직원이 확인해야 할 주요 공지 일정을 관리합니다.</p>
+            <p className="text-base text-[var(--foreground-muted)] font-bold tracking-tight opacity-70">전체 직원이 확인해야 할 주요 공지 일정을 관리합니다.</p>
           </div>
         </div>
         <Button
           onClick={onAddClick}
-          className="h-12 px-8 bg-indigo-600 text-white hover:bg-indigo-700 rounded-2xl font-black shadow-lg shadow-indigo-100 flex items-center gap-2 transition-all hover:-translate-y-1 active:scale-95 whitespace-nowrap"
+          className="h-14 px-10 bg-[var(--primary-hex)] text-white hover:bg-[var(--primary-hover-hex)] rounded-2xl font-extrabold shadow-lg shadow-[var(--primary-hex)]/20 flex items-center gap-3 transition-all active:scale-[0.98] whitespace-nowrap text-base"
         >
-          <Plus className="w-5 h-5" /> 공지사항 등록
+          <Plus className="w-6 h-6" /> 공지사항 등록
         </Button>
       </div>
 
-      <div className="p-8 lg:p-10 space-y-10">
-        {/* 달력 네비게이션 - 필 스타일 */}
+      <div className="p-10 lg:p-12 space-y-12">
+        {/* 달력 네비게이션 */}
         <div className="flex items-center justify-center">
-          <div className="inline-flex items-center bg-slate-50 p-2 rounded-3xl border border-slate-100 gap-6 shadow-inner">
+          <div className="inline-flex items-center bg-[var(--background-secondary)]/50 p-2.5 rounded-[32px] border border-[var(--border-light)] gap-8 shadow-sm">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={handlePrevMonth}
-              className="w-12 h-12 rounded-2xl hover:bg-white hover:shadow-sm text-slate-400 hover:text-slate-900 transition-all"
+              className="w-12 h-12 rounded-full hover:bg-white hover:shadow-sm text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-all active:scale-90"
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-7 h-7" />
             </Button>
-            <h4 className="text-xl font-black text-slate-900 tracking-tighter min-w-[140px] text-center">
+            <h4 className="text-2xl font-extrabold text-[var(--foreground)] tracking-tighter min-w-[160px] text-center">
               {format(currentCalendarMonth, "yyyy. MM", { locale: ko })}
             </h4>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={handleNextMonth}
-              className="w-12 h-12 rounded-2xl hover:bg-white hover:shadow-sm text-slate-400 hover:text-slate-900 transition-all"
+              className="w-12 h-12 rounded-full hover:bg-white hover:shadow-sm text-[var(--foreground-subtle)] hover:text-[var(--foreground)] transition-all active:scale-90"
             >
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-7 h-7" />
             </Button>
           </div>
         </div>
 
         {/* 달력 UI */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* 요일 헤더 */}
-          <div className="grid grid-cols-7 gap-4">
-            {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => (
+          <div className="grid grid-cols-7 gap-4 px-4">
+            {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day, idx) => (
               <div
                 key={idx}
                 className={cn(
-                  "text-center text-[10px] font-black uppercase tracking-[0.2em]",
-                  idx === 0 ? "text-red-400" : idx === 6 ? "text-blue-400" : "text-slate-300"
+                  "text-center text-[11px] font-extrabold tracking-widest uppercase",
+                  idx === 0 ? "text-rose-400" : idx === 6 ? "text-blue-400" : "text-[var(--foreground-subtle)]"
                 )}
               >
                 {day}
@@ -182,7 +182,7 @@ export function AnnouncementCalendar({
             ))}
           </div>
           {/* 날짜 그리드 */}
-          <div className="grid grid-cols-7 gap-3">
+          <div className="grid grid-cols-7 gap-4">
             {calendarDays}
           </div>
         </div>
