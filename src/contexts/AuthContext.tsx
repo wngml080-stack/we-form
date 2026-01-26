@@ -67,6 +67,51 @@ const AuthContext = createContext<AuthContextType>({
 
 // 캐시 유효 시간 (5분)
 const CACHE_TTL = 5 * 60 * 1000;
+const AUTH_CACHE_KEY = "weform_auth_cache";
+
+// localStorage 캐시 타입 - 최소 정보만 저장 (보안)
+// 민감 정보(id, email, role, company_id, gym_id)는 저장하지 않음
+interface AuthCache {
+  hasSession: boolean;      // 로그인 상태 여부만
+  displayName: string;      // UI 표시용 이름만
+  timestamp: number;        // 만료 체크용
+}
+
+// localStorage 캐시 유틸리티
+function getStoredCache(): AuthCache | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const cached = localStorage.getItem(AUTH_CACHE_KEY);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached) as AuthCache;
+    // 캐시 유효성 검사
+    if (Date.now() - parsed.timestamp < CACHE_TTL) {
+      return parsed;
+    }
+    localStorage.removeItem(AUTH_CACHE_KEY);
+  } catch {
+    // 캐시 파싱 실패 시 무시
+  }
+  return null;
+}
+
+function setStoredCache(cache: AuthCache) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    // localStorage 저장 실패 시 무시
+  }
+}
+
+function clearStoredCache() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(AUTH_CACHE_KEY);
+  } catch {
+    // 실패 시 무시
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authUser, setAuthUser] = useState<User | null>(null);
@@ -88,6 +133,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Supabase 클라이언트 한번만 생성
   const supabase = useMemo(() => createSupabaseClient(), []);
+
+  // 클라이언트에서 localStorage 캐시 확인 (마운트 시)
+  // 캐시에는 최소 정보만 저장되어 있음 (hasSession, displayName, timestamp)
+  // 민감 정보는 서버에서 로드됨
+  useEffect(() => {
+    const cached = getStoredCache();
+    if (cached && cached.hasSession) {
+      // 캐시가 있으면 로딩 스피너를 건너뛰고 빈 UI 먼저 표시
+      // 실제 사용자 정보는 서버에서 로드됨
+      setIsLoading(false);
+    }
+  }, []);
 
   // Supabase Auth 상태 감지
   useEffect(() => {
@@ -115,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsApproved(false);
         setIsLoading(false);
         cacheRef.current = { data: null, timestamp: 0, email: null };
+        clearStoredCache();
         return;
       }
 
@@ -177,10 +235,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (staffData.employment_status === "퇴사" || staffData.employment_status === "가입대기") {
         setIsApproved(false);
         setIsLoading(false);
+        clearStoredCache();
         return;
       }
 
       setIsApproved(true);
+
+      // localStorage 캐시 저장 (승인된 사용자만) - 최소 정보만 저장
+      // 민감 정보(id, email, role, company_id 등)는 저장하지 않음
+      setStoredCache({
+        hasSession: true,
+        displayName: userData.name,
+        timestamp: Date.now(),
+      });
 
       // 지점 목록과 회사 목록 병렬 조회
       if (staffData.company_id) {
@@ -231,6 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsApproved(false);
     cacheRef.current = { data: null, timestamp: 0, email: null };
+    clearStoredCache();
   }, [supabase]);
 
   return (

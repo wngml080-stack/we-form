@@ -165,6 +165,106 @@ export interface SystemAnnouncement {
   updated_at: string;
 }
 
+// ===== 연차 관리 관련 타입 =====
+
+// 휴가 신청 상태 타입
+export type LeaveRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+// 반차 유형
+export type HalfDayType = "morning" | "afternoon";
+
+// 휴가 유형
+export interface LeaveType {
+  id: string;
+  company_id: string;
+  name: string;
+  code: string; // annual, half_am, half_pm, sick, family, other
+  deduction_days: number;
+  requires_document: boolean;
+  is_paid: boolean;
+  max_days_per_year: number | null;
+  color: string;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// 연차 부여
+export interface LeaveAllowance {
+  id: string;
+  staff_id: string;
+  company_id: string;
+  gym_id: string | null;
+  year: number;
+  total_days: number;
+  carried_over: number;
+  adjusted_days: number;
+  adjustment_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  // 조인된 데이터
+  staff?: Staff;
+}
+
+// 휴가 신청
+export interface LeaveRequest {
+  id: string;
+  staff_id: string;
+  company_id: string;
+  gym_id: string | null;
+  leave_type_id: string;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  is_half_day: boolean;
+  half_day_type: HalfDayType | null;
+  reason: string | null;
+  contact_phone: string | null;
+  handover_staff_id: string | null;
+  handover_note: string | null;
+  status: LeaveRequestStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  rejection_reason: string | null;
+  attachments: Array<{ name: string; url: string; size: number }>;
+  created_at: string;
+  updated_at: string;
+  // 조인된 데이터
+  staff?: Staff;
+  leave_type?: LeaveType;
+  approver?: Staff;
+  handover_staff?: Staff;
+}
+
+// 연차 현황 요약 (API 응답용)
+export interface LeaveSummary {
+  staff_id: string;
+  staff_name: string;
+  gym_id: string | null;
+  gym_name: string | null;
+  year: number;
+  total_days: number; // 총 연차 (부여 + 이월 + 조정)
+  used_days: number; // 사용한 연차
+  remaining_days: number; // 잔여 연차
+  pending_days: number; // 승인 대기 중인 연차
+}
+
+// 캘린더 뷰용 휴가 데이터
+export interface LeaveCalendarEvent {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  leave_type_name: string;
+  leave_type_color: string;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  is_half_day: boolean;
+  half_day_type: HalfDayType | null;
+  status: LeaveRequestStatus;
+}
+
 // API 관련 타입
 export interface ApiResponse<T = unknown> {
   success: boolean;
