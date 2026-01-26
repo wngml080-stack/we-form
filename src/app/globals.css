@@ -69,27 +69,27 @@
 }
 
 /* ========================================
-   CSS 변수 시스템 - 통일된 색상 팔레트
+   CSS 변수 시스템 - 토스 페이먼츠 스타일 색상 팔레트
    ======================================== */
 :root {
-  /* 배경/전경 기본 */
-  --background: #f8fafc;
-  --background-secondary: #f1f5f9;
-  --background-tertiary: #e2e8f0;
-  --foreground: #0f172a;
-  --foreground-secondary: #334155;
-  --foreground-muted: #64748b;
-  --foreground-subtle: #94a3b8;
+  /* 배경/전경 기본 - 토스 스타일 */
+  --background: #FAFBFC;
+  --background-secondary: #F4F5F7;
+  --background-tertiary: #EBEDF0;
+  --foreground: #191F28;
+  --foreground-secondary: #4E5968;
+  --foreground-muted: #8B95A1;
+  --foreground-subtle: #B0B8C1;
 
-  /* Primary: 브랜드 블루 (#2F80ED 기반) */
-  --primary: 213 84% 56%;
-  --primary-hex: #2F80ED;
-  --primary-hover: 213 84% 48%;
-  --primary-hover-hex: #2570d6;
-  --primary-active: 213 84% 40%;
-  --primary-active-hex: #1c60b8;
-  --primary-light: 213 84% 95%;
-  --primary-light-hex: #e8f2fd;
+  /* Primary: 토스 블루 (#3182F6 기반) */
+  --primary: 211 90% 58%;
+  --primary-hex: #3182F6;
+  --primary-hover: 211 90% 50%;
+  --primary-hover-hex: #1A6CE8;
+  --primary-active: 211 90% 42%;
+  --primary-active-hex: #1558C5;
+  --primary-light: 211 90% 97%;
+  --primary-light-hex: #F0F6FF;
   --primary-foreground: 0 0% 100%;
 
   /* Secondary: 청록색 (Teal) */
@@ -151,12 +151,12 @@
   --glass-border: rgba(255, 255, 255, 0.5);
   --glass-shadow: rgba(0, 0, 0, 0.1);
 
-  /* 그라데이션 */
-  --gradient-primary: linear-gradient(135deg, #2F80ED 0%, #1c60b8 100%);
-  --gradient-primary-soft: linear-gradient(135deg, #e8f2fd 0%, #dbeafe 100%);
-  --gradient-secondary: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
-  --gradient-accent: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-  --gradient-brand: linear-gradient(135deg, #2F80ED 0%, #14b8a6 100%);
+  /* 그라데이션 - 토스 스타일 */
+  --gradient-primary: linear-gradient(135deg, #3182F6 0%, #1A6CE8 100%);
+  --gradient-primary-soft: linear-gradient(135deg, #F0F6FF 0%, #E8F3FF 100%);
+  --gradient-secondary: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  --gradient-accent: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  --gradient-brand: linear-gradient(135deg, #3182F6 0%, #1558C5 100%);
 }
 
 
