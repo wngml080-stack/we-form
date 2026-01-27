@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { FcStats, PtStats, SalesSummary, ComparisonData, SalesPeriod, SalesType } from "../components/modals/TotalSalesModal";
 
-interface Payment {
+export interface Payment {
   id: string;
   member_name: string;
   phone?: string;
@@ -20,12 +20,94 @@ interface Payment {
   trainer_name?: string;
   registrar?: string;
   memo?: string;
-  created_at: string;
+  created_at?: string;
   payment_date: string;
   service_sessions?: number;
   bonus_sessions?: number;
   validity_per_session?: number;
   membership_start_date?: string;
+  visit_route?: string;
+  visit_route_custom?: string;
+  expiry_type?: string;
+  isNew?: boolean;
+}
+
+// 결제 편집 폼 타입
+export interface PaymentEditForm {
+  payment_date?: string;
+  member_name?: string;
+  phone?: string;
+  sale_type?: string;
+  membership_category?: string;
+  membership_name?: string;
+  amount?: number;
+  method?: string;
+  installment?: number;
+  trainer_id?: string;
+  registrar?: string;
+  memo?: string;
+  service_sessions?: number;
+  bonus_sessions?: number;
+  validity_per_session?: number;
+  membership_start_date?: string;
+  visit_route?: string;
+  visit_route_custom?: string;
+  expiry_type?: string;
+  gender?: string;
+  birth_date?: string;
+}
+
+// 새 결제 행 타입 (아직 저장되지 않은 상태)
+export interface NewPaymentRow {
+  id: string;
+  member_name: string;
+  phone: string;
+  sale_type: string;
+  membership_category: string;
+  membership_name: string;
+  amount: number;
+  method: string;
+  installment: number;
+  trainer_id: string;
+  registrar: string;
+  memo: string;
+  service_sessions: number;
+  bonus_sessions: number;
+  validity_per_session: number;
+  membership_start_date: string;
+  payment_date: string;
+  visit_route: string;
+  expiry_type: string;
+}
+
+// API 응답 결제 데이터 타입
+interface ApiPaymentResponse {
+  id: string;
+  member_name?: string;
+  members?: { name?: string; phone?: string };
+  phone?: string;
+  gender?: string;
+  birth_date?: string;
+  sale_type?: string;
+  registration_type?: string;
+  membership_category?: string;
+  membership_type?: string;
+  membership_name?: string;
+  member_memberships?: { name?: string };
+  amount?: number;
+  method?: string;
+  installment?: number;
+  installment_count?: number;
+  trainer_id?: string;
+  trainer_name?: string;
+  registrar?: string;
+  memo?: string;
+  paid_at?: string;
+  created_at?: string;
+  service_sessions?: number;
+  bonus_sessions?: number;
+  validity_per_session?: number;
+  start_date?: string;
   visit_route?: string;
   expiry_type?: string;
 }
@@ -96,7 +178,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // 새 행 추가
-  const [newRows, setNewRows] = useState<any[]>([]);
+  const [newRows, setNewRows] = useState<NewPaymentRow[]>([]);
 
   // 통계
   const [stats, setStats] = useState<Stats>({
@@ -269,7 +351,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
       const response = await fetch(`/api/admin/sales?gym_id=${gymId}&company_id=${companyId}&start_date=${startDate}&end_date=${endDate}`);
       const result = await response.json();
       if (result.success && result.payments) {
-        const formatted = result.payments.map((p: any) => ({
+        const formatted: Payment[] = result.payments.map((p: ApiPaymentResponse) => ({
           id: p.id,
           member_name: p.member_name || p.members?.name || "",
           phone: p.phone || p.members?.phone || "",
@@ -286,7 +368,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
           registrar: p.registrar || "",
           memo: p.memo || "",
           created_at: p.paid_at || p.created_at,
-          payment_date: p.paid_at || p.created_at,
+          payment_date: p.paid_at || p.created_at || "",
           service_sessions: p.service_sessions || 0,
           bonus_sessions: p.bonus_sessions || 0,
           validity_per_session: p.validity_per_session || 0,
@@ -295,14 +377,14 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
           expiry_type: p.expiry_type || "",
         }));
         setPayments(formatted);
-        const stats = formatted.reduce((acc: any, p: any) => {
+        const calculatedStats = formatted.reduce((acc: Stats, p: Payment) => {
           acc.total += p.amount; acc.count += 1;
           if (p.method === "card") acc.card += p.amount;
           else if (p.method === "cash") acc.cash += p.amount;
           else if (p.method === "transfer") acc.transfer += p.amount;
           return acc;
         }, { total: 0, card: 0, cash: 0, transfer: 0, count: 0 });
-        setStats(stats);
+        setStats(calculatedStats);
       }
     } catch (error) {
       console.error("매출 조회 오류:", error);
@@ -310,7 +392,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
   };
 
   const fetchStaffList = async (gymId: string) => {
-    const { data, error } = await supabase.from("staffs").select("id, name, role").eq("gym_id", gymId).eq("status", "active").order("name");
+    const { data, error } = await supabase.from("staffs").select("id, name, role").eq("gym_id", gymId).eq("employment_status", "재직").order("name");
     if (!error && data) setStaffList(data);
   };
 
@@ -351,11 +433,12 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
       installment: 1, trainer_id: "", registrar: "", memo: "",
       service_sessions: 0, bonus_sessions: 0, validity_per_session: 0,
       membership_start_date: new Date().toISOString().split("T")[0],
+      payment_date: new Date().toISOString().split("T")[0],
       visit_route: "워크인", expiry_type: "60일 이내"
     }]);
   };
 
-  const updateNewRow = (id: string, field: string, value: any) => { setNewRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row)); };
+  const updateNewRow = (id: string, field: string, value: string | number) => { setNewRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row)); };
   const removeNewRow = (id: string) => { setNewRows(prev => prev.filter(r => r.id !== id)); };
 
   const deletePayment = async (id: string) => {
@@ -378,18 +461,24 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     } catch {}
   };
 
-  const addCustomOption = async (type: any, name: string) => {
+  type CustomOptionType = "sale_type" | "membership_category" | "membership_name" | "payment_method";
+  const tableMap: Record<CustomOptionType, string> = {
+    sale_type: "sale_types",
+    membership_category: "membership_categories",
+    membership_name: "membership_names",
+    payment_method: "payment_methods"
+  };
+
+  const addCustomOption = async (type: CustomOptionType, name: string) => {
     if (!name.trim() || !selectedGymId || !selectedCompanyId) return;
-    const tableMap = { sale_type: "sale_types", membership_category: "membership_categories", membership_name: "membership_names", payment_method: "payment_methods" };
-    const { error } = await supabase.from(tableMap[type as keyof typeof tableMap]).insert({
+    const { error } = await supabase.from(tableMap[type]).insert({
       gym_id: selectedGymId, company_id: selectedCompanyId, name: name.trim(), display_order: 1
     });
     if (!error) fetchCustomOptions(selectedGymId);
   };
 
-  const deleteCustomOption = async (type: any, id: string) => {
-    const tableMap = { sale_type: "sale_types", membership_category: "membership_categories", membership_name: "membership_names", payment_method: "payment_methods" };
-    const { error } = await supabase.from(tableMap[type as keyof typeof tableMap]).delete().eq("id", id);
+  const deleteCustomOption = async (type: CustomOptionType, id: string) => {
+    const { error } = await supabase.from(tableMap[type]).delete().eq("id", id);
     if (!error && selectedGymId) fetchCustomOptions(selectedGymId);
   };
 

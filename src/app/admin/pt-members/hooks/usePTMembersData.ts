@@ -116,7 +116,7 @@ interface UsePTMembersDataProps {
   filterInitialized: boolean;
 }
 
-interface MemberTrainer {
+export interface MemberTrainer {
   id: string;
   category: string;
   trainer_id: string;
@@ -127,6 +127,51 @@ interface MemberTrainer {
     id: string;
     name: string;
   };
+}
+
+// API 응답 타입들
+interface MembershipApiData {
+  member_id: string;
+  name: string;
+  total_sessions: number;
+  used_sessions: number;
+  service_sessions: number;
+  used_service_sessions: number;
+  status: string;
+}
+
+interface PaymentApiData {
+  id: string;
+  member_name?: string;
+  phone?: string;
+  membership_category?: string;
+  membership_name?: string;
+  sale_type?: string;
+  amount?: number;
+  trainer_id?: string;
+  trainer_name?: string;
+  memo?: string;
+  created_at?: string;
+  paid_at?: string;
+  service_sessions?: number;
+  bonus_sessions?: number;
+  start_date?: string;
+  expiry_date?: string;
+  staffs?: { id: string; name: string } | null;
+}
+
+interface MemberApiData {
+  id: string;
+  phone?: string;
+  trainer_id?: string;
+  trainer?: { id: string; name: string } | { id: string; name: string }[] | null;
+}
+
+interface TrainerApiData {
+  id: string;
+  name: string;
+  role: string;
+  employment_status: string;
 }
 
 // PT 관련 회원권 카테고리 (대소문자 무관)
@@ -315,8 +360,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       }
 
       // 회원별 활성 회원권 매핑 (이용중인 것 우선)
-      const membershipMap: Record<string, any> = {};
-      (memberships || []).forEach((m: any) => {
+      const membershipMap: Record<string, MembershipApiData> = {};
+      (memberships || []).forEach((m: MembershipApiData) => {
         const isCurrentlyActive = m.status?.toLowerCase() === "active" || m.status === "이용중";
         if (isCurrentlyActive && !membershipMap[m.member_id]) {
           membershipMap[m.member_id] = m;
@@ -324,8 +369,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       });
 
       // members 테이블에서 phone으로 member_id 및 현재 담당 트레이너 매핑
-      const rawPhones = (payments || []).map((p: any) => p.phone).filter(Boolean);
-      const normalizedPhones = rawPhones.map((p: string) => p.replace(/-/g, ""));
+      const rawPhones = (payments || []).map((p: PaymentApiData) => p.phone).filter((p): p is string => Boolean(p));
+      const normalizedPhones = rawPhones.map((p) => p.replace(/-/g, ""));
       const allPhoneVariants = [...new Set([...rawPhones, ...normalizedPhones])];
 
       const { data: memberData } = await supabase
@@ -340,12 +385,14 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         .in("phone", allPhoneVariants);
 
       const phoneToMemberInfo: Record<string, { id: string; trainer_id: string | null; trainer_name: string | null }> = {};
-      (memberData || []).forEach((m: any) => {
+      (memberData || []).forEach((m: MemberApiData) => {
         if (m.phone) {
+          // trainer can be an array or object depending on Supabase response
+          const trainerObj = Array.isArray(m.trainer) ? m.trainer[0] : m.trainer;
           const info = {
             id: m.id,
             trainer_id: m.trainer_id || null,
-            trainer_name: m.trainer?.name || null
+            trainer_name: trainerObj?.name || null
           };
           phoneToMemberInfo[m.phone] = info;
           // 하이픈 제거 버전으로도 매핑
@@ -360,7 +407,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       });
 
       // 데이터 변환 - PT/OT 분류 포함
-      const allMembers: PTMember[] = (payments || []).map((p: any) => {
+      const allMembers: PTMember[] = (payments || []).map((p: PaymentApiData) => {
         const category = p.membership_category || "";
         // PT 회원권이 아니면 OT로 분류
         const displayCategory = isPTMembership(category) ? category : (category || "OT");
@@ -388,7 +435,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
             usedServiceSessions = membership.used_service_sessions || 0;
           } else {
             // 회원권이 없거나 9999(잘못된 OT)인 경우 매출 데이터 또는 상품명에서 추출
-            let total = parseInt(p.service_sessions) || 0;
+            let total = p.service_sessions || 0;
             // service_sessions가 없으면 상품명에서 추출 시도
             if (!total && p.membership_name) {
               total = extractSessionsFromName(p.membership_name) || 0;
@@ -396,7 +443,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
             if (total > 0) {
               totalSessions = total;
               remainingSessions = total; // 아직 사용하지 않았으므로 전체가 잔여
-              serviceSessions = parseInt(p.bonus_sessions) || 0;
+              serviceSessions = p.bonus_sessions || 0;
               usedServiceSessions = 0;
             }
           }
@@ -416,7 +463,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           membership_category: displayCategory,
           membership_name: p.membership_name || "",
           sale_type: p.sale_type || "",
-          amount: parseFloat(p.amount) || 0,
+          amount: typeof p.amount === "string" ? parseFloat(p.amount) : (p.amount || 0),
           trainer_id: currentTrainerId,
           trainer_name: currentTrainerName,
           remaining_sessions: remainingSessions,
@@ -426,7 +473,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
           start_date: undefined,
           end_date: undefined,
           status: "active" as const,
-          created_at: p.created_at,
+          created_at: p.created_at || new Date().toISOString(),
           memo: p.memo,
           registration_type: p.sale_type || ""
         };
@@ -637,9 +684,9 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       } else if (branchTrainers) {
         // 트레이너별 매출 집계
         const trainerSales: Record<string, number> = {};
-        branchTrainers.forEach((t: any) => {
+        branchTrainers.forEach((t: { trainer_id: string | null; amount: number | string | null }) => {
           if (t.trainer_id) {
-            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(t.amount || 0);
+            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(String(t.amount || 0));
           }
         });
 
@@ -663,9 +710,9 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         console.error("회사 순위 조회 오류:", companyError);
       } else if (companyTrainers) {
         const trainerSales: Record<string, number> = {};
-        companyTrainers.forEach((t: any) => {
+        companyTrainers.forEach((t: { trainer_id: string | null; amount: number | string | null }) => {
           if (t.trainer_id) {
-            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(t.amount || 0);
+            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(String(t.amount || 0));
           }
         });
 
@@ -812,9 +859,9 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
 
       // 알림 (Toast UI가 있으면 좋겠지만 현재는 alert 사용 가능성이 큼)
       // 성공 메시지는 생략하거나 간단히 처리
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("[updateTrainer] Error:", e);
-      alert(e.message || "트레이너 배정 중 오류가 발생했습니다.");
+      alert(e instanceof Error ? e.message : "트레이너 배정 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -853,9 +900,9 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
 
       setSelectedMemberIds([]);
       alert(`${result.updated}명의 담당자가 변경되었습니다.`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("[handleBulkUpdateTrainer] Error:", e);
-      alert(e.message || "일괄 변경 중 오류가 발생했습니다.");
+      alert(e instanceof Error ? e.message : "일괄 변경 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -971,7 +1018,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
   };
 
   // 트레이너 인계 모달 열기
-  const openTrainerTransferModal = (trainer: any | null, category: string, isPt: boolean) => {
+  const openTrainerTransferModal = (trainer: MemberTrainer | null, category: string, isPt: boolean) => {
     setTrainerTransferTarget(trainer);
     setTrainerTransferCategory(category);
     setIsPtTransfer(isPt);
@@ -995,8 +1042,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       }
       await fetchMemberTrainers(selectedMember.id);
       setIsTrainerAssignOpen(false);
-    } catch (e: any) {
-      alert(e.message || "트레이너 배정 중 오류가 발생했습니다.");
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "트레이너 배정 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -1007,7 +1054,15 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     if (!selectedMember) return;
     setIsLoading(true);
     try {
-      const body: any = {
+      const body: {
+        to_trainer_id: string;
+        reason: string;
+        reason_detail?: string;
+        is_pt_transfer: boolean;
+        from_trainer_id?: string;
+        member_trainer_id?: string;
+        category?: string;
+      } = {
         ...data,
         is_pt_transfer: isPtTransfer
       };
@@ -1047,8 +1102,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       } catch (e) { /* ignore */ }
 
       setIsTrainerTransferOpen(false);
-    } catch (e: any) {
-      alert(e.message || "트레이너 인계 중 오류가 발생했습니다.");
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "트레이너 인계 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -1070,8 +1125,8 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         return;
       }
       await fetchMemberTrainers(selectedMember.id);
-    } catch (e: any) {
-      alert(e.message || "트레이너 배정 해제 중 오류가 발생했습니다.");
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "트레이너 배정 해제 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }

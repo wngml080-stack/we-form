@@ -165,10 +165,12 @@ export function AdminFilterProvider({ children }: { children: ReactNode }) {
 
   // 초기화
   useEffect(() => {
+    console.log("[AdminFilter] authLoading:", authLoading, "user:", user?.email);
     if (authLoading) return;
-    
+
     // 유저가 없으면 초기화 완료로 간주 (로그인 페이지 등으로 리다이렉트될 것)
     if (!user) {
+      console.log("[AdminFilter] No user, marking initialized");
       setIsInitialized(true);
       return;
     }
@@ -210,6 +212,7 @@ export function AdminFilterProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Error during filter initialization:", error);
       } finally {
+        console.log("[AdminFilter] Initialization complete");
         setIsInitialized(true);
       }
     };

@@ -1,11 +1,51 @@
 "use client";
 
-import { useState, use, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useSalesPageData } from "./hooks/useSalesPageData";
+import { useSalesPageData, Payment, PaymentEditForm } from "./hooks/useSalesPageData";
+
+// 회원 상세 모달 관련 타입
+interface MemberSummary {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
+interface MembershipInfo {
+  id: string;
+  name: string;
+  membership_type?: string;
+  total_sessions: number;
+  used_sessions: number;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
+interface PaymentHistoryItem {
+  id: string;
+  sale_type: string;
+  membership_name?: string;
+  membership_type?: string;
+  membership_category?: string;
+  amount: number;
+  payment_method?: string;
+  created_at: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface ActivityLogItem {
+  id: string;
+  action_type: string;
+  description: string;
+  changes?: Record<string, unknown>;
+  created_at: string;
+  created_by_name?: string;
+}
 import { useExpensesData } from "./hooks/useExpensesData";
 import { SalesHeader } from "./components/SalesHeader";
 import { SalesFilters } from "./components/SalesFilters";
@@ -83,14 +123,7 @@ const ComparisonAnalysisModal = dynamic(
   { ssr: false }
 );
 
-export default function SalesPage(props: {
-  params: Promise<any>;
-  searchParams: Promise<any>;
-}) {
-  // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
-  use(props.params);
-  use(props.searchParams);
-
+export default function SalesPage() {
   const { selectedGymId, gymName, selectedCompanyId, isInitialized } = useAdminFilter();
   const { user } = useAuth();
   const isStaff = user?.role === "staff";
@@ -122,14 +155,14 @@ export default function SalesPage(props: {
     params.set("tab", tab);
     router.replace(`${window.location.pathname}?${params.toString()}`);
   };
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState<PaymentEditForm>({});
 
   // 회원 상세 모달 관련 상태
   const [isMemberDetailOpen, setIsMemberDetailOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<any>(null);
-  const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]);
-  const [memberAllMemberships, setMemberAllMemberships] = useState<any[]>([]);
-  const [memberActivityLogs, setMemberActivityLogs] = useState<any[]>([]);
+  const [selectedMember, setSelectedMember] = useState<MemberSummary | null>(null);
+  const [memberPaymentHistory, setMemberPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const [memberAllMemberships, setMemberAllMemberships] = useState<MembershipInfo[]>([]);
+  const [memberActivityLogs, setMemberActivityLogs] = useState<ActivityLogItem[]>([]);
 
   // 비교 분석 모달 상태
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
@@ -361,12 +394,12 @@ export default function SalesPage(props: {
       // newRows 상태 업데이트
       updateNewRow(newRow.id, field, value);
       // editForm 상태도 동시에 업데이트
-      setEditForm((prev: any) => ({ ...prev, [field]: value }));
+      setEditForm((prev) => ({ ...prev, [field]: value }));
     }
   };
 
   // 편집 시작
-  const handleStartEdit = (payment: any) => {
+  const handleStartEdit = (payment: Payment) => {
     setEditingId(payment.id);
     setEditForm({
       payment_date: payment.payment_date || payment.created_at?.split("T")[0] || "",
@@ -431,7 +464,7 @@ export default function SalesPage(props: {
 
   // 편집 폼 변경
   const handleEditFormChange = (field: string, value: string | number) => {
-    setEditForm((prev: any) => ({ ...prev, [field]: value }));
+    setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
   // 삭제
@@ -442,7 +475,7 @@ export default function SalesPage(props: {
   };
 
   // 회원 상세 보기 (테이블에서 회원명 클릭 시)
-  const handleViewMemberDetail = async (payment: any) => {
+  const handleViewMemberDetail = async (payment: Payment) => {
     if (!payment.phone || !selectedGymId) return;
 
     try {

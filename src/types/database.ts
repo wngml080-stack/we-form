@@ -4,7 +4,7 @@
 export type StaffRole = "system_admin" | "company_admin" | "admin" | "staff";
 
 // 고용 상태 타입
-export type EmploymentStatus = "재직" | "퇴사" | "휴직";
+export type EmploymentStatus = "재직" | "퇴사" | "휴직" | "가입대기";
 
 // 회사 상태 타입
 export type CompanyStatus = "active" | "pending" | "suspended" | "inactive";

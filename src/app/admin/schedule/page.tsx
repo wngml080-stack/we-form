@@ -31,8 +31,8 @@ const QuickStatusModal = dynamicImport(
 );
 
 export default function AdminSchedulePage(props: {
-  params: Promise<any>;
-  searchParams: Promise<any>;
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
   use(props.params);

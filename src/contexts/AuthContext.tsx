@@ -134,17 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Supabase 클라이언트 한번만 생성
   const supabase = useMemo(() => createSupabaseClient(), []);
 
-  // 클라이언트에서 localStorage 캐시 확인 (마운트 시)
-  // 캐시에는 최소 정보만 저장되어 있음 (hasSession, displayName, timestamp)
-  // 민감 정보는 서버에서 로드됨
-  useEffect(() => {
-    const cached = getStoredCache();
-    if (cached && cached.hasSession) {
-      // 캐시가 있으면 로딩 스피너를 건너뛰고 빈 UI 먼저 표시
-      // 실제 사용자 정보는 서버에서 로드됨
-      setIsLoading(false);
-    }
-  }, []);
+  // localStorage 캐시는 더 이상 isLoading 상태에 영향을 주지 않음
+  // fetchUserData가 완료될 때까지 로딩 상태 유지 (race condition 방지)
 
   // Supabase Auth 상태 감지
   useEffect(() => {
@@ -204,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error || !me) {
+        console.log("[AuthContext] Staff query failed:", error?.message || "no data");
         setUser(null);
         setIsApproved(false);
         setIsLoading(false);
@@ -240,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setIsApproved(true);
+      console.log("[AuthContext] User approved:", userData.name, "role:", userData.role);
 
       // localStorage 캐시 저장 (승인된 사용자만) - 최소 정보만 저장
       // 민감 정보(id, email, role, company_id 등)는 저장하지 않음
@@ -287,11 +280,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [authLoaded, authUser, supabase]);
 
+  // authUser의 email이 변경될 때만 데이터 다시 로드 (무한 루프 방지)
+  const authEmail = authUser?.email;
   useEffect(() => {
+    console.log("[AuthContext] Effect triggered - authLoaded:", authLoaded, "email:", authEmail);
     if (authLoaded) {
       fetchUserData();
     }
-  }, [authLoaded, authUser, fetchUserData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoaded, authEmail]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();

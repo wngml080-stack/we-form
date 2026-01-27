@@ -92,7 +92,7 @@ export function FirstConsultationResultModal({ isOpen, onClose }: Props) {
     }));
   };
 
-  const updateChecklist = (key: keyof typeof formData.checklist, value: any) => {
+  const updateChecklist = (key: keyof typeof formData.checklist, value: boolean | string) => {
     setFormData(prev => ({
       ...prev,
       checklist: { ...prev.checklist, [key]: value }

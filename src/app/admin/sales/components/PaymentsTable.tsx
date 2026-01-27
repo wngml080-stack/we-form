@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber, formatPhoneNumberOnChange } from "@/lib/utils/phone-format";
 import { getCategoryColor } from "../utils/categoryColors";
+import { Payment, PaymentEditForm } from "../hooks/useSalesPageData";
 
 // 상품명에서 횟수 추출 (예: "PT 50회" → 50, "PT50" → 50, "50회" → 50)
 const extractSessionsFromName = (name: string): number | null => {
@@ -87,32 +88,6 @@ interface Staff {
   role: string;
 }
 
-interface Payment {
-  id: string;
-  member_name: string;
-  phone?: string;
-  gender?: string; // 성별
-  birth_date?: string; // 생년월일
-  sale_type: string;
-  membership_category: string;
-  membership_name: string;
-  amount: number;
-  method: string;
-  installment?: number;
-  registrar?: string; // 등록자 (수기 입력)
-  memo?: string;
-  payment_date: string;
-  isNew?: boolean;
-  // 상세 필드
-  service_sessions?: number;
-  bonus_sessions?: number;
-  validity_per_session?: number;
-  membership_start_date?: string;
-  visit_route?: string;
-  visit_route_custom?: string;
-  expiry_type?: string;
-}
-
 interface PaymentsTableProps {
   payments: Payment[];
   staffList: Staff[];
@@ -122,7 +97,7 @@ interface PaymentsTableProps {
   allPaymentMethods: string[];
   defaultInstallments: number[];
   editingId: string | null;
-  editForm: Partial<Payment>;
+  editForm: PaymentEditForm;
   onStartEdit: (payment: Payment) => void;
   onCancelEdit: () => void;
   onSaveEdit: () => void;

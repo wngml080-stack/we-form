@@ -3,7 +3,7 @@
 import { useState, use } from "react";
 import Link from "next/link";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
-import { usePTMembersData } from "./hooks/usePTMembersData";
+import { usePTMembersData, MemberTrainer } from "./hooks/usePTMembersData";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -368,7 +368,7 @@ export default function PTMembersPage(props: {
         staffList={staffList}
         isLoading={isLoading}
         onSubmit={handleAssignTrainer}
-        existingCategories={memberTrainers.map((t: any) => t.category)}
+        existingCategories={memberTrainers.map((t: MemberTrainer) => t.category)}
       />
 
       {/* 트레이너 인계 모달 */}
@@ -392,7 +392,7 @@ export default function PTMembersPage(props: {
   );
 }
 
-function PlusCircle(props: any) {
+function PlusCircle(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" /><path d="M8 12h8" /><path d="M12 8v8" />
@@ -400,7 +400,7 @@ function PlusCircle(props: any) {
   );
 }
 
-function X(props: any) {
+function X(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 6 6 18" /><path d="m6 6 12 12" />

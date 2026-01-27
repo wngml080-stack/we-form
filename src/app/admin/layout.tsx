@@ -84,14 +84,6 @@ function AdminLayoutContent({
     router.push("/sign-in");
   };
 
-  if (isLoading || !isApproved) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#f0f4f8]">
-        <p className="text-slate-500">로딩 중...</p>
-      </div>
-    );
-  }
-
   const dashboardSubMenus = [
     { name: "스케줄관리", href: "/admin/schedule", icon: Calendar },
     { name: "통합회원관리", href: "/admin/pt-members", icon: UserCheck },
@@ -126,15 +118,21 @@ function AdminLayoutContent({
 
   return (
     <div className="flex h-screen bg-[#f0f4f8]">
-      {/* 모바일 햄버거 버튼 */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"
-      >
-        {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
+      {(isLoading || !isApproved) ? (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-slate-500">로딩 중...</p>
+        </div>
+      ) : (
+        <>
+          {/* 모바일 햄버거 버튼 */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="fixed top-4 left-4 z-50 lg:hidden w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"
+          >
+            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
 
-      {/* 모바일 오버레이 */}
+          {/* 모바일 오버레이 */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden"
@@ -355,8 +353,10 @@ function AdminLayoutContent({
         </div>
       </main>
 
-      {/* 사내 메신저 플로팅 위젯 */}
-      <MessengerWidget />
+          {/* 사내 메신저 플로팅 위젯 */}
+          <MessengerWidget />
+        </>
+      )}
     </div>
   );
 }

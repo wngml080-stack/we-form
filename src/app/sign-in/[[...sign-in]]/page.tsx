@@ -29,15 +29,6 @@ export default function SignInPage() {
     checkSession();
   }, [router]);
 
-  // 세션 체크 중이면 로딩 화면 표시
-  if (isCheckingSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2563eb]" />
-      </div>
-    );
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -69,16 +60,20 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] relative overflow-hidden py-12 px-5">
-      {/* 배경 장식 요소 */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-50 rounded-full blur-[120px] opacity-60"></div>
+    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] relative overflow-hidden py-12 px-5">
+      {isCheckingSession ? (
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      ) : (
+        <>
+          {/* 배경 장식 요소 */}
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-50 rounded-full blur-[120px] opacity-60"></div>
 
-      <div className="relative z-10 w-full max-w-[400px]">
+          <div className="relative z-10 w-full max-w-[400px]">
         {/* 로고 섹션 */}
         <div className="flex flex-col items-center mb-6">
           <h1 className="text-3xl tracking-tight" style={{ color: '#0f172a', fontWeight: 900 }}>
-            We<span style={{ color: '#2563eb' }}>:</span>form
+            We<span style={{ color: 'var(--primary-hex)' }}>:</span>form
           </h1>
           <p className="text-xs uppercase tracking-[0.15em] mt-1" style={{ color: '#94a3b8', fontWeight: 600 }}>Smart Management System</p>
         </div>
@@ -86,11 +81,11 @@ export default function SignInPage() {
         <div className="bg-white shadow-xl rounded-[24px] border border-[#e2e8f0] p-6 relative overflow-hidden">
           {/* 상단 장식 바 */}
           <div className="absolute top-0 left-0 w-full h-1 bg-[#f1f5f9] overflow-hidden">
-            <div className="h-full bg-[#2563eb] w-1/3"></div>
+            <div className="h-full bg-primary w-1/3"></div>
           </div>
 
           <div className="text-center mb-6 pt-2">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#eff6ff] rounded-full text-[9px] uppercase tracking-widest mb-2 border border-[#dbeafe]" style={{ color: '#2563eb', fontWeight: 700 }}>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#eff6ff] rounded-full text-[9px] uppercase tracking-widest mb-2 border border-[#dbeafe]" style={{ color: 'var(--primary-hex)', fontWeight: 700 }}>
               <Sparkles className="w-2.5 h-2.5" /> Welcome Back
             </div>
             <h2 className="text-xl tracking-tight" style={{ color: '#0f172a', fontWeight: 800 }}>서비스 로그인</h2>
@@ -108,7 +103,7 @@ export default function SignInPage() {
                   placeholder="example@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-12 pl-11 text-sm rounded-xl border-2 border-[#e2e8f0] bg-[#f8fafc] focus:bg-white focus:border-[#2563eb] focus:outline-none transition-all"
+                  className="w-full h-12 pl-11 text-sm rounded-xl border-2 border-[#e2e8f0] bg-[var(--background)] focus:bg-white focus:border-primary focus:outline-none transition-all"
                   style={{ color: '#0f172a', fontWeight: 500 }}
                   required
                 />
@@ -118,7 +113,7 @@ export default function SignInPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between ml-1">
                 <label htmlFor="password" className="text-[10px] uppercase tracking-widest" style={{ color: '#64748b', fontWeight: 600 }}>Password</label>
-                <Link href="/forgot-password" className="text-[10px] uppercase tracking-widest hover:underline" style={{ color: '#2563eb', fontWeight: 600 }}>Forgot Password?</Link>
+                <Link href="/forgot-password" className="text-[10px] uppercase tracking-widest hover:underline" style={{ color: 'var(--primary-hex)', fontWeight: 600 }}>Forgot Password?</Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#94a3b8' }} />
@@ -128,7 +123,7 @@ export default function SignInPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-12 pl-11 pr-11 text-sm rounded-xl border-2 border-[#e2e8f0] bg-[#f8fafc] focus:bg-white focus:border-[#2563eb] focus:outline-none transition-all"
+                  className="w-full h-12 pl-11 pr-11 text-sm rounded-xl border-2 border-[#e2e8f0] bg-[var(--background)] focus:bg-white focus:border-primary focus:outline-none transition-all"
                   style={{ color: '#0f172a', fontWeight: 500 }}
                   required
                 />
@@ -155,7 +150,7 @@ export default function SignInPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="h-12 w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="h-12 w-full bg-primary hover:bg-primary/90 text-white rounded-xl text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               style={{ fontWeight: 700 }}
             >
               {isLoading ? (
@@ -169,18 +164,20 @@ export default function SignInPage() {
           <div className="mt-5 text-center">
             <p className="text-sm" style={{ color: '#64748b', fontWeight: 500 }}>
               아직 계정이 없으신가요?{" "}
-              <Link href="/onboarding" className="ml-1 transition-colors hover:underline" style={{ color: '#2563eb', fontWeight: 600 }}>
+              <Link href="/onboarding" className="ml-1 transition-colors hover:underline" style={{ color: 'var(--primary-hex)', fontWeight: 600 }}>
                 회원가입 시작하기
               </Link>
             </p>
           </div>
         </div>
 
-        {/* 푸터 정보 */}
-        <div className="mt-6 text-center">
-          <p className="text-[9px] uppercase tracking-[0.15em]" style={{ color: '#94a3b8', fontWeight: 600 }}>© 2024 We:form. All rights reserved.</p>
+          {/* 푸터 정보 */}
+          <div className="mt-6 text-center">
+            <p className="text-[9px] uppercase tracking-[0.15em]" style={{ color: '#94a3b8', fontWeight: 600 }}>© 2024 We:form. All rights reserved.</p>
+          </div>
         </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

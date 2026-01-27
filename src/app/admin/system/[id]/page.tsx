@@ -6,14 +6,20 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
+import { Company, Staff, EmploymentStatus } from "@/types/database";
+
+// 직원 + 지점 조인 타입
+interface StaffWithGym extends Staff {
+  gyms: { name: string } | null;
+}
 
 export default function CompanyDetailPage() {
   const router = useRouter();
   const params = useParams();
   const companyId = params?.id as string | undefined;
 
-  const [company, setCompany] = useState<any>(null);
-  const [staffs, setStaffs] = useState<any[]>([]);
+  const [company, setCompany] = useState<Company | null>(null);
+  const [staffs, setStaffs] = useState<StaffWithGym[]>([]);
 
   const supabase = createSupabaseClient();
 
@@ -73,10 +79,7 @@ export default function CompanyDetailPage() {
               <tr key={staff.id} className="border-b hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium">{staff.name}</td>
                 <td className="px-4 py-3 text-gray-600">
-                    {
-                        // @ts-ignore
-                        staff.gyms?.name || "본사/미정"
-                    }
+                    {staff.gyms?.name || "본사/미정"}
                 </td>
                 <td className="px-4 py-3">{staff.job_title}</td>
                 <td className="px-4 py-3">

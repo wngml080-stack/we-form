@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS staffs (
     job_title VARCHAR(100),
     job_position_code VARCHAR(50),
     role VARCHAR(50) DEFAULT 'staff' CHECK (role IN ('system_admin', 'company_admin', 'admin', 'manager', 'staff', 'director')),
-    employment_status VARCHAR(20) DEFAULT '재직' CHECK (employment_status IN ('재직', '퇴사', '휴직')),
+    employment_status VARCHAR(20) DEFAULT '재직' CHECK (employment_status IN ('재직', '퇴사', '휴직', '가입대기')),
     work_start_time TIME,
     work_end_time TIME,
     joined_at DATE,
