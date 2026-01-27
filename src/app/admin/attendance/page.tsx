@@ -34,9 +34,11 @@ import {
   X,
   CalendarDays,
   CalendarRange,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
+import { exportAttendanceToExcel, formatPeriod } from "./utils/excelExport";
 
 type ViewMode = "daily" | "monthly" | "range";
 
@@ -344,7 +346,9 @@ export default function AdminAttendancePage() {
     const completed = schedules.filter(s => s.status === "completed").length;
     const noShow = schedules.filter(s => ["no_show", "no_show_deducted"].includes(s.status)).length;
     const pending = schedules.filter(s => s.status === "reserved").length;
-    return { total, completed, noShow, pending };
+    const service = schedules.filter(s => s.status === "service").length;
+    const cancelled = schedules.filter(s => s.status === "cancelled").length;
+    return { total, completed, noShow, pending, service, cancelled };
   }, [schedules]);
 
   // 스케줄 아이템 렌더링 (공통)
@@ -439,6 +443,23 @@ export default function AdminAttendancePage() {
             {gymName} 회원 스케줄 출석 체크
           </p>
         </div>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await exportAttendanceToExcel({
+              schedules,
+              stats,
+              gymName: gymName || "전체",
+              period: formatPeriod(viewMode, selectedDate, selectedMonth, startDate, endDate),
+              viewMode,
+            });
+          }}
+          disabled={schedules.length === 0}
+          className="h-10 px-4 rounded-xl font-bold gap-2"
+        >
+          <Download className="w-4 h-4" />
+          엑셀 다운로드
+        </Button>
       </div>
 
       {/* 뷰 모드 & 날짜/기간 선택 */}

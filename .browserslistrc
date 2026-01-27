@@ -1,9 +1,0 @@
-# 최신 브라우저만 지원 - ES2022+ 네이티브 지원
-# Array.at, Object.hasOwn 등 네이티브 지원 버전
-Chrome >= 97
-Firefox >= 104
-Safari >= 15.4
-Edge >= 97
-not dead
-not IE 11
-not op_mini all

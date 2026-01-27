@@ -16,11 +16,27 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SignatureQRModal } from "./SignatureQRModal";
 
+interface ScheduleItem {
+  id: string;
+  member_id?: string;
+  member_name?: string;
+  start_time: string;
+  end_time: string;
+  status?: string;
+  type?: string;
+  sub_type?: string;
+  title?: string;
+  session_number?: number;
+  total_sessions?: number;
+  is_locked?: boolean;
+  inbody_checked?: boolean;
+}
+
 interface QuickStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedSchedule: any | null;
-  setSelectedSchedule: (schedule: any | null) => void;
+  selectedSchedule: ScheduleItem | null;
+  setSelectedSchedule: (schedule: ScheduleItem | null) => void;
   selectedGymId: string | null;
   selectedStaffId: string;
   onStatusChange: (newStatus: string) => void;

@@ -272,7 +272,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
 
   const fetchGymData = useCallback(async (gymId: string) => {
     try {
-      const { data, error } = await supabase.from("gyms").select("*").eq("id", gymId).maybeSingle();
+      const { data, error } = await supabase.from("gyms").select("id, name, fc_bep, pt_bep, company_id").eq("id", gymId).maybeSingle();
       if (!error && data) {
         setGymData(data);
         setFcStats(prev => ({ ...prev, bep: data.fc_bep || 75000000 }));
@@ -399,10 +399,10 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
   const fetchCustomOptions = async (gymId: string) => {
     try {
       const [saleTypesRes, categoriesRes, namesRes, methodsRes] = await Promise.all([
-        supabase.from("sale_types").select("*").eq("gym_id", gymId).order("display_order"),
-        supabase.from("membership_categories").select("*").eq("gym_id", gymId).order("display_order"),
-        supabase.from("membership_names").select("*").eq("gym_id", gymId).order("display_order"),
-        supabase.from("payment_methods").select("*").eq("gym_id", gymId).order("display_order")
+        supabase.from("sale_types").select("id, name, display_order, gym_id").eq("gym_id", gymId).order("display_order"),
+        supabase.from("membership_categories").select("id, name, display_order, gym_id").eq("gym_id", gymId).order("display_order"),
+        supabase.from("membership_names").select("id, name, display_order, gym_id").eq("gym_id", gymId).order("display_order"),
+        supabase.from("payment_methods").select("id, name, display_order, gym_id").eq("gym_id", gymId).order("display_order")
       ]);
       if (saleTypesRes.data) setCustomSaleTypes(saleTypesRes.data);
       if (categoriesRes.data) setCustomMembershipCategories(categoriesRes.data);

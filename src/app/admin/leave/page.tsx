@@ -32,48 +32,48 @@ export default function AdminLeavePage(props: {
   const showAdminTabs = user && isAdmin(user.role);
 
   return (
-    <div className="p-3 xs:p-4 sm:p-6 lg:p-8 xl:p-10 max-w-[1920px] mx-auto space-y-4 xs:space-y-6 sm:space-y-8 animate-in fade-in duration-700">
-      {/* 헤더 */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 xs:gap-6">
-        <div className="space-y-1 xs:space-y-2">
-          <div className="flex items-center gap-2 text-[10px] xs:text-xs font-black text-[#3182F6] uppercase tracking-[0.2em]">
-            <span className="w-6 xs:w-8 h-[2px] bg-[#3182F6]"></span>
-            Leave Management
+    <div className="p-3 xs:p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto space-y-8 xs:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* Header - Toss Style */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-[var(--primary-hex)] rounded-full"></div>
+            <p className="text-xs xs:text-sm text-[var(--foreground-subtle)] font-bold uppercase tracking-[0.2em]">Leave Management</p>
           </div>
-          <h1 className="text-2xl xs:text-3xl md:text-4xl font-black text-[#191F28] tracking-tighter">
+          <h1 className="text-3xl xs:text-4xl lg:text-5xl font-extrabold text-[var(--foreground)] tracking-tight leading-tight">
             연차 관리
           </h1>
-          <p className="text-[#8B95A1] font-bold text-sm xs:text-base sm:text-lg flex items-center gap-2">
+          <p className="text-sm xs:text-base text-[var(--foreground-muted)] font-medium">
             {gymName ? (
               <>
-                <span className="text-[#2F80ED] border-b-2 border-blue-100 px-1">{gymName}</span>의 연차 현황을 관리합니다.
+                <span className="text-[var(--primary-hex)] font-bold decoration-2 underline-offset-4">{gymName}</span>의 효율적인 연차 및 휴가 프로세스를 관리합니다.
               </>
             ) : (
-              "직원들의 연차 현황 조회, 휴가 신청 및 승인을 관리합니다."
+              "직원들의 연차 현황 조회, 휴가 신청 및 승인을 체계적으로 관리합니다."
             )}
           </p>
         </div>
       </div>
 
-      {/* 탭 UI */}
-      <Tabs defaultValue="overview" className="w-full space-y-4 xs:space-y-6 sm:space-y-8">
-        <div className="bg-white/50 backdrop-blur-md p-1 xs:p-1.5 rounded-xl xs:rounded-2xl sm:rounded-[24px] border border-gray-100 shadow-sm inline-flex overflow-x-auto">
-          <TabsList className="bg-transparent h-10 xs:h-11 sm:h-12 gap-1">
+      {/* Tabs UI - Modern Toss Style */}
+      <Tabs defaultValue="overview" className="w-full space-y-8">
+        <div className="inline-flex p-1.5 bg-[var(--background-secondary)] rounded-[24px] border border-[var(--border-light)] overflow-x-auto scrollbar-hide">
+          <TabsList className="bg-transparent h-12 gap-1 px-1">
             <TabsTrigger
               value="overview"
-              className="rounded-lg xs:rounded-xl px-3 xs:px-4 sm:px-6 text-xs xs:text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300 whitespace-nowrap"
+              className="rounded-[18px] px-6 text-sm font-black tracking-tight data-[state=active]:bg-white data-[state=active]:text-[var(--primary-hex)] data-[state=active]:shadow-xl data-[state=active]:shadow-blue-100/50 transition-all duration-300 whitespace-nowrap"
             >
               연차 현황
             </TabsTrigger>
             <TabsTrigger
               value="requests"
-              className="rounded-lg xs:rounded-xl px-3 xs:px-4 sm:px-6 text-xs xs:text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300 whitespace-nowrap"
+              className="rounded-[18px] px-6 text-sm font-black tracking-tight data-[state=active]:bg-white data-[state=active]:text-[var(--primary-hex)] data-[state=active]:shadow-xl data-[state=active]:shadow-blue-100/50 transition-all duration-300 whitespace-nowrap"
             >
               휴가 신청/승인
             </TabsTrigger>
             <TabsTrigger
               value="calendar"
-              className="rounded-lg xs:rounded-xl px-3 xs:px-4 sm:px-6 text-xs xs:text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300 whitespace-nowrap"
+              className="rounded-[18px] px-6 text-sm font-black tracking-tight data-[state=active]:bg-white data-[state=active]:text-[var(--primary-hex)] data-[state=active]:shadow-xl data-[state=active]:shadow-blue-100/50 transition-all duration-300 whitespace-nowrap"
             >
               캘린더
             </TabsTrigger>
@@ -81,22 +81,22 @@ export default function AdminLeavePage(props: {
               <>
                 <TabsTrigger
                   value="statistics"
-                  className="rounded-lg xs:rounded-xl px-3 xs:px-4 sm:px-6 text-xs xs:text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300 whitespace-nowrap"
+                  className="rounded-[18px] px-6 text-sm font-black tracking-tight data-[state=active]:bg-white data-[state=active]:text-[var(--primary-hex)] data-[state=active]:shadow-xl data-[state=active]:shadow-blue-100/50 transition-all duration-300 whitespace-nowrap"
                 >
-                  통계
+                  통계 리포트
                 </TabsTrigger>
                 <TabsTrigger
                   value="settings"
-                  className="rounded-lg xs:rounded-xl px-3 xs:px-4 sm:px-6 text-xs xs:text-sm font-black tracking-tight data-[state=active]:bg-[#2F80ED] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-blue-200 transition-all duration-300 whitespace-nowrap"
+                  className="rounded-[18px] px-6 text-sm font-black tracking-tight data-[state=active]:bg-white data-[state=active]:text-[var(--primary-hex)] data-[state=active]:shadow-xl data-[state=active]:shadow-blue-100/50 transition-all duration-300 whitespace-nowrap"
                 >
-                  설정
+                  정책 설정
                 </TabsTrigger>
               </>
             )}
           </TabsList>
         </div>
 
-        <div className="bg-transparent pt-1 xs:pt-2">
+        <div className="pt-2">
           <TabsContent value="overview" className="animate-in fade-in slide-in-from-bottom-4 duration-700 m-0 outline-none">
             <LeaveOverview />
           </TabsContent>

@@ -2,8 +2,9 @@
 // xlsx 패키지를 동적 import하여 초기 번들 크기 최적화
 
 import { toast } from "@/lib/toast";
+import { ScheduleData } from "./statisticsUtils";
 
-export async function exportSchedulesToExcel(schedules: any[]) {
+export async function exportSchedulesToExcel(schedules: ScheduleData[]) {
   if (schedules.length === 0) {
     toast.warning("다운로드할 스케줄이 없습니다.");
     return;

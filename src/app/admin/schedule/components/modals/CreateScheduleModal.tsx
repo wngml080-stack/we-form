@@ -45,6 +45,28 @@ interface Member {
   phone?: string;
 }
 
+interface MembershipItem {
+  id: string;
+  name?: string;
+  total_sessions?: number;
+  used_sessions?: number;
+  service_sessions?: number;
+  used_service_sessions?: number;
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+}
+
+interface ScheduleItem {
+  id: string;
+  member_id?: string;
+  member_name?: string;
+  start_time: string;
+  end_time: string;
+  status?: string;
+  type?: string;
+}
+
 interface CreateScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -52,11 +74,11 @@ interface CreateScheduleModalProps {
   createForm: CreateFormData;
   setCreateForm: (form: CreateFormData) => void;
   filteredMembers: Member[];
-  memberMemberships: Record<string, any[]>;
-  selectedMemberMembership: any | null;
-  setSelectedMemberMembership: (membership: any | null) => void;
+  memberMemberships: Record<string, MembershipItem[]>;
+  selectedMemberMembership: MembershipItem | null;
+  setSelectedMemberMembership: (membership: MembershipItem | null) => void;
   selectedStaffId: string;
-  schedules: any[];
+  schedules: ScheduleItem[];
   getSessionNumber: (memberId: string, type: 'pt' | 'ot', scheduleId?: string) => number;
   isLoading: boolean;
   onSubmit: () => void;
@@ -96,7 +118,7 @@ export function CreateScheduleModal({
     if (!createForm.member_id) return null;
 
     const memberships = memberMemberships[createForm.member_id] || [];
-    const ptMembership = memberships.find((m: any) =>
+    const ptMembership = memberships.find((m: MembershipItem) =>
       m.name?.toLowerCase().includes('pt') || m.name?.includes('피티')
     );
     const selectedMember = filteredMembers.find(m => m.id === createForm.member_id);
@@ -138,7 +160,7 @@ export function CreateScheduleModal({
   // 회원 선택 시 자동으로 적절한 수업 유형 설정
   const handleMemberChange = (memberId: string) => {
     const memberships = memberMemberships[memberId] || [];
-    const pt = memberships.find((m: any) => m.name?.toLowerCase().includes('pt') || m.name?.includes('피티'));
+    const pt = memberships.find((m: MembershipItem) => m.name?.toLowerCase().includes('pt') || m.name?.includes('피티'));
     setSelectedMemberMembership(pt || null);
 
     // PT 회원권이 없으면 기본값을 OT로 변경
@@ -168,23 +190,29 @@ export function CreateScheduleModal({
       if (!open) handleClose();
     }}>
       <DialogContent className="w-full max-w-2xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
-        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <DialogHeader className="px-10 py-10 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
           <DialogTitle asChild>
-            <div className="flex items-center gap-5 relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <Plus className="w-7 h-7 text-white" />
+            <div className="flex items-center gap-6 relative z-10">
+              <div className="w-16 h-16 rounded-[24px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/40">
+                <Plus className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-black !text-white tracking-tight">새 스케줄 등록</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                  <p className="text-sm text-white/80 font-bold">선택하신 코치님의 회원만 필터링됩니다</p>
+                <h2 className="text-3xl font-black text-white tracking-tight">새 스케줄 등록</h2>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                  <p className="text-base text-white/70 font-bold tracking-tight">지점 스케줄링을 시작합니다</p>
                 </div>
               </div>
             </div>
           </DialogTitle>
           <DialogDescription className="sr-only">새로운 스케줄을 생성합니다</DialogDescription>
+          <button
+            onClick={handleClose}
+            className="absolute top-10 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10 active:scale-90"
+          >
+            <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+          </button>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">

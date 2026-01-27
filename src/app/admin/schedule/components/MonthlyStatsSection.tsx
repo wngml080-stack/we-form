@@ -252,7 +252,7 @@ export function MonthlyStatsSection({
               </Badge>
             </div>
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {monthlyStats.unregisteredList?.map((schedule: any) => (
+              {monthlyStats.unregisteredList?.map((schedule) => (
                 <div key={schedule.id} className="flex items-center justify-between p-4 bg-white rounded-[20px] border border-amber-100/50 shadow-sm hover:shadow-md transition-all group">
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-[10px] tracking-tighter ${

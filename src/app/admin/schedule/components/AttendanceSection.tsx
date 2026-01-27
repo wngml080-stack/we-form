@@ -27,11 +27,34 @@ import { cn } from "@/lib/utils";
 
 type AttendanceViewMode = "daily" | "monthly" | "range";
 
+interface ScheduleItem {
+  id: string;
+  member_id?: string;
+  member_name?: string;
+  start_time: string;
+  end_time: string;
+  status?: string;
+  type?: string;
+  sub_type?: string;
+  staff_id?: string;
+  trainer_name?: string;
+  session_number?: number;
+  total_sessions?: number;
+  title?: string;
+  schedule_type?: string;
+}
+
+interface Staff {
+  id: string;
+  name: string;
+  role?: string;
+}
+
 interface AttendanceSectionProps {
-  schedules: any[];
-  staffs: any[];
+  schedules: ScheduleItem[];
+  staffs: Staff[];
   selectedStaffId: string;
-  onScheduleClick: (schedule: any) => void;
+  onScheduleClick: (schedule: ScheduleItem) => void;
   isLoading?: boolean;
   selectedDate: string;
   onDateChange: (date: string) => void;
@@ -120,15 +143,15 @@ export function AttendanceSection({
   const groupedByDate = useMemo(() => {
     if (viewMode === "daily") return [];
 
-    const dateMap = new Map<string, Map<string, any[]>>();
-    
+    const dateMap = new Map<string, Map<string, ScheduleItem[]>>();
+
     filteredSchedules.forEach(s => {
       const date = s.start_time.split("T")[0];
-      const staffId = s.staff_id;
-      
+      const staffId = s.staff_id || "unknown";
+
       if (!dateMap.has(date)) dateMap.set(date, new Map());
       const staffMap = dateMap.get(date)!;
-      
+
       if (!staffMap.has(staffId)) staffMap.set(staffId, []);
       staffMap.get(staffId)!.push(s);
     });
@@ -140,7 +163,7 @@ export function AttendanceSection({
         dateLabel: new Date(date).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" }),
         staffGroups: Array.from(staffMap.entries()).map(([staffId, staffSchedules]) => ({
           staffId,
-          staffName: staffSchedules[0]?.staff?.name || staffs.find(st => st.id === staffId)?.name || "알 수 없음",
+          staffName: staffSchedules[0]?.trainer_name || staffs.find(st => st.id === staffId)?.name || "알 수 없음",
           schedules: staffSchedules
         })).sort((a, b) => a.staffName.localeCompare(b.staffName))
       }));
@@ -149,17 +172,17 @@ export function AttendanceSection({
   // 직원별 그룹핑 (일별 뷰용)
   const groupedByStaff = useMemo(() => {
     if (viewMode !== "daily") return [];
-    
-    const map = new Map<string, any[]>();
+
+    const map = new Map<string, ScheduleItem[]>();
     filteredSchedules.forEach(s => {
-      const staffId = s.staff_id;
+      const staffId = s.staff_id || "unknown";
       if (!map.has(staffId)) map.set(staffId, []);
       map.get(staffId)!.push(s);
     });
 
     return Array.from(map.entries()).map(([staffId, staffSchedules]) => ({
       staffId,
-      staffName: staffSchedules[0]?.staff?.name || staffs.find(st => st.id === staffId)?.name || "알 수 없음",
+      staffName: staffSchedules[0]?.trainer_name || staffs.find(st => st.id === staffId)?.name || "알 수 없음",
       schedules: staffSchedules
     })).sort((a, b) => a.staffName.localeCompare(b.staffName));
   }, [filteredSchedules, viewMode, staffs]);
@@ -168,7 +191,7 @@ export function AttendanceSection({
   const stats = useMemo(() => {
     const total = filteredSchedules.length;
     const completed = filteredSchedules.filter(s => s.status === "completed").length;
-    const noShow = filteredSchedules.filter(s => ["no_show", "no_show_deducted"].includes(s.status)).length;
+    const noShow = filteredSchedules.filter(s => s.status && ["no_show", "no_show_deducted"].includes(s.status)).length;
     const pending = filteredSchedules.filter(s => s.status === "reserved").length;
     return { total, completed, noShow, pending };
   }, [filteredSchedules]);
@@ -181,8 +204,8 @@ export function AttendanceSection({
     });
   };
 
-  const renderScheduleItem = (schedule: any) => {
-    const statusConfig = STATUS_CONFIG[schedule.status] || STATUS_CONFIG.reserved;
+  const renderScheduleItem = (schedule: ScheduleItem) => {
+    const statusConfig = STATUS_CONFIG[schedule.status || "reserved"] || STATUS_CONFIG.reserved;
     const isPersonal = schedule.member_id === null || schedule.type?.toLowerCase() === 'personal' || schedule.type === '개인';
 
     return (

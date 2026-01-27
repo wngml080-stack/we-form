@@ -1,18 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,20 +19,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { LeaveRequest, StaffRole } from "@/types/database";
+import { Check, X, Clock, Calendar, FileText, Plus, User, ArrowRight, AlertCircle, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import LeaveRequestModal from "./modals/LeaveRequestModal";
+import { cn } from "@/lib/utils";
 
 // 클라이언트용 isAdmin 함수
 function isAdmin(role: StaffRole | string): boolean {
   return ["system_admin", "company_admin", "admin"].includes(role);
 }
-import { Check, X, Clock, Calendar, FileText, Plus } from "lucide-react";
-import { toast } from "sonner";
-import LeaveRequestModal from "./modals/LeaveRequestModal";
 
 const STATUS_MAP = {
-  pending: { label: "대기중", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  approved: { label: "승인됨", color: "bg-green-100 text-green-800 border-green-200" },
-  rejected: { label: "반려됨", color: "bg-[#FFEBEB] text-red-800 border-red-200" },
-  cancelled: { label: "취소됨", color: "bg-[#F4F5F7] text-gray-800 border-[#E5E8EB]" },
+  pending: { label: "승인 대기", color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-100", icon: Clock },
+  approved: { label: "승인 완료", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100", icon: Check },
+  rejected: { label: "반려됨", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-100", icon: X },
+  cancelled: { label: "취소됨", color: "text-slate-500", bg: "bg-slate-50", border: "border-slate-100", icon: Trash2 },
 };
 
 export default function LeaveRequestList() {
@@ -144,11 +137,11 @@ export default function LeaveRequestList() {
   };
 
   const formatDateRange = (start: string, end: string, isHalfDay: boolean, halfDayType: string | null) => {
-    const startDate = new Date(start).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
-    const endDate = new Date(end).toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+    const startDate = new Date(start).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+    const endDate = new Date(end).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
 
     if (isHalfDay) {
-      return `${startDate} (${halfDayType === "morning" ? "오전" : "오후"})`;
+      return `${startDate} (${halfDayType === "morning" ? "오전" : "오후"} 반차)`;
     }
     if (start === end) {
       return startDate;
@@ -157,166 +150,170 @@ export default function LeaveRequestList() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <CardTitle className="text-lg font-bold">휴가 신청 목록</CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={year.toString()} onValueChange={v => setYear(parseInt(v))}>
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {years.map(y => (
-                    <SelectItem key={y} value={y.toString()}>{y}년</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[110px]">
-                  <SelectValue placeholder="상태" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">전체</SelectItem>
-                  <SelectItem value="pending">대기중</SelectItem>
-                  <SelectItem value="approved">승인됨</SelectItem>
-                  <SelectItem value="rejected">반려됨</SelectItem>
-                  <SelectItem value="cancelled">취소됨</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={() => setShowRequestModal(true)} className="gap-2">
-                <Plus className="w-4 h-4" />
-                휴가 신청
-              </Button>
-            </div>
+    <div className="space-y-8">
+      {/* Controls - Modern Toss Style */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <Select value={year.toString()} onValueChange={v => setYear(parseInt(v))}>
+            <SelectTrigger className="h-11 w-[120px] rounded-2xl bg-[var(--background-secondary)] border-none font-bold text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border-none shadow-2xl">
+              {years.map(y => (
+                <SelectItem key={y} value={y.toString()} className="rounded-xl font-bold">{y}년</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-11 w-[130px] rounded-2xl bg-[var(--background-secondary)] border-none font-bold text-sm">
+              <SelectValue placeholder="상태 필터" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl border-none shadow-2xl">
+              <SelectItem value="all" className="rounded-xl font-bold">전체 상태</SelectItem>
+              <SelectItem value="pending" className="rounded-xl font-bold">승인 대기</SelectItem>
+              <SelectItem value="approved" className="rounded-xl font-bold">승인 완료</SelectItem>
+              <SelectItem value="rejected" className="rounded-xl font-bold">반려됨</SelectItem>
+              <SelectItem value="cancelled" className="rounded-xl font-bold">취소됨</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button 
+          onClick={() => setShowRequestModal(true)} 
+          className="h-12 px-8 rounded-2xl bg-slate-900 hover:bg-black text-white font-black shadow-xl shadow-slate-200 transition-all active:scale-95 gap-3"
+        >
+          <Plus className="w-5 h-5 text-blue-400" />
+          휴가 신청하기
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-32 bg-white rounded-[32px] animate-pulse border border-gray-50 shadow-sm"></div>
+          ))}
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[40px] border border-dashed border-gray-200">
+          <div className="w-20 h-20 rounded-[28px] bg-gray-50 flex items-center justify-center mb-6">
+            <FileText className="w-10 h-10 text-gray-300" />
           </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-            </div>
-          ) : requests.length === 0 ? (
-            <div className="text-center py-12 text-[#8B95A1]">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>휴가 신청 내역이 없습니다.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>신청자</TableHead>
-                    <TableHead>휴가 유형</TableHead>
-                    <TableHead>기간</TableHead>
-                    <TableHead>일수</TableHead>
-                    <TableHead>사유</TableHead>
-                    <TableHead>상태</TableHead>
-                    {canManage && <TableHead className="text-center">관리</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {requests.map(req => {
-                    const staff = req.staff as { name: string } | undefined;
-                    const leaveType = req.leave_type as { name: string; color: string } | undefined;
-                    const status = STATUS_MAP[req.status as keyof typeof STATUS_MAP];
+          <p className="text-[var(--foreground-subtle)] font-bold text-lg">아직 신청된 휴가 내역이 없습니다.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {requests.map(req => {
+            const staff = req.staff as { name: string } | undefined;
+            const leaveType = req.leave_type as { name: string; color: string } | undefined;
+            const status = STATUS_MAP[req.status as keyof typeof STATUS_MAP] || STATUS_MAP.pending;
+            const StatusIcon = status.icon;
 
-                    return (
-                      <TableRow key={req.id}>
-                        <TableCell className="font-medium">{staff?.name || "Unknown"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            style={{
-                              backgroundColor: `${leaveType?.color}20`,
-                              borderColor: leaveType?.color,
-                              color: leaveType?.color,
-                            }}
-                          >
-                            {leaveType?.name || "Unknown"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-[#8B95A1]" />
-                            {formatDateRange(req.start_date, req.end_date, req.is_half_day, req.half_day_type)}
-                          </div>
-                        </TableCell>
-                        <TableCell>{req.total_days}일</TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={req.reason || ""}>
-                          {req.reason || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={status?.color}>
-                            {status?.label}
-                          </Badge>
-                        </TableCell>
-                        {canManage && (
-                          <TableCell>
-                            {req.status === "pending" && (
-                              <div className="flex justify-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0 text-[#03C75A] hover:text-green-700 hover:bg-green-50"
-                                  onClick={() => setActionDialog({ open: true, type: "approve", requestId: req.id })}
-                                >
-                                  <Check className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-8 w-8 p-0 text-[#FF5247] hover:text-red-700 hover:bg-[#FFEBEB]"
-                                  onClick={() => setActionDialog({ open: true, type: "reject", requestId: req.id })}
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            )}
-                            {req.status === "approved" && (
-                              <span className="text-xs text-[#8B95A1] flex items-center justify-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                처리완료
-                              </span>
-                            )}
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            return (
+              <div 
+                key={req.id} 
+                className="group bg-white rounded-[32px] p-8 border border-gray-50 shadow-sm hover:shadow-toss transition-all duration-500"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="flex items-start gap-6">
+                    <div className="w-16 h-16 rounded-[24px] bg-[var(--background-secondary)] flex items-center justify-center flex-shrink-0 group-hover:bg-white group-hover:shadow-lg transition-all">
+                      <User className="w-8 h-8 text-[var(--foreground-subtle)]" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <h4 className="text-xl font-extrabold text-[var(--foreground)] tracking-tight">{staff?.name}</h4>
+                        <Badge
+                          variant="outline"
+                          className="h-6 px-3 rounded-full border-none font-black text-[10px] uppercase tracking-tighter"
+                          style={{
+                            backgroundColor: `${leaveType?.color}15`,
+                            color: leaveType?.color,
+                          }}
+                        >
+                          {leaveType?.name}
+                        </Badge>
+                        <div className={cn("flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-tighter", status.bg, status.color, status.border)}>
+                          <StatusIcon className="w-3 h-3" />
+                          {status.label}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm font-bold text-[var(--foreground-muted)]">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-[var(--foreground-subtle)]" />
+                          {formatDateRange(req.start_date, req.end_date, req.is_half_day, req.half_day_type)}
+                        </div>
+                        <div className="w-1 h-1 rounded-full bg-[var(--border)]"></div>
+                        <div className="text-[var(--primary-hex)] font-black">총 {req.total_days}일</div>
+                      </div>
+                    </div>
+                  </div>
 
-      {/* 승인 확인 다이얼로그 */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 lg:ml-auto">
+                    <div className="max-w-[300px] bg-[var(--background-secondary)]/50 p-4 rounded-2xl">
+                      <p className="text-[10px] font-black text-[var(--foreground-subtle)] uppercase mb-1">Reason</p>
+                      <p className="text-sm font-bold text-[var(--foreground-secondary)] line-clamp-2">{req.reason || "사유 미입력"}</p>
+                    </div>
+
+                    {canManage && req.status === "pending" && (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => setActionDialog({ open: true, type: "reject", requestId: req.id })}
+                          variant="outline"
+                          className="h-12 px-6 rounded-xl border-rose-100 text-rose-600 font-bold hover:bg-rose-50 hover:border-rose-200"
+                        >
+                          반려하기
+                        </Button>
+                        <Button
+                          onClick={() => setActionDialog({ open: true, type: "approve", requestId: req.id })}
+                          className="h-12 px-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-100"
+                        >
+                          최종 승인
+                        </Button>
+                      </div>
+                    )}
+
+                    {req.status === "approved" && (
+                      <div className="px-6 py-3 rounded-xl bg-slate-50 text-[var(--foreground-subtle)] text-xs font-black flex items-center gap-2">
+                        <Check className="w-4 h-4" />
+                        처리 완료
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Approve Dialog - Toss Modern Style */}
       <AlertDialog
         open={actionDialog.open && actionDialog.type === "approve"}
         onOpenChange={open => !open && setActionDialog({ open: false, type: null, requestId: null })}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>휴가 승인</AlertDialogTitle>
-            <AlertDialogDescription>
-              이 휴가 신청을 승인하시겠습니까?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
+        <AlertDialogContent className="rounded-[40px] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md">
+          <div className="p-10 text-center space-y-6">
+            <div className="w-20 h-20 rounded-[28px] bg-emerald-50 flex items-center justify-center mx-auto">
+              <Check className="w-10 h-10 text-emerald-500" />
+            </div>
+            <div className="space-y-2">
+              <AlertDialogTitle className="text-2xl font-black text-[var(--foreground)] tracking-tight">휴가 승인 확인</AlertDialogTitle>
+              <AlertDialogDescription className="text-base font-bold text-[var(--foreground-muted)]">
+                해당 직원의 휴가 신청을 최종 승인하시겠습니까?<br />승인 후에는 즉시 잔여 연차가 차감됩니다.
+              </AlertDialogDescription>
+            </div>
+          </div>
+          <div className="p-10 pt-0 flex gap-3">
+            <AlertDialogCancel className="flex-1 h-14 rounded-2xl border-none bg-[var(--background-secondary)] text-[var(--foreground-muted)] font-black hover:bg-[var(--background-tertiary)]">취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-[#03C75A] hover:bg-green-700"
+              className="flex-1 h-14 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black shadow-xl shadow-emerald-100"
               onClick={() => actionDialog.requestId && handleApprove(actionDialog.requestId)}
             >
-              승인
+              네, 승인합니다
             </AlertDialogAction>
-          </AlertDialogFooter>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 반려 확인 다이얼로그 */}
+      {/* Reject Dialog - Toss Modern Style */}
       <AlertDialog
         open={actionDialog.open && actionDialog.type === "reject"}
         onOpenChange={open => {
@@ -326,32 +323,37 @@ export default function LeaveRequestList() {
           }
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>휴가 반려</AlertDialogTitle>
-            <AlertDialogDescription>
-              반려 사유를 입력해주세요.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Textarea
-            placeholder="반려 사유를 입력하세요..."
-            value={rejectReason}
-            onChange={e => setRejectReason(e.target.value)}
-            className="mt-2"
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
+        <AlertDialogContent className="rounded-[40px] border-none shadow-2xl p-0 overflow-hidden bg-white max-w-md">
+          <div className="p-10 text-center space-y-6">
+            <div className="w-20 h-20 rounded-[28px] bg-rose-50 flex items-center justify-center mx-auto">
+              <X className="w-10 h-10 text-rose-500" />
+            </div>
+            <div className="space-y-2">
+              <AlertDialogTitle className="text-2xl font-black text-[var(--foreground)] tracking-tight">휴가 반려 안내</AlertDialogTitle>
+              <AlertDialogDescription className="text-base font-bold text-[var(--foreground-muted)]">
+                해당 직원의 휴가 신청을 반려하시겠습니까?<br />직원에게 전달될 반려 사유를 입력해주세요.
+              </AlertDialogDescription>
+            </div>
+            <Textarea
+              placeholder="반려 사유를 상세히 입력하세요 (예: 해당 주간 센터 행사 일정 등)"
+              value={rejectReason}
+              onChange={e => setRejectReason(e.target.value)}
+              className="min-h-[120px] bg-[var(--background-secondary)] border-none rounded-3xl p-6 font-bold focus:ring-2 focus:ring-rose-100 transition-all"
+            />
+          </div>
+          <div className="p-10 pt-0 flex gap-3">
+            <AlertDialogCancel className="flex-1 h-14 rounded-2xl border-none bg-[var(--background-secondary)] text-[var(--foreground-muted)] font-black hover:bg-[var(--background-tertiary)]">취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-[#FF5247] hover:bg-red-700"
+              className="flex-1 h-14 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black shadow-xl shadow-rose-100"
               onClick={() => actionDialog.requestId && handleReject(actionDialog.requestId)}
             >
-              반려
+              반려 처리
             </AlertDialogAction>
-          </AlertDialogFooter>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 휴가 신청 모달 */}
+      {/* Request Modal */}
       {showRequestModal && (
         <LeaveRequestModal
           open={showRequestModal}

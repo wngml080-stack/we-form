@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { LeaveType } from "@/types/database";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, X, Send, Phone, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface LeaveRequestModalProps {
   open: boolean;
@@ -103,7 +105,6 @@ export default function LeaveRequestModal({ open, onClose, onSuccess }: LeaveReq
   const selectedType = leaveTypes.find(t => t.id === formData.leave_type_id);
   const isHalfDayType = selectedType?.code === "half_am" || selectedType?.code === "half_pm";
 
-  // 반차 유형 선택 시 자동으로 is_half_day 설정
   useEffect(() => {
     if (isHalfDayType) {
       setFormData(prev => ({
@@ -116,7 +117,6 @@ export default function LeaveRequestModal({ open, onClose, onSuccess }: LeaveReq
     }
   }, [formData.leave_type_id, isHalfDayType, selectedType?.code]);
 
-  // 예상 일수 계산
   const calculateDays = () => {
     if (formData.is_half_day) return 0.5;
     if (!formData.start_date || !formData.end_date) return 0;
@@ -131,139 +131,229 @@ export default function LeaveRequestModal({ open, onClose, onSuccess }: LeaveReq
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[#3182F6]" />
-            휴가 신청
-          </DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white border-none shadow-2xl rounded-[40px]">
+        {/* Header - Toss Modern Style */}
+        <DialogHeader className="px-10 py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+          <DialogTitle className="sr-only">휴가 신청</DialogTitle>
+          <DialogDescription className="sr-only">새로운 휴가 신청서를 작성합니다.</DialogDescription>
+          
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <Calendar className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-white tracking-tight">휴가 신청서 작성</h2>
+                <p className="text-sm text-slate-400 font-bold mt-1">체계적인 연차 관리를 위해 정확히 입력해 주세요</p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group"
+            >
+              <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
+            </button>
+          </div>
         </DialogHeader>
 
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          </div>
-        ) : (
-          <div className="space-y-4 py-4">
-            {/* 휴가 유형 선택 */}
-            <div>
-              <Label>휴가 유형 *</Label>
-              <Select
-                value={formData.leave_type_id}
-                onValueChange={value => setFormData({ ...formData, leave_type_id: value })}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="휴가 유형 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {leaveTypes.map(type => (
-                    <SelectItem key={type.id} value={type.id}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: type.color }}
-                        />
-                        {type.name}
-                        <span className="text-[#8B95A1] text-xs">({type.deduction_days}일)</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-10 space-y-10 bg-[#f8fafc] custom-scrollbar">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--primary-hex)] mb-4" />
+              <p className="text-[var(--foreground-subtle)] font-bold">휴가 정보를 불러오는 중...</p>
             </div>
-
-            {/* 날짜 선택 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>시작일 *</Label>
-                <Input
-                  type="date"
-                  value={formData.start_date}
-                  onChange={e => setFormData({ ...formData, start_date: e.target.value })}
-                  min={new Date().toISOString().split("T")[0]}
-                  className="mt-1"
-                />
-              </div>
-              {!formData.is_half_day && (
-                <div>
-                  <Label>종료일 *</Label>
-                  <Input
-                    type="date"
-                    value={formData.end_date}
-                    onChange={e => setFormData({ ...formData, end_date: e.target.value })}
-                    min={formData.start_date || new Date().toISOString().split("T")[0]}
-                    className="mt-1"
-                  />
+          ) : (
+            <>
+              {/* Step 1: Type & Date */}
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-black">1</div>
+                  <h3 className="text-lg font-black text-slate-900">기간 및 유형 선택</h3>
                 </div>
-              )}
-            </div>
 
-            {/* 반차 시간 선택 (반차 유형이 아닌 경우에만 표시) */}
-            {formData.is_half_day && !isHalfDayType && (
-              <div>
-                <Label>반차 시간</Label>
-                <RadioGroup
-                  value={formData.half_day_type}
-                  onValueChange={value => setFormData({ ...formData, half_day_type: value as "morning" | "afternoon" })}
-                  className="flex gap-4 mt-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="morning" id="morning" />
-                    <Label htmlFor="morning" className="font-normal cursor-pointer">
-                      오전 반차
-                    </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Leave Type *</Label>
+                    <Select
+                      value={formData.leave_type_id}
+                      onValueChange={value => setFormData({ ...formData, leave_type_id: value })}
+                    >
+                      <SelectTrigger className="h-14 px-6 rounded-2xl bg-slate-50 border-none font-bold text-base focus:ring-2 focus:ring-blue-100 transition-all">
+                        <SelectValue placeholder="유형 선택" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-[24px] border-none shadow-2xl p-2">
+                        {leaveTypes.map(type => (
+                          <SelectItem key={type.id} value={type.id} className="rounded-xl py-3 font-bold">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: type.color }} />
+                              {type.name}
+                              <span className="text-[var(--foreground-subtle)] text-xs font-medium">({type.deduction_days}일 차감)</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="afternoon" id="afternoon" />
-                    <Label htmlFor="afternoon" className="font-normal cursor-pointer">
-                      오후 반차
-                    </Label>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Calculation</Label>
+                    <div className={cn(
+                      "h-14 px-6 rounded-2xl flex items-center justify-between transition-all",
+                      formData.start_date && (formData.is_half_day || formData.end_date)
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-100"
+                        : "bg-slate-50 text-slate-300"
+                    )}>
+                      <span className="text-sm font-bold uppercase tracking-widest">Estimated</span>
+                      <span className="text-xl font-black">{calculateDays()}일</span>
+                    </div>
                   </div>
-                </RadioGroup>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Start Date *</Label>
+                    <div className="relative group">
+                      <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                      <Input
+                        type="date"
+                        value={formData.start_date}
+                        onChange={e => setFormData({ ...formData, start_date: e.target.value })}
+                        min={new Date().toISOString().split("T")[0]}
+                        className="h-14 pl-14 pr-6 rounded-2xl bg-slate-50 border-none font-bold text-base focus:ring-2 focus:ring-blue-100 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {!formData.is_half_day ? (
+                    <div className="space-y-3">
+                      <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">End Date *</Label>
+                      <div className="relative group">
+                        <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                        <Input
+                          type="date"
+                          value={formData.end_date}
+                          onChange={e => setFormData({ ...formData, end_date: e.target.value })}
+                          min={formData.start_date || new Date().toISOString().split("T")[0]}
+                          className="h-14 pl-14 pr-6 rounded-2xl bg-slate-50 border-none font-bold text-base focus:ring-2 focus:ring-blue-100 transition-all"
+                        />
+                      </div>
+                    </div>
+                  ) : !isHalfDayType && (
+                    <div className="space-y-3">
+                      <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Half Day Type</Label>
+                      <RadioGroup
+                        value={formData.half_day_type}
+                        onValueChange={value => setFormData({ ...formData, half_day_type: value as "morning" | "afternoon" })}
+                        className="flex gap-3 h-14"
+                      >
+                        <div className="flex-1">
+                          <RadioGroupItem value="morning" id="morning" className="sr-only" />
+                          <Label 
+                            htmlFor="morning" 
+                            className={cn(
+                              "h-full flex items-center justify-center rounded-2xl border-2 font-black text-sm cursor-pointer transition-all",
+                              formData.half_day_type === "morning" ? "bg-white border-blue-600 text-blue-600 shadow-lg shadow-blue-50" : "bg-slate-50 border-transparent text-slate-400 hover:bg-white hover:border-slate-200"
+                            )}
+                          >
+                            오전 반차
+                          </Label>
+                        </div>
+                        <div className="flex-1">
+                          <RadioGroupItem value="afternoon" id="afternoon" className="sr-only" />
+                          <Label 
+                            htmlFor="afternoon" 
+                            className={cn(
+                              "h-full flex items-center justify-center rounded-2xl border-2 font-black text-sm cursor-pointer transition-all",
+                              formData.half_day_type === "afternoon" ? "bg-white border-blue-600 text-blue-600 shadow-lg shadow-blue-50" : "bg-slate-50 border-transparent text-slate-400 hover:bg-white hover:border-slate-200"
+                            )}
+                          >
+                            오후 반차
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
 
-            {/* 예상 사용 연차 */}
-            {(formData.start_date && (formData.is_half_day || formData.end_date)) && (
-              <div className="p-3 bg-[#E8F3FF] rounded-lg flex items-center justify-between">
-                <span className="text-sm text-blue-800">예상 사용 연차</span>
-                <span className="font-bold text-blue-700">{calculateDays()}일</span>
+              {/* Step 2: Reason & Contact */}
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm space-y-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm font-black">2</div>
+                  <h3 className="text-lg font-black text-slate-900">상세 사유 및 비상 연락처</h3>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Reason (Optional)</Label>
+                    <div className="relative group">
+                      <FileText className="absolute left-5 top-6 w-5 h-5 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                      <Textarea
+                        value={formData.reason}
+                        onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                        placeholder="신청 사유를 입력하세요 (예: 가족 행사, 병원 방문 등)"
+                        className="min-h-[140px] pl-14 pr-6 pt-5 rounded-3xl bg-slate-50 border-none font-bold text-base focus:ring-2 focus:ring-blue-100 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Emergency Contact (Optional)</Label>
+                    <div className="relative group">
+                      <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300 group-focus-within:text-blue-500 transition-colors" />
+                      <Input
+                        value={formData.contact_phone}
+                        onChange={e => setFormData({ ...formData, contact_phone: e.target.value })}
+                        placeholder="비상 시 연락 가능한 번호를 입력하세요"
+                        className="h-14 pl-14 pr-6 rounded-2xl bg-slate-50 border-none font-bold text-base focus:ring-2 focus:ring-blue-100 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              {/* Info Tip */}
+              <div className="flex items-start gap-4 p-6 bg-blue-50 rounded-[28px] border border-blue-100">
+                <AlertCircle className="w-6 h-6 text-blue-500 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-blue-900">안내 사항</p>
+                  <p className="text-xs text-blue-700 font-bold leading-relaxed">
+                    휴가 신청은 관리자의 승인이 완료된 후 확정됩니다. 신청 완료 후에는 승인 전까지 수정이 불가능하니 내용을 다시 한번 확인해 주세요.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-10 py-8 border-t bg-white flex justify-end gap-3 flex-shrink-0">
+          <Button 
+            variant="ghost" 
+            onClick={onClose} 
+            disabled={submitting}
+            className="h-14 px-8 rounded-2xl font-black text-slate-400 hover:text-slate-900 transition-all"
+          >
+            취소하기
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={submitting || loading}
+            className="h-14 px-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black gap-3 shadow-xl shadow-blue-100 hover:-translate-y-1 transition-all active:scale-[0.98]"
+          >
+            {submitting ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                처리 중...
+              </div>
+            ) : (
+              <>
+                <Send className="w-5 h-5" />
+                신청서 제출하기
+              </>
             )}
-
-            {/* 사유 */}
-            <div>
-              <Label>사유</Label>
-              <Textarea
-                value={formData.reason}
-                onChange={e => setFormData({ ...formData, reason: e.target.value })}
-                placeholder="휴가 사유를 입력하세요 (선택)"
-                className="mt-1"
-                rows={3}
-              />
-            </div>
-
-            {/* 비상 연락처 */}
-            <div>
-              <Label>비상 연락처</Label>
-              <Input
-                value={formData.contact_phone}
-                onChange={e => setFormData({ ...formData, contact_phone: e.target.value })}
-                placeholder="010-0000-0000 (선택)"
-                className="mt-1"
-              />
-            </div>
-          </div>
-        )}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={submitting}>
-            취소
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || loading}>
-            {submitting ? "신청 중..." : "신청하기"}
-          </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

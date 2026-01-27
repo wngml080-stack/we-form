@@ -10,6 +10,7 @@ import { WeeklyRoutineSection } from "./WeeklyRoutineSection";
 import { ConsultationRecordModal } from "./ConsultationRecordModal";
 import { ReRegistrationConsultation } from "../types";
 import { cn } from "@/lib/utils";
+import { MemberManualModal } from "../../components/MemberManualModal";
 
 interface Props {
   selectedGymId: string | null;
@@ -18,6 +19,7 @@ interface Props {
 export function ReRegistrationTab({ selectedGymId }: Props) {
   const [activeSubTab, setActiveSubTab] = useState("targets");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isManualOpen, setIsManualOpen] = useState(false);
   const [selectedConsultation, setSelectedConsultation] =
     useState<ReRegistrationConsultation | null>(null);
 
@@ -175,7 +177,10 @@ export function ReRegistrationTab({ selectedGymId }: Props) {
             <p className="text-xs font-medium text-slate-500 mt-0.5">성공적인 재등록을 위한 표준 매뉴얼을 확인해보세요.</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl text-xs font-black transition-all shadow-xl shadow-slate-200 group">
+        <button 
+          onClick={() => setIsManualOpen(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-black text-white rounded-2xl text-xs font-black transition-all shadow-xl shadow-slate-200 group"
+        >
           표준 관리 매뉴얼 열기
           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
         </button>
@@ -187,6 +192,12 @@ export function ReRegistrationTab({ selectedGymId }: Props) {
         onClose={handleCloseModal}
         onSave={handleSaveConsultation}
         existingData={selectedConsultation}
+      />
+
+      {/* 표준 관리 매뉴얼 모달 */}
+      <MemberManualModal
+        isOpen={isManualOpen}
+        onClose={() => setIsManualOpen(false)}
       />
     </div>
   );

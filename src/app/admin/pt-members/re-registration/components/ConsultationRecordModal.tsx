@@ -175,47 +175,47 @@ export function ConsultationRecordModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white border-none shadow-2xl rounded-[40px]">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 bg-white border-none shadow-2xl rounded-[40px] [&>button]:hidden">
         {/* 헤더 */}
-        <DialogHeader className="px-10 py-8 border-b bg-slate-900 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <DialogHeader className="px-10 py-10 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
           <DialogTitle className="sr-only">재등록 상담 기록</DialogTitle>
           <DialogDescription className="sr-only">
             재등록 상담 기록 양식
           </DialogDescription>
           <div className="flex items-center justify-between relative z-10">
-            <div className="flex items-center gap-5">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <FileText className="w-7 h-7 text-white" />
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-[24px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/40">
+                <FileText className="w-8 h-8 text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h2 className="text-2xl font-black text-white !text-white tracking-tight" style={{ color: 'white' }}>
+                  <h2 className="text-3xl font-black text-white tracking-tight">
                     재등록 상담 기록
                   </h2>
                   {formData.progressPercentage > 0 && formData.progressPercentage <= 30 && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/20 rounded-lg backdrop-blur-md border border-orange-400/30">
-                      <Target className="w-3 h-3 text-orange-300" />
-                      <span className="text-xs font-black text-orange-200 uppercase tracking-widest">
-                        {formData.progressPercentage <= 10 ? "마감 임박" : "30% 핵심 타이밍"}
+                    <div className="flex items-center gap-2 px-3.5 py-1.5 bg-orange-500/20 rounded-xl backdrop-blur-md border border-orange-400/30">
+                      <Target className="w-3.5 h-3.5 text-orange-300" />
+                      <span className="text-[10px] font-black text-orange-200 uppercase tracking-[0.2em]">
+                        {formData.progressPercentage <= 10 ? "마감 임박" : "CORE TIMING"}
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 px-3 py-1 bg-white/10 rounded-lg backdrop-blur-md border border-white/10">
+                  <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/10">
                     <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
-                    <span className="text-xs font-black text-blue-100 uppercase tracking-widest">
+                    <span className="text-[10px] font-black text-blue-100 uppercase tracking-[0.2em]">
                       {completionRate}% Complete
                     </span>
                   </div>
                 </div>
-                <p className="text-sm text-slate-400 font-bold mt-1">
+                <p className="text-base text-slate-400 font-bold mt-1.5">
                   {existingData ? "기존 기록을 수정합니다" : "회원의 소중한 목소리를 기록하세요"}
                 </p>
               </div>
             </div>
             <button
               onClick={handleClose}
-              className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group"
+              className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-90"
             >
               <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
             </button>

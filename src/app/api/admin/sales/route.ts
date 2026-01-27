@@ -551,7 +551,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("member_payments")
-      .select("*")
+      .select("id, member_name, phone, gender, birth_date, sale_type, membership_category, membership_name, amount, method, installment, trainer_id, trainer_name, registrar, memo, created_at, payment_date, service_sessions, bonus_sessions, validity_per_session, membership_start_date, visit_route, visit_route_custom, expiry_type, gym_id, company_id, created_by_staff_id")
       .eq("gym_id", gymId)
       .eq("company_id", companyId);
 

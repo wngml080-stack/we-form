@@ -134,9 +134,9 @@ export default function PTMembersPage(props: {
           {/* 탭 리스트 - 모바일에서 가로 스크롤 */}
           <div className="overflow-x-auto scrollbar-hide -mx-4 px-4 xs:mx-0 xs:px-0">
             <TabsList className="bg-slate-100 p-1 rounded-lg xs:rounded-xl h-10 xs:h-12 min-w-max">
-              <TabsTrigger value="members" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">회원</TabsTrigger>
-              <TabsTrigger value="manual" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">코칭</TabsTrigger>
-              <TabsTrigger value="re-registration" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">재등록</TabsTrigger>
+              <TabsTrigger value="members" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">회원목록</TabsTrigger>
+              <TabsTrigger value="manual" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">회원관리</TabsTrigger>
+              <TabsTrigger value="re-registration" className="rounded-md xs:rounded-lg px-3 xs:px-6 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs xs:text-sm">재등록관리</TabsTrigger>
             </TabsList>
           </div>
 

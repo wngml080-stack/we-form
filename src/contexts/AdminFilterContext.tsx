@@ -105,20 +105,6 @@ export function AdminFilterProvider({ children }: { children: ReactNode }) {
   const gymsCache = useRef<Map<string, GymData[]>>(new Map());
   const staffsCache = useRef<Map<string, StaffData[]>>(new Map());
 
-  // 회사 목록 가져오기
-  const fetchCompanies = useCallback(async (): Promise<CompanyData[]> => {
-    try {
-      const response = await fetch("/api/admin/filter/companies");
-      const result = await response.json();
-      if (result.success) {
-        return result.companies || [];
-      }
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-    }
-    return [];
-  }, []);
-
   // 지점 목록 가져오기 (캐싱 적용)
   const fetchGymsForCompany = useCallback(async (companyId: string): Promise<GymData[]> => {
     if (!companyId) return [];
@@ -157,20 +143,18 @@ export function AdminFilterProvider({ children }: { children: ReactNode }) {
         staffsCache.current.set(gymId, staffs);
         return staffs;
       }
-    } catch (error) {
-      console.error("Error fetching staffs:", error);
+    } catch {
+      // Error fetching staffs - return empty array
     }
     return [];
   }, []);
 
-  // 초기화
+  // 초기화 - 통합 API 사용으로 3개 요청을 1개로 줄임
   useEffect(() => {
-    console.log("[AdminFilter] authLoading:", authLoading, "user:", user?.email);
     if (authLoading) return;
 
     // 유저가 없으면 초기화 완료로 간주 (로그인 페이지 등으로 리다이렉트될 것)
     if (!user) {
-      console.log("[AdminFilter] No user, marking initialized");
       setIsInitialized(true);
       return;
     }
@@ -179,46 +163,45 @@ export function AdminFilterProvider({ children }: { children: ReactNode }) {
       try {
         const userCompanyId = user.company_id || "";
         const userGymId = user.gym_id || "";
-        const isSystemAdmin = user.role === "system_admin";
 
-        const [companiesList, gymsList] = await Promise.all([
-          isSystemAdmin ? fetchCompanies() : Promise.resolve([]),
-          userCompanyId ? fetchGymsForCompany(userCompanyId) : Promise.resolve([]),
-        ]);
+        // 통합 API로 한 번에 모든 데이터 조회
+        const params = new URLSearchParams();
+        if (userCompanyId) params.set("company_id", userCompanyId);
+        if (userGymId) params.set("gym_id", userGymId);
 
-        if (isSystemAdmin) {
-          setCompanies(companiesList);
-        }
+        const response = await fetch(`/api/admin/filter/init?${params.toString()}`);
+        const result = await response.json();
 
-        const defaultGymId = userGymId || (gymsList.length > 0 ? gymsList[0].id : "");
-
-        setGlobalFilter({
-          selectedCompanyId: userCompanyId,
-          selectedGymId: defaultGymId,
-          selectedStaffId: "",
-          gyms: gymsList,
-          staffs: [],
-        });
-
-        // 직원 목록 백그라운드 로드
-        if (defaultGymId) {
-          try {
-            const staffsList = await fetchStaffsForGym(defaultGymId);
-            setGlobalFilter((prev) => ({ ...prev, staffs: staffsList }));
-          } catch (staffError) {
-            console.error("Error fetching staffs during initialization:", staffError);
+        if (result.success) {
+          if (result.companies?.length > 0) {
+            setCompanies(result.companies);
           }
+
+          // 캐시 저장
+          if (userCompanyId && result.gyms) {
+            gymsCache.current.set(userCompanyId, result.gyms);
+          }
+          if (result.defaultGymId && result.staffs) {
+            staffsCache.current.set(result.defaultGymId, result.staffs);
+          }
+
+          setGlobalFilter({
+            selectedCompanyId: result.defaultCompanyId || userCompanyId,
+            selectedGymId: result.defaultGymId || "",
+            selectedStaffId: "",
+            gyms: result.gyms || [],
+            staffs: result.staffs || [],
+          });
         }
-      } catch (error) {
-        console.error("Error during filter initialization:", error);
+      } catch {
+        // Initialization error - silently fail
       } finally {
-        console.log("[AdminFilter] Initialization complete");
         setIsInitialized(true);
       }
     };
 
     initializeFilter();
-  }, [authLoading, user, fetchCompanies, fetchGymsForCompany, fetchStaffsForGym]);
+  }, [authLoading, user]);
 
   // 회사 변경
   const setCompany = useCallback(

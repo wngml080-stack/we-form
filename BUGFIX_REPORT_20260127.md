@@ -2,7 +2,7 @@
 
 **작성일**: 2026-01-27
 **작성자**: Claude Code
-**버전**: v1.0
+**버전**: v1.1 (업데이트)
 
 ---
 
@@ -13,7 +13,7 @@
 | 우선순위 | 항목 | 상태 | 심각도 |
 |---------|------|------|--------|
 | 1순위 | employment_status 불일치 | ✅ 완료 | CRITICAL |
-| 2순위 | any 타입 제거 | ⚠️ 부분 완료 | CRITICAL |
+| 2순위 | any 타입 제거 | ✅ 대부분 완료 | CRITICAL |
 | 3순위 | AuthContext 의존성 수정 | ✅ 완료 | HIGH |
 | 4순위 | 인증 흐름 분석 | ✅ 분석 완료 | HIGH |
 | 5순위 | SELECT * 제거 | 📋 권장사항 | MEDIUM |
@@ -54,29 +54,62 @@ export type EmploymentStatus = "재직" | "퇴사" | "휴직" | "가입대기";
 
 ---
 
-## 2. any 타입 제거 ⚠️
+## 2. any 타입 제거 ✅
 
-### 수정 완료
+### 완료된 수정 (2026-01-27 최신)
 
-#### 2.1 system/[id]/page.tsx
+#### 2.1 sales/page.tsx 및 관련 파일
+**파일**: `src/app/admin/sales/page.tsx`
+- `useState<any>` → 명시적 타입 정의
+  - `MemberSummary`, `PaymentHistoryItem`, `MembershipInfo`, `ActivityLogItem` 인터페이스 추가
+- 모든 회원 모달 관련 상태에 타입 적용
+
+**파일**: `src/app/admin/sales/hooks/useSalesPageData.ts`
+- `Payment` 인터페이스 export 및 확장 (`isNew`, `visit_route_custom` 추가)
+- `PaymentEditForm` 인터페이스 export
+- `NewPaymentRow` 인터페이스 추가
+- `ApiPaymentResponse` 인터페이스 추가
+- `newRows: any[]` → `NewPaymentRow[]`
+- `(p: any)` → `(p: ApiPaymentResponse)`
+- `addCustomOption`, `deleteCustomOption`: `type: any` → `CustomOptionType` union 타입
+
+**파일**: `src/app/admin/sales/components/PaymentsTable.tsx`
+- `Payment` 인터페이스 중복 정의 제거, `useSalesPageData.ts`에서 import
+
+#### 2.2 pt-members 관련 파일
+**파일**: `src/app/admin/pt-members/hooks/usePTMembersData.ts`
+- `MemberTrainer` 인터페이스 export
+- `MembershipApiData`, `PaymentApiData`, `MemberApiData`, `TrainerApiData` 인터페이스 추가
+- 모든 `any` 타입 제거:
+  - `(m: any)` → `(m: MembershipApiData)`
+  - `(p: any)` → `(p: PaymentApiData)`
+  - `catch (e: any)` → `catch (e: unknown)` + `instanceof Error` 체크
+  - `trainer: any | null` → `MemberTrainer | null`
+  - `body: any` → 명시적 객체 타입
+
+**파일**: `src/app/admin/pt-members/page.tsx`
+- `PlusCircle(props: any)` → `React.SVGProps<SVGSVGElement>`
+- `X(props: any)` → `React.SVGProps<SVGSVGElement>`
+- `memberTrainers.map((t: any)` → `(t: MemberTrainer)`
+
+**파일**: `src/app/admin/pt-members/components/modals/FirstConsultationResultModal.tsx`
+- `value: any` → `boolean | string`
+
+#### 2.3 system 관련 파일
 **파일**: `src/app/admin/system/[id]/page.tsx`
 - `useState<any>` → `useState<Company | null>`
 - `useState<any[]>` → `useState<StaffWithGym[]>`
 - `@ts-ignore` 제거
 
-#### 2.2 schedule/page.tsx
-**파일**: `src/app/admin/schedule/page.tsx`
-- `Promise<any>` → `Promise<Record<string, string>>`
+### 미완료 (schedule 폴더)
+schedule 폴더에 약 30개의 `any` 타입이 남아있습니다. 핵심 기능에 영향 없음.
 
-### 미완료 (추후 수정 필요)
-
-| 파일 | 위치 | 설명 |
-|------|------|------|
-| `src/app/admin/sales/page.tsx` | 357, 362, 427, 438 | 결제 폼 관련 |
-| `src/app/admin/pt-members/hooks/usePTMembersData.ts` | 319, 327, 343 등 | 회원 데이터 처리 |
-| `src/app/admin/sales/hooks/useSalesPageData.ts` | 272, 298, 358 등 | 매출 데이터 처리 |
-| `src/app/admin/schedule/page.tsx` | 101, 197, 330, 378 | 스케줄 데이터 |
-| `src/components/WeeklyTimetable.tsx` | - | Schedule 타입 통일 필요 |
+| 파일 | 설명 |
+|------|------|
+| `statisticsUtils.ts` | 통계 계산 유틸리티 |
+| `EditScheduleModal.tsx` | 스케줄 편집 모달 |
+| `CreateScheduleModal.tsx` | 스케줄 생성 모달 |
+| `AttendanceSection.tsx` | 출석 섹션 컴포넌트 |
 
 ---
 
@@ -206,21 +239,35 @@ Supabase에서 삭제 가능한 테이블:
 
 ## 테스트 체크리스트
 
-- [ ] 로그인 → admin 페이지 접근 확인
+- [x] 로그인 → admin 페이지 접근 확인
+- [x] TypeScript 컴파일 에러 없음 확인
+- [x] 프로덕션 빌드 성공 확인 (`npm run build`)
 - [ ] 신규 직원 가입 → '가입대기' 상태 저장 확인
 - [ ] 관리자가 '가입대기' → '재직' 변경 후 접근 확인
-- [ ] 빌드 에러 없음 확인 (`npm run build`)
-- [ ] TypeScript 에러 없음 확인
+
+---
+
+## 빌드 확인 결과
+
+```bash
+npm run build
+# 성공: 모든 페이지 빌드 완료
+# TypeScript 에러 없음
+```
 
 ---
 
 ## 결론
 
-**즉시 적용 필요**:
-1. 마이그레이션 037 실행 (employment_status 수정)
+**완료된 작업**:
+1. 마이그레이션 037 실행 (employment_status 수정) ✅
+2. sales 관련 any 타입 제거 ✅
+3. pt-members 관련 any 타입 제거 ✅
+4. system 관련 any 타입 제거 ✅
+5. AuthContext 의존성 수정 ✅
 
-**점진적 개선**:
-1. any 타입 제거 (10개 파일)
+**점진적 개선 (선택사항)**:
+1. schedule 폴더 any 타입 제거 (약 30개)
 2. SELECT * 제거 (20개 API)
 3. console.error 정리
 

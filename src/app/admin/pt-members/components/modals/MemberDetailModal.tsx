@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, Calendar, MapPin, Search, UserPlus, ArrowRight, Trash2, Users, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, Calendar, MapPin, Search, UserPlus, ArrowRight, Trash2, Users, Loader2, X } from "lucide-react";
 
 interface Membership {
   id: string;
@@ -270,31 +270,38 @@ export function MemberDetailModal({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="w-full max-w-3xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px]">
-          <DialogHeader className="px-10 py-6 bg-white border-b border-slate-200 flex-shrink-0">
-            <DialogTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
-                  <User className="w-6 h-6 text-white" />
+        <DialogContent className="w-full max-w-4xl bg-[#f8fafc] max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
+          <DialogHeader className="px-10 py-10 bg-white border-b border-slate-100 flex-shrink-0 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px] -mr-32 -mt-32"></div>
+            <DialogTitle className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-[24px] bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/30">
+                  <User className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 tracking-tight">{member.name}</h2>
-                  <p className="text-sm text-slate-500 font-medium mt-0.5">회원 상세 정보</p>
+                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">{member.name}</h2>
+                  <p className="text-base text-slate-500 font-bold mt-1">MEMBER PROFILE</p>
                 </div>
               </div>
-              <div className="flex items-center gap-6 text-right">
-                <div>
-                  <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wide">Contact</p>
-                  <p className="text-base font-bold text-slate-900 mt-1">{member.phone || "010-0000-0000"}</p>
+              <div className="flex items-center gap-10 text-right">
+                <div className="space-y-1">
+                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Contact</p>
+                  <p className="text-lg font-black text-slate-900">{member.phone || "010-0000-0000"}</p>
                 </div>
-                <div>
-                  <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wide">생년월일</p>
-                  <p className="text-sm font-bold text-slate-700 mt-1">{formatBirthDate(member.birth_date)}</p>
+                <div className="hidden sm:block space-y-1">
+                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Birthday</p>
+                  <p className="text-base font-bold text-slate-700">{formatBirthDate(member.birth_date)}</p>
                 </div>
-                <div>
-                  <p className="text-slate-400 text-[10px] font-medium uppercase tracking-wide">성별</p>
-                  <p className="text-sm font-bold text-slate-700 mt-1">{formatGender(member.gender)}</p>
+                <div className="hidden sm:block space-y-1">
+                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Gender</p>
+                  <p className="text-base font-bold text-slate-700">{formatGender(member.gender)}</p>
                 </div>
+                <button
+                  onClick={onClose}
+                  className="w-12 h-12 flex items-center justify-center bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all group active:scale-90"
+                >
+                  <X className="w-6 h-6 text-slate-400 group-hover:text-slate-900 transition-colors" />
+                </button>
               </div>
             </DialogTitle>
             <DialogDescription className="sr-only">회원 상세 정보</DialogDescription>

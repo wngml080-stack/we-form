@@ -85,8 +85,8 @@ export function ScheduleHeader({
           className="h-11 xs:h-12 sm:h-14 bg-slate-900 border-slate-900 text-white font-black px-4 xs:px-6 sm:px-8 rounded-xl xs:rounded-2xl sm:rounded-[20px] hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2 xs:gap-3 group active:scale-95 text-sm"
         >
           <Download className="w-4 xs:w-5 h-4 xs:h-5 text-blue-400 group-hover:scale-110 transition-transform" />
-          <span className="hidden xs:inline">엑셀 저장</span>
-          <span className="xs:hidden">저장</span>
+          <span className="hidden xs:inline">엑셀 다운로드</span>
+          <span className="xs:hidden">다운로드</span>
         </Button>
       </div>
     </div>

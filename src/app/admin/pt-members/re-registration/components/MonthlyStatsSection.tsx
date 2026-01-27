@@ -244,7 +244,7 @@ export function MonthlyStatsSection({ stats, getMonthlyStats, hideHeaderCard }: 
             <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-blue-400" />
             </div>
-            <h3 className="text-xl font-bold tracking-tight">재등록 마스터 전략</h3>
+            <h3 className="text-xl font-bold tracking-tight text-white">재등록 마스터 전략</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

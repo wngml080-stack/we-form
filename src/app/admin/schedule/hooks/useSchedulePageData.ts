@@ -117,7 +117,7 @@ export function useSchedulePageData() {
 
     let query = supabase
       .from("schedules")
-      .select("*")
+      .select("id, member_id, member_name, start_time, end_time, status, type, schedule_type, sub_type, title, inbody_checked, staff_id, is_locked, gym_id")
       .eq("gym_id", gymId)
       .gte("start_time", startDate.toISOString())
       .lte("start_time", endDate.toISOString());

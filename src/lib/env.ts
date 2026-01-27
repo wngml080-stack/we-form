@@ -214,7 +214,5 @@ export function checkEnvOnStartup(): void {
     result.warnings.forEach((warning) => console.warn(`  - ${warning}`));
   }
 
-  if (result.isValid && result.warnings.length === 0) {
-    console.log("✅ 환경변수 검증 완료");
-  }
+  // Validation complete - no action needed if valid with no warnings
 }

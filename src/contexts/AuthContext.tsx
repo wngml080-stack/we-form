@@ -195,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error || !me) {
-        console.log("[AuthContext] Staff query failed:", error?.message || "no data");
         setUser(null);
         setIsApproved(false);
         setIsLoading(false);
@@ -232,7 +231,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setIsApproved(true);
-      console.log("[AuthContext] User approved:", userData.name, "role:", userData.role);
 
       // localStorage 캐시 저장 (승인된 사용자만) - 최소 정보만 저장
       // 민감 정보(id, email, role, company_id 등)는 저장하지 않음
@@ -283,7 +281,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // authUser의 email이 변경될 때만 데이터 다시 로드 (무한 루프 방지)
   const authEmail = authUser?.email;
   useEffect(() => {
-    console.log("[AuthContext] Effect triggered - authLoaded:", authLoaded, "email:", authEmail);
     if (authLoaded) {
       fetchUserData();
     }

@@ -9,10 +9,24 @@ import { ReportStatusBadge } from "./ReportStatusBadge";
 import { ClipboardCheck, X, User, Calendar as CalendarIcon, Info, CheckCircle2, XCircle, MessageSquare, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type ReportStatus = "submitted" | "approved" | "rejected";
+
+interface ScheduleReport {
+  id: string;
+  status: ReportStatus;
+  year_month: string;
+  stats?: Record<string, number>;
+  submitted_at?: string;
+  staffs?: {
+    name?: string;
+    job_title?: string;
+  };
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  report: any | null;
+  report: ScheduleReport | null;
   onSubmit: (params: { approved: boolean; adminMemo?: string; unlockOnReject?: boolean }) => Promise<void>;
 };
 

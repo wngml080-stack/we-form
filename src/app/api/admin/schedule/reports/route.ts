@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // 보고서 조회 쿼리 생성
     let query = supabase
       .from("monthly_schedule_reports")
-      .select("*")
+      .select("id, staff_id, gym_id, company_id, year_month, stats, staff_memo, admin_memo, status, submitted_at, reviewed_at, reviewed_by, staffs(name, job_title)")
       .order("submitted_at", { ascending: false });
 
     // 역할별 필터링

@@ -187,7 +187,7 @@ export function useStaffPageData() {
   const fetchSchedules = async (staffId: string) => {
     const { data, error } = await supabase
       .from("schedules")
-      .select("*")
+      .select("id, member_id, member_name, start_time, end_time, status, type, schedule_type, sub_type, title, inbody_checked, staff_id, is_locked, gym_id")
       .eq("staff_id", staffId);
 
     if (!error) {

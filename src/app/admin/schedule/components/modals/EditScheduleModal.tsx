@@ -42,15 +42,40 @@ interface Member {
   phone?: string;
 }
 
+interface ScheduleItem {
+  id: string;
+  member_id?: string;
+  member_name?: string;
+  start_time: string;
+  end_time: string;
+  status?: string;
+  type?: string;
+  sub_type?: string;
+  title?: string;
+  memo?: string;
+  inbody_checked?: boolean;
+  is_locked?: boolean;
+}
+
+interface MembershipItem {
+  id: string;
+  name?: string;
+  total_sessions?: number;
+  used_sessions?: number;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
 interface EditScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedSchedule: any | null;
+  selectedSchedule: ScheduleItem | null;
   editForm: EditFormData;
   setEditForm: (form: EditFormData) => void;
   filteredMembers: Member[];
-  memberMemberships: Record<string, any[]>;
-  schedules: any[];
+  memberMemberships: Record<string, MembershipItem[]>;
+  schedules: ScheduleItem[];
   selectedStaffId: string;
   getSessionNumber: (memberId: string, type: 'pt' | 'ot', scheduleId?: string) => number;
   isLoading: boolean;
@@ -96,28 +121,28 @@ export function EditScheduleModal({
       }
     }}>
       <DialogContent className="w-[calc(100%-1rem)] xs:w-[calc(100%-1.5rem)] sm:w-full max-w-2xl bg-[#f8fafc] max-h-[85vh] xs:max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-2xl xs:rounded-3xl sm:rounded-[40px] [&>button]:hidden">
-        <DialogHeader className="px-4 xs:px-6 sm:px-10 py-4 xs:py-6 sm:py-8 bg-slate-900 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 xs:w-48 sm:w-64 h-32 xs:h-48 sm:h-64 bg-blue-500/10 rounded-full blur-3xl -mr-16 xs:-mr-24 sm:-mr-32 -mt-16 xs:-mt-24 sm:-mt-32"></div>
-          <DialogTitle className="flex items-center gap-3 xs:gap-4 sm:gap-5 relative z-10">
-            <div className="w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 rounded-xl xs:rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Pencil className="w-5 h-5 xs:w-6 xs:h-6 sm:w-7 sm:h-7 text-white" />
+        <DialogHeader className="px-10 py-10 bg-slate-900 flex-shrink-0 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
+          <DialogTitle className="flex items-center gap-6 relative z-10">
+            <div className="w-16 h-16 rounded-[24px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/40">
+              <Pencil className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h2 className="text-base xs:text-lg sm:text-2xl font-black !text-white tracking-tight">
+              <h2 className="text-3xl font-black text-white tracking-tight">
                 {isPersonalSchedule ? '개인 일정 수정' : '스케줄 정보 수정'}
               </h2>
-              <div className="hidden xs:flex items-center gap-2 mt-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-                <p className="text-xs xs:text-sm text-white/80 font-bold">선택하신 코치님의 회원만 필터링됩니다</p>
+              <div className="hidden xs:flex items-center gap-2 mt-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                <p className="text-base text-white/70 font-bold tracking-tight">일정의 상세 내용을 변경합니다</p>
               </div>
             </div>
           </DialogTitle>
           <DialogDescription className="sr-only">스케줄 정보를 수정합니다</DialogDescription>
           <button
             onClick={onClose}
-            className="absolute top-4 xs:top-6 sm:top-8 right-4 xs:right-6 sm:right-10 w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl xs:rounded-2xl transition-all group z-10"
+            className="absolute top-10 right-10 w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-all group z-10 active:scale-90"
           >
-            <X className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-slate-400 group-hover:text-white transition-colors" />
+            <X className="w-6 h-6 text-slate-400 group-hover:text-white transition-colors" />
           </button>
         </DialogHeader>
 
@@ -200,7 +225,7 @@ export function EditScheduleModal({
 
                   {editForm.member_id && editForm.type === "PT" && (() => {
                     const memberships = memberMemberships[editForm.member_id] || [];
-                    const ptMembership = memberships.find((m: any) =>
+                    const ptMembership = memberships.find((m: MembershipItem) =>
                       m.name?.includes('PT') || m.name?.includes('피티')
                     );
 
@@ -212,21 +237,21 @@ export function EditScheduleModal({
                       const currentSessionNumber = getSessionNumber(editForm.member_id, 'pt', selectedSchedule?.id);
 
                       const scheduleStatus = selectedSchedule?.status;
-                      const isSpecialStatus = ['cancelled', 'no_show', 'service'].includes(scheduleStatus);
+                      const isSpecialStatus = scheduleStatus ? ['cancelled', 'no_show', 'service'].includes(scheduleStatus) : false;
                       const statusLabel = scheduleStatus === 'cancelled' ? '취소' :
                                           scheduleStatus === 'no_show' ? '노쇼' :
                                           scheduleStatus === 'service' ? '서비스' : null;
                       
-                      const memberPtSchedules = schedules.filter((s: any) =>
+                      const memberPtSchedules = schedules.filter((s: ScheduleItem) =>
                         s.member_id === editForm.member_id && s.type?.toLowerCase() === 'pt'
                       );
                       const ptStats = {
-                        reserved: memberPtSchedules.filter((s: any) => s.status === 'reserved').length,
-                        completed: memberPtSchedules.filter((s: any) => s.status === 'completed').length,
-                        noShowDeducted: memberPtSchedules.filter((s: any) => s.status === 'no_show_deducted').length,
-                        noShow: memberPtSchedules.filter((s: any) => s.status === 'no_show').length,
-                        service: memberPtSchedules.filter((s: any) => s.status === 'service').length,
-                        cancelled: memberPtSchedules.filter((s: any) => s.status === 'cancelled').length,
+                        reserved: memberPtSchedules.filter((s) => s.status === 'reserved').length,
+                        completed: memberPtSchedules.filter((s) => s.status === 'completed').length,
+                        noShowDeducted: memberPtSchedules.filter((s) => s.status === 'no_show_deducted').length,
+                        noShow: memberPtSchedules.filter((s) => s.status === 'no_show').length,
+                        service: memberPtSchedules.filter((s) => s.status === 'service').length,
+                        cancelled: memberPtSchedules.filter((s) => s.status === 'cancelled').length,
                       };
 
                       return (
