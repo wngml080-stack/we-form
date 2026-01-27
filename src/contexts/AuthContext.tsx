@@ -134,9 +134,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Supabase 클라이언트 한번만 생성
   const supabase = useMemo(() => createSupabaseClient(), []);
 
-  // 참고: localStorage 캐시는 UI 힌트용으로만 사용
-  // 실제 인증 상태는 항상 Supabase에서 확인
-  // 캐시로 isLoading을 건너뛰면 세션 만료 시 깜빡임 발생하므로 제거
+  // 클라이언트에서 localStorage 캐시 확인 (마운트 시)
+  // 캐시에는 최소 정보만 저장되어 있음 (hasSession, displayName, timestamp)
+  // 민감 정보는 서버에서 로드됨
+  useEffect(() => {
+    const cached = getStoredCache();
+    if (cached && cached.hasSession) {
+      // 캐시가 있으면 로딩 스피너를 건너뛰고 빈 UI 먼저 표시
+      // 실제 사용자 정보는 서버에서 로드됨
+      setIsLoading(false);
+    }
+  }, []);
 
   // Supabase Auth 상태 감지
   useEffect(() => {

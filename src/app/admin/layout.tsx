@@ -32,13 +32,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
 function AdminLayoutContent({
   children,
 }: {
@@ -62,11 +55,8 @@ function AdminLayoutContent({
   } = useAdminFilter();
   const userRole = user?.role || "";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(true);
+  const [isBranchOpen, setIsBranchOpen] = useState(true);
 
   const companyName = filterCompanyName || authCompanyName || "";
 
@@ -94,32 +84,10 @@ function AdminLayoutContent({
     router.push("/sign-in");
   };
 
-  if (!isMounted) {
-    return null;
-  }
-
-  // 로딩 중이거나 인증되지 않은 경우 (리다이렉트 대기)
-  // middleware가 기본 인증을 처리하므로 여기서는 로딩 상태만 표시
-  if (isLoading) {
+  if (isLoading || !isApproved) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[var(--background)]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-[var(--primary-hex)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[var(--foreground-muted)] font-bold">인증 정보 확인 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 승인되지 않은 사용자는 useEffect에서 리다이렉트 처리
-  // 리다이렉트 중에도 같은 로딩 화면 표시
-  if (!isApproved) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[var(--background)]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-[var(--primary-hex)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[var(--foreground-muted)] font-bold">페이지 이동 중...</p>
-        </div>
+      <div className="flex h-screen items-center justify-center bg-[#f0f4f8]">
+        <p className="text-slate-500">로딩 중...</p>
       </div>
     );
   }
@@ -136,207 +104,253 @@ function AdminLayoutContent({
     { name: "직원관리", href: "/admin/staff", icon: ClipboardCheck },
   ];
 
-  const NavItem = ({ href, name, icon: Icon, subMenus }: { href?: string; name: string; icon: any; subMenus?: typeof dashboardSubMenus }) => {
-    const isActive = href ? (pathname === href || (href !== "/admin" && pathname.startsWith(href))) : subMenus?.some(m => pathname.startsWith(m.href));
+  type MenuItem = { name: string; href: string; icon: typeof LayoutDashboard };
 
-    if (subMenus) {
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${isActive ? "text-[var(--primary-hex)] bg-[var(--primary-light-hex)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground-secondary)] hover:bg-[var(--background-secondary)]"}`}>
-              <Icon className="w-4.5 h-4.5" />
-              {name}
-              <ChevronDown className="w-3.5 h-3.5 opacity-50" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-48 p-2 rounded-2xl border-[var(--border)] shadow-xl animate-in fade-in zoom-in-95 duration-200">
-            {subMenus.map((sub) => (
-              <DropdownMenuItem key={sub.href} asChild className="rounded-xl cursor-pointer">
-                <Link href={sub.href} className={`flex items-center gap-3 px-3 py-2.5 text-xs font-bold transition-all ${pathname.startsWith(sub.href) ? "text-[var(--primary-hex)] bg-[var(--primary-light-hex)]" : "text-[var(--foreground-muted)]"}`}>
-                  <sub.icon className="w-4 h-4" />
-                  {sub.name}
-                </Link>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
+  const getMenuItems = (): { main: MenuItem[]; branch: MenuItem[]; admin: MenuItem[] } => {
+    if (userRole === "staff") {
+      return {
+        main: [{ name: "대시보드", href: "/admin", icon: LayoutDashboard }],
+        branch: [] as MenuItem[], // 직원은 급여 확인 메뉴 없음
+        admin: [] as MenuItem[]
+      };
+    } else {
+      return {
+        main: [{ name: "대시보드", href: "/admin", icon: LayoutDashboard }],
+        branch: [] as MenuItem[], // 하위 메뉴로 이동됨
+        admin: [] as MenuItem[]
+      };
     }
-
-    return (
-      <Link href={href!} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${isActive ? "text-[var(--primary-hex)] bg-[var(--primary-light-hex)]" : "text-[var(--foreground-muted)] hover:text-[var(--foreground-secondary)] hover:bg-[var(--background-secondary)]"}`}>
-        <Icon className="w-4.5 h-4.5" />
-        {name}
-      </Link>
-    );
   };
 
+  const menuItems = getMenuItems();
+
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--background)]">
-      {/* 헤더 */}
-      <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-[var(--border-light)] px-4 sm:px-6 lg:px-8 py-3">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
-          {/* 왼쪽: 로고 & 메인 메뉴 */}
-          <div className="flex items-center gap-8">
-            <Link href="/admin" className="flex items-center gap-2.5 shrink-0">
-              <div className="w-9 h-9 bg-[var(--primary-hex)] rounded-xl flex items-center justify-center shadow-lg shadow-[var(--primary-hex)]/20 transition-transform hover:scale-105">
-                <Building2 className="w-5 h-5 text-white" />
+    <div className="flex h-screen bg-[#f0f4f8]">
+      {/* 모바일 햄버거 버튼 */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="fixed top-4 left-4 z-50 lg:hidden w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm"
+      >
+        {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+
+      {/* 모바일 오버레이 */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/20 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* 사이드바 */}
+      <aside className={`
+        w-64 bg-white border-r border-slate-200 flex flex-col
+        fixed lg:static inset-y-0 left-0 z-50 transition-transform
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* 로고 */}
+        <div className="p-6 border-b border-slate-100">
+          <Link href="/admin" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-slate-900 tracking-tight">We:form</span>
+          </Link>
+        </div>
+
+        {/* 필터 - staff는 회사명과 본인 이름만 표시 */}
+        {filterInitialized && (
+          <div className="p-4 space-y-2">
+            {userRole === "staff" ? (
+              // Staff 전용: 회사명과 본인 이름 표시
+              <div className="space-y-2">
+                <div className="px-3 py-2.5 bg-slate-50 rounded-lg">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">회사</p>
+                  <p className="text-xs font-bold text-slate-700">{companyName || "소속 회사"}</p>
+                </div>
+                <div className="px-3 py-2.5 bg-blue-50 rounded-lg">
+                  <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">내 정보</p>
+                  <p className="text-xs font-bold text-blue-700">{user?.name || "직원"}</p>
+                </div>
               </div>
-              <span className="text-xl font-extrabold text-[var(--foreground)] tracking-tight hidden sm:block">We:form</span>
-            </Link>
-
-            {/* 데스크탑 메뉴 */}
-            <nav className="hidden lg:flex items-center gap-1">
-              <NavItem href="/admin" name="대시보드" icon={LayoutDashboard} subMenus={dashboardSubMenus} />
-              {userRole !== "staff" && (
-                <NavItem name="지점관리" icon={Building2} subMenus={branchSubMenus} />
-              )}
-              {(userRole === "company_admin" || userRole === "system_admin") && (
-                <NavItem href="/admin/hq" name="본사관리" icon={Building2} />
-              )}
-              {userRole === "system_admin" && (
-                <NavItem href="/admin/system" name="시스템설정" icon={Settings} />
-              )}
-            </nav>
-          </div>
-
-          {/* 오른쪽: 필터 & 사용자 액션 */}
-          <div className="flex items-center gap-2 xs:gap-3">
-            {/* 필터 섹션 - 데스크탑에서만 크게 표시 */}
-            {filterInitialized && (
-              <div className="hidden md:flex items-center gap-2">
+            ) : (
+              // 관리자: 기존 필터 드롭다운
+              <>
                 {userRole === "system_admin" && (
                   <Select value={selectedCompanyId} onValueChange={setCompany}>
-                    <SelectTrigger className="h-10 px-3 text-xs bg-[var(--background-secondary)] border-none rounded-xl font-bold min-w-[120px]">
-                      <SelectValue placeholder="회사" />
+                    <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                      <SelectValue placeholder="회사 선택" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-[var(--border)] shadow-xl">
+                    <SelectContent>
                       {companies.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="rounded-lg">{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
 
                 <Select value={selectedGymId} onValueChange={setGym}>
-                  <SelectTrigger className="h-10 px-3 text-xs bg-[var(--background-secondary)] border-none rounded-xl font-bold min-w-[120px]">
-                    <SelectValue placeholder="지점" />
+                  <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                    <SelectValue placeholder="지점 선택" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-[var(--border)] shadow-xl">
+                  <SelectContent>
                     {gyms.map((g) => (
-                      <SelectItem key={g.id} value={g.id} className="rounded-lg">{g.name}</SelectItem>
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                {userRole !== "staff" && (
-                  <Select value={selectedStaffId || "all"} onValueChange={(v) => setStaff(v === "all" ? "" : v)}>
-                    <SelectTrigger className="h-10 px-3 text-xs bg-[var(--background-secondary)] border-none rounded-xl font-bold min-w-[120px]">
-                      <SelectValue placeholder="직원" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-[var(--border)] shadow-xl">
-                      <SelectItem value="all" className="rounded-lg font-bold">전체 직원</SelectItem>
-                      {staffs.map((s) => (
-                        <SelectItem key={s.id} value={s.id} className="rounded-lg">{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            )}
-
-            {/* 로그아웃 & 모바일 메뉴 */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleLogout}
-                className="hidden sm:flex items-center justify-center w-10 h-10 rounded-xl text-rose-500 hover:bg-rose-50 transition-all active:scale-95 border border-rose-100"
-                title="로그아웃"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-
-              {/* 모바일 햄버거 버튼 */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden w-10 h-10 rounded-xl bg-[var(--background-secondary)] flex items-center justify-center transition-all active:scale-95"
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 모바일 확장 메뉴 */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden pt-4 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-300">
-            {/* 모바일 필터 */}
-            <div className="grid grid-cols-2 gap-2 px-2">
-              {userRole === "system_admin" && (
-                <Select value={selectedCompanyId} onValueChange={setCompany}>
-                  <SelectTrigger className="h-10 px-3 text-xs bg-[var(--background-secondary)] border-none rounded-xl font-bold">
-                    <SelectValue placeholder="회사" />
+                <Select value={selectedStaffId || "all"} onValueChange={(v) => setStaff(v === "all" ? "" : v)}>
+                  <SelectTrigger className="w-full text-xs bg-slate-50 border-none">
+                    <SelectValue placeholder="직원 선택" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {companies.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectContent>
+                    <SelectItem value="all">전체 직원</SelectItem>
+                    {staffs.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              )}
-              <Select value={selectedGymId} onValueChange={setGym}>
-                <SelectTrigger className="h-10 px-3 text-xs bg-[var(--background-secondary)] border-none rounded-xl font-bold">
-                  <SelectValue placeholder="지점" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {gyms.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              </>
+            )}
+          </div>
+        )}
+
+        <nav className="flex-1 p-4 space-y-1">
+          {/* 대시보드 with 하위메뉴 */}
+          <div>
+            <div
+              className={`flex items-center justify-between w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pathname === "/admin" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <Link href="/admin" className="flex items-center gap-3 flex-1">
+                <LayoutDashboard className="w-4 h-4" />
+                대시보드
+              </Link>
+              <button onClick={() => setIsDashboardOpen(!isDashboardOpen)} className="p-1 -mr-1">
+                {isDashboardOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
             </div>
 
-            {/* 모바일 네비게이션 */}
-            <nav className="flex flex-col gap-1 px-2">
-              <Link href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-[var(--foreground-secondary)] hover:bg-[var(--background-secondary)]">
-                <LayoutDashboard className="w-5 h-5 opacity-50" /> 대시보드
-              </Link>
-              <div className="pl-4 space-y-1">
-                {dashboardSubMenus.map(m => (
-                  <Link key={m.href} href={m.href} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]">
-                    <m.icon className="w-4 h-4 opacity-50" /> {m.name}
+            {isDashboardOpen && (
+              <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 pl-2">
+                {dashboardSubMenus.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      pathname === item.href || pathname.startsWith(item.href + "/")
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    <item.icon className="w-3.5 h-3.5" />
+                    {item.name}
                   </Link>
                 ))}
               </div>
-
-              {userRole !== "staff" && (
-                <>
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-[var(--foreground-secondary)] mt-2">
-                    <Building2 className="w-5 h-5 opacity-50" /> 지점관리
-                  </div>
-                  <div className="pl-4 space-y-1">
-                    {branchSubMenus.map(m => (
-                      <Link key={m.href} href={m.href} className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]">
-                        <m.icon className="w-4 h-4 opacity-50" /> {m.name}
-                      </Link>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-rose-500 hover:bg-rose-50 mt-4"
-              >
-                <LogOut className="w-5 h-5" /> 로그아웃
-              </button>
-            </nav>
+            )}
           </div>
-        )}
-      </header>
 
-      {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-x-hidden">
-        <div className="p-4 xs:p-6 sm:p-8 md:p-10 lg:p-12 xl:p-16 max-w-[1600px] mx-auto min-h-full">
+          <div className="pt-4 pb-2">
+            <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Management</p>
+          </div>
+
+          {userRole !== "staff" ? (
+            <div>
+              <div
+                className={`flex items-center justify-between w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname.startsWith("/admin/branch") || branchSubMenus.some(m => pathname.startsWith(m.href))
+                    ? "bg-primary text-white"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Link href="/admin/branch" className="flex items-center gap-3 flex-1">
+                  <Building2 className="w-4 h-4" />
+                  지점관리
+                </Link>
+                <button onClick={() => setIsBranchOpen(!isBranchOpen)} className="p-1 -mr-1">
+                  {isBranchOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {isBranchOpen && (
+                <div className="ml-4 mt-1 space-y-1 border-l-2 border-slate-100 pl-2">
+                  {branchSubMenus.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        pathname === item.href || pathname.startsWith(item.href + "/")
+                          ? "bg-blue-50 text-blue-600"
+                          : "text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      <item.icon className="w-3.5 h-3.5" />
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            menuItems.branch.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === item.href ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.name}
+              </Link>
+            ))
+          )}
+
+          {(userRole === "company_admin" || userRole === "system_admin") && (
+            <>
+              <div className="pt-4 pb-2">
+                <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider">System</p>
+              </div>
+              <Link
+                href="/admin/hq"
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === "/admin/hq" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                본사 관리
+              </Link>
+              {userRole === "system_admin" && (
+                <Link
+                  href="/admin/system"
+                  className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    pathname === "/admin/system" ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  <Settings className="w-4 h-4" />
+                  시스템 설정
+                </Link>
+              )}
+            </>
+          )}
+        </nav>
+
+        <div className="p-4 border-t border-slate-100">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            로그아웃
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 overflow-auto bg-[#f8fafc] overflow-x-hidden">
+        <div className="p-2 xs:p-3 sm:p-4 md:p-6">
           {children}
         </div>
       </main>
