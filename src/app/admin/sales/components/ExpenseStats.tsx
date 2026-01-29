@@ -58,7 +58,7 @@ export function ExpenseStats({ stats, salesTotal = 0 }: ExpenseStatsProps) {
     return Math.round((amount / stats.total) * 100);
   };
 
-  const expenseRatio = salesTotal > 0 ? Math.round((stats.total / salesTotal) * 100) : 0;
+  const _expenseRatio = salesTotal > 0 ? Math.round((stats.total / salesTotal) * 100) : 0;
   const totalAmount = salesTotal + stats.total; // 매출 + 지출 합계
   const salesPercentage = totalAmount > 0 ? Math.round((salesTotal / totalAmount) * 100) : 0;
   const expensePercentage = totalAmount > 0 ? Math.round((stats.total / totalAmount) * 100) : 0;

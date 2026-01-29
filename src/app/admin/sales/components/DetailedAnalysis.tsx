@@ -82,7 +82,7 @@ export function DetailedAnalysis({
     conversionRate: 0
   });
   const [byChannel, setByChannel] = useState<Record<string, number>>({});
-  const [byStatus, setByStatus] = useState<Record<string, number>>({});
+  const [_byStatus, setByStatus] = useState<Record<string, number>>({});
   const [inquiryLoading, setInquiryLoading] = useState(false);
 
   // 리뉴 대상자 상태 (추후 DB 연동 시 실제 데이터로 대체)

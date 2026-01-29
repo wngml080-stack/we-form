@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "@/lib/toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
@@ -86,13 +86,7 @@ export default function SalaryAssignmentManager() {
 
     const supabase = createSupabaseClient();
 
-    useEffect(() => {
-        if (filterInitialized && selectedGymId && selectedCompanyId) {
-            fetchData(selectedGymId, selectedCompanyId);
-        }
-    }, [filterInitialized, selectedGymId, selectedCompanyId]);
-
-    const fetchData = async (gymId: string, _companyId: string) => {
+    const fetchData = useCallback(async (gymId: string, _companyId: string) => {
         try {
             // 템플릿 조회: 먼저 기본 조회 시도
             let templatesData: SalaryTemplate[] = [];
@@ -174,7 +168,13 @@ export default function SalaryAssignmentManager() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [supabase]);
+
+    useEffect(() => {
+        if (filterInitialized && selectedGymId && selectedCompanyId) {
+            fetchData(selectedGymId, selectedCompanyId);
+        }
+    }, [filterInitialized, selectedGymId, selectedCompanyId, fetchData]);
 
     const handleOpenModal = (staff: Staff) => {
         setSelectedStaff(staff);

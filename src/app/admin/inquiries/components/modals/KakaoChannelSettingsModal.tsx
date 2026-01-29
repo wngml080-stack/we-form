@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -83,13 +83,7 @@ export function KakaoChannelSettingsModal({
     ? `${window.location.origin}/api/webhooks/kakao/skill`
     : "";
 
-  useEffect(() => {
-    if (isOpen && gymId) {
-      fetchSettings();
-    }
-  }, [isOpen, gymId]);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/admin/kakao-channel?gym_id=${gymId}`);
@@ -108,7 +102,13 @@ export function KakaoChannelSettingsModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [gymId, companyId]);
+
+  useEffect(() => {
+    if (isOpen && gymId) {
+      fetchSettings();
+    }
+  }, [isOpen, gymId, fetchSettings]);
 
   const handleSave = async () => {
     setIsSaving(true);

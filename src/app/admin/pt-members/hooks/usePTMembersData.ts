@@ -342,16 +342,230 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     fetchCurrentStaff();
   }, [supabase]);
 
-  // 데이터 로드 (currentStaffId, userRole이 설정된 후에만 실행)
-  useEffect(() => {
-    if (filterInitialized && selectedGymId && selectedCompanyId && currentStaffId !== null) {
-      fetchPTMembers(selectedGymId, selectedCompanyId);
-      fetchStaffList(selectedGymId);
+  // PT 회원권 여부 확인
+  const isPTMembership = useCallback((category: string): boolean => {
+    return PT_CATEGORIES.some(pt => category.toLowerCase().includes(pt.toLowerCase()));
+  }, []);
+
+  // 재등록 대상자 여부 (잔여 70% 이하)
+  const isReregistrationTarget = useCallback((member: PTMember): boolean => {
+    if (!isPTMembership(member.membership_category)) return false;
+    if (!member.total_sessions || member.total_sessions === 0) return false;
+    const remainingPercent = ((member.remaining_sessions || 0) / member.total_sessions) * 100;
+    return remainingPercent <= 70;
+  }, [isPTMembership]);
+
+  // 확장된 통계 계산
+  const calculateExtendedStats = useCallback(async (members: PTMember[], gymId: string, companyId: string) => {
+    // 기본 통계
+    const activeMembers = members.filter(m => m.status === "active").length;
+    const totalRevenue = members.reduce((sum, m) => sum + m.amount, 0);
+    const membersWithSessions = members.filter(m => m.remaining_sessions != null);
+    const avgSessions = membersWithSessions.length > 0
+      ? membersWithSessions.reduce((sum, m) => sum + (m.remaining_sessions || 0), 0) / membersWithSessions.length
+      : 0;
+
+    // 회원 분류별 카운트
+    const ptMembersList = members.filter(m => isPTMembership(m.membership_category));
+    const otMembersList = members.filter(m => !isPTMembership(m.membership_category));
+    const reregistrationMembersList = members.filter(m => isReregistrationTarget(m));
+
+    // 세션 통계
+    const totalSessions = members.reduce((sum, m) => sum + (m.total_sessions || 0), 0);
+    const remainingSessionsTotal = members.reduce((sum, m) => sum + (m.remaining_sessions || 0), 0);
+
+    // 매출 통계 (신규: 상담/OT, 리뉴: 재등록/기간변경)
+    const newTypes = ["신규", "상담", "ot"];
+    const renewTypes = ["리뉴", "재등록", "기간변경"];
+
+    const newSales = members
+      .filter(m => newTypes.some(t => (m.registration_type || "").toLowerCase().includes(t.toLowerCase())))
+      .reduce((sum, m) => sum + m.amount, 0);
+
+    const renewSales = members
+      .filter(m => renewTypes.some(t => (m.registration_type || "").toLowerCase().includes(t.toLowerCase())))
+      .reduce((sum, m) => sum + m.amount, 0);
+
+    // 수업 통계는 schedules 테이블에서 조회 필요 (간략화)
+    const monthlyLessons = { ptInWorkHours: 0, ptOutWorkHours: 0, ot: 0, total: 0 };
+
+    // 순위 계산 (간략화 - 실제로는 더 복잡한 쿼리 필요)
+    const rankings = {
+      companyRank: 0,
+      companyTotal: 0,
+      companyPercentile: 0,
+      branchRank: 0,
+      branchTotal: 0,
+      avg3Months: 0,
+      avg6Months: 0,
+      firstHalf: 0,
+      secondHalf: 0
+    };
+
+    // 3개월, 6개월 평균 및 상반기/하반기 매출 조회
+    try {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+
+      // 3개월 전
+      const threeMonthsAgo = new Date(now);
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      // 6개월 전
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      // currentStaffId가 있을 때만 개인 매출 통계 조회
+      if (currentStaffId) {
+        // 3개월 매출
+        const { data: sales3m, error: sales3mError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("created_at", threeMonthsAgo.toISOString().split("T")[0])
+          .lte("created_at", now.toISOString().split("T")[0]);
+
+        if (sales3mError) {
+          console.error("3개월 매출 조회 오류:", sales3mError);
+        } else if (sales3m) {
+          const total3m = sales3m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+          rankings.avg3Months = Math.round(total3m / 3);
+        }
+
+        // 6개월 매출
+        const { data: sales6m, error: sales6mError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("created_at", sixMonthsAgo.toISOString().split("T")[0])
+          .lte("created_at", now.toISOString().split("T")[0]);
+
+        if (sales6mError) {
+          console.error("6개월 매출 조회 오류:", sales6mError);
+        } else if (sales6m) {
+          const total6m = sales6m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+          rankings.avg6Months = Math.round(total6m / 6);
+        }
+
+        // 상반기 (1~6월)
+        const { data: firstHalfData, error: firstHalfError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("created_at", `${currentYear}-01-01`)
+          .lte("created_at", `${currentYear}-06-30`);
+
+        if (firstHalfError) {
+          console.error("상반기 매출 조회 오류:", firstHalfError);
+        } else if (firstHalfData) {
+          rankings.firstHalf = firstHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+        }
+
+        // 하반기 (7~12월)
+        const { data: secondHalfData, error: secondHalfError } = await supabase
+          .from("member_payments")
+          .select("amount")
+          .eq("gym_id", gymId)
+          .eq("trainer_id", currentStaffId)
+          .gte("created_at", `${currentYear}-07-01`)
+          .lte("created_at", `${currentYear}-12-31`);
+
+        if (secondHalfError) {
+          console.error("하반기 매출 조회 오류:", secondHalfError);
+        } else if (secondHalfData) {
+          rankings.secondHalf = secondHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+        }
+      }
+
+      // 순위 계산 (지점 내)
+      const { data: branchTrainers, error: branchError } = await supabase
+        .from("member_payments")
+        .select("trainer_id, amount")
+        .eq("gym_id", gymId)
+        .gte("created_at", dateRange.start)
+        .lte("created_at", dateRange.end);
+
+      if (branchError) {
+        console.error("지점 순위 조회 오류:", branchError);
+      } else if (branchTrainers) {
+        // 트레이너별 매출 집계
+        const trainerSales: Record<string, number> = {};
+        branchTrainers.forEach((t: { trainer_id: string | null; amount: number | string | null }) => {
+          if (t.trainer_id) {
+            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(String(t.amount || 0));
+          }
+        });
+
+        const sortedTrainers = Object.entries(trainerSales)
+          .sort(([, a], [, b]) => b - a);
+
+        rankings.branchTotal = sortedTrainers.length;
+        const myRank = sortedTrainers.findIndex(([id]) => id === currentStaffId) + 1;
+        rankings.branchRank = myRank || sortedTrainers.length;
+      }
+
+      // 회사 순위 계산
+      const { data: companyTrainers, error: companyError } = await supabase
+        .from("member_payments")
+        .select("trainer_id, amount")
+        .eq("company_id", companyId)
+        .gte("created_at", dateRange.start)
+        .lte("created_at", dateRange.end);
+
+      if (companyError) {
+        console.error("회사 순위 조회 오류:", companyError);
+      } else if (companyTrainers) {
+        const trainerSales: Record<string, number> = {};
+        companyTrainers.forEach((t: { trainer_id: string | null; amount: number | string | null }) => {
+          if (t.trainer_id) {
+            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(String(t.amount || 0));
+          }
+        });
+
+        const sortedTrainers = Object.entries(trainerSales)
+          .sort(([, a], [, b]) => b - a);
+
+        rankings.companyTotal = sortedTrainers.length;
+        const myRank = sortedTrainers.findIndex(([id]) => id === currentStaffId) + 1;
+        rankings.companyRank = myRank || sortedTrainers.length;
+        rankings.companyPercentile = rankings.companyTotal > 0
+          ? Math.round((rankings.companyRank / rankings.companyTotal) * 100)
+          : 0;
+      }
+    } catch (err) {
+      console.error("순위 계산 오류:", err);
     }
-  }, [filterInitialized, selectedGymId, selectedCompanyId, dateRange, currentStaffId, userRole]);
+
+    setExtendedStats({
+      totalMembers: members.length,
+      activeMembers,
+      totalRevenue,
+      avgSessionsRemaining: Math.round(avgSessions * 10) / 10,
+      memberCounts: {
+        all: members.length,
+        pt: ptMembersList.length,
+        ot: otMembersList.length,
+        reregistration: reregistrationMembersList.length
+      },
+      sessions: {
+        total: totalSessions,
+        remaining: remainingSessionsTotal
+      },
+      monthlySales: {
+        newSales,
+        renewSales,
+        total: newSales + renewSales
+      },
+      monthlyLessons,
+      rankings
+    });
+  }, [supabase, dateRange, currentStaffId, isPTMembership, isReregistrationTarget]);
 
   // PT 회원 조회
-  const fetchPTMembers = async (gymId: string, companyId: string) => {
+  const fetchPTMembers = useCallback(async (gymId: string, companyId: string) => {
     setIsLoading(true);
     try {
       // member_payments에서 모든 결제 정보 조회 (trainer_id 필터 제거)
@@ -549,9 +763,9 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [supabase, dateRange, userRole, currentStaffId, calculateExtendedStats, isPTMembership]);
 
-  const fetchStaffList = async (gymId: string) => {
+  const fetchStaffList = useCallback(async (gymId: string) => {
     const { data, error } = await supabase
       .from("staffs")
       .select("id, name, role")
@@ -567,229 +781,15 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
     if (data) {
       setStaffList(data);
     }
-  };
+  }, [supabase]);
 
-  // PT 회원권 여부 확인
-  const isPTMembership = (category: string): boolean => {
-    return PT_CATEGORIES.some(pt => category.toLowerCase().includes(pt.toLowerCase()));
-  };
-
-  // 재등록 대상자 여부 (잔여 70% 이하)
-  const isReregistrationTarget = (member: PTMember): boolean => {
-    if (!isPTMembership(member.membership_category)) return false;
-    if (!member.total_sessions || member.total_sessions === 0) return false;
-    const remainingPercent = ((member.remaining_sessions || 0) / member.total_sessions) * 100;
-    return remainingPercent <= 70;
-  };
-
-  // 확장된 통계 계산
-  const calculateExtendedStats = async (members: PTMember[], gymId: string, companyId: string) => {
-    // 기본 통계
-    const activeMembers = members.filter(m => m.status === "active").length;
-    const totalRevenue = members.reduce((sum, m) => sum + m.amount, 0);
-    const membersWithSessions = members.filter(m => m.remaining_sessions != null);
-    const avgSessions = membersWithSessions.length > 0
-      ? membersWithSessions.reduce((sum, m) => sum + (m.remaining_sessions || 0), 0) / membersWithSessions.length
-      : 0;
-
-    // 회원 분류별 카운트
-    const ptMembers = members.filter(m => isPTMembership(m.membership_category));
-    const otMembers = members.filter(m => !isPTMembership(m.membership_category));
-    const reregistrationMembers = members.filter(m => isReregistrationTarget(m));
-
-    // 세션 통계
-    const totalSessions = members.reduce((sum, m) => sum + (m.total_sessions || 0), 0);
-    const remainingSessions = members.reduce((sum, m) => sum + (m.remaining_sessions || 0), 0);
-
-    // 매출 통계 (신규: 상담/OT, 리뉴: 재등록/기간변경)
-    const newTypes = ["신규", "상담", "ot"];
-    const renewTypes = ["리뉴", "재등록", "기간변경"];
-
-    const newSales = members
-      .filter(m => newTypes.some(t => (m.registration_type || "").toLowerCase().includes(t.toLowerCase())))
-      .reduce((sum, m) => sum + m.amount, 0);
-
-    const renewSales = members
-      .filter(m => renewTypes.some(t => (m.registration_type || "").toLowerCase().includes(t.toLowerCase())))
-      .reduce((sum, m) => sum + m.amount, 0);
-
-    // 수업 통계는 schedules 테이블에서 조회 필요 (간략화)
-    const monthlyLessons = { ptInWorkHours: 0, ptOutWorkHours: 0, ot: 0, total: 0 };
-
-    // 순위 계산 (간략화 - 실제로는 더 복잡한 쿼리 필요)
-    const rankings = {
-      companyRank: 0,
-      companyTotal: 0,
-      companyPercentile: 0,
-      branchRank: 0,
-      branchTotal: 0,
-      avg3Months: 0,
-      avg6Months: 0,
-      firstHalf: 0,
-      secondHalf: 0
-    };
-
-    // 3개월, 6개월 평균 및 상반기/하반기 매출 조회
-    try {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-
-      // 3개월 전
-      const threeMonthsAgo = new Date(now);
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-
-      // 6개월 전
-      const sixMonthsAgo = new Date(now);
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      // currentStaffId가 있을 때만 개인 매출 통계 조회
-      if (currentStaffId) {
-        // 3개월 매출
-        const { data: sales3m, error: sales3mError } = await supabase
-          .from("member_payments")
-          .select("amount")
-          .eq("gym_id", gymId)
-          .eq("trainer_id", currentStaffId)
-          .gte("created_at", threeMonthsAgo.toISOString().split("T")[0])
-          .lte("created_at", now.toISOString().split("T")[0]);
-
-        if (sales3mError) {
-          console.error("3개월 매출 조회 오류:", sales3mError);
-        } else if (sales3m) {
-          const total3m = sales3m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-          rankings.avg3Months = Math.round(total3m / 3);
-        }
-
-        // 6개월 매출
-        const { data: sales6m, error: sales6mError } = await supabase
-          .from("member_payments")
-          .select("amount")
-          .eq("gym_id", gymId)
-          .eq("trainer_id", currentStaffId)
-          .gte("created_at", sixMonthsAgo.toISOString().split("T")[0])
-          .lte("created_at", now.toISOString().split("T")[0]);
-
-        if (sales6mError) {
-          console.error("6개월 매출 조회 오류:", sales6mError);
-        } else if (sales6m) {
-          const total6m = sales6m.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-          rankings.avg6Months = Math.round(total6m / 6);
-        }
-
-        // 상반기 (1~6월)
-        const { data: firstHalfData, error: firstHalfError } = await supabase
-          .from("member_payments")
-          .select("amount")
-          .eq("gym_id", gymId)
-          .eq("trainer_id", currentStaffId)
-          .gte("created_at", `${currentYear}-01-01`)
-          .lte("created_at", `${currentYear}-06-30`);
-
-        if (firstHalfError) {
-          console.error("상반기 매출 조회 오류:", firstHalfError);
-        } else if (firstHalfData) {
-          rankings.firstHalf = firstHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-        }
-
-        // 하반기 (7~12월)
-        const { data: secondHalfData, error: secondHalfError } = await supabase
-          .from("member_payments")
-          .select("amount")
-          .eq("gym_id", gymId)
-          .eq("trainer_id", currentStaffId)
-          .gte("created_at", `${currentYear}-07-01`)
-          .lte("created_at", `${currentYear}-12-31`);
-
-        if (secondHalfError) {
-          console.error("하반기 매출 조회 오류:", secondHalfError);
-        } else if (secondHalfData) {
-          rankings.secondHalf = secondHalfData.reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-        }
-      }
-
-      // 순위 계산 (지점 내)
-      const { data: branchTrainers, error: branchError } = await supabase
-        .from("member_payments")
-        .select("trainer_id, amount")
-        .eq("gym_id", gymId)
-        .gte("created_at", dateRange.start)
-        .lte("created_at", dateRange.end);
-
-      if (branchError) {
-        console.error("지점 순위 조회 오류:", branchError);
-      } else if (branchTrainers) {
-        // 트레이너별 매출 집계
-        const trainerSales: Record<string, number> = {};
-        branchTrainers.forEach((t: { trainer_id: string | null; amount: number | string | null }) => {
-          if (t.trainer_id) {
-            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(String(t.amount || 0));
-          }
-        });
-
-        const sortedTrainers = Object.entries(trainerSales)
-          .sort(([, a], [, b]) => b - a);
-
-        rankings.branchTotal = sortedTrainers.length;
-        const myRank = sortedTrainers.findIndex(([id]) => id === currentStaffId) + 1;
-        rankings.branchRank = myRank || sortedTrainers.length;
-      }
-
-      // 회사 순위 계산
-      const { data: companyTrainers, error: companyError } = await supabase
-        .from("member_payments")
-        .select("trainer_id, amount")
-        .eq("company_id", companyId)
-        .gte("created_at", dateRange.start)
-        .lte("created_at", dateRange.end);
-
-      if (companyError) {
-        console.error("회사 순위 조회 오류:", companyError);
-      } else if (companyTrainers) {
-        const trainerSales: Record<string, number> = {};
-        companyTrainers.forEach((t: { trainer_id: string | null; amount: number | string | null }) => {
-          if (t.trainer_id) {
-            trainerSales[t.trainer_id] = (trainerSales[t.trainer_id] || 0) + parseFloat(String(t.amount || 0));
-          }
-        });
-
-        const sortedTrainers = Object.entries(trainerSales)
-          .sort(([, a], [, b]) => b - a);
-
-        rankings.companyTotal = sortedTrainers.length;
-        const myRank = sortedTrainers.findIndex(([id]) => id === currentStaffId) + 1;
-        rankings.companyRank = myRank || sortedTrainers.length;
-        rankings.companyPercentile = rankings.companyTotal > 0
-          ? Math.round((rankings.companyRank / rankings.companyTotal) * 100)
-          : 0;
-      }
-    } catch (err) {
-      console.error("순위 계산 오류:", err);
+  // 데이터 로드 (currentStaffId, userRole이 설정된 후에만 실행)
+  useEffect(() => {
+    if (filterInitialized && selectedGymId && selectedCompanyId && currentStaffId !== null) {
+      fetchPTMembers(selectedGymId, selectedCompanyId);
+      fetchStaffList(selectedGymId);
     }
-
-    setExtendedStats({
-      totalMembers: members.length,
-      activeMembers,
-      totalRevenue,
-      avgSessionsRemaining: Math.round(avgSessions * 10) / 10,
-      memberCounts: {
-        all: members.length,
-        pt: ptMembers.length,
-        ot: otMembers.length,
-        reregistration: reregistrationMembers.length
-      },
-      sessions: {
-        total: totalSessions,
-        remaining: remainingSessions
-      },
-      monthlySales: {
-        newSales,
-        renewSales,
-        total: newSales + renewSales
-      },
-      monthlyLessons,
-      rankings
-    });
-  };
+  }, [filterInitialized, selectedGymId, selectedCompanyId, dateRange, currentStaffId, userRole, fetchPTMembers, fetchStaffList]);
 
   // 필터링된 PT 회원
   const filteredPTMembers = useMemo(() => {
@@ -817,7 +817,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
 
       return true;
     });
-  }, [ptMembers, memberCategory, trainerFilter, statusFilter, searchQuery]);
+  }, [ptMembers, memberCategory, trainerFilter, statusFilter, searchQuery, isPTMembership, isReregistrationTarget]);
 
   // 트레이너별 회원 수
   const membersByTrainer = useMemo(() => {

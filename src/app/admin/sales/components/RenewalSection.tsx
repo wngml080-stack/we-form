@@ -76,7 +76,7 @@ export function RenewalSection({
 
   const [activeSubTab, setActiveSubTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, _setIsLoading] = useState(false);
   const [filterType, setFilterType] = useState<ExpiryType | 'all'>('all');
 
   // 인라인 수정 관련 상태
@@ -691,7 +691,7 @@ export function RenewalSection({
                       const dday = getDday(member.endDate);
                       const activityStatus = getCurrentActivityStatus(member);
                       const nextActivity = getNextActivityNum(member);
-                      const isEditingThisActivity = editingActivity?.memberId === member.id;
+                      const _isEditingThisActivity = editingActivity?.memberId === member.id;
 
                       return (
                         <tr

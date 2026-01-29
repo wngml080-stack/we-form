@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "@/lib/toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
@@ -96,13 +96,7 @@ export default function SalaryTemplateManager() {
 
     const supabase = createSupabaseClient();
 
-    useEffect(() => {
-        if (filterInitialized && selectedGymId) {
-            fetchTemplates(selectedGymId);
-        }
-    }, [filterInitialized, selectedGymId]);
-
-    const fetchTemplates = async (gymId: string) => {
+    const fetchTemplates = useCallback(async (gymId: string) => {
         try {
             // 먼저 기본 템플릿만 조회 시도
             const { data: basicData, error: basicError } = await supabase
@@ -126,7 +120,7 @@ export default function SalaryTemplateManager() {
             if (basicData && basicData.length > 0) {
                 try {
                     // 먼저 salary_template_items 테이블 존재 확인
-                    const { data: itemsCheck, error: itemsCheckError } = await supabase
+                    const { data: _itemsCheck, error: itemsCheckError } = await supabase
                         .from("salary_template_items")
                         .select("template_id, rule_id")
                         .limit(1);
@@ -182,7 +176,13 @@ export default function SalaryTemplateManager() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [supabase]);
+
+    useEffect(() => {
+        if (filterInitialized && selectedGymId) {
+            fetchTemplates(selectedGymId);
+        }
+    }, [filterInitialized, selectedGymId, fetchTemplates]);
 
     const handleOpenModal = (template?: SalaryTemplate) => {
         if (template) {
@@ -265,7 +265,7 @@ export default function SalaryTemplateManager() {
             }
 
             // 규칙 데이터를 JSON으로 직렬화 (description에 임시 저장용)
-            const rulesJson = JSON.stringify(editingTemplate.rules);
+            const _rulesJson = JSON.stringify(editingTemplate.rules);
 
             // 1. 템플릿 저장/수정
             let templateId = editingTemplate.id;

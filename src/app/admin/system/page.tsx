@@ -26,7 +26,7 @@ export default function SystemAdminPage(props: {
 
   const {
     // 로딩
-    isLoading,
+    isLoading: _isLoading,
 
     // 데이터
     companies, systemAnnouncements,

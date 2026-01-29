@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     const supabaseAdmin = getSupabaseAdmin();
     const isSystemAdmin = staff.role === "system_admin";
-    const isCompanyAdmin = staff.role === "company_admin";
+    const _isCompanyAdmin = staff.role === "company_admin";
 
     // 병렬로 모든 데이터 조회
     const [companiesResult, gymsResult, staffsResult] = await Promise.all([

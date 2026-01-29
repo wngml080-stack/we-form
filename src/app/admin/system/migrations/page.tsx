@@ -41,7 +41,7 @@ export default function MigrationsPage() {
   const router = useRouter();
   const { user: authUser, isLoading: authLoading, isApproved } = useAuth();
   const [migrations, setMigrations] = useState<MigrationInfo[]>(MIGRATIONS);
-  const [tables, setTables] = useState<string[]>([]);
+  const [_tables, setTables] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState("");
 
@@ -50,12 +50,14 @@ export default function MigrationsPage() {
 
   useEffect(() => {
     checkAccess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- checkAccess is intentionally excluded to prevent infinite re-checking; runs when auth state changes
   }, [authLoading, authUser, isApproved]);
 
   useEffect(() => {
     if (userRole === "system_admin") {
       fetchTableList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTableList is intentionally excluded to prevent infinite fetching; runs when userRole changes
   }, [userRole]);
 
   const checkAccess = async () => {

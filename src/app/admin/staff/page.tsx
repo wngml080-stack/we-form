@@ -105,6 +105,7 @@ export default function AdminStaffPage(props: {
     if (selectedCompanyId) {
       fetchGymList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
 
   // 직원 목록 조회

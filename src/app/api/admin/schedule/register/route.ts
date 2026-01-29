@@ -188,7 +188,7 @@ export async function POST(request: Request) {
 
     } else if (type === "addon") {
       // 부가상품 등록
-      const { customer_name, customer_phone, product_name, amount, payment_method, memo } = data;
+      const { customer_name, customer_phone: _customer_phone, product_name, amount, payment_method, memo } = data;
 
       // 1. 부가매출 기록 생성
       const { error: paymentError } = await supabaseAdmin

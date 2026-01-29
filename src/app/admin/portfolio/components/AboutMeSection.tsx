@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Phone, Instagram, FileText, MapPin, Trophy, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,10 +190,12 @@ export function AboutMeSection({
                 />
                 <div className="w-64 h-64 md:w-80 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-slate-200 shadow-md relative cursor-pointer hover:opacity-90 transition-opacity">
                   {imageUrl ? (
-                    <img
+                    <Image
                       src={imageUrl}
                       alt={`${name} 트레이너 프로필`}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 gap-3">
@@ -210,12 +213,14 @@ export function AboutMeSection({
               </label>
             )}
             {!onImageChange && (
-              <div className="w-64 h-64 md:w-80 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-slate-200 shadow-md">
+              <div className="w-64 h-64 md:w-80 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-slate-200 shadow-md relative">
                 {imageUrl ? (
-                  <img
+                  <Image
                     src={imageUrl}
                     alt={`${name} 트레이너 프로필`}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">

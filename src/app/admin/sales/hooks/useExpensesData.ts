@@ -41,6 +41,10 @@ interface UseExpensesDataProps {
   filterInitialized: boolean;
 }
 
+// Constants defined outside hook to maintain stable references
+const DEFAULT_CATEGORIES = ["운영비", "마케팅비", "인건비", "세금", "지원금", "예비비", "수익분배금"];
+const DEFAULT_PAYMENT_METHODS = ["card", "cash", "transfer"];
+
 export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitialized }: UseExpensesDataProps) {
   const supabase = useMemo(() => createSupabaseClient(), []);
 
@@ -94,14 +98,10 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
     bySubCategory: {}
   });
 
-  // 기본 대분류 카테고리
-  const defaultCategories = ["운영비", "마케팅비", "인건비", "세금", "지원금", "예비비", "수익분배금"];
-  const defaultPaymentMethods = ["card", "cash", "transfer"];
-
   // 전체 카테고리 (기본 + 커스텀)
   const allCategories = useMemo(() => {
     const custom = customCategories.map(c => c.name);
-    return [...new Set([...defaultCategories, ...custom])];
+    return [...new Set([...DEFAULT_CATEGORIES, ...custom])];
   }, [customCategories]);
 
   // 필터링된 지출 데이터
@@ -121,6 +121,7 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
         fetchCustomCategories(selectedGymId)
       ]).catch(console.error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch functions are intentionally excluded to prevent infinite re-fetching; they use startDate/endDate from closure
   }, [filterInitialized, selectedGymId, selectedCompanyId, startDate, endDate]);
 
   // 지출 데이터 조회
@@ -432,7 +433,7 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
 
     // 옵션들
     allCategories,
-    defaultPaymentMethods,
+    defaultPaymentMethods: DEFAULT_PAYMENT_METHODS,
 
     // 커스텀 카테고리 (설정용)
     customCategories,

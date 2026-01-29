@@ -104,7 +104,7 @@ export function useSchedulePageData() {
 
   // 대시보드 필터에서 회사/지점 정보 사용
   const selectedGymId = dashboardFilter.selectedGymId;
-  const selectedCompanyId = dashboardFilter.selectedCompanyId;
+  const _selectedCompanyId = dashboardFilter.selectedCompanyId;
   const gyms = dashboardFilter.gyms;
   const gymName = gyms.find(g => g.id === selectedGymId)?.name || "";
 
@@ -309,6 +309,7 @@ export function useSchedulePageData() {
     };
 
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, filterInitialized, selectedGymId, user]);
 
   // 월/날짜/지점/강사 변경 시 제출 상태 갱신
@@ -317,6 +318,7 @@ export function useSchedulePageData() {
     if (targetStaffId && selectedGymId) {
       fetchReportStatus(targetStaffId, selectedGymId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yearMonth, selectedStaffId, myStaffId, selectedGymId]);
 
   // 스케줄이 변경되면 통계 재계산
@@ -331,6 +333,7 @@ export function useSchedulePageData() {
     if (selectedGymId && selectedStaffId) {
       fetchSchedules(selectedGymId, selectedStaffId, memberMemberships);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, selectedGymId, selectedStaffId, memberMemberships]);
 
   // 내 스케줄 제출

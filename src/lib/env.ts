@@ -14,7 +14,7 @@ const requiredEnvVars = [
 /**
  * 선택적 환경변수 목록 (기능별)
  */
-const optionalEnvVars = [
+const _optionalEnvVars = [
   // Encryption
   "ENCRYPTION_KEY",
   // Google OAuth

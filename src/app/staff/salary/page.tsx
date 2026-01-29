@@ -51,7 +51,7 @@ export default function StaffSalaryPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [myStaffId, setMyStaffId] = useState<string | null>(null);
     const [myName, setMyName] = useState<string>("");
-    const [gymName, setGymName] = useState<string>("");
+    const [_gymName, setGymName] = useState<string>("");
 
     // Supabase 클라이언트 한 번만 생성 (메모이제이션)
     const supabase = useMemo(() => createSupabaseClient(), []);

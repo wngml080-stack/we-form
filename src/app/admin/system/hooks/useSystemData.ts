@@ -466,7 +466,7 @@ export function useSystemData() {
     }
 
     try {
-      const { data, error } = await supabase
+      const { data: _data, error } = await supabase
         .from("gyms")
         .insert({
           company_id: selectedCompanyId,

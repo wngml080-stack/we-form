@@ -45,7 +45,7 @@ export function AddMemberModal({
   newMemberPhone: propPhone,
   setNewMemberPhone: propSetPhone,
   onSubmit,
-  isSearchingMembers = false,
+  isSearchingMembers: _isSearchingMembers = false,
   memberSearchResults = [],
   onSelectExistingMember,
   searchMembers

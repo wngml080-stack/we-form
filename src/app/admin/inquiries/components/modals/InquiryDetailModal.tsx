@@ -77,7 +77,7 @@ const CHANNEL_COLORS: Record<string, string> = {
   other: "bg-gray-100 text-gray-800",
 };
 
-const STATUS_LABELS: Record<string, string> = {
+const _STATUS_LABELS: Record<string, string> = {
   new: "신규",
   in_progress: "진행중",
   waiting: "대기중",
@@ -86,7 +86,7 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "취소",
 };
 
-const STATUS_COLORS: Record<string, string> = {
+const _STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
   in_progress: "bg-orange-100 text-orange-800",
   waiting: "bg-yellow-100 text-yellow-800",

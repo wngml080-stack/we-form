@@ -39,7 +39,7 @@ interface WeeklyTimetableProps {
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const START_HOUR = 6; // 06:00
 const END_HOUR = 24; // 24:00
-const SLOT_MINUTES = 30;
+const _SLOT_MINUTES = 30;
 
 export default function WeeklyTimetable({
   schedules,

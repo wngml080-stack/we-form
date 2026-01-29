@@ -268,7 +268,7 @@ export function useHqData() {
       // 지점 필터를 '전체'로 초기화
       setSelectedGymFilter("all");
     }
-  }, [selectedCompanyId]);
+  }, [selectedCompanyId, companies, myRole]);
 
   const fetchData = async (targetCompanyId: string | null) => {
     if (!targetCompanyId) return;

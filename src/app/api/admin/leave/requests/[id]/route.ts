@@ -11,7 +11,7 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const { staff, error: authError } = await authenticateRequest();
+    const { staff: _staff, error: authError } = await authenticateRequest();
     if (authError) return authError;
 
     const supabase = getSupabaseAdmin();

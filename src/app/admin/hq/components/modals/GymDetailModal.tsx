@@ -75,21 +75,21 @@ export function GymDetailModal({
 
   const fcTotalSales = fcPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const fcNewPayments = fcPayments.filter(p => p.registration_type === '신규');
-  const fcNewSales = fcNewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const _fcNewSales = fcNewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const fcOnlineCount = fcPayments.filter(p => {
     const route = (p.visit_route || '').toLowerCase();
     return route.includes('인터넷') || route.includes('네이버') || route.includes('온라인');
   }).length;
   const fcWalkinCount = fcPayments.length - fcOnlineCount;
-  const fcAvgPrice = fcPayments.length > 0 ? fcTotalSales / fcPayments.length : 0;
-  const fcNewRate = fcPayments.length > 0 ? (fcNewPayments.length / fcPayments.length * 100) : 0;
+  const _fcAvgPrice = fcPayments.length > 0 ? fcTotalSales / fcPayments.length : 0;
+  const _fcNewRate = fcPayments.length > 0 ? (fcNewPayments.length / fcPayments.length * 100) : 0;
 
   const ptTotalSales = ptPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
   const ptNewPayments = ptPayments.filter(p => p.registration_type === '신규');
   const ptRenewPayments = ptPayments.filter(p => p.registration_type === '리뉴');
-  const ptNewSales = ptNewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const ptRenewSales = ptRenewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  const ptAvgPrice = ptPayments.length > 0 ? ptTotalSales / ptPayments.length : 0;
+  const _ptNewSales = ptNewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const _ptRenewSales = ptRenewPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const _ptAvgPrice = ptPayments.length > 0 ? ptTotalSales / ptPayments.length : 0;
   const ptRenewRate = ptPayments.length > 0 ? (ptRenewPayments.length / ptPayments.length * 100) : 0;
 
   const fcBEP = isEditingBep ? bepForm.fc_bep : (selectedGymDetail.fc_bep || 75000000);
@@ -97,7 +97,7 @@ export function GymDetailModal({
   const fcBepRate = fcBEP > 0 ? (fcTotalSales / fcBEP * 100) : 0;
   const ptBepRate = ptBEP > 0 ? (ptTotalSales / ptBEP * 100) : 0;
 
-  const periodText = selectedMonth === "current" ? "이번 달" : selectedMonth === "previous" ? "지난 달" : "최근 3개월";
+  const _periodText = selectedMonth === "current" ? "이번 달" : selectedMonth === "previous" ? "지난 달" : "최근 3개월";
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -54,11 +54,7 @@ export default function LeaveRequestList() {
   const years = Array.from({ length: 3 }, (_, i) => currentYear - 1 + i);
   const canManage = user && isAdmin(user.role);
 
-  useEffect(() => {
-    fetchRequests();
-  }, [branchFilter.selectedGymId, statusFilter, year]);
-
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ year: year.toString() });
@@ -83,7 +79,11 @@ export default function LeaveRequestList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [branchFilter.selectedGymId, statusFilter, year]);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
 
   const handleApprove = async (requestId: string) => {
     try {

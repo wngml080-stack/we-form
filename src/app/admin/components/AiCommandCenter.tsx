@@ -18,6 +18,13 @@ export function AiCommandCenter({ gymId }: AiCommandCenterProps) {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setQuery("");
+    setResponse(null);
+    setError(null);
+  }, []);
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -30,20 +37,13 @@ export function AiCommandCenter({ gymId }: AiCommandCenterProps) {
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
-
-  const handleClose = useCallback(() => {
-    setIsOpen(false);
-    setQuery("");
-    setResponse(null);
-    setError(null);
-  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!query.trim() || isLoading) return;

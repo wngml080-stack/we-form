@@ -149,7 +149,7 @@ export function usePTMembersSWR({
   const [selectedMember, setSelectedMember] = useState<PTMember | null>(null);
   const [memberPaymentHistory, setMemberPaymentHistory] = useState<unknown[]>([]);
   const [memberAllMemberships, setMemberAllMemberships] = useState<unknown[]>([]);
-  const [memberActivityLogs, setMemberActivityLogs] = useState<unknown[]>([]);
+  const [memberActivityLogs, _setMemberActivityLogs] = useState<unknown[]>([]);
   const [memberTrainers, setMemberTrainers] = useState<MemberTrainer[]>([]);
 
   // 트레이너 모달 상태

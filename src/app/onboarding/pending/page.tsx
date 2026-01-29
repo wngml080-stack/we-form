@@ -52,6 +52,7 @@ function PendingContent() {
         }
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, router]);
 
   const handleSignOut = async () => {

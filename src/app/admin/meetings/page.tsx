@@ -39,7 +39,7 @@ export default function MeetingsPage() {
     addActionItem,
     updateActionItemStatus,
     openDetailModal,
-    fetchMeetings,
+    fetchMeetings: _fetchMeetings,
   } = useMeetingsData({
     selectedGymId,
     selectedCompanyId,

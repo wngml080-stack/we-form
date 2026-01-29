@@ -7,7 +7,7 @@ import crypto from "crypto";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
+const _AUTH_TAG_LENGTH = 16;
 
 /**
  * 환경 변수에서 암호화 키 가져오기

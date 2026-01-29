@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -38,11 +38,7 @@ export default function LeaveStatistics() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 3 }, (_, i) => currentYear - 1 + i);
 
-  useEffect(() => {
-    fetchStats();
-  }, [branchFilter.selectedGymId, year]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ year: year.toString() });
@@ -64,7 +60,11 @@ export default function LeaveStatistics() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [branchFilter.selectedGymId, year]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
   const maxMonthlyDays = stats?.monthly ? Math.max(...stats.monthly.map(m => m.days), 1) : 1;

@@ -231,7 +231,7 @@ export function EditScheduleModal({
 
                     if (ptMembership) {
                       const today = new Date();
-                      const startDate = ptMembership.start_date ? new Date(ptMembership.start_date) : null;
+                      const _startDate = ptMembership.start_date ? new Date(ptMembership.start_date) : null;
                       const endDate = ptMembership.end_date ? new Date(ptMembership.end_date) : null;
                       const remainingDays = endDate ? Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
                       const currentSessionNumber = getSessionNumber(editForm.member_id, 'pt', selectedSchedule?.id);

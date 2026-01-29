@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ error: "시스템 관리자 권한이 필요합니다." }, { status: 403 });
   }
 
-  const supabase = getSupabaseAdmin();
+  const _supabase = getSupabaseAdmin();
 
   const sql = `
     -- 1. 급여 구성요소 (Components)

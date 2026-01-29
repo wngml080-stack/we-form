@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "@/lib/toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
@@ -51,13 +51,7 @@ export default function MonthlyStatsViewer() {
 
   const supabase = createSupabaseClient();
 
-  useEffect(() => {
-    if (filterInitialized && gymId && selectedMonth) {
-      fetchMonthlyStats();
-    }
-  }, [filterInitialized, gymId, selectedMonth]);
-
-  const fetchMonthlyStats = async () => {
+  const fetchMonthlyStats = useCallback(async () => {
     if (!gymId) return;
 
     setIsLoading(true);
@@ -184,7 +178,13 @@ export default function MonthlyStatsViewer() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [gymId, selectedMonth, supabase]);
+
+  useEffect(() => {
+    if (filterInitialized && gymId && selectedMonth) {
+      fetchMonthlyStats();
+    }
+  }, [filterInitialized, gymId, selectedMonth, fetchMonthlyStats]);
 
   const handleExcelDownload = async () => {
     if (staffStats.length === 0) {

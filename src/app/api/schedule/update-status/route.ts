@@ -67,9 +67,9 @@ export async function POST(request: Request) {
     // - 서비스 상태: service → used_service_sessions 차감 (서비스 세션에서만)
     // - 비차감 상태: no_show, cancelled → 환불
 
-    let membershipInfo = "회원권 없음";
+    let _membershipInfo = "회원권 없음";
     const regularDeductedStatuses = ["reserved", "completed", "no_show_deducted"];
-    const nonDeductedStatuses = ["no_show", "cancelled"];
+    const _nonDeductedStatuses = ["no_show", "cancelled"];
 
     const wasRegularDeducted = regularDeductedStatuses.includes(oldStatus);
     const willBeRegularDeducted = regularDeductedStatuses.includes(newStatus);
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
             .update({ used_sessions: usedSessions - 1 })
             .eq("id", membership.id);
 
-          membershipInfo = `${membership.name} (1회 환불)`;
+          _membershipInfo = `${membership.name} (1회 환불)`;
         } else if (!wasRegularDeducted && !wasService && willBeRegularDeducted && usedSessions < totalSessions) {
           // 비차감 → 일반 차감: 차감
           await supabase
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
             .update({ used_sessions: usedSessions + 1 })
             .eq("id", membership.id);
 
-          membershipInfo = `${membership.name} (1회 차감)`;
+          _membershipInfo = `${membership.name} (1회 차감)`;
         }
 
         // 서비스 세션 처리
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
             .update({ used_service_sessions: usedServiceSessions - 1 })
             .eq("id", membership.id);
 
-          membershipInfo = `${membership.name} (서비스 1회 환불)`;
+          _membershipInfo = `${membership.name} (서비스 1회 환불)`;
         } else if (!wasService && willBeService && usedServiceSessions < serviceSessions) {
           // 비서비스 → 서비스: 서비스 세션 차감
           await supabase
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
             .update({ used_service_sessions: usedServiceSessions + 1 })
             .eq("id", membership.id);
 
-          membershipInfo = `${membership.name} (서비스 1회 차감)`;
+          _membershipInfo = `${membership.name} (서비스 1회 차감)`;
         }
       }
     }

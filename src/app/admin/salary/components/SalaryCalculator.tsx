@@ -131,12 +131,12 @@ export default function SalaryCalculator() {
     });
 
     // 월별 총 매출 상태
-    const [monthlyTotalSales, setMonthlyTotalSales] = useState<number>(0);
+    const [_monthlyTotalSales, setMonthlyTotalSales] = useState<number>(0);
     const [monthlySalesByTrainer, setMonthlySalesByTrainer] = useState<Record<string, number>>({});
 
     // 직원별 실적 통계 상태
-    const [staffStats, setStaffStats] = useState<StaffStats[]>([]);
-    const [isStatsLoading, setIsStatsLoading] = useState(false);
+    const [_staffStats, setStaffStats] = useState<StaffStats[]>([]);
+    const [_isStatsLoading, setIsStatsLoading] = useState(false);
 
     // 급여 설정 모달 상태
     const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);
@@ -164,6 +164,7 @@ export default function SalaryCalculator() {
             }
         };
         initializeData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filterInitialized, gymId, selectedMonth]);
 
     // 월별 PT 매출 조회 (등록자별)
@@ -658,7 +659,7 @@ export default function SalaryCalculator() {
         }
     };
 
-    const handleSaveSales = async () => {
+    const _handleSaveSales = async () => {
         if (!gymId) return;
 
         try {
@@ -759,7 +760,7 @@ export default function SalaryCalculator() {
             }
 
             // 1-2. 해당 월의 승인된 보고서 직접 조회
-            const { data: approvedReports, error: reportError } = await supabase
+            const { data: approvedReports, error: _reportError } = await supabase
                 .from("monthly_schedule_reports")
                 .select("staff_id, status, year_month")
                 .eq("gym_id", gymId)

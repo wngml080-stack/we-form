@@ -217,12 +217,12 @@ export const PaymentsTable = memo(function PaymentsTable({
   onContinuousModeChange
 }: PaymentsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const tableRef = useRef<HTMLTableElement>(null);
+  const _tableRef = useRef<HTMLTableElement>(null);
   
   // 필터 상태
-  const [saleTypeFilter, setSaleTypeFilter] = useState<string>("all");
-  const [membershipCategoryFilter, setMembershipCategoryFilter] = useState<string>("all");
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [saleTypeFilter, _setSaleTypeFilter] = useState<string>("all");
+  const [membershipCategoryFilter, _setMembershipCategoryFilter] = useState<string>("all");
+  const [paymentMethodFilter, _setPaymentMethodFilter] = useState<string>("all");
 
   // 상수 참조 (컴포넌트 외부 정의됨)
   const methodLabels = METHOD_LABELS;

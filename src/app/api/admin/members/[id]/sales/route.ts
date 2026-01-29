@@ -217,7 +217,7 @@ export async function POST(
     const paymentDate = new Date().toISOString();
 
     if (paymentAmount > 0) {
-      const { data: paymentData, error: paymentError } = await supabase.from("member_payments").insert({
+      const { data: _paymentData, error: paymentError } = await supabase.from("member_payments").insert({
         company_id,
         gym_id,
         member_id: memberId,

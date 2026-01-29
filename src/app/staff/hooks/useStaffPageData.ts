@@ -162,7 +162,7 @@ export function useStaffPageData() {
           setMyStaffName(staff.name);
           setMyJobTitle(staff.job_title);
           setMyGymId(staff.gym_id);
-          // @ts-ignore
+          // @ts-expect-error - Supabase join query returns nested gyms object but TypeScript infers it as unknown
           setMyGymName(staff.gyms?.name || authGymName);
           setMyCompanyId(staff.company_id);
           setMyCompanyName(authCompanyName || "");
@@ -205,6 +205,7 @@ export function useStaffPageData() {
     if (schedules.length > 0) {
       calculateMonthlyStats(schedules);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, schedules]);
 
   // 월/날짜 변경 시 리포트 상태도 갱신

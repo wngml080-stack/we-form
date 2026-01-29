@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -221,12 +221,12 @@ export function useAdminDashboardData() {
   const gymName = gyms.find(g => g.id === selectedGymId)?.name || authGymName || "We:form";
 
   // 상품 목록 조회 - 임시 비활성화 (테이블 재연결 예정)
-  const fetchProducts = async (_gymId: string) => {
+  const fetchProducts = useCallback(async (_gymId: string) => {
     setProducts([]);
-  };
+  }, []);
 
   // 스태프 목록 조회
-  const fetchStaffList = async (gymId: string) => {
+  const fetchStaffList = useCallback(async (gymId: string) => {
     try {
       const { data, error } = await supabase
         .from("staffs")
@@ -239,49 +239,28 @@ export function useAdminDashboardData() {
     } catch (error) {
       console.error("스태프 목록 조회 에러:", error);
     }
-  };
+  }, [supabase]);
 
   // 회원 목록 조회 - 임시 비활성화 (테이블 재연결 예정)
-  const fetchMembers = async (_gymId: string, _companyId: string) => {
+  const fetchMembers = useCallback(async (_gymId: string, _companyId: string) => {
     setMembers([]);
-  };
+  }, []);
 
-  useEffect(() => {
-    // 필수 데이터 로딩 대기
-    if (authLoading || !filterInitialized) return;
-
-    // 데이터 조회 시작
-    const loadData = async () => {
-      try {
-        if (!user) {
-          setIsLoading(false);
-          return;
-        }
-
-        // 지점이나 회사 정보가 아직 없는 경우에도 로딩은 종료 (필터 선택 대기)
-        if (!selectedGymId || !selectedCompanyId) {
-          setIsLoading(false);
-          return;
-        }
-
-        // 병렬 데이터 조회
-        await Promise.allSettled([
-          fetchDashboardData(selectedGymId, selectedCompanyId, user.id),
-          fetchProducts(selectedGymId),
-          fetchStaffList(selectedGymId),
-          fetchMembers(selectedGymId, selectedCompanyId)
-        ]);
-      } catch (error) {
-        console.error("대시보드 데이터 로딩 중 오류:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchRecentLogs = useCallback(async (gymId: string, companyId: string) => {
+    try {
+      // today_only=true로 당일 매출만 조회
+      const response = await fetch(`/api/admin/schedule/logs?gym_id=${gymId}&company_id=${companyId}&today_only=true`);
+      const data = await response.json();
+      if (data.success) {
+        setRecentLogs(data.logs || []);
+        setRecentLogsSummary(data.summary || null);
       }
-    };
+    } catch {
+      // 조회 실패 시 빈 배열 유지
+    }
+  }, []);
 
-    loadData();
-  }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user]);
-
-  const fetchDashboardData = async (gymId: string, companyId: string, staffId: string) => {
+  const fetchDashboardData = useCallback(async (gymId: string, companyId: string, staffId: string) => {
     if (!gymId || !companyId) return;
 
     const now = new Date();
@@ -338,21 +317,42 @@ export function useAdminDashboardData() {
     setMonthlySalesData({});
 
     fetchRecentLogs(gymId, companyId);
-  };
+  }, [supabase, userRole, fetchRecentLogs]);
 
-  const fetchRecentLogs = async (gymId: string, companyId: string) => {
-    try {
-      // today_only=true로 당일 매출만 조회
-      const response = await fetch(`/api/admin/schedule/logs?gym_id=${gymId}&company_id=${companyId}&today_only=true`);
-      const data = await response.json();
-      if (data.success) {
-        setRecentLogs(data.logs || []);
-        setRecentLogsSummary(data.summary || null);
+  useEffect(() => {
+    // 필수 데이터 로딩 대기
+    if (authLoading || !filterInitialized) return;
+
+    // 데이터 조회 시작
+    const loadData = async () => {
+      try {
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        // 지점이나 회사 정보가 아직 없는 경우에도 로딩은 종료 (필터 선택 대기)
+        if (!selectedGymId || !selectedCompanyId) {
+          setIsLoading(false);
+          return;
+        }
+
+        // 병렬 데이터 조회
+        await Promise.allSettled([
+          fetchDashboardData(selectedGymId, selectedCompanyId, user.id),
+          fetchProducts(selectedGymId),
+          fetchStaffList(selectedGymId),
+          fetchMembers(selectedGymId, selectedCompanyId)
+        ]);
+      } catch (error) {
+        console.error("대시보드 데이터 로딩 중 오류:", error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      // 조회 실패 시 빈 배열 유지
-    }
-  };
+    };
+
+    loadData();
+  }, [authLoading, filterInitialized, selectedGymId, selectedCompanyId, user, fetchDashboardData, fetchProducts, fetchStaffList, fetchMembers]);
 
   // 회원 검색 - 임시 비활성화 (테이블 재연결 예정)
   const searchMembers = async (_query: string) => {

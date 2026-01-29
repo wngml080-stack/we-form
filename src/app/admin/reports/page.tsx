@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "@/lib/toast";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -87,27 +87,7 @@ export default function AdminReportsPage() {
   // Supabase 클라이언트 한 번만 생성 (메모이제이션)
   const supabase = useMemo(() => createSupabaseClient(), []);
 
-  useEffect(() => {
-    if (authLoading) return;
-
-    if (!user) {
-      router.push("/sign-in");
-      return;
-    }
-
-    if (!["admin", "company_admin", "system_admin"].includes(userRole)) {
-      showError("접근 권한이 없습니다.", "권한 확인");
-      router.push("/admin");
-      return;
-    }
-
-    if (filterInitialized) {
-      // role별로 다른 필터링 적용
-      fetchReports();
-    }
-  }, [authLoading, user, filterInitialized, selectedGymId, userRole, showAllGyms]);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setIsLoading(true);
 
     try {
@@ -164,11 +144,11 @@ export default function AdminReportsPage() {
       reportsWithRelations.forEach(async (report: MonthlyReport) => {
         try {
           const res = await fetch(`/api/admin/schedule/reports/${report.id}/schedules`);
-          const result = await res.json();
-          if (res.ok && result.success && result.calculatedStats) {
+          const fetchResult = await res.json();
+          if (res.ok && fetchResult.success && fetchResult.calculatedStats) {
             setCalculatedStatsMap(prev => ({
               ...prev,
-              [report.id]: result.calculatedStats
+              [report.id]: fetchResult.calculatedStats
             }));
           }
         } catch {
@@ -180,7 +160,27 @@ export default function AdminReportsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showAllGyms, selectedGymId, supabase]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      router.push("/sign-in");
+      return;
+    }
+
+    if (!["admin", "company_admin", "system_admin"].includes(userRole)) {
+      showError("접근 권한이 없습니다.", "권한 확인");
+      router.push("/admin");
+      return;
+    }
+
+    if (filterInitialized) {
+      // role별로 다른 필터링 적용
+      fetchReports();
+    }
+  }, [authLoading, user, filterInitialized, selectedGymId, userRole, showAllGyms, router, fetchReports]);
 
   const openReview = (report: MonthlyReport) => {
     setSelectedReport(report);

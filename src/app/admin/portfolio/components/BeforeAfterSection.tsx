@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Edit2, Check, X, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -213,12 +214,14 @@ export function BeforeAfterSection({ reviews, onUpdate }: BeforeAfterSectionProp
                         }}
                         className="hidden"
                       />
-                      <div className="aspect-video rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors">
+                      <div className="aspect-video rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors relative overflow-hidden">
                         {review.image ? (
-                          <img
+                          <Image
                             src={review.image}
                             alt="후기 사진"
-                            className="w-full h-full object-cover rounded-lg"
+                            fill
+                            className="object-cover rounded-lg"
+                            unoptimized
                           />
                         ) : (
                           <div className="text-center">
@@ -249,12 +252,14 @@ export function BeforeAfterSection({ reviews, onUpdate }: BeforeAfterSectionProp
                           }}
                           className="hidden"
                         />
-                        <div className="aspect-square rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div className="aspect-square rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors relative overflow-hidden">
                           {review.beforeImage ? (
-                            <img
+                            <Image
                               src={review.beforeImage}
                               alt="Before"
-                              className="w-full h-full object-cover rounded-lg"
+                              fill
+                              className="object-cover rounded-lg"
+                              unoptimized
                             />
                           ) : (
                             <div className="text-center">
@@ -277,12 +282,14 @@ export function BeforeAfterSection({ reviews, onUpdate }: BeforeAfterSectionProp
                           }}
                           className="hidden"
                         />
-                        <div className="aspect-square rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors">
+                        <div className="aspect-square rounded-lg border-2 border-dashed border-slate-300 bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors relative overflow-hidden">
                           {review.afterImage ? (
-                            <img
+                            <Image
                               src={review.afterImage}
                               alt="After"
-                              className="w-full h-full object-cover rounded-lg"
+                              fill
+                              className="object-cover rounded-lg"
+                              unoptimized
                             />
                           ) : (
                             <div className="text-center">
@@ -340,11 +347,13 @@ export function BeforeAfterSection({ reviews, onUpdate }: BeforeAfterSectionProp
                 {/* 사진 (가로로 표시) */}
                 {review.image && (
                   <div className="pt-2">
-                    <div className="aspect-video rounded-lg border-2 border-slate-200 bg-slate-100 overflow-hidden">
-                      <img
+                    <div className="aspect-video rounded-lg border-2 border-slate-200 bg-slate-100 overflow-hidden relative">
+                      <Image
                         src={review.image}
                         alt="후기 사진"
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                     </div>
                   </div>
@@ -356,11 +365,13 @@ export function BeforeAfterSection({ reviews, onUpdate }: BeforeAfterSectionProp
                     {review.beforeImage && (
                       <div>
                         <div className="text-xs text-slate-500 mb-1 text-center">Before</div>
-                        <div className="aspect-square rounded-lg border-2 border-slate-200 bg-slate-100 overflow-hidden">
-                          <img
+                        <div className="aspect-square rounded-lg border-2 border-slate-200 bg-slate-100 overflow-hidden relative">
+                          <Image
                             src={review.beforeImage}
                             alt="Before"
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized
                           />
                         </div>
                       </div>
@@ -368,11 +379,13 @@ export function BeforeAfterSection({ reviews, onUpdate }: BeforeAfterSectionProp
                     {review.afterImage && (
                       <div>
                         <div className="text-xs text-slate-500 mb-1 text-center">After</div>
-                        <div className="aspect-square rounded-lg border-2 border-slate-200 bg-slate-100 overflow-hidden">
-                          <img
+                        <div className="aspect-square rounded-lg border-2 border-slate-200 bg-slate-100 overflow-hidden relative">
+                          <Image
                             src={review.afterImage}
                             alt="After"
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized
                           />
                         </div>
                       </div>

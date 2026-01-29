@@ -53,7 +53,7 @@ export function ConsultationRecordModal({
   useEffect(() => {
     if (isOpen) {
       if (existingData) {
-        const { id, createdAt, updatedAt, ...rest } = existingData;
+        const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...rest } = existingData;
         setFormData(rest);
       } else {
         setFormData(createInitialConsultation());

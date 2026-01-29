@@ -205,7 +205,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     totalRevenue: 0, fcRevenue: 0, ptRevenue: 0, fcCount: 0, ptCount: 0,
     otherRevenue: 0, otherCount: 0
   });
-  const [comparisonData, setComparisonData] = useState<ComparisonData>({
+  const [comparisonData, _setComparisonData] = useState<ComparisonData>({
     prevMonth: { fcSales: 0, ptSales: 0, totalSales: 0, fcCount: 0, ptCount: 0 },
     prevYear: { fcSales: 0, ptSales: 0, totalSales: 0, fcCount: 0, ptCount: 0 }
   });
@@ -344,6 +344,7 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
         fetchGymData(selectedGymId)
       ]).catch(console.error);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterInitialized, selectedGymId, selectedCompanyId, startDate, endDate, fetchGymData]);
 
   const fetchPayments = async (gymId: string, companyId: string) => {

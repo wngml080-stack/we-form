@@ -222,7 +222,7 @@ export function ExpensesTable({
     }
   };
 
-  const onCancelEdit = () => {
+  const _onCancelEdit = () => {
     setEditingId(null);
     setEditForm({});
   };

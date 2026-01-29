@@ -236,7 +236,7 @@ export function MemberDetailModal({
 
   const renderMembershipCard = (membership: Membership, isExpired: boolean = false) => {
     const statusBadge = getStatusBadge(membership.status);
-    const remaining = membership.total_sessions - membership.used_sessions;
+    const _remaining = membership.total_sessions - membership.used_sessions;
 
     return (
       <div

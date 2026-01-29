@@ -77,7 +77,7 @@ export function AiInsightsWidget({ stats: _stats, gymName, gymId }: AiInsightsWi
   const [isActionPlanOpen, setIsActionPlanOpen] = useState(false);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [rawData, setRawData] = useState<AiRawData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchInsights = useCallback(async () => {

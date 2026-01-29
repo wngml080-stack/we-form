@@ -74,7 +74,7 @@ export function SalesAnalysis({ payments }: SalesAnalysisProps) {
   }, [payments, totalAmount]);
 
   // 3. 직원별 성과
-  const registrarStats = useMemo(() => {
+  const _registrarStats = useMemo(() => {
     const groups: Record<string, { count: number; amount: number }> = {};
     payments.forEach(p => {
       const name = p.registrar || "미지정";
@@ -93,7 +93,7 @@ export function SalesAnalysis({ payments }: SalesAnalysisProps) {
   }, [payments, totalAmount]);
 
   // 4. 유입 경로별 분석
-  const inflowStats = useMemo(() => {
+  const _inflowStats = useMemo(() => {
     const groups: Record<string, { count: number; amount: number }> = {};
     payments.forEach(p => {
       const route = p.visit_route || "미지정";

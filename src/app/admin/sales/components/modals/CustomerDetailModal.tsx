@@ -80,7 +80,7 @@ export function CustomerDetailModal({
 }: CustomerDetailModalProps) {
   if (!customer) return null;
 
-  const formatDate = (dateStr: string) => {
+  const _formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString("ko-KR", {
       year: "numeric",
       month: "short",

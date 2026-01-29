@@ -47,7 +47,7 @@ export function StatusChangeModal({
     }
   };
   const isPersonal = selectedEvent?.type?.toLowerCase() === 'personal';
-  const isConsulting = selectedEvent?.type?.toLowerCase() === 'consulting';
+  const _isConsulting = selectedEvent?.type?.toLowerCase() === 'consulting';
 
   const statusOptions = [
     { value: 'scheduled', label: '예정됨', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', desc: '앞으로 진행될 일정입니다.' },

@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const gymId = searchParams.get("gym_id") || staff.gym_id;
-    const companyId = searchParams.get("company_id") || staff.company_id;
+    const _companyId = searchParams.get("company_id") || staff.company_id;
 
     if (!gymId) {
       return NextResponse.json(

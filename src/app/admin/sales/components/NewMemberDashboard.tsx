@@ -60,7 +60,7 @@ export function NewMemberDashboard({
   selectedCompanyId,
   isInitialized,
   inquiryStats,
-  reservationCount = 0
+  reservationCount: _reservationCount = 0
 }: NewMemberDashboardProps) {
   const {
     stats,

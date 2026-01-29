@@ -17,7 +17,7 @@ export async function GET(
 
     const { id: memberId } = await params;
     const { searchParams } = new URL(request.url);
-    const gymId = searchParams.get("gym_id");
+    const _gymId = searchParams.get("gym_id");
 
     if (!memberId) {
       return NextResponse.json({ error: "회원 ID가 필요합니다." }, { status: 400 });

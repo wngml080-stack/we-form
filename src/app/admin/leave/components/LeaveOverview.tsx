@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -25,11 +25,7 @@ export default function LeaveOverview() {
   const [searchTerm, setSearchTerm] = useState("");
   const year = new Date().getFullYear();
 
-  useEffect(() => {
-    fetchSummaries();
-  }, [branchFilter.selectedGymId, year]);
-
-  const fetchSummaries = async () => {
+  const fetchSummaries = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ year: year.toString() });
@@ -51,7 +47,11 @@ export default function LeaveOverview() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [branchFilter.selectedGymId, year]);
+
+  useEffect(() => {
+    fetchSummaries();
+  }, [fetchSummaries]);
 
   const filteredSummaries = summaries.filter(s =>
     s.staff_name.toLowerCase().includes(searchTerm.toLowerCase())
