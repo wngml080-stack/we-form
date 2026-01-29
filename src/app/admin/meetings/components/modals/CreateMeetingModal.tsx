@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Trash2, Calendar, FileText, Send, Video, MapPin, AlignLeft, Sparkles, Clock, Users, UserPlus } from "lucide-react";
+import { X, Plus, Trash2, Calendar, FileText, Send, Video, MapPin, AlignLeft, Sparkles, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,

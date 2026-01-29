@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, Instagram, FileText, MapPin, Trophy, Edit2, Check, X, Plus, Trash2, Search } from "lucide-react";
+import { Phone, Instagram, FileText, MapPin, Trophy, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

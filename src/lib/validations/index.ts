@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 export * from "./member";
 export * from "./schedule";
 export * from "./salary";
+export * from "./sales";
 
 /**
  * API 요청 본문 검증 유틸리티

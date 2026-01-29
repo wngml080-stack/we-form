@@ -4,12 +4,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import {
   ShoppingBag,
-  UserPlus,
-  Users2,
-  MapPin,
-  TrendingUp,
-  BarChart3,
-  ArrowRight
+  UserPlus
 } from "lucide-react";
 import { getCategoryColor } from "../utils/categoryColors";
 

@@ -13,7 +13,6 @@ import { showSuccess } from "@/lib/utils/error-handler";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { X, CheckCircle2, Clock, Calendar as CalendarIcon, User, Pencil, Trash2, Activity, Zap, AlertTriangle, Pen } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 import { SignatureQRModal } from "./SignatureQRModal";
 
 interface ScheduleItem {

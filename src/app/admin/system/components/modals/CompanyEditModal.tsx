@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CompanyEditForm } from "../../hooks/useSystemData";
 
 interface CompanyEditModalProps {
@@ -15,8 +15,7 @@ interface CompanyEditModalProps {
   onSubmit: () => void;
 }
 
-import { cn } from "@/lib/utils";
-import { Building2, Pencil, Save } from "lucide-react";
+import { Pencil, Save } from "lucide-react";
 
 export function CompanyEditModal({ isOpen, onOpenChange, form, setForm, onSubmit }: CompanyEditModalProps) {
   return (

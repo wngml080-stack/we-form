@@ -28,15 +28,51 @@ export interface NewMemberData {
   memo: string;
 }
 
+// 스케줄 타입
+export interface StaffSchedule {
+  id: string;
+  start_time: string;
+  end_time: string;
+  member_id?: string;
+  status: string;
+  is_locked?: boolean;
+  title?: string;
+  sub_type?: string;
+  member?: { name: string };
+  members?: { name: string };
+}
+
+// 회원 타입
+export interface MemberMembership {
+  name: string;
+  total_sessions?: number;
+}
+
+export interface StaffMember {
+  id: string;
+  name: string;
+  phone?: string;
+  created_at?: string;
+  memberships?: MemberMembership[];
+}
+
+// 월별 통계 타입
+export interface MonthlyStats {
+  totalSchedules: number;
+  completedSchedules: number;
+  cancelledSchedules: number;
+  noShowSchedules: number;
+}
+
 export function useStaffPageData() {
   const router = useRouter();
   const { user: authUser, isLoading: authLoading, isApproved, gymName: authGymName, companyName: authCompanyName } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
 
   // 데이터 상태
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<StaffSchedule[]>([]);
+  const [members, setMembers] = useState<StaffMember[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<StaffMember[]>([]);
 
   // UI 상태
   const [viewType, setViewType] = useState<'day' | 'week' | 'month'>('week');
@@ -62,7 +98,7 @@ export function useStaffPageData() {
   const [myWorkEndTime, setMyWorkEndTime] = useState<string | null>(null);
 
   // 통계 및 승인 상태
-  const [monthlyStats, setMonthlyStats] = useState<any>(null);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
   const [submissionStatus, setSubmissionStatus] = useState<"none" | "submitted" | "approved" | "rejected">("none");
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
@@ -197,8 +233,8 @@ export function useStaffPageData() {
     }
   };
 
-  const enrichSchedulesWithSessionInfo = (allSchedules: any[]) => {
-    const memberSchedules: Record<string, { pt: any[]; ot: any[] }> = {};
+  const enrichSchedulesWithSessionInfo = (allSchedules: StaffSchedule[]) => {
+    const memberSchedules: Record<string, { pt: StaffSchedule[]; ot: StaffSchedule[] }> = {};
 
     allSchedules.forEach(s => {
       if (!s.member_id) return;
@@ -220,7 +256,7 @@ export function useStaffPageData() {
       let ptSessionCount = 0;
       pt.forEach((schedule) => {
         const member = members.find(m => m.id === schedule.member_id);
-        const membership = member?.memberships?.find((m: any) => m.name?.toLowerCase().includes('pt'));
+        const membership = member?.memberships?.find((m: MemberMembership) => m.name?.toLowerCase().includes('pt'));
         if (membership) schedule.total_sessions = membership.total_sessions;
 
         if (isCompleted(schedule.status)) {
@@ -248,7 +284,7 @@ export function useStaffPageData() {
     return allSchedules;
   };
 
-  const calculateMonthlyStats = (scheduleList: any[]) => {
+  const calculateMonthlyStats = (scheduleList: StaffSchedule[]) => {
     const current = new Date(selectedDate);
     const targetYear = current.getFullYear();
     const targetMonth = current.getMonth();
@@ -290,7 +326,7 @@ export function useStaffPageData() {
     if (error) return;
 
     if (data) {
-      setSubmissionStatus(data.status as any);
+      setSubmissionStatus(data.status as typeof submissionStatus);
       setCurrentReportId(data.id);
       setSubmittedAt(data.submitted_at);
       setReviewedAt(data.reviewed_at);
@@ -358,7 +394,7 @@ export function useStaffPageData() {
           type: newClassType, status: "reserved", staff_id: myStaffId,
         }),
       }).catch(() => {});
-    } catch (error: any) {
+    } catch (error) {
       toast.error(error.message || "등록 실패!");
     }
   };
@@ -384,7 +420,7 @@ export function useStaffPageData() {
       setSelectedEvent(null);
       fetchSchedules(myStaffId);
       if (myGymId && myCompanyId) fetchMembers(myGymId, myCompanyId);
-    } catch (error: any) {
+    } catch (error) {
       toast.error("상태 변경 실패: " + error.message);
     }
   };
@@ -404,7 +440,7 @@ export function useStaffPageData() {
       setIsStatusModalOpen(false);
       setSelectedEvent(null);
       fetchSchedules(myStaffId);
-    } catch (error: any) {
+    } catch (error) {
       toast.error("분류 변경 실패: " + error.message);
     }
   };
@@ -426,7 +462,7 @@ export function useStaffPageData() {
       setSelectedEvent(null);
       fetchSchedules(myStaffId);
       if (myGymId && myCompanyId) fetchMembers(myGymId, myCompanyId);
-    } catch (error: any) {
+    } catch (error) {
       toast.error("삭제 실패: " + error.message);
     }
   };
@@ -450,7 +486,7 @@ export function useStaffPageData() {
     const endDateTime = new Date(startDateTime.getTime() + durationMin * 60 * 1000);
     const scheduleType = classifyScheduleType(startDateTime, myWorkStartTime, myWorkEndTime);
 
-    const updateData: any = {
+    const updateData: Record<string, string> = {
       start_time: startDateTime.toISOString(),
       end_time: endDateTime.toISOString(),
       schedule_type: scheduleType,
@@ -503,7 +539,7 @@ export function useStaffPageData() {
       setSubmittedAt(json.report?.submitted_at ?? null);
       setIsMonthApproved(false);
       fetchSchedules(myStaffId);
-    } catch (e: any) {
+    } catch (e) {
       toast.error(e.message);
     }
   };
@@ -534,7 +570,7 @@ export function useStaffPageData() {
     setIsAddModalOpen(true);
   };
 
-  const handleScheduleClick = (schedule: any) => {
+  const handleScheduleClick = (schedule: StaffSchedule & { member_name?: string }) => {
     const st = new Date(schedule.start_time);
     const et = new Date(schedule.end_time);
     const timeLabel = `${st.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })} ~ ${et.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
@@ -574,7 +610,7 @@ export function useStaffPageData() {
     setIsEditModalOpen(true);
   };
 
-  const handleSelectMember = (member: any) => {
+  const handleSelectMember = (member: StaffMember) => {
     setNewMemberName(member.name);
     setSelectedMemberId(member.id);
     setMemberSearchQuery(member.name);

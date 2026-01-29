@@ -10,7 +10,7 @@ export interface Schedule {
   start_time: string;
   end_time: string;
   counted_for_salary?: boolean;
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface MonthlyStats {

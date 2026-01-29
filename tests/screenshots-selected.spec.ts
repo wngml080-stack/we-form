@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { test, Page } from "@playwright/test";
 import path from "path";
 
 // 배포된 URL 사용
@@ -12,7 +12,7 @@ const TEST_PASSWORD = "testpassword123";
 const SCREENSHOT_DIR = path.join(process.cwd(), "public");
 
 // 페이지 로딩 완료 대기
-async function waitForPageLoad(page: any, extraWait = 2000) {
+async function waitForPageLoad(page: Page, extraWait = 2000) {
   try {
     await page.waitForLoadState("networkidle", { timeout: 15000 });
   } catch {
@@ -22,7 +22,7 @@ async function waitForPageLoad(page: any, extraWait = 2000) {
 }
 
 // 스크린샷 촬영 (전체 페이지)
-async function takeScreenshot(page: any, filename: string) {
+async function takeScreenshot(page: Page, filename: string) {
   try {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.waitForTimeout(500);
@@ -38,7 +38,7 @@ async function takeScreenshot(page: any, filename: string) {
 }
 
 // 텍스트로 요소 찾아 클릭
-async function clickByText(page: any, text: string): Promise<boolean> {
+async function clickByText(page: Page, text: string): Promise<boolean> {
   try {
     const element = page.getByText(text).first();
     if (await element.isVisible({ timeout: 5000 })) {
@@ -86,8 +86,8 @@ test.describe("We:form 선택 스크린샷", () => {
     // 스크롤 컨테이너 높이 제한 해제
     await page.evaluate(() => {
       // 모든 스크롤 컨테이너 찾아서 높이 제한 해제
-      const containers = document.querySelectorAll('[class*="overflow"], [class*="scroll"], main, [class*="content"]');
-      containers.forEach((el: any) => {
+      const containers = document.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="scroll"], main, [class*="content"]');
+      containers.forEach((el) => {
         el.style.maxHeight = 'none';
         el.style.height = 'auto';
         el.style.overflow = 'visible';

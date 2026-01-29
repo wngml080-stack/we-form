@@ -10,13 +10,11 @@ const BranchAnnouncementsCard = dynamic(() => import("./BranchAnnouncementsCard"
 const TodaySchedulesCard = dynamic(() => import("./TodaySchedulesCard").then(mod => ({ default: mod.TodaySchedulesCard })), { ssr: false });
 const CompanyEventsCalendar = dynamic(() => import("./CompanyEventsCalendar").then(mod => ({ default: mod.CompanyEventsCalendar })), { ssr: false });
 const AiCommandCenter = dynamic(() => import("./AiCommandCenter").then(mod => ({ default: mod.AiCommandCenter })), { ssr: false });
-const SystemAnnouncementBanner = dynamic(() => import("./SystemAnnouncementBanner").then(mod => ({ default: mod.SystemAnnouncementBanner })), { ssr: false });
 const QuickActions = dynamic(() => import("./QuickActions").then(mod => ({ default: mod.QuickActions })), { ssr: false });
 const BannerWidget = dynamic(() => import("./BannerWidget").then(mod => ({ default: mod.BannerWidget })), { ssr: false });
 
 // Modals - 동적 import (사용자 액션 시에만 로드)
 const EventModal = dynamic(() => import("./modals/EventModal").then(mod => ({ default: mod.EventModal })), { ssr: false });
-const SystemAnnouncementModal = dynamic(() => import("./modals/SystemAnnouncementModal").then(mod => ({ default: mod.SystemAnnouncementModal })), { ssr: false });
 const BranchAnnouncementModal = dynamic(() => import("./modals/BranchAnnouncementModal").then(mod => ({ default: mod.BranchAnnouncementModal })), { ssr: false });
 
 interface AdminDashboardContentProps {
@@ -33,14 +31,11 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
     isLoading,
 
     // 통계 데이터
-    todaySchedules, announcements, companyEvents, systemAnnouncements,
+    todaySchedules, announcements, companyEvents,
 
     // 달력
     currentMonth, setCurrentMonth, selectedDate, setSelectedDate,
     isEventModalOpen, setIsEventModalOpen,
-
-    // 시스템 공지
-    isAnnouncementModalOpen, setIsAnnouncementModalOpen,
 
     // 지점 공지
     selectedBranchAnnouncement, setSelectedBranchAnnouncement,
@@ -72,12 +67,6 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
 
   return (
     <div className="min-h-full bg-[var(--background)] animate-in fade-in duration-700">
-      {/* 시스템 공지 배너 */}
-      <SystemAnnouncementBanner
-        announcements={systemAnnouncements}
-        onBannerClick={() => setIsAnnouncementModalOpen(true)}
-      />
-
       <div className="space-y-6 xs:space-y-8 lg:space-y-12 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-100">
         {/* AI Command Center - 자연어 검색바 */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-250">
@@ -165,12 +154,6 @@ export function AdminDashboardContent({ serverUserName }: AdminDashboardContentP
         onOpenChange={setIsEventModalOpen}
         selectedDate={selectedDate}
         companyEvents={companyEvents}
-      />
-
-      <SystemAnnouncementModal
-        isOpen={isAnnouncementModalOpen}
-        onOpenChange={setIsAnnouncementModalOpen}
-        announcements={systemAnnouncements}
       />
 
       <BranchAnnouncementModal

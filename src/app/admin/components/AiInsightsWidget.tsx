@@ -71,7 +71,7 @@ const insightConfig = {
   },
 };
 
-export function AiInsightsWidget({ stats, gymName, gymId }: AiInsightsWidgetProps) {
+export function AiInsightsWidget({ stats: _stats, gymName, gymId }: AiInsightsWidgetProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isActionPlanOpen, setIsActionPlanOpen] = useState(false);

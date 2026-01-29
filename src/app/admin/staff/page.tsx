@@ -133,7 +133,7 @@ export default function AdminStaffPage(props: {
 
     if (data) {
       // gyms 배열을 객체로 변환
-      const transformedData = data.map((s: any) => ({
+      const transformedData = data.map((s: Staff & { gyms: { name: string }[] | { name: string } | null }) => ({
         ...s,
         gyms: Array.isArray(s.gyms) && s.gyms.length > 0 ? s.gyms[0] : s.gyms
       }));
@@ -256,7 +256,7 @@ export default function AdminStaffPage(props: {
             <Badge className="bg-amber-500 text-white border-none font-black px-3 py-1 rounded-lg">{pendingStaffs.length} PENDING</Badge>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {pendingStaffs.map((staff: any) => (
+            {pendingStaffs.map((staff: Staff) => (
               <div key={staff.id} className="flex items-center justify-between bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-amber-100 shadow-sm transition-all hover:shadow-md">
                 <div className="space-y-1">
                   <div className="font-black text-slate-900">{staff.name}</div>
@@ -290,7 +290,7 @@ export default function AdminStaffPage(props: {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {activeStaffs.map((staff: any) => (
+              {activeStaffs.map((staff: Staff) => (
                 <tr key={staff.id} className="group hover:bg-blue-50/30 transition-all duration-300">
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">

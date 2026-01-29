@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SelectedEvent } from "../../hooks/useStaffPageData";
-import { Pencil, X, Calendar as CalendarIcon, Clock, User, Info, Save, Activity, Target } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Pencil, X, Calendar as CalendarIcon, Clock, Info, Save } from "lucide-react";
 
 interface EditClassModalProps {
   isOpen: boolean;

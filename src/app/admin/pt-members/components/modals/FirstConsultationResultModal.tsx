@@ -17,7 +17,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +91,10 @@ export function FirstConsultationResultModal({ isOpen, onClose }: Props) {
     }));
   };
 
-  const updateChecklist = (key: keyof typeof formData.checklist, value: boolean | string) => {
+  type ChecklistKey = keyof typeof formData.checklist;
+  type ChecklistValue<K extends ChecklistKey> = typeof formData.checklist[K];
+
+  const updateChecklist = <K extends ChecklistKey>(key: K, value: ChecklistValue<K>) => {
     setFormData(prev => ({
       ...prev,
       checklist: { ...prev.checklist, [key]: value }
@@ -313,7 +315,7 @@ export function FirstConsultationResultModal({ isOpen, onClose }: Props) {
                 >
                   <Checkbox 
                     checked={formData.checklist[item.key as keyof typeof formData.checklist] as boolean}
-                    onCheckedChange={(checked) => updateChecklist(item.key as any, checked)}
+                    onCheckedChange={(checked) => updateChecklist(item.key as ChecklistKey, checked as boolean)}
                     className="w-5 h-5 rounded-lg border-slate-300 data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
                   />
                   <item.icon className="w-5 h-5 opacity-50" />

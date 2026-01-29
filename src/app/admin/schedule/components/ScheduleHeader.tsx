@@ -22,7 +22,7 @@ interface ScheduleHeaderProps {
 }
 
 export function ScheduleHeader({
-  userRole, userName, gymName,
+  userRole, userName: _userName, gymName,
   staffs, selectedStaffId,
   onStaffChange, onExportExcel
 }: ScheduleHeaderProps) {

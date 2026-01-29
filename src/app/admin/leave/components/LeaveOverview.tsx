@@ -4,9 +4,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
-import { Calendar, Clock, Search, User, UserCheck, PieChart } from "lucide-react";
+import { Clock, Search, User, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface LeaveSummary {
   staff_id: string;

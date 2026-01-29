@@ -81,7 +81,7 @@ export interface ComparisonCondition {
   type: 'comparison';
   field: string;
   operator: ComparisonOperator;
-  value: any;
+  value: string | number | boolean | string[] | number[];
 }
 
 export interface LogicalCondition {
@@ -197,7 +197,7 @@ export interface MonthlyMetrics {
   working_days?: number;
 
   // 확장 가능 (회사별 커스텀 변수)
-  [key: string]: any;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 export interface MonthlyPerformance {

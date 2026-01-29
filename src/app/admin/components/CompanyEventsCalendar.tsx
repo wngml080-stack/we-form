@@ -5,11 +5,20 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
+type CompanyEventType = 'general' | 'training' | 'meeting' | 'holiday' | 'celebration';
+
+interface CompanyEvent {
+  id: string;
+  event_date: string;
+  event_type: CompanyEventType;
+  title?: string;
+}
+
 interface CompanyEventsCalendarProps {
-  companyEvents: any[];
+  companyEvents: CompanyEvent[];
   currentMonth: Date;
   setCurrentMonth: (date: Date) => void;
-  onDateClick: (date: Date, events: any[]) => void;
+  onDateClick: (date: Date, events: CompanyEvent[]) => void;
 }
 
 export function CompanyEventsCalendar({
@@ -20,7 +29,7 @@ export function CompanyEventsCalendar({
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const startDayOfWeek = monthStart.getDay();
 
-  const eventsByDate: Record<string, any[]> = {};
+  const eventsByDate: Record<string, CompanyEvent[]> = {};
   companyEvents.forEach((event) => {
     const dateKey = event.event_date;
     if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];

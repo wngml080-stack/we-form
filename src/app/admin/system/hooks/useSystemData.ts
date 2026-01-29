@@ -61,6 +61,45 @@ export interface EditAnnouncementForm extends AnnouncementForm {
   id: string;
 }
 
+// 데이터 타입 정의
+export interface SystemCompany {
+  id: string;
+  name: string;
+  representative_name?: string;
+  contact_phone?: string;
+  status: string;
+  created_at?: string;
+}
+
+export interface SystemGym {
+  id: string;
+  name: string;
+  company_id: string;
+  category?: string;
+  size?: string;
+  open_date?: string;
+  memo?: string;
+  status: string;
+  created_at?: string;
+}
+
+export interface SystemStaff {
+  id: string;
+  name: string;
+  phone?: string;
+  job_title?: string;
+  role: string;
+  employment_status?: string;
+  gym_id?: string;
+  company_id?: string;
+  created_at?: string;
+}
+
+export interface SystemAnnouncement extends EditAnnouncementForm {
+  created_at?: string;
+  view_count?: number;
+}
+
 // Initial form values
 const initialGymForm: GymForm = { name: "", categories: [], size: "", open_date: "", memo: "" };
 const initialEditGymForm: EditGymForm = { id: "", name: "", categories: [], size: "", open_date: "", memo: "", status: "active" };
@@ -90,14 +129,14 @@ export const CATEGORY_OPTIONS = [
 export function useSystemData() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<SystemCompany[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // 확장 상태 관리
   const [expandedCompanies, setExpandedCompanies] = useState<Set<string>>(new Set());
   const [expandedGyms, setExpandedGyms] = useState<Set<string>>(new Set());
-  const [companyGyms, setCompanyGyms] = useState<Record<string, any[]>>({});
-  const [gymStaffs, setGymStaffs] = useState<Record<string, any[]>>({});
+  const [companyGyms, setCompanyGyms] = useState<Record<string, SystemGym[]>>({});
+  const [gymStaffs, setGymStaffs] = useState<Record<string, SystemStaff[]>>({});
 
   // 수정 모달 상태
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -121,7 +160,7 @@ export function useSystemData() {
   const [createCompanyForm, setCreateCompanyForm] = useState<CreateCompanyForm>(initialCreateCompanyForm);
 
   // 시스템 공지사항 상태
-  const [systemAnnouncements, setSystemAnnouncements] = useState<any[]>([]);
+  const [systemAnnouncements, setSystemAnnouncements] = useState<SystemAnnouncement[]>([]);
   const [isCreateAnnouncementOpen, setIsCreateAnnouncementOpen] = useState(false);
   const [isEditAnnouncementOpen, setIsEditAnnouncementOpen] = useState(false);
   const [announcementForm, setAnnouncementForm] = useState<AnnouncementForm>(initialAnnouncementForm);
@@ -205,12 +244,12 @@ export function useSystemData() {
       setIsCreateAnnouncementOpen(false);
       setAnnouncementForm(initialAnnouncementForm);
       fetchSystemAnnouncements();
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
-  const openEditAnnouncement = (announcement: any) => {
+  const openEditAnnouncement = (announcement: SystemAnnouncement) => {
     setEditAnnouncementForm({
       id: announcement.id,
       title: announcement.title || "",
@@ -252,8 +291,8 @@ export function useSystemData() {
       toast.success("시스템 공지사항이 수정되었습니다!");
       setIsEditAnnouncementOpen(false);
       fetchSystemAnnouncements();
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
@@ -270,8 +309,8 @@ export function useSystemData() {
 
       toast.success("공지사항이 삭제되었습니다.");
       fetchSystemAnnouncements();
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
@@ -290,8 +329,8 @@ export function useSystemData() {
       }
 
       fetchSystemAnnouncements();
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
@@ -363,13 +402,13 @@ export function useSystemData() {
       } else {
         toast.error("에러: " + result.error);
       }
-    } catch (error: any) {
+    } catch (error) {
       toast.error("에러: " + error.message);
     }
   };
 
   // 회사 수정
-  const openEdit = (e: any, comp: any) => {
+  const openEdit = (e: React.MouseEvent, comp: SystemCompany) => {
     e.stopPropagation();
     setEditForm({
       id: comp.id,
@@ -398,13 +437,13 @@ export function useSystemData() {
       } else {
         toast.error("수정 실패: " + result.error);
       }
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
   // 지점 CRUD
-  const openCreateGym = (e: any, companyId: string) => {
+  const openCreateGym = (e: React.MouseEvent, companyId: string) => {
     e.stopPropagation();
     setSelectedCompanyId(companyId);
     setGymForm(initialGymForm);
@@ -459,12 +498,12 @@ export function useSystemData() {
       if (gymsData) {
         setCompanyGyms(prev => ({ ...prev, [selectedCompanyId]: gymsData }));
       }
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
-  const openEditGym = (e: any, gym: any, companyId: string) => {
+  const openEditGym = (e: React.MouseEvent, gym: SystemGym, companyId: string) => {
     e.stopPropagation();
     const categories = gym.category ? gym.category.split(", ").map((c: string) => c.trim()) : [];
     setEditGymForm({
@@ -525,12 +564,12 @@ export function useSystemData() {
       if (gymsData) {
         setCompanyGyms(prev => ({ ...prev, [selectedCompanyId]: gymsData }));
       }
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
-  const handleDeleteGym = async (e: any, gymId: string, gymName: string, companyId: string) => {
+  const handleDeleteGym = async (e: React.MouseEvent, gymId: string, gymName: string, companyId: string) => {
     e.stopPropagation();
     if (!confirm(`'${gymName}' 지점을 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) return;
 
@@ -553,13 +592,13 @@ export function useSystemData() {
       if (gymsData) {
         setCompanyGyms(prev => ({ ...prev, [companyId]: gymsData }));
       }
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
   // 직원 CRUD
-  const openEditStaff = (e: any, staff: any, companyId: string) => {
+  const openEditStaff = (e: React.MouseEvent, staff: SystemStaff, companyId: string) => {
     e.stopPropagation();
     setEditStaffForm({
       id: staff.id,
@@ -613,12 +652,12 @@ export function useSystemData() {
           setGymStaffs(prev => ({ ...prev, [editStaffForm.gym_id]: staffsData }));
         }
       }
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
-  const handleDeleteStaff = async (e: any, staffId: string, staffName: string, gymId: string) => {
+  const handleDeleteStaff = async (e: React.MouseEvent, staffId: string, staffName: string, gymId: string) => {
     e.stopPropagation();
     if (!confirm(`'${staffName}' 직원을 삭제하시겠습니까?\n\n⚠️ 이 작업은 되돌릴 수 없습니다.`)) return;
 
@@ -641,8 +680,8 @@ export function useSystemData() {
       if (staffsData) {
         setGymStaffs(prev => ({ ...prev, [gymId]: staffsData }));
       }
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
@@ -674,8 +713,8 @@ export function useSystemData() {
       } else {
         toast.error("생성 실패: " + result.error);
       }
-    } catch (error: any) {
-      toast.error("오류 발생: " + error.message);
+    } catch (error) {
+      toast.error("오류 발생: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 

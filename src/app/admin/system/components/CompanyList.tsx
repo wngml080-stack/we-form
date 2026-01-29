@@ -1,27 +1,29 @@
 "use client";
 
+import React from "react";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building, Building2, Phone, User, Pencil, ChevronRight, ChevronDown, MapPin, Plus, Trash2, Dumbbell, Ruler, Calendar, FileText } from "lucide-react";
+import { Building, Building2, Phone, User, Pencil, ChevronDown, MapPin, Plus, Trash2, Dumbbell, Ruler, Calendar, FileText } from "lucide-react";
+import type { Company, Gym, Staff } from "@/types/database";
 
 interface CompanyListProps {
-  companies: any[];
+  companies: Company[];
   expandedCompanies: Set<string>;
   expandedGyms: Set<string>;
-  companyGyms: Record<string, any[]>;
-  gymStaffs: Record<string, any[]>;
+  companyGyms: Record<string, Gym[]>;
+  gymStaffs: Record<string, Staff[]>;
   onToggleCompany: (id: string) => void;
   onToggleGym: (id: string) => void;
   onStatusChange: (companyId: string, newStatus: string, companyName: string) => void;
-  onEditCompany: (e: any, comp: any) => void;
-  onCreateGym: (e: any, companyId: string) => void;
-  onEditGym: (e: any, gym: any, companyId: string) => void;
-  onDeleteGym: (e: any, gymId: string, gymName: string, companyId: string) => void;
-  onEditStaff: (e: any, staff: any, companyId: string) => void;
-  onDeleteStaff: (e: any, staffId: string, staffName: string, gymId: string) => void;
+  onEditCompany: (e: React.MouseEvent, comp: Company) => void;
+  onCreateGym: (e: React.MouseEvent, companyId: string) => void;
+  onEditGym: (e: React.MouseEvent, gym: Gym, companyId: string) => void;
+  onDeleteGym: (e: React.MouseEvent, gymId: string, gymName: string, companyId: string) => void;
+  onEditStaff: (e: React.MouseEvent, staff: Staff, companyId: string) => void;
+  onDeleteStaff: (e: React.MouseEvent, staffId: string, staffName: string, gymId: string) => void;
   getRoleBadge: (role: string) => { label: string; color: string };
 }
 

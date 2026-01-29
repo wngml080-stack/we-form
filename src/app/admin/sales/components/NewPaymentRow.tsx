@@ -16,10 +16,15 @@ interface NewRow {
   memo?: string;
 }
 
+interface PaymentMethod {
+  code: string;
+  name: string;
+}
+
 interface NewPaymentRowProps {
   row: NewRow;
-  allPaymentMethods: any[];
-  onUpdate: (rowId: string, field: string, value: any) => void;
+  allPaymentMethods: PaymentMethod[];
+  onUpdate: (rowId: string, field: string, value: string | number) => void;
   onSave: (rowId: string) => void;
   onRemove: (rowId: string) => void;
 }
@@ -82,7 +87,7 @@ export function NewPaymentRow({ row, allPaymentMethods, onUpdate, onSave, onRemo
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-white">
-            {allPaymentMethods.map((method: any) => (
+            {allPaymentMethods.map((method: PaymentMethod) => (
               <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
             ))}
           </SelectContent>

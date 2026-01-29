@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Book, FileText, Dumbbell, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, Clock, Target, Activity, Users, Calendar, ClipboardList, Sparkles, MessageSquare, AlertTriangle, ArrowRight } from "lucide-react";
+import { X, Book, FileText, Dumbbell, RefreshCw, ChevronDown, ChevronUp, CheckCircle2, Target, Activity, ClipboardList, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

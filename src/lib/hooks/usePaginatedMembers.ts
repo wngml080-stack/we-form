@@ -1,5 +1,4 @@
 import useSWR from 'swr';
-import { useState, useEffect } from 'react';
 
 interface UsePaginatedMembersParams {
   gymId: string | null;

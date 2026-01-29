@@ -1,13 +1,12 @@
 "use client";
 
-import { Package, X, User, Phone, ShoppingBag, CreditCard, Banknote, History, Save, Info } from "lucide-react";
+import { Package, X, User, Phone, ShoppingBag, History, Save, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AddonForm } from "../../hooks/useAdminDashboardData";
-import { cn } from "@/lib/utils";
 
 interface AddonModalProps {
   isOpen: boolean;

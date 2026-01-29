@@ -9,8 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Phone, Calendar, User, Clock, X, ArrowRight,
-  MessageSquare, CheckCircle, AlertCircle
+  Phone, Calendar, User, Clock, X, ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";

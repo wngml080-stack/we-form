@@ -9,6 +9,104 @@ import { ko } from "date-fns/locale";
 import { toast } from "@/lib/toast";
 
 // Types
+export type ScheduleStatus = "reserved" | "completed" | "no_show" | "no_show_deducted" | "service";
+
+export type ScheduleType = "PT" | "consultation" | "etc";
+
+export type AnnouncementPriority = "low" | "normal" | "high" | "urgent";
+
+export interface TodaySchedule {
+  id: string;
+  member_name: string;
+  type: ScheduleType;
+  status: ScheduleStatus;
+  start_time: string;
+  end_time: string;
+  staff_id: string;
+  staffs: { name: string } | null;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  company_id: string;
+  gym_id: string | null;
+  priority: AnnouncementPriority;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyEvent {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date?: string;
+  company_id: string;
+  gym_id?: string;
+  created_at: string;
+}
+
+export interface SystemAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface RecentLog {
+  id: string;
+  type: string;
+  amount: number;
+  member_name?: string;
+  customer_name?: string;
+  product_name?: string;
+  created_at: string;
+  payment_method: string;
+}
+
+export interface RecentLogsSummary {
+  totalCount: number;
+  totalAmount: number;
+  byType: Record<string, { count: number; amount: number }>;
+}
+
+export interface MemberSearchResult {
+  id: string;
+  name: string;
+  phone: string;
+  membership_type?: string;
+  remaining_sessions?: number;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  category?: string;
+  is_active: boolean;
+  membership_type?: string;
+  default_sessions?: number | null;
+  default_price?: number | null;
+}
+
+export interface Staff {
+  id: string;
+  name: string;
+  job_title?: string;
+}
+
+export interface Member {
+  id: string;
+  name: string;
+  phone: string;
+  membership_type?: string;
+  status?: string;
+}
+
 export interface DashboardStats {
   totalMembers: number;
   activeMembers: number;
@@ -69,10 +167,10 @@ export function useAdminDashboardData() {
     totalMembers: 0, activeMembers: 0, todaySchedules: 0, todaySales: 0,
     monthSales: 0, newMembersThisMonth: 0, totalPTMembers: 0, activePTMembers: 0, ghostMembers: 0
   });
-  const [todaySchedules, setTodaySchedules] = useState<any[]>([]);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [companyEvents, setCompanyEvents] = useState<any[]>([]);
-  const [systemAnnouncements, setSystemAnnouncements] = useState<any[]>([]);
+  const [todaySchedules, setTodaySchedules] = useState<TodaySchedule[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [companyEvents, setCompanyEvents] = useState<CompanyEvent[]>([]);
+  const [systemAnnouncements, setSystemAnnouncements] = useState<SystemAnnouncement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // 달력 관련 상태
@@ -87,26 +185,26 @@ export function useAdminDashboardData() {
   const [statsViewMode, setStatsViewMode] = useState<'monthly' | '3month' | '6month' | 'firstHalf' | 'secondHalf'>('monthly');
 
   // 지점 공지사항 모달 상태
-  const [selectedBranchAnnouncement, setSelectedBranchAnnouncement] = useState<any>(null);
+  const [selectedBranchAnnouncement, setSelectedBranchAnnouncement] = useState<Announcement | null>(null);
   const [isBranchAnnouncementModalOpen, setIsBranchAnnouncementModalOpen] = useState(false);
 
   // 등록 모달 상태
   const [isNewMemberModalOpen, setIsNewMemberModalOpen] = useState(false);
   const [isExistingMemberModalOpen, setIsExistingMemberModalOpen] = useState(false);
   const [isAddonModalOpen, setIsAddonModalOpen] = useState(false);
-  const [recentLogs, setRecentLogs] = useState<any[]>([]);
-  const [recentLogsSummary, setRecentLogsSummary] = useState<any>(null);
+  const [recentLogs, setRecentLogs] = useState<RecentLog[]>([]);
+  const [recentLogsSummary, setRecentLogsSummary] = useState<RecentLogsSummary | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // 폼 상태
   const [newMemberForm, setNewMemberForm] = useState<NewMemberForm>(initialNewMemberForm);
   const [existingMemberForm, setExistingMemberForm] = useState<ExistingMemberForm>(initialExistingMemberForm);
-  const [memberSearchResults, setMemberSearchResults] = useState<any[]>([]);
+  const [memberSearchResults, setMemberSearchResults] = useState<MemberSearchResult[]>([]);
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [addonForm, setAddonForm] = useState<AddonForm>(initialAddonForm);
-  const [products, setProducts] = useState<any[]>([]);
-  const [staffList, setStaffList] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
 
   // Supabase 클라이언트
   const supabase = useMemo(() => createSupabaseClient(), []);
@@ -228,7 +326,7 @@ export function useAdminDashboardData() {
     setTodaySchedules(schedules);
     setAnnouncements(announcementsResult.data || []);
     setCompanyEvents(eventsResult || []);
-    const activeSystemAnnouncements = (systemAnnouncementsData || []).filter((a: any) => a.is_active);
+    const activeSystemAnnouncements = (systemAnnouncementsData || []).filter((a: SystemAnnouncement) => a.is_active);
     setSystemAnnouncements(activeSystemAnnouncements);
 
     // 회원/매출 관련 통계 - 임시 비활성화 (테이블 재연결 예정)

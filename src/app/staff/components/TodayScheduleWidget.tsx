@@ -1,8 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+type ScheduleItem = {
+  id: string;
+  start_time: string;
+  end_time: string;
+  type: string;
+  member_name?: string;
+  trainer_name?: string;
+  status: string;
+};
+
 interface TodayScheduleWidgetProps {
-  schedules: any[];
+  schedules: ScheduleItem[];
   onViewAll: () => void;
 }
 

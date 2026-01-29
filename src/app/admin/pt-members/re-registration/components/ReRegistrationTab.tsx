@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Users, BarChart3, Calendar, Layers, Sparkles, Target, ArrowRight } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, BarChart3, Calendar, Sparkles, Target, ArrowRight } from "lucide-react";
 import { useReRegistrationData } from "../hooks/useReRegistrationData";
 import { TargetMembersView } from "./TargetMembersView";
 import { MonthlyStatsSection } from "./MonthlyStatsSection";

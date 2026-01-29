@@ -12,9 +12,53 @@ import { ScheduleHeader } from "./components/ScheduleHeader";
 import { ScheduleControls } from "./components/ScheduleControls";
 import { AttendanceSection } from "./components/AttendanceSection";
 import { StaffSelectionPrompt } from "./components/StaffSelectionPrompt";
-import { useSchedulePageData } from "./hooks/useSchedulePageData";
+import { useSchedulePageData, ScheduleItem } from "./hooks/useSchedulePageData";
 import { useScheduleOperations } from "./hooks/useScheduleOperations";
 import { exportSchedulesToExcel } from "./utils/excelExport";
+
+// 회원권 멤버십 데이터 타입 (DB에서 조회한 형태)
+type MemberMembershipData = {
+  id: string;
+  member_id: string;
+  name: string;
+  total_sessions: number | null;
+  used_sessions: number | null;
+  service_sessions?: number | null;
+  used_service_sessions?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  status: string;
+};
+
+// 스케줄 생성 시 사용하는 데이터 타입
+type ScheduleInsertData = {
+  gym_id: string;
+  staff_id: string;
+  type: string;
+  start_time: string;
+  end_time: string;
+  schedule_type: string;
+  member_id?: string;
+  member_name?: string;
+  title?: string;
+  status?: string;
+  counted_for_salary?: boolean;
+  inbody_checked?: boolean;
+};
+
+// 스케줄 수정 시 사용하는 데이터 타입
+type ScheduleUpdateData = {
+  type?: string;
+  start_time?: string;
+  end_time?: string;
+  schedule_type?: string;
+  member_id?: string;
+  member_name?: string;
+  title?: string;
+  status?: string;
+  sub_type?: string;
+  inbody_checked?: boolean;
+};
 
 // Dynamic imports for modals (코드 스플리팅으로 초기 로드 성능 개선)
 const CreateScheduleModal = dynamicImport(
@@ -98,7 +142,7 @@ export default function AdminSchedulePage(props: {
   };
 
   // 스케줄 클릭 (락 체크 추가)
-  const handleScheduleClick = (schedule: any) => {
+  const handleScheduleClick = (schedule: ScheduleItem) => {
     // 상세 정보 모달은 잠금 여부와 상관없이 열리도록 유지 (QuickStatusModal 내부에서 버튼이 비활성화됨)
     baseHandleScheduleClick(schedule);
   };
@@ -139,7 +183,7 @@ export default function AdminSchedulePage(props: {
       }
 
       const memberships = memberMemberships[createForm.member_id] || [];
-      const ptMembership = memberships.find((m: any) =>
+      const ptMembership = memberships.find((m: MemberMembershipData) =>
         m.name?.toLowerCase().includes('pt') || m.name?.includes('피티')
       );
 
@@ -194,7 +238,7 @@ export default function AdminSchedulePage(props: {
       }
 
       const scheduleType = classifyScheduleType(startDate, workStartTime, workEndTime);
-      const scheduleData: any = {
+      const scheduleData: ScheduleInsertData = {
         gym_id: selectedGymId,
         staff_id: targetStaffId,
         type: createForm.type,
@@ -327,7 +371,7 @@ export default function AdminSchedulePage(props: {
       if (needsMembershipUpdate) {
         const scheduleType = classifyScheduleType(startDate, workStartTime, workEndTime);
         const selectedMember = members.find(m => m.id === editForm.member_id);
-        const updateData: any = {
+        const updateData: ScheduleUpdateData = {
           type: editForm.type,
           start_time: startDate.toISOString(),
           end_time: endDate.toISOString(),
@@ -365,9 +409,9 @@ export default function AdminSchedulePage(props: {
             .eq("status", "active");
 
           if (membershipData) {
-            const grouped = membershipData.reduce((acc: Record<string, any[]>, m) => {
+            const grouped = membershipData.reduce((acc: Record<string, MemberMembershipData[]>, m) => {
               if (!acc[m.member_id]) acc[m.member_id] = [];
-              acc[m.member_id].push(m);
+              acc[m.member_id].push(m as MemberMembershipData);
               return acc;
             }, {});
             setMemberMemberships(grouped);
@@ -375,7 +419,7 @@ export default function AdminSchedulePage(props: {
         }
       } else {
         const scheduleType = classifyScheduleType(startDate, workStartTime, workEndTime);
-        const updateData: any = {
+        const updateData: ScheduleUpdateData = {
           start_time: startDate.toISOString(),
           end_time: endDate.toISOString(),
           schedule_type: scheduleType,

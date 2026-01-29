@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, CreditCard, Banknote, X, Check, Edit2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 interface EditingCell {
   id: string;
@@ -38,7 +39,7 @@ const REGISTRATION_TYPE_COLORS: Record<string, string> = {
 };
 
 const getMethodBadge = (method: string) => {
-  const config: Record<string, { label: string; color: string; icon: any }> = {
+  const config: Record<string, { label: string; color: string; icon: LucideIcon }> = {
     card: { label: "카드", color: "bg-blue-100 text-blue-700", icon: CreditCard },
     cash: { label: "현금", color: "bg-emerald-100 text-emerald-700", icon: Banknote },
     transfer: { label: "계좌이체", color: "bg-purple-100 text-purple-700", icon: DollarSign }
@@ -46,12 +47,42 @@ const getMethodBadge = (method: string) => {
   return config[method] || { label: method, color: "bg-gray-100 text-gray-700", icon: DollarSign };
 };
 
+interface PaymentMember {
+  name: string | null;
+  phone: string | null;
+}
+
+interface Payment {
+  id: string;
+  paid_at: string;
+  amount: string;
+  total_amount?: string;
+  method: string;
+  membership_type?: string;
+  registration_type?: string;
+  visit_route?: string;
+  memo?: string;
+  installment_count?: number;
+  installment_current?: number;
+  members?: PaymentMember;
+  [key: string]: string | number | boolean | PaymentMember | undefined;
+}
+
+interface MembershipType {
+  name: string;
+}
+
+interface PaymentMethod {
+  code: string;
+  name: string;
+}
+
 interface PaymentRowProps {
-  payment: any;
+  payment: Payment;
   editingCell: EditingCell | null;
   editValue: string;
-  allMembershipTypes: any[];
-  allPaymentMethods: any[];
+  allMembershipTypes: MembershipType[];
+  allPaymentMethods: PaymentMethod[];
   onStartEditing: (id: string, field: string, value: string) => void;
   onSaveEdit: (id: string, field: string) => void;
   onCancelEdit: () => void;
@@ -119,11 +150,16 @@ export function PaymentRow({
     );
   };
 
-  const getFieldValue = (field: string) => {
+  const getFieldValue = (field: string): string => {
     switch (field) {
       case "paid_at": return formatDate(new Date(payment.paid_at));
       case "amount": return payment.amount?.toString() || "0";
-      default: return payment[field] || "";
+      default: {
+        const value = payment[field];
+        if (typeof value === "string") return value;
+        if (typeof value === "number") return value.toString();
+        return "";
+      }
     }
   };
 
@@ -219,7 +255,7 @@ export function PaymentRow({
 
       {/* 분할정보 */}
       <td className="px-4 py-3 text-gray-600">
-        {payment.installment_count > 1 ? (
+        {(payment.installment_count ?? 0) > 1 ? (
           <div className="text-sm">
             <span className="font-medium text-[#2F80ED]">{payment.installment_current}/{payment.installment_count}</span>
             <span className="text-gray-500"> 회차</span>

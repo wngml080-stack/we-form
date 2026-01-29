@@ -3,7 +3,7 @@
 import { useState, use } from "react";
 import Link from "next/link";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
-import { usePTMembersData, MemberTrainer } from "./hooks/usePTMembersData";
+import { usePTMembersSWR, MemberTrainer } from "./hooks/usePTMembersSWR";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,9 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users, Dumbbell, DollarSign, Clock, Search, Phone, User, RefreshCw,
-  ChevronLeft, ChevronRight, Calendar, Target, TrendingUp, Award, BarChart3,
-  Layers, UserCheck, AlertTriangle, ArrowRight, Activity, Filter, Info
+  Users, Dumbbell, Search, UserCheck, AlertTriangle
 } from "lucide-react";
 import { MemberKanbanBoard } from "./components/MemberKanbanBoard";
 import { ReRegistrationTab } from "./re-registration/components";
@@ -26,8 +24,8 @@ import { TrainerAssignModal } from "./components/modals/TrainerAssignModal";
 import { TrainerTransferModal } from "./components/modals/TrainerTransferModal";
 
 export default function PTMembersPage(props: {
-  params: Promise<any>;
-  searchParams: Promise<any>;
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   use(props.params);
   use(props.searchParams);
@@ -39,7 +37,6 @@ export default function PTMembersPage(props: {
     ptMembers,
     staffList,
     extendedStats,
-    membersByTrainer,
     isLoading,
     trainerFilter,
     setTrainerFilter,
@@ -53,10 +50,6 @@ export default function PTMembersPage(props: {
     setSelectedMemberIds,
     memberCategory,
     setMemberCategory,
-    periodFilter,
-    changePeriod,
-    navigateMonth,
-    dateRange,
     // 회원 상세 모달
     isMemberDetailOpen, setIsMemberDetailOpen,
     selectedMember,
@@ -77,18 +70,11 @@ export default function PTMembersPage(props: {
     handleAssignTrainer,
     handleTransferTrainer,
     handleDeleteTrainer
-  } = usePTMembersData({
+  } = usePTMembersSWR({
     selectedGymId,
     selectedCompanyId,
     filterInitialized: isInitialized
   });
-
-  const formatCurrency = (amount: number) => {
-    if (amount >= 10000) {
-      return `${Math.round(amount / 10000)}만`;
-    }
-    return new Intl.NumberFormat("ko-KR").format(amount);
-  };
 
   const formatFullCurrency = (amount: number) => {
     return new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW" }).format(amount);
@@ -342,21 +328,27 @@ export default function PTMembersPage(props: {
       <MemberDetailModal
         isOpen={isMemberDetailOpen}
         onClose={() => setIsMemberDetailOpen(false)}
-        member={selectedMember}
-        paymentHistory={memberPaymentHistory}
-        allMemberships={memberAllMemberships}
-        activityLogs={memberActivityLogs}
+        member={selectedMember ? {
+          id: selectedMember.id,
+          name: selectedMember.member_name,
+          phone: selectedMember.phone,
+          trainer_id: selectedMember.trainer_id
+        } : null}
+        paymentHistory={memberPaymentHistory as { id: string; sale_type: string; amount: number; created_at: string }[]}
+        allMemberships={memberAllMemberships as { id: string; name: string; total_sessions: number; used_sessions: number; start_date: string; end_date: string; status: string }[]}
+        activityLogs={memberActivityLogs as { id: string; action_type: string; description: string; created_at: string }[]}
         onEditMember={() => {}}
         onEditMembership={() => {}}
         onDeleteMembership={async () => {}}
         onEditAddon={() => {}}
         onTransferMembership={() => {}}
-        // 트레이너 관련 props
         memberTrainers={memberTrainers}
         staffList={staffList}
         isAdmin={isAdmin}
         onAssignTrainer={openTrainerAssignModal}
-        onTransferTrainer={openTrainerTransferModal}
+        onTransferTrainer={(trainer, category, isPt) => {
+          if (trainer) openTrainerTransferModal(trainer, category, isPt);
+        }}
         onDeleteTrainer={handleDeleteTrainer}
       />
 
@@ -364,10 +356,10 @@ export default function PTMembersPage(props: {
       <TrainerAssignModal
         isOpen={isTrainerAssignOpen}
         onClose={() => setIsTrainerAssignOpen(false)}
-        memberName={selectedMember?.name || ""}
+        memberName={selectedMember?.member_name || ""}
         staffList={staffList}
         isLoading={isLoading}
-        onSubmit={handleAssignTrainer}
+        onSubmit={(data) => handleAssignTrainer(data.trainer_id, data.category, false)}
         existingCategories={memberTrainers.map((t: MemberTrainer) => t.category)}
       />
 
@@ -375,35 +367,15 @@ export default function PTMembersPage(props: {
       <TrainerTransferModal
         isOpen={isTrainerTransferOpen}
         onClose={() => setIsTrainerTransferOpen(false)}
-        memberName={selectedMember?.name || ""}
+        memberName={selectedMember?.member_name || ""}
         category={trainerTransferCategory}
-        fromTrainer={
-          isPtTransfer
-            ? (selectedMember?.trainer || null)
-            : (trainerTransferTarget?.trainer || null)
-        }
+        fromTrainer={trainerTransferTarget?.trainer || null}
         staffList={staffList}
         isLoading={isLoading}
-        onSubmit={handleTransferTrainer}
+        onSubmit={(data) => handleTransferTrainer(data.to_trainer_id)}
         memberTrainerId={trainerTransferTarget?.id}
         isPtTransfer={isPtTransfer}
       />
     </div>
-  );
-}
-
-function PlusCircle(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" /><path d="M8 12h8" /><path d="M12 8v8" />
-    </svg>
-  );
-}
-
-function X(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-    </svg>
   );
 }

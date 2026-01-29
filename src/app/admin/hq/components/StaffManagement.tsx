@@ -3,13 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Users, Pencil, Activity, Clock, MapPin, Calendar, User } from "lucide-react";
-import { Activity as ActivityType } from "../hooks/useHqData";
+import { Activity as ActivityType, HqStaff } from "../hooks/useHqData";
 
 interface StaffManagementProps {
-  allStaffs: any[];
+  allStaffs: HqStaff[];
   selectedGymFilter: string;
-  onEditClick: (staff: any) => void;
-  pendingStaffs: any[];
+  onEditClick: (staff: HqStaff) => void;
+  pendingStaffs: HqStaff[];
   recentActivities: ActivityType[];
   formatDate: (value?: string | null) => string;
 }
@@ -50,7 +50,7 @@ export function StaffManagement({
             </div>
           ) : (
             <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {filteredStaffs.map((staff: any) => {
+              {filteredStaffs.map((staff) => {
                 const gymName = staff.gyms?.name || '미배정';
                 const roleText = staff.role === 'admin' ? '관리자' : staff.role === 'company_admin' ? '본사 관리자' : '직원';
                 const statusColor = staff.employment_status === '재직' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :

@@ -23,6 +23,14 @@ import {
 } from "../types";
 import { cn } from "@/lib/utils";
 
+// Type definitions for stage checklist items
+type Stage1ItemKey = "roadmapShared" | "habitFormation" | "firstInbody" | "dataOrganized" | "positiveFeedback";
+type Stage2ItemKey = "goalProgress" | "satisfaction" | "remainingPlan" | "goalReset" | "memberFeedback";
+type Stage3ItemKey = "dataVisualization" | "beforeAfterPhotos" | "futureRoadmap" | "promotionCheck" | "consultationDone" | "reactionRecorded";
+type Stage4ItemKey = "lastBenefit" | "concernResolved" | "afterPlan" | "finalDecision";
+type Stage5ItemKey = "newRegistration" | "nextGoal" | "programUpgrade" | "pausePeriod" | "returnDate" | "monthlyContact" | "terminationReason" | "exerciseGuide" | "futureContact";
+type FinalOutcome = "reRegistered" | "paused" | "terminated";
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -73,9 +81,12 @@ export function ConsultationRecordModal({
   const updateChecklistItem = (stageIndex: number, itemKey: string, value: boolean) => {
     setFormData((prev) => {
       const newChecklists = [...prev.stageChecklists];
-      const stage = { ...newChecklists[stageIndex] };
-      stage.items = { ...stage.items, [itemKey]: value };
-      newChecklists[stageIndex] = stage as any;
+      const stage = newChecklists[stageIndex];
+      const updatedStage = {
+        ...stage,
+        items: { ...stage.items, [itemKey]: value },
+      };
+      newChecklists[stageIndex] = updatedStage as typeof stage;
       return { ...prev, stageChecklists: newChecklists };
     });
   };
@@ -469,17 +480,17 @@ export function ConsultationRecordModal({
                 {/* Stage 1 Checklist */}
                 {formData.progressPercentage > 70 && (
                   <>
-                    {[
-                      { key: "roadmapShared", label: "OT에서 12주 로드맵 공유 완료" },
-                      { key: "habitFormation", label: "첫 2주: 운동 습관 형성 집중" },
-                      { key: "firstInbody", label: "4주차: 첫 번째 인바디 측정" },
-                      { key: "dataOrganized", label: "변화 데이터 정리 (체중/근육 등)" },
-                      { key: "positiveFeedback", label: "긍정적 변화 피드백 전달" },
-                    ].map((item) => (
+                    {([
+                      { key: "roadmapShared" as Stage1ItemKey, label: "OT에서 12주 로드맵 공유 완료" },
+                      { key: "habitFormation" as Stage1ItemKey, label: "첫 2주: 운동 습관 형성 집중" },
+                      { key: "firstInbody" as Stage1ItemKey, label: "4주차: 첫 번째 인바디 측정" },
+                      { key: "dataOrganized" as Stage1ItemKey, label: "변화 데이터 정리 (체중/근육 등)" },
+                      { key: "positiveFeedback" as Stage1ItemKey, label: "긍정적 변화 피드백 전달" },
+                    ]).map((item) => (
                       <label key={item.key} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer hover:border-indigo-200 transition-all">
                         <input
                           type="checkbox"
-                          checked={(formData.stageChecklists[0].items as any)[item.key]}
+                          checked={(formData.stageChecklists[0].items as Record<Stage1ItemKey, boolean>)[item.key]}
                           onChange={(e) => updateChecklistItem(0, item.key, e.target.checked)}
                           className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
@@ -492,17 +503,17 @@ export function ConsultationRecordModal({
                 {/* Stage 2 Checklist */}
                 {formData.progressPercentage <= 70 && formData.progressPercentage > 50 && (
                   <>
-                    {[
-                      { key: "goalProgress", label: "목표 달성도 점검" },
-                      { key: "satisfaction", label: "프로그램 만족도 확인" },
-                      { key: "remainingPlan", label: "남은 기간 계획 논의" },
-                      { key: "goalReset", label: "필요시 목표 재설정" },
-                      { key: "memberFeedback", label: "회원 피드백 청취" },
-                    ].map((item) => (
+                    {([
+                      { key: "goalProgress" as Stage2ItemKey, label: "목표 달성도 점검" },
+                      { key: "satisfaction" as Stage2ItemKey, label: "프로그램 만족도 확인" },
+                      { key: "remainingPlan" as Stage2ItemKey, label: "남은 기간 계획 논의" },
+                      { key: "goalReset" as Stage2ItemKey, label: "필요시 목표 재설정" },
+                      { key: "memberFeedback" as Stage2ItemKey, label: "회원 피드백 청취" },
+                    ]).map((item) => (
                       <label key={item.key} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer hover:border-indigo-200 transition-all">
                         <input
                           type="checkbox"
-                          checked={(formData.stageChecklists[1].items as any)[item.key]}
+                          checked={(formData.stageChecklists[1].items as Record<Stage2ItemKey, boolean>)[item.key]}
                           onChange={(e) => updateChecklistItem(1, item.key, e.target.checked)}
                           className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
@@ -515,18 +526,18 @@ export function ConsultationRecordModal({
                 {/* Stage 3 Checklist (CORE) */}
                 {formData.progressPercentage <= 50 && formData.progressPercentage > 30 && (
                   <>
-                    {[
-                      { key: "dataVisualization", label: "전체 변화 데이터 시각화 준비" },
-                      { key: "beforeAfterPhotos", label: "비포/애프터 사진 정리" },
-                      { key: "futureRoadmap", label: "향후 3~6개월 로드맵 준비" },
-                      { key: "promotionCheck", label: "현재 프로모션/이벤트 확인" },
-                      { key: "consultationDone", label: "재등록 상담 진행" },
-                      { key: "reactionRecorded", label: "회원 반응 기록" },
-                    ].map((item) => (
+                    {([
+                      { key: "dataVisualization" as Stage3ItemKey, label: "전체 변화 데이터 시각화 준비" },
+                      { key: "beforeAfterPhotos" as Stage3ItemKey, label: "비포/애프터 사진 정리" },
+                      { key: "futureRoadmap" as Stage3ItemKey, label: "향후 3~6개월 로드맵 준비" },
+                      { key: "promotionCheck" as Stage3ItemKey, label: "현재 프로모션/이벤트 확인" },
+                      { key: "consultationDone" as Stage3ItemKey, label: "재등록 상담 진행" },
+                      { key: "reactionRecorded" as Stage3ItemKey, label: "회원 반응 기록" },
+                    ]).map((item) => (
                       <label key={item.key} className="flex items-center gap-3 p-3 bg-white rounded-xl border-2 border-orange-100 cursor-pointer hover:border-orange-200 transition-all">
                         <input
                           type="checkbox"
-                          checked={(formData.stageChecklists[2].items as any)[item.key]}
+                          checked={(formData.stageChecklists[2].items as Record<Stage3ItemKey, boolean>)[item.key]}
                           onChange={(e) => updateChecklistItem(2, item.key, e.target.checked)}
                           className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
                         />
@@ -539,16 +550,16 @@ export function ConsultationRecordModal({
                 {/* Stage 4 Checklist */}
                 {formData.progressPercentage <= 30 && formData.progressPercentage > 10 && (
                   <>
-                    {[
-                      { key: "lastBenefit", label: "마지막 혜택 안내" },
-                      { key: "concernResolved", label: "고민 요인 파악 및 해소" },
-                      { key: "afterPlan", label: "종료 후 계획 논의" },
-                      { key: "finalDecision", label: "최종 결정 확인" },
-                    ].map((item) => (
+                    {([
+                      { key: "lastBenefit" as Stage4ItemKey, label: "마지막 혜택 안내" },
+                      { key: "concernResolved" as Stage4ItemKey, label: "고민 요인 파악 및 해소" },
+                      { key: "afterPlan" as Stage4ItemKey, label: "종료 후 계획 논의" },
+                      { key: "finalDecision" as Stage4ItemKey, label: "최종 결정 확인" },
+                    ]).map((item) => (
                       <label key={item.key} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer hover:border-indigo-200 transition-all">
                         <input
                           type="checkbox"
-                          checked={(formData.stageChecklists[3].items as any)[item.key]}
+                          checked={(formData.stageChecklists[3].items as Record<Stage4ItemKey, boolean>)[item.key]}
                           onChange={(e) => updateChecklistItem(3, item.key, e.target.checked)}
                           className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
@@ -562,11 +573,11 @@ export function ConsultationRecordModal({
                 {formData.progressPercentage <= 10 && (
                   <div className="col-span-full space-y-4">
                     <div className="flex gap-2">
-                      {["reRegistered", "paused", "terminated"].map((outcome) => (
+                      {(["reRegistered", "paused", "terminated"] as FinalOutcome[]).map((outcome) => (
                         <Button
                           key={outcome}
                           variant={formData.finalOutcome === outcome ? "default" : "outline"}
-                          onClick={() => updateField("finalOutcome", outcome as any)}
+                          onClick={() => updateField("finalOutcome", outcome)}
                           className={cn(
                             "flex-1 h-12 rounded-xl font-black text-xs",
                             formData.finalOutcome === outcome && outcome === "reRegistered" ? "bg-emerald-600 hover:bg-emerald-700" :
@@ -574,7 +585,7 @@ export function ConsultationRecordModal({
                             formData.finalOutcome === outcome && outcome === "terminated" ? "bg-rose-600 hover:bg-rose-700" : ""
                           )}
                         >
-                          {outcome === "reRegistered" ? "✅ 재등록 완료" : 
+                          {outcome === "reRegistered" ? "✅ 재등록 완료" :
                            outcome === "paused" ? "⏸️ 휴회" : "❌ 종료"}
                         </Button>
                       ))}
@@ -582,31 +593,31 @@ export function ConsultationRecordModal({
                     
                     {formData.finalOutcome && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
-                        {formData.finalOutcome === "reRegistered" && [
-                          { key: "newRegistration", label: "새 등록 정보 업데이트" },
-                          { key: "nextGoal", label: "다음 단계 목표 설정" },
-                          { key: "programUpgrade", label: "프로그램 업그레이드 논의" },
-                        ].map(item => (
+                        {formData.finalOutcome === "reRegistered" && ([
+                          { key: "newRegistration" as Stage5ItemKey, label: "새 등록 정보 업데이트" },
+                          { key: "nextGoal" as Stage5ItemKey, label: "다음 단계 목표 설정" },
+                          { key: "programUpgrade" as Stage5ItemKey, label: "프로그램 업그레이드 논의" },
+                        ]).map(item => (
                           <label key={item.key} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-emerald-100 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={(formData.stageChecklists[4].items as any)[item.key]}
+                              checked={(formData.stageChecklists[4].items as Record<Stage5ItemKey, boolean>)[item.key]}
                               onChange={(e) => updateChecklistItem(4, item.key, e.target.checked)}
                               className="w-4 h-4 rounded border-emerald-300 text-emerald-600"
                             />
                             <span className="text-sm font-bold text-emerald-800">{item.label}</span>
                           </label>
                         ))}
-                        
-                        {formData.finalOutcome === "paused" && [
-                          { key: "pausePeriod", label: "휴회 기간 확인" },
-                          { key: "returnDate", label: "복귀 예정일 기록" },
-                          { key: "monthlyContact", label: "월 1회 안부 연락 스케줄" },
-                        ].map(item => (
+
+                        {formData.finalOutcome === "paused" && ([
+                          { key: "pausePeriod" as Stage5ItemKey, label: "휴회 기간 확인" },
+                          { key: "returnDate" as Stage5ItemKey, label: "복귀 예정일 기록" },
+                          { key: "monthlyContact" as Stage5ItemKey, label: "월 1회 안부 연락 스케줄" },
+                        ]).map(item => (
                           <label key={item.key} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-amber-100 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={(formData.stageChecklists[4].items as any)[item.key]}
+                              checked={(formData.stageChecklists[4].items as Record<Stage5ItemKey, boolean>)[item.key]}
                               onChange={(e) => updateChecklistItem(4, item.key, e.target.checked)}
                               className="w-4 h-4 rounded border-amber-300 text-amber-600"
                             />
@@ -614,15 +625,15 @@ export function ConsultationRecordModal({
                           </label>
                         ))}
 
-                        {formData.finalOutcome === "terminated" && [
-                          { key: "terminationReason", label: "종료 사유 기록" },
-                          { key: "exerciseGuide", label: "개인 운동 가이드 제공" },
-                          { key: "futureContact", label: "3개월 후 연락 스케줄 등록" },
-                        ].map(item => (
+                        {formData.finalOutcome === "terminated" && ([
+                          { key: "terminationReason" as Stage5ItemKey, label: "종료 사유 기록" },
+                          { key: "exerciseGuide" as Stage5ItemKey, label: "개인 운동 가이드 제공" },
+                          { key: "futureContact" as Stage5ItemKey, label: "3개월 후 연락 스케줄 등록" },
+                        ]).map(item => (
                           <label key={item.key} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-rose-100 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={(formData.stageChecklists[4].items as any)[item.key]}
+                              checked={(formData.stageChecklists[4].items as Record<Stage5ItemKey, boolean>)[item.key]}
                               onChange={(e) => updateChecklistItem(4, item.key, e.target.checked)}
                               className="w-4 h-4 rounded border-rose-300 text-rose-600"
                             />

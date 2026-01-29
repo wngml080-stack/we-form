@@ -5,12 +5,22 @@ import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import type { CompanyEvent } from "../../hooks/useAdminDashboardData";
+
+type EventType = "general" | "training" | "meeting" | "holiday" | "celebration";
+
+interface ExtendedCompanyEvent extends CompanyEvent {
+  event_date: string;
+  event_type: EventType;
+  start_time?: string;
+  location?: string;
+}
 
 interface EventModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   selectedDate: Date | null;
-  companyEvents: any[];
+  companyEvents: ExtendedCompanyEvent[];
 }
 
 export function EventModal({ isOpen, onOpenChange, selectedDate, companyEvents }: EventModalProps) {

@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Users, UserCheck, Ghost, DollarSign, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, UserCheck, Ghost, DollarSign, BarChart3, ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { DashboardStats } from "../hooks/useAdminDashboardData";
 
 interface StatRowProps {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   value: string;
   subValue: string;

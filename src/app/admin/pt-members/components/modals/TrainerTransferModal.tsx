@@ -60,7 +60,7 @@ export function TrainerTransferModal({
   staffList,
   isLoading,
   onSubmit,
-  memberTrainerId,
+  memberTrainerId: _memberTrainerId,
   isPtTransfer = false,
 }: TrainerTransferModalProps) {
   const [toTrainerId, setToTrainerId] = useState("");

@@ -4,7 +4,7 @@ import { authenticateRequest, isAdmin } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
 
 // 휴가 유형 목록 조회
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const { staff, error: authError } = await authenticateRequest();
     if (authError) return authError;

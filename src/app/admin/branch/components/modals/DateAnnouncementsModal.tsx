@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Bell, Activity, Pencil, Trash2, X, Calendar as CalendarIcon, Info, AlertTriangle, Clock } from "lucide-react";
+import { Bell, Activity, Pencil, Trash2, X, Calendar as CalendarIcon, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { BranchAnnouncement } from "../../hooks/useBranchData";

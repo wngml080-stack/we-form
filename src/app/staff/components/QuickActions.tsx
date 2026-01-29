@@ -1,5 +1,5 @@
 import { toast } from "@/lib/toast";
-import { UserPlus, Calendar, DollarSign, CheckCircle, MoreHorizontal } from "lucide-react";
+import { UserPlus, Calendar, DollarSign, MoreHorizontal } from "lucide-react";
 
 interface QuickActionProps {
   onRegisterMember: () => void;

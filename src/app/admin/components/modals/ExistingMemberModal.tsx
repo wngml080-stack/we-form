@@ -1,24 +1,23 @@
 "use client";
 
-import { Users, X, Search, CheckCircle2, Save, ShoppingBag, CreditCard, Banknote, Calendar as CalendarIcon, Info } from "lucide-react";
+import { Users, X, Search, CheckCircle2, Save, ShoppingBag, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ExistingMemberForm } from "../../hooks/useAdminDashboardData";
-import { cn } from "@/lib/utils";
+import { ExistingMemberForm, Product, MemberSearchResult } from "../../hooks/useAdminDashboardData";
 
 interface ExistingMemberModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   form: ExistingMemberForm;
   setForm: (form: ExistingMemberForm) => void;
-  products: any[];
+  products: Product[];
   memberSearchQuery: string;
   setMemberSearchQuery: (query: string) => void;
-  memberSearchResults: any[];
-  setMemberSearchResults: (results: any[]) => void;
+  memberSearchResults: MemberSearchResult[];
+  setMemberSearchResults: (results: MemberSearchResult[]) => void;
   searchMembers: (query: string) => void;
   onSubmit: () => void;
   isSaving: boolean;
@@ -142,7 +141,7 @@ export function ExistingMemberModal({
                     if (product) {
                       setForm({
                         ...form,
-                        membership_type: product.membership_type,
+                        membership_type: product.membership_type ?? "",
                         membership_name: product.id,
                         sessions: product.default_sessions?.toString() || "",
                         amount: product.default_price?.toString() || ""

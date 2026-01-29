@@ -7,7 +7,7 @@ import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Edit, Settings, FileText } from "lucide-react";
 import {
@@ -29,11 +29,16 @@ import {
 // 타입 정의 (이전 버전 호환성 포함)
 type CalculationType = 'base_salary' | 'allowance' | 'hourly' | 'class_fee' | 'sales_incentive' | 'personal_incentive' | 'bonus' | 'etc' | 'fixed' | 'percentage_total' | 'percentage_personal' | 'tax_deduction';
 
+type SalaryRuleParameters = {
+    amount?: number;
+    rate?: number;
+};
+
 type SalaryRule = {
     id?: string;
     name: string;
     calculation_type: CalculationType;
-    default_parameters: any;
+    default_parameters: SalaryRuleParameters;
 };
 
 type SalaryTemplate = {
@@ -44,7 +49,7 @@ type SalaryTemplate = {
 };
 
 // 프리셋 정의
-const PRESET_RULES = [
+const PRESET_RULES: { label: string; value: string; defaultType: CalculationType }[] = [
     { label: "기본급", value: "기본급", defaultType: "base_salary" },
     { label: "식대", value: "식대", defaultType: "etc" },
     { label: "영업지원금", value: "영업지원금", defaultType: "allowance" },
@@ -222,7 +227,6 @@ export default function SalaryTemplateManager() {
                     newRules[index] = {
                         ...newRules[index],
                         name: preset.value,
-                        // @ts-ignore
                         calculation_type: preset.defaultType
                     };
                     return { ...prev, rules: newRules };
@@ -231,7 +235,7 @@ export default function SalaryTemplateManager() {
         }
     };
 
-    const handleUpdateRule = (index: number, field: keyof SalaryRule, value: any) => {
+    const handleUpdateRule = (index: number, field: keyof SalaryRule, value: string | CalculationType | SalaryRuleParameters) => {
         // functional update로 stale closure 방지
         setEditingTemplate(prev => {
             const newRules = [...prev.rules];
@@ -420,8 +424,8 @@ export default function SalaryTemplateManager() {
 
         } catch (error: unknown) {
             console.error("상세 에러:", error);
-            const err = error as any;
-            const errorMessage = err?.message || err?.error || JSON.stringify(error) || "알 수 없는 오류가 발생했습니다.";
+            const err = error as Error | { message?: string; error?: string };
+            const errorMessage = (err as Error)?.message || (err as { error?: string })?.error || JSON.stringify(error) || "알 수 없는 오류가 발생했습니다.";
             toast.error(`저장 실패: ${errorMessage}`);
         }
     };

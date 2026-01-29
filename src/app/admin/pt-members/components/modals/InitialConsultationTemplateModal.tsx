@@ -2,25 +2,16 @@
 
 import { useState } from "react";
 import { 
-  FileText, 
   Save, 
   X, 
-  MessageSquare, 
-  TrendingUp, 
   CheckCircle2, 
-  Target, 
   Clock, 
-  Sparkles,
-  Zap,
-  BarChart3,
-  Search
+  Sparkles
 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminFilterProvider, useAdminFilter } from "@/contexts/AdminFilterContext";
 import { MessengerWidget } from "./components/messenger";
 import {
   LayoutDashboard,
-  Users,
   Building2,
   Settings,
   LogOut,
@@ -17,16 +17,16 @@ import {
   Menu,
   X,
   Calendar,
-  CheckSquare,
   UserCheck,
   Briefcase,
   ChevronDown,
-  ChevronRight,
-  MessageSquare,
   CalendarDays,
   FileText,
   User,
 } from "lucide-react";
+
+// SystemAnnouncementBanner는 header에 인라인으로 구현됨
+const SystemAnnouncementModal = dynamic(() => import("./components/modals/SystemAnnouncementModal").then(mod => ({ default: mod.SystemAnnouncementModal })), { ssr: false });
 import {
   Select,
   SelectContent,
@@ -70,10 +70,54 @@ function AdminLayoutContent({
   const userRole = user?.role || "";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [systemAnnouncements, setSystemAnnouncements] = useState<Array<{ id: string; title: string; priority: string; is_active: boolean }>>([]);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const announcementsFetched = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // 시스템 공지 데이터 조회 (캐싱으로 중복 호출 방지)
+  useEffect(() => {
+    if (!isMounted || announcementsFetched.current) return;
+
+    const CACHE_KEY = "weform_system_announcements";
+    const CACHE_EXPIRY_KEY = "weform_system_announcements_expiry";
+    const CACHE_DURATION = 5 * 60 * 1000; // 5분
+
+    // 캐시 확인
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    const expiry = sessionStorage.getItem(CACHE_EXPIRY_KEY);
+
+    if (cached && expiry && Date.now() < parseInt(expiry, 10)) {
+      try {
+        setSystemAnnouncements(JSON.parse(cached));
+        announcementsFetched.current = true;
+        return;
+      } catch {
+        // 캐시 파싱 실패 시 새로 조회
+      }
+    }
+
+    const fetchSystemAnnouncements = async () => {
+      try {
+        const response = await fetch("/api/admin/system/announcements");
+        const data = await response.json();
+        const activeAnnouncements = (data.announcements || []).filter((a: { is_active: boolean }) => a.is_active);
+        setSystemAnnouncements(activeAnnouncements);
+
+        // 캐시 저장
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(activeAnnouncements));
+        sessionStorage.setItem(CACHE_EXPIRY_KEY, String(Date.now() + CACHE_DURATION));
+        announcementsFetched.current = true;
+      } catch {
+        // 조회 실패 시 빈 배열 유지
+      }
+    };
+
+    fetchSystemAnnouncements();
+  }, [isMounted]);
 
   const companyName = filterCompanyName || authCompanyName || "";
 
@@ -137,11 +181,11 @@ function AdminLayoutContent({
   return (
     <div className="min-h-screen bg-[var(--background)]">
       {/* Header - Toss Modern Style */}
-      <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-100 transition-all duration-300">
+      <header className="sticky top-0 z-50 w-full bg-white border-b border-slate-100 transition-all duration-300">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           {/* Logo & Nav */}
-          <div className="flex items-center gap-12">
-            <Link href="/admin" className="flex items-center gap-2.5 group">
+          <div className="flex items-center gap-8">
+            <Link href="/admin" className="flex items-center gap-2.5 group shrink-0">
               <div className="w-9 h-9 bg-[var(--primary-hex)] rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 group-hover:scale-105 transition-transform duration-300">
                 <Building2 className="w-5 h-5 text-white" />
               </div>
@@ -152,7 +196,7 @@ function AdminLayoutContent({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className={cn(
-                    "h-12 px-5 rounded-xl font-black text-sm gap-2 transition-all",
+                    "h-12 px-4 rounded-xl font-black text-sm gap-2 transition-all",
                     pathname.startsWith("/admin") && !branchSubMenus.some(m => pathname.startsWith(m.href)) && !systemSubMenus.some(m => pathname.startsWith(m.href))
                       ? "text-[var(--primary-hex)] bg-blue-50" 
                       : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -160,14 +204,14 @@ function AdminLayoutContent({
                     업무관리 <ChevronDown className="w-4 h-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 p-2 rounded-2xl border-none shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                <DropdownMenuContent sideOffset={12} align="start" className="w-64 p-2 bg-white rounded-[28px] border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.15)] animate-in fade-in zoom-in-95 duration-200 z-[100] flex flex-col gap-1">
                   {dashboardSubMenus.map((item) => (
-                    <DropdownMenuItem key={item.href} asChild className="rounded-xl py-3 cursor-pointer">
-                      <Link href={item.href} className="flex items-center gap-3 w-full">
-                        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", pathname === item.href ? "bg-blue-100 text-blue-600" : "bg-slate-50 text-slate-400")}>
-                          <item.icon className="w-4 h-4" />
+                    <DropdownMenuItem key={item.href} asChild className="rounded-2xl px-2 py-1 cursor-pointer focus:bg-slate-50 transition-colors">
+                      <Link href={item.href} prefetch={false} className="flex items-center gap-4 w-full p-2.5">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm", pathname === item.href ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-400")}>
+                          <item.icon className="w-5 h-5" />
                         </div>
-                        <span className={cn("font-bold text-sm", pathname === item.href ? "text-blue-600" : "text-slate-600")}>{item.name}</span>
+                        <span className={cn("font-bold text-[15px] tracking-tight", pathname === item.href ? "text-blue-600" : "text-slate-600")}>{item.name}</span>
                       </Link>
                     </DropdownMenuItem>
                   ))}
@@ -178,7 +222,7 @@ function AdminLayoutContent({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className={cn(
-                      "h-12 px-5 rounded-xl font-black text-sm gap-2 transition-all",
+                      "h-12 px-4 rounded-xl font-black text-sm gap-2 transition-all",
                       branchSubMenus.some(m => pathname.startsWith(m.href))
                         ? "text-[var(--primary-hex)] bg-blue-50" 
                         : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -186,14 +230,14 @@ function AdminLayoutContent({
                       지점관리 <ChevronDown className="w-4 h-4 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 p-2 rounded-2xl border-none shadow-2xl">
+                  <DropdownMenuContent sideOffset={12} align="start" className="w-64 p-2 bg-white rounded-[28px] border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] flex flex-col gap-1">
                     {branchSubMenus.map((item) => (
-                      <DropdownMenuItem key={item.href} asChild className="rounded-xl py-3 cursor-pointer">
-                        <Link href={item.href} className="flex items-center gap-3 w-full">
-                          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", pathname.startsWith(item.href) ? "bg-blue-100 text-blue-600" : "bg-slate-50 text-slate-400")}>
-                            <item.icon className="w-4 h-4" />
+                      <DropdownMenuItem key={item.href} asChild className="rounded-2xl px-2 py-1 cursor-pointer focus:bg-slate-50 transition-colors">
+                        <Link href={item.href} prefetch={false} className="flex items-center gap-4 w-full p-2.5">
+                          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm", pathname.startsWith(item.href) ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-400")}>
+                            <item.icon className="w-5 h-5" />
                           </div>
-                          <span className={cn("font-bold text-sm", pathname.startsWith(item.href) ? "text-blue-600" : "text-slate-600")}>{item.name}</span>
+                          <span className={cn("font-bold text-[15px] tracking-tight", pathname.startsWith(item.href) ? "text-blue-600" : "text-slate-600")}>{item.name}</span>
                         </Link>
                       </DropdownMenuItem>
                     ))}
@@ -205,7 +249,7 @@ function AdminLayoutContent({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className={cn(
-                      "h-12 px-5 rounded-xl font-black text-sm gap-2 transition-all",
+                      "h-12 px-4 rounded-xl font-black text-sm gap-2 transition-all",
                       systemSubMenus.some(m => pathname.startsWith(m.href))
                         ? "text-[var(--primary-hex)] bg-blue-50" 
                         : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
@@ -213,14 +257,14 @@ function AdminLayoutContent({
                       설정 <ChevronDown className="w-4 h-4 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56 p-2 rounded-2xl border-none shadow-2xl">
+                  <DropdownMenuContent sideOffset={12} align="start" className="w-64 p-2 bg-white rounded-[28px] border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-[100] flex flex-col gap-1">
                     {systemSubMenus.map((item) => (
-                      <DropdownMenuItem key={item.href} asChild className="rounded-xl py-3 cursor-pointer">
-                        <Link href={item.href} className="flex items-center gap-3 w-full">
-                          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", pathname.startsWith(item.href) ? "bg-blue-100 text-blue-600" : "bg-slate-50 text-slate-400")}>
-                            <item.icon className="w-4 h-4" />
+                      <DropdownMenuItem key={item.href} asChild className="rounded-2xl px-2 py-1 cursor-pointer focus:bg-slate-50 transition-colors">
+                        <Link href={item.href} prefetch={false} className="flex items-center gap-4 w-full p-2.5">
+                          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm", pathname.startsWith(item.href) ? "bg-blue-600 text-white" : "bg-slate-50 text-slate-400")}>
+                            <item.icon className="w-5 h-5" />
                           </div>
-                          <span className={cn("font-bold text-sm", pathname.startsWith(item.href) ? "text-blue-600" : "text-slate-600")}>{item.name}</span>
+                          <span className={cn("font-bold text-[15px] tracking-tight", pathname.startsWith(item.href) ? "text-blue-600" : "text-slate-600")}>{item.name}</span>
                         </Link>
                       </DropdownMenuItem>
                     ))}
@@ -313,6 +357,32 @@ function AdminLayoutContent({
             </div>
           </div>
         </div>
+
+        {/* System Announcement Banner - Full Width */}
+        {systemAnnouncements.length > 0 && (
+          <div
+            className="bg-slate-900 py-2 overflow-hidden cursor-pointer"
+            onClick={() => setIsAnnouncementModalOpen(true)}
+          >
+            <div className="flex whitespace-nowrap animate-marquee-scroll">
+              {[0, 1].map((setIndex) => (
+                <div key={setIndex} className="flex shrink-0 items-center px-4">
+                  {systemAnnouncements.map((announcement, idx) => (
+                    <div key={`${setIndex}-${idx}`} className="flex items-center text-white text-sm">
+                      <span className="mx-8 opacity-30">•</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded mr-3 ${
+                        announcement.priority === 'urgent' ? 'bg-rose-500' : 'bg-blue-500'
+                      }`}>
+                        {announcement.priority.toUpperCase()}
+                      </span>
+                      <span className="font-medium mr-2">{announcement.title}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Mobile Menu Drawer */}
@@ -333,9 +403,10 @@ function AdminLayoutContent({
                   <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Communication</p>
                   <div className="grid grid-cols-1 gap-1">
                     {dashboardSubMenus.map(item => (
-                      <Link 
-                        key={item.href} 
+                      <Link
+                        key={item.href}
                         href={item.href}
+                        prefetch={false}
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
                           "flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold transition-all",
@@ -354,9 +425,10 @@ function AdminLayoutContent({
                     <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Management</p>
                     <div className="grid grid-cols-1 gap-1">
                       {branchSubMenus.map(item => (
-                        <Link 
-                          key={item.href} 
+                        <Link
+                          key={item.href}
                           href={item.href}
+                          prefetch={false}
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             "flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold transition-all",
@@ -376,9 +448,10 @@ function AdminLayoutContent({
                     <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">System</p>
                     <div className="grid grid-cols-1 gap-1">
                       {systemSubMenus.map(item => (
-                        <Link 
-                          key={item.href} 
+                        <Link
+                          key={item.href}
                           href={item.href}
+                          prefetch={false}
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             "flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold transition-all",
@@ -414,6 +487,13 @@ function AdminLayoutContent({
 
       {/* Messenger Widget */}
       <MessengerWidget />
+
+      {/* System Announcement Modal */}
+      <SystemAnnouncementModal
+        isOpen={isAnnouncementModalOpen}
+        onOpenChange={setIsAnnouncementModalOpen}
+        announcements={systemAnnouncements}
+      />
     </div>
   );
 }

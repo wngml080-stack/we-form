@@ -3,7 +3,6 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import {
   KakaoSkillRequest,
   createTextResponse,
-  createCardResponse,
   createQuickReplyResponse,
 } from "@/lib/kakao/config";
 import { getClaudeClient, CLAUDE_MODELS } from "@/lib/ai/claude";
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
 }
 
 // 가격 문의 처리
-async function handlePriceInquiry(userMessage: string) {
+async function handlePriceInquiry(_userMessage: string) {
   const supabase = getSupabaseAdmin();
   const gymId = process.env.DEFAULT_GYM_ID;
 
@@ -115,7 +114,7 @@ async function handlePriceInquiry(userMessage: string) {
 }
 
 // 영업시간 문의 처리
-async function handleScheduleInquiry(userMessage: string) {
+async function handleScheduleInquiry(_userMessage: string) {
   const supabase = getSupabaseAdmin();
   const gymId = process.env.DEFAULT_GYM_ID;
 
@@ -153,7 +152,7 @@ async function handleScheduleInquiry(userMessage: string) {
 }
 
 // 위치 문의 처리
-async function handleLocationInquiry(userMessage: string) {
+async function handleLocationInquiry(_userMessage: string) {
   const supabase = getSupabaseAdmin();
   const gymId = process.env.DEFAULT_GYM_ID;
 
@@ -232,7 +231,7 @@ async function handleTrialRequest(userMessage: string, userKey: string) {
 }
 
 // PT 문의 처리
-async function handlePTInquiry(userMessage: string) {
+async function handlePTInquiry(_userMessage: string) {
   return NextResponse.json(
     createQuickReplyResponse(
       "💪 PT(개인 트레이닝) 문의를 주셨네요!\n\n저희 센터는 1:1 맞춤 트레이닝을 제공합니다.\n\n무료 체험 PT를 통해 직접 경험해보세요!",
@@ -246,7 +245,7 @@ async function handlePTInquiry(userMessage: string) {
 }
 
 // 회원권 문의 처리
-async function handleMembershipInquiry(userMessage: string) {
+async function handleMembershipInquiry(_userMessage: string) {
   return NextResponse.json(
     createQuickReplyResponse(
       "🏋️ 회원권 문의를 주셨네요!\n\n다양한 회원권 옵션이 준비되어 있습니다.\n\n어떤 정보가 필요하신가요?",

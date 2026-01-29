@@ -1,24 +1,30 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarPlus, X, Calendar as CalendarIcon, Clock, User, Info, Save, Activity, Target, Sparkles } from "lucide-react";
+import { CalendarPlus, X, Calendar as CalendarIcon, Clock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type MemberSelection = {
+  id: string;
+  name: string;
+  phone?: string;
+};
 
 interface AddClassModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   // Member selection
-  selectedMember?: any | null;
+  selectedMember?: MemberSelection | null;
   memberSearchQuery?: string;
   setMemberSearchQuery?: (query: string) => void;
   showMemberDropdown?: boolean;
   setShowMemberDropdown?: (show: boolean) => void;
-  filteredMembers?: any[];
-  onSelectMember?: (member: any) => void;
+  filteredMembers?: MemberSelection[];
+  onSelectMember?: (member: MemberSelection) => void;
   onOpenAddMember?: () => void;
   // Date and time
   selectedDate?: string;
@@ -45,9 +51,9 @@ interface AddClassModalProps {
 
 export function AddClassModal({
   isOpen, onOpenChange, selectedMember,
-  memberSearchQuery, setMemberSearchQuery,
-  showMemberDropdown, setShowMemberDropdown,
-  filteredMembers, onSelectMember, onOpenAddMember,
+  memberSearchQuery: _memberSearchQuery, setMemberSearchQuery: _setMemberSearchQuery,
+  showMemberDropdown: _showMemberDropdown, setShowMemberDropdown: _setShowMemberDropdown,
+  filteredMembers: _filteredMembers, onSelectMember: _onSelectMember, onOpenAddMember: _onOpenAddMember,
   selectedDate, setSelectedDate,
   newClassDate, setNewClassDate,
   startTime, setStartTime,

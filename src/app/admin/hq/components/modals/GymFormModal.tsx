@@ -1,13 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { CATEGORY_OPTIONS, GymFormData } from "../../hooks/useHqData";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { CATEGORY_OPTIONS, GymFormData, HqStaff } from "../../hooks/useHqData";
+
+type GymStatus = "active" | "pending" | "closed";
 
 interface GymFormModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface GymFormModalProps {
   isEditMode: boolean;
   formData: GymFormData;
   setFormData: (data: GymFormData) => void;
-  allStaffs: any[];
+  allStaffs: HqStaff[];
   toggleCategory: (cat: string) => void;
   onSubmit: () => void;
   isLoading: boolean;
@@ -145,7 +146,7 @@ export function GymFormModal({
             {isEditMode && (
               <div className="space-y-2">
                 <Label className="text-xs font-black text-[var(--foreground-secondary)] ml-1 uppercase tracking-widest">운영 상태 *</Label>
-                <Select value={formData.status} onValueChange={(v: any) => setFormData({ ...formData, status: v })}>
+                <Select value={formData.status} onValueChange={(v: GymStatus) => setFormData({ ...formData, status: v })}>
                   <SelectTrigger className="h-12 bg-white border-none rounded-2xl font-bold shadow-[0_2px_8px_rgba(0,0,0,0.04)] focus:ring-2 focus:ring-[var(--primary-hex)]/20 transition-all">
                     <SelectValue />
                   </SelectTrigger>

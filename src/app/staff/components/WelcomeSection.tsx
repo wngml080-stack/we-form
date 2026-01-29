@@ -12,7 +12,7 @@ interface WelcomeSectionProps {
 }
 
 export function WelcomeSection({
-  myStaffName, totalMonthlySchedules, todayStr,
+  myStaffName, totalMonthlySchedules, todayStr: _todayStr,
   onOpenAddMember, onOpenAddClass
 }: WelcomeSectionProps) {
   return (

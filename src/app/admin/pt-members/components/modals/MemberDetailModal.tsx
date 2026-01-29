@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, Calendar, MapPin, Search, UserPlus, ArrowRight, Trash2, Users, Loader2, X } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, CreditCard, History, Package, User, UserPlus, ArrowRight, Trash2, Users, Loader2, X } from "lucide-react";
 
 interface Membership {
   id: string;

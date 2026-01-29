@@ -11,8 +11,23 @@ interface Summary {
   total: { count: number; amount: number };
 }
 
+type SalesLogType = 'new_member' | 'existing_member' | 'addon' | 'other';
+type PaymentMethod = 'card' | 'cash' | 'transfer';
+
+interface SalesLog {
+  id: string;
+  type: SalesLogType;
+  member_id?: string;
+  member_name: string;
+  membership_type?: string;
+  memo?: string;
+  payment_method: PaymentMethod;
+  amount: number;
+  created_at: string;
+}
+
 interface RecentLogsSectionProps {
-  logs: any[];
+  logs: SalesLog[];
   summary?: Summary;
   formatCurrency: (amount: number) => string;
 }

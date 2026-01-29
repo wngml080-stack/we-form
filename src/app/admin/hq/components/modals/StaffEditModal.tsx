@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { StaffEditForm } from "../../hooks/useHqData";
+
+type StaffRole = "company_admin" | "admin" | "staff";
+type EmploymentStatus = "재직" | "휴직" | "퇴사";
 
 interface StaffEditModalProps {
   isOpen: boolean;
@@ -16,8 +19,7 @@ interface StaffEditModalProps {
   isLoading: boolean;
 }
 
-import { cn } from "@/lib/utils";
-import { User, Briefcase, Shield, Activity, Save, Pencil } from "lucide-react";
+import { Briefcase, Shield, Activity, Save, Pencil } from "lucide-react";
 
 export function StaffEditModal({
   isOpen,
@@ -62,7 +64,7 @@ export function StaffEditModal({
             <div className="space-y-2">
               <Label className="text-xs font-black text-slate-500 ml-1 uppercase tracking-widest">시스템 권한</Label>
               <div className="relative">
-                <Select value={staffEditForm.role} onValueChange={(v: any) => setStaffEditForm({ ...staffEditForm, role: v })}>
+                <Select value={staffEditForm.role} onValueChange={(v: StaffRole) => setStaffEditForm({ ...staffEditForm, role: v })}>
                   <SelectTrigger className="h-12 bg-white border-none rounded-2xl font-bold shadow-sm focus:ring-2 focus:ring-emerald-100 transition-all pl-10">
                     <SelectValue />
                   </SelectTrigger>
@@ -79,7 +81,7 @@ export function StaffEditModal({
             <div className="space-y-2">
               <Label className="text-xs font-black text-slate-500 ml-1 uppercase tracking-widest">재직 상태</Label>
               <div className="relative">
-                <Select value={staffEditForm.employment_status} onValueChange={(v: any) => setStaffEditForm({ ...staffEditForm, employment_status: v })}>
+                <Select value={staffEditForm.employment_status} onValueChange={(v: EmploymentStatus) => setStaffEditForm({ ...staffEditForm, employment_status: v })}>
                   <SelectTrigger className="h-12 bg-white border-none rounded-2xl font-bold shadow-sm focus:ring-2 focus:ring-emerald-100 transition-all pl-10">
                     <SelectValue />
                   </SelectTrigger>

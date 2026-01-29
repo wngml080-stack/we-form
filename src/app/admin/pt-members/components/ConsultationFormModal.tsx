@@ -4,9 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +25,7 @@ interface Props {
   existingData?: ConsultationFormData;
 }
 
-import { cn } from "@/lib/utils";
-import { FileText, Save, Download, Sparkles, Clock, Info } from "lucide-react";
+import { FileText, Save, Sparkles, Clock, Info } from "lucide-react";
 
 export function ConsultationFormModal({ isOpen, onClose, onSave, memberName, memberPhone, existingData }: Props) {
   const [formData, setFormData] = useState<ConsultationFormData>(() => {

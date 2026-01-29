@@ -26,11 +26,11 @@ interface StatusChangeModalProps {
 
 export function StatusChangeModal({
   isOpen, onOpenChange, selectedEvent,
-  isMonthApproved = false,
+  isMonthApproved: _isMonthApproved = false,
   onStatusChange,
-  onSubTypeChange,
-  onOpenEditModal,
-  onDelete,
+  onSubTypeChange: _onSubTypeChange,
+  onOpenEditModal: _onOpenEditModal,
+  onDelete: _onDelete,
   editStatus: propEditStatus,
   setEditStatus: propSetEditStatus,
   onSubmit

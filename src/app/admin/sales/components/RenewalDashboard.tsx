@@ -6,8 +6,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users, Phone, PhoneOff, UserCheck, UserX,
-  Clock, CheckCircle2, AlertCircle, HelpCircle, MessageCircle
+  Users, Phone, UserCheck, CheckCircle2, AlertCircle, HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -117,7 +116,7 @@ const STATUS_LABELS: Record<ActivityStatus, string> = {
 
 export function RenewalDashboard({
   selectedGymId,
-  selectedCompanyId,
+  selectedCompanyId: _selectedCompanyId,
   isInitialized,
   members = []
 }: RenewalDashboardProps) {

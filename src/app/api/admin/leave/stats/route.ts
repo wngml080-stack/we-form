@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     if (staff.role === "company_admin") {
       companyCondition = staff.company_id || "";
     }
-    let gymCondition = gymId || (staff.role === "admin" ? staff.gym_id : null);
+    const gymCondition = gymId || (staff.role === "admin" ? staff.gym_id : null);
 
     // 1. 전체 연차 부여 통계
     let allowanceQuery = supabase

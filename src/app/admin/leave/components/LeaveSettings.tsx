@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Settings, ShieldCheck, Zap, Info } from "lucide-react";
+import { ShieldCheck, Zap, Info } from "lucide-react";
 
 export default function LeaveSettings() {
   return (

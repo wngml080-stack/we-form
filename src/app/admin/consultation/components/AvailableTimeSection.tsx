@@ -1,10 +1,9 @@
 "use client";
 
-import { Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ConsultationFormData, AvailableTime } from "../types";
+import { ConsultationFormData } from "../types";
 
 interface Props {
   formData: ConsultationFormData;

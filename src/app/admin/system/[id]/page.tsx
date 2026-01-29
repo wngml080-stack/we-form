@@ -6,7 +6,7 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
-import { Company, Staff, EmploymentStatus } from "@/types/database";
+import { Company, Staff } from "@/types/database";
 
 // 직원 + 지점 조인 타입
 interface StaffWithGym extends Staff {

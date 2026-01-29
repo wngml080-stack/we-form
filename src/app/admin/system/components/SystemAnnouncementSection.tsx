@@ -3,12 +3,13 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Megaphone, Bell, Pencil, Trash2, Calendar, AlertTriangle, Info, Sparkles, Activity } from "lucide-react";
+import { Plus, Megaphone, Bell, Pencil, Trash2, Calendar, AlertTriangle, Info, Sparkles, Activity, type LucideIcon } from "lucide-react";
+import { SystemAnnouncement } from "../hooks/useSystemData";
 
 interface SystemAnnouncementSectionProps {
-  announcements: any[];
+  announcements: SystemAnnouncement[];
   onAddClick: () => void;
-  onEditClick: (announcement: any) => void;
+  onEditClick: (announcement: SystemAnnouncement) => void;
   onDeleteClick: (id: string, title: string) => void;
   onToggleActive: (id: string, currentActive: boolean) => void;
 }
@@ -16,7 +17,7 @@ interface SystemAnnouncementSectionProps {
 export function SystemAnnouncementSection({
   announcements, onAddClick, onEditClick, onDeleteClick, onToggleActive
 }: SystemAnnouncementSectionProps) {
-  const priorityConfig: Record<string, { icon: any; color: string; bg: string; label: string }> = {
+  const priorityConfig: Record<string, { icon: LucideIcon; color: string; bg: string; label: string }> = {
     urgent: { icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50", label: "긴급" },
     normal: { icon: Bell, color: "text-blue-600", bg: "bg-blue-50", label: "일반" },
     info: { icon: Info, color: "text-emerald-600", bg: "bg-emerald-50", label: "안내" },

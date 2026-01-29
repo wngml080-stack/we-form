@@ -23,14 +23,30 @@ import {
 import { Calculator, AlertTriangle, Info, Plus } from "lucide-react";
 import type { StaffSalaryResult, SalaryTemplate, SalaryRule } from "../types";
 
+// Salary parameter value types
+type SalaryParamValue = string | number | boolean | TierDefinition[] | null | undefined;
+
+// Individual tier definition for tiered salary rules
+type TierDefinition = {
+    min: number;
+    max: number;
+    rate: number;
+};
+
+// Parameters for a single salary rule
+type RuleParameters = Record<string, SalaryParamValue>;
+
+// All personal parameters keyed by rule ID
+type PersonalParameters = Record<string, RuleParameters>;
+
 interface SalarySettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     staff: StaffSalaryResult | null;
     templates: SalaryTemplate[];
     initialTemplateId: string;
-    initialParams: Record<string, any>;
-    onSave: (templateId: string, params: Record<string, any>) => Promise<void>;
+    initialParams: PersonalParameters;
+    onSave: (templateId: string, params: PersonalParameters) => Promise<void>;
 }
 
 export function SalarySettingsModal({
@@ -43,7 +59,7 @@ export function SalarySettingsModal({
     onSave,
 }: SalarySettingsModalProps) {
     const [selectedTemplateId, setSelectedTemplateId] = useState(initialTemplateId);
-    const [personalParams, setPersonalParams] = useState<Record<string, any>>(initialParams);
+    const [personalParams, setPersonalParams] = useState<PersonalParameters>(initialParams);
     const [calcAmount, setCalcAmount] = useState("");
     const [calcRate, setCalcRate] = useState("");
 
@@ -52,7 +68,7 @@ export function SalarySettingsModal({
         setSelectedTemplateId(templateId);
         const template = templates.find(t => t.id === templateId);
         if (template && template.items) {
-            const defaultParams: Record<string, any> = {};
+            const defaultParams: PersonalParameters = {};
             template.items.forEach(({ rule }) => {
                 if (rule.default_parameters) {
                     defaultParams[rule.id] = { ...rule.default_parameters };
@@ -65,7 +81,7 @@ export function SalarySettingsModal({
     };
 
     // 파라미터 변경
-    const handleParamChange = (ruleId: string, key: string, value: any) => {
+    const handleParamChange = (ruleId: string, key: string, value: SalaryParamValue) => {
         if (key === 'tiers') {
             setPersonalParams(prev => ({
                 ...prev,
@@ -318,7 +334,7 @@ function RuleSection({
     labelColor,
     rules,
     personalParams,
-    onParamChange,
+    onParamChange: _onParamChange,
     cardBg,
     cardBorder,
     labelTextColor,
@@ -328,8 +344,8 @@ function RuleSection({
     iconBg: string;
     labelColor: string;
     rules: SalaryRule[];
-    personalParams: Record<string, any>;
-    onParamChange: (ruleId: string, key: string, value: any) => void;
+    personalParams: PersonalParameters;
+    onParamChange: (ruleId: string, key: string, value: SalaryParamValue) => void;
     cardBg: string;
     cardBorder: string;
     labelTextColor: string;
@@ -377,7 +393,7 @@ function getCalculationTypeLabel(type: string): string {
 }
 
 // 파라미터 입력 렌더링 함수
-function renderParamInputs(rule: SalaryRule, values: Record<string, any>) {
+function renderParamInputs(rule: SalaryRule, values: RuleParameters) {
     const typeLabel = getCalculationTypeLabel(rule.calculation_type);
     const valueDisplayClass = "bg-slate-100 border border-slate-200 text-slate-700 h-10 xs:h-12 rounded-lg xs:rounded-xl font-black text-right pr-8 xs:pr-10 shadow-inner text-xs xs:text-sm flex items-center justify-end px-3 xs:px-4";
 

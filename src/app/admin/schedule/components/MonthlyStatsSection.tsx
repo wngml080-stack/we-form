@@ -120,7 +120,7 @@ export function MonthlyStatsSection({
               {monthlyStats?.dailyStats && Object.keys(monthlyStats.dailyStats).length > 0 ? (
                 Object.entries(monthlyStats.dailyStats)
                   .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([dateKey, dayStats]: [string, any]) => {
+                  .map(([dateKey, dayStats]) => {
                     const date = new Date(dateKey);
                     const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
                     const isWeekend = date.getDay() === 0 || date.getDay() === 6;

@@ -127,7 +127,7 @@ export function KakaoChannelSettingsModal({
         const error = await response.json();
         alert(error.error || "저장 실패");
       }
-    } catch (error) {
+    } catch {
       alert("저장 중 오류가 발생했습니다.");
     } finally {
       setIsSaving(false);
@@ -150,7 +150,7 @@ export function KakaoChannelSettingsModal({
       } else {
         alert(data.message || "연동 확인 실패");
       }
-    } catch (error) {
+    } catch {
       alert("연동 확인 중 오류가 발생했습니다.");
     } finally {
       setIsVerifying(false);

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import {
   Phone, Calendar, User, Clock, Trash2, Edit, CalendarPlus,
-  MessageSquare, CheckCircle, AlertCircle, Sparkles, Loader2, X
+  MessageSquare, Sparkles, Loader2, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
@@ -170,7 +170,7 @@ export function InquiryDetailModal({
       } else {
         alert(data.error || "AI 응답 생성 실패");
       }
-    } catch (error) {
+    } catch {
       alert("AI 응답 생성 중 오류가 발생했습니다.");
     } finally {
       setIsGeneratingAI(false);

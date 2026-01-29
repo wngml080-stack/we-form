@@ -4,14 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { PTFormData, initialPTFormData, calculatePTFormCompletion, goalTypeOptions } from "../types";
 import { PTBasicInfoSection } from "./PTBasicInfoSection";
 import { PTRegistrationSection } from "./PTRegistrationSection";
@@ -28,8 +25,7 @@ interface Props {
   existingData?: PTFormData;
 }
 
-import { cn } from "@/lib/utils";
-import { FileText, Save, Download, Sparkles, Clock, Target, MessageCircle } from "lucide-react";
+import { Save, Sparkles, Clock, Target, MessageCircle } from "lucide-react";
 
 export function PTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, existingData }: Props) {
   const [formData, setFormData] = useState<PTFormData>(() => {

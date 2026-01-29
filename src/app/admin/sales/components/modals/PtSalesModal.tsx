@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { Award, Search, TrendingUp } from "lucide-react";
+import { Award, Search } from "lucide-react";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { PtStats, SalesPeriod, SalesType } from "./TotalSalesModal";
 

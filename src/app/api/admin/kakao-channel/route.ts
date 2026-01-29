@@ -252,7 +252,7 @@ export async function PUT(request: NextRequest) {
             message: error.msg || "카카오 API 연결 실패",
           });
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json({
           success: false,
           message: "카카오 API 연결 중 오류가 발생했습니다.",

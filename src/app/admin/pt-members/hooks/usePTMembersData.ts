@@ -167,11 +167,47 @@ interface MemberApiData {
   trainer?: { id: string; name: string } | { id: string; name: string }[] | null;
 }
 
-interface TrainerApiData {
+interface _TrainerApiData {
   id: string;
   name: string;
   role: string;
   employment_status: string;
+}
+
+// 회원 상세 모달 관련 타입
+interface MemberDetailData {
+  id: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  trainer_id?: string;
+  trainer?: { id: string; name: string } | { id: string; name: string }[] | null;
+  [key: string]: unknown;
+}
+
+interface PaymentHistoryItem {
+  id: string;
+  amount?: number;
+  created_at?: string;
+  membership_name?: string;
+  [key: string]: unknown;
+}
+
+interface MembershipItem {
+  id: string;
+  name?: string;
+  status?: string;
+  total_sessions?: number;
+  used_sessions?: number;
+  [key: string]: unknown;
+}
+
+interface ActivityLogItem {
+  id: string;
+  action?: string;
+  created_at?: string;
+  description?: string;
+  [key: string]: unknown;
 }
 
 // PT 관련 회원권 카테고리 (대소문자 무관)
@@ -207,16 +243,16 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
 
   // 회원 상세 모달 상태
   const [isMemberDetailOpen, setIsMemberDetailOpen] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<any>(null);
-  const [memberPaymentHistory, setMemberPaymentHistory] = useState<any[]>([]);
-  const [memberAllMemberships, setMemberAllMemberships] = useState<any[]>([]);
-  const [memberActivityLogs, setMemberActivityLogs] = useState<any[]>([]);
+  const [selectedMember, setSelectedMember] = useState<MemberDetailData | null>(null);
+  const [memberPaymentHistory, setMemberPaymentHistory] = useState<PaymentHistoryItem[]>([]);
+  const [memberAllMemberships, setMemberAllMemberships] = useState<MembershipItem[]>([]);
+  const [memberActivityLogs, setMemberActivityLogs] = useState<ActivityLogItem[]>([]);
   const [memberTrainers, setMemberTrainers] = useState<MemberTrainer[]>([]);
 
   // 트레이너 모달 상태
   const [isTrainerAssignOpen, setIsTrainerAssignOpen] = useState(false);
   const [isTrainerTransferOpen, setIsTrainerTransferOpen] = useState(false);
-  const [trainerTransferTarget, setTrainerTransferTarget] = useState<any>(null);
+  const [trainerTransferTarget, setTrainerTransferTarget] = useState<MemberTrainer | null>(null);
   const [trainerTransferCategory, setTrainerTransferCategory] = useState<string>("");
   const [isPtTransfer, setIsPtTransfer] = useState(false);
 
@@ -923,7 +959,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
       } else {
         setMemberTrainers([]);
       }
-    } catch (e) {
+    } catch {
       setMemberTrainers([]);
     }
   }, []);
@@ -1099,7 +1135,7 @@ export function usePTMembersData({ selectedGymId, selectedCompanyId, filterIniti
         if (detailResponse.ok) {
           setMemberActivityLogs(detailResult.activityLogs || []);
         }
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
 
       setIsTrainerTransferOpen(false);
     } catch (e: unknown) {

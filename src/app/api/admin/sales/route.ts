@@ -2,6 +2,46 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessGym } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
+import { validateBody, salesCreateSchema } from "@/lib/validations";
+
+// member_payments 테이블에서 조회한 결제 정보 타입
+type MemberPaymentRow = {
+  id: string;
+  member_name: string | null;
+  phone: string | null;
+  gender: string | null;
+  birth_date: string | null;
+  sale_type: string | null;
+  membership_category: string | null;
+  membership_name: string | null;
+  amount: number | null;
+  method: string | null;
+  installment: number | null;
+  trainer_id: string | null;
+  trainer_name: string | null;
+  registrar: string | null;
+  memo: string | null;
+  created_at: string;
+  payment_date: string | null;
+  service_sessions: number | null;
+  bonus_sessions: number | null;
+  validity_per_session: number | null;
+  membership_start_date: string | null;
+  start_date: string | null;
+  visit_route: string | null;
+  visit_route_custom: string | null;
+  expiry_type: string | null;
+  gym_id: string;
+  company_id: string;
+  created_by_staff_id: string | null;
+};
+
+// 회원 기본 정보 타입 (성별/생년월일 조회용)
+type MemberGenderBirthInfo = {
+  phone: string;
+  gender: string | null;
+  birth_date: string | null;
+};
 
 // 매출 생성
 export async function POST(request: NextRequest) {
@@ -13,6 +53,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    // Zod 검증 (필수 필드 체크)
+    const validation = validateBody(salesCreateSchema, body);
+    if (!validation.success) {
+      return validation.error;
+    }
+
+    // 기존 코드 호환성을 위해 원본 body 사용
     const {
       company_id,
       gym_id,
@@ -39,10 +87,6 @@ export async function POST(request: NextRequest) {
       visit_route,
       expiry_type,
     } = body;
-
-    if (!company_id || !gym_id) {
-      return NextResponse.json({ error: "company_id와 gym_id가 필요합니다." }, { status: 400 });
-    }
 
     // 권한 확인
     const supabase = getSupabaseAdmin();
@@ -102,7 +146,7 @@ export async function POST(request: NextRequest) {
 
           if (rpcError) {
             // RPC 실패 시 직접 쿼리 (fallback)
-            const updateData: Record<string, any> = {};
+            const updateData: Record<string, string | null> = {};
             if (gender) updateData.gender = gender;
             if (birth_date) updateData.birth_date = birth_date;
             await supabase
@@ -580,7 +624,7 @@ export async function GET(request: NextRequest) {
 
     // 모든 고유 전화번호 수집
     const phoneSet = new Set<string>();
-    (data || []).forEach((p: any) => {
+    (data || []).forEach((p: MemberPaymentRow) => {
       if (p.phone) {
         phoneSet.add(p.phone);
         phoneSet.add(p.phone.replace(/-/g, "")); // 하이픈 제거된 버전도 추가
@@ -588,7 +632,7 @@ export async function GET(request: NextRequest) {
     });
 
     // members 테이블에서 성별/생년월일 조회 (RPC 함수 사용 - 스키마 캐시 우회)
-    let membersMap: Record<string, { gender?: string; birth_date?: string }> = {};
+    const membersMap: Record<string, { gender?: string; birth_date?: string }> = {};
     if (phoneSet.size > 0) {
       // RPC 함수로 조회 시도 (JSONB 반환)
       const { data: rpcResult, error: rpcError } = await supabase.rpc("get_members_by_phones", {
@@ -598,21 +642,21 @@ export async function GET(request: NextRequest) {
 
       if (!rpcError && rpcResult) {
         // JSONB 결과 파싱 - 문자열이면 파싱, 배열이면 그대로 사용
-        let rpcMembers: any[] = [];
+        let rpcMembers: MemberGenderBirthInfo[] = [];
         if (typeof rpcResult === "string") {
           try {
-            rpcMembers = JSON.parse(rpcResult);
+            rpcMembers = JSON.parse(rpcResult) as MemberGenderBirthInfo[];
           } catch {
             rpcMembers = [];
           }
         } else if (Array.isArray(rpcResult)) {
-          rpcMembers = rpcResult;
+          rpcMembers = rpcResult as MemberGenderBirthInfo[];
         } else if (rpcResult && typeof rpcResult === "object") {
           // 단일 객체인 경우 배열로 변환
-          rpcMembers = [rpcResult];
+          rpcMembers = [rpcResult as MemberGenderBirthInfo];
         }
 
-        rpcMembers.forEach((m: any) => {
+        rpcMembers.forEach((m: MemberGenderBirthInfo) => {
           if (m && m.phone) {
             const normalizedPhone = m.phone.replace(/-/g, "");
             membersMap[m.phone] = { gender: m.gender, birth_date: m.birth_date };
@@ -628,7 +672,7 @@ export async function GET(request: NextRequest) {
           .in("phone", Array.from(phoneSet));
 
         if (members) {
-          members.forEach((m: any) => {
+          members.forEach((m: { phone: string | null; gender: string | null; birth_date: string | null }) => {
             if (m.phone) {
               const normalizedPhone = m.phone.replace(/-/g, "");
               membersMap[m.phone] = { gender: m.gender, birth_date: m.birth_date };
@@ -641,9 +685,9 @@ export async function GET(request: NextRequest) {
 
     // member_payments 데이터를 Payment 형태로 변환
     // gender/birth_date는 member_payments 테이블에서 직접 읽고, 없으면 members 테이블에서 조회
-    const payments = (data || []).map((p: any) => {
+    const payments = (data || []).map((p: MemberPaymentRow) => {
       const normalizedPhone = p.phone ? p.phone.replace(/-/g, "") : "";
-      const memberInfo = membersMap[p.phone] || membersMap[normalizedPhone] || {};
+      const memberInfo = membersMap[p.phone || ""] || membersMap[normalizedPhone] || {};
       const finalGender = p.gender || memberInfo.gender || "";
       const finalBirthDate = p.birth_date || memberInfo.birth_date || "";
 

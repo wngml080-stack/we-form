@@ -6,10 +6,8 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle, BarChart3, Download, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { calculateMonthlyStats } from "@/lib/schedule-utils";
 
 interface StaffStats {
   staff_id: string;
@@ -181,8 +179,8 @@ export default function MonthlyStatsViewer() {
       });
 
       setStaffStats(stats);
-    } catch (error: any) {
-      toast.error(error?.message || "월별 실적을 불러오는 중 오류가 발생했습니다.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "월별 실적을 불러오는 중 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { TrendingUp, Target, Award, BarChart3, Search } from "lucide-react";
 import { FcStats, PtStats, SalesSummary, ComparisonData, SalesPeriod, SalesType } from "../../hooks/useBranchData";
 
@@ -283,7 +283,7 @@ function GrowthRow({ label, current, prevMonth, prevYear, isTotal, color }: { la
   );
 }
 
-function ComparisonChart({
+function _ComparisonChart({
   title,
   current,
   prevMonth,

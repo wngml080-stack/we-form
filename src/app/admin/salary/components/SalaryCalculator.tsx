@@ -19,13 +19,84 @@ import Link from "next/link";
 import { SalaryResultsTable, SalaryTotalFooter } from "./SalaryResultsTable";
 import { SalaryMobileCards } from "./SalaryMobileCards";
 import { SalarySettingsModal } from "./SalarySettingsModal";
+import type { MonthlyScheduleStats } from "@/lib/schedule-utils";
 import type {
     StaffSalaryResult,
     SalaryTemplate,
+    SalaryTemplateItem,
     StaffSalarySetting,
     StaffStats,
-    ReportApprovalStatus,
 } from "../types";
+
+// Database response types for Supabase queries
+type StaffBasicInfo = {
+    id: string;
+    name: string;
+    job_title?: string;
+};
+
+type PaymentRecord = {
+    amount: number | null;
+    registrar: string | null;
+    membership_category: string | null;
+};
+
+type SalaryTemplateItemRow = {
+    template_id: string;
+    rule_id: string;
+};
+
+type SalaryRuleRow = {
+    id: string;
+    name: string;
+    calculation_type: string;
+    default_parameters: Record<string, number>;
+};
+
+type StaffSalarySettingRow = {
+    staff_id: string;
+    template_id: string | null;
+    personal_parameters: Record<string, Record<string, number>> | null;
+};
+
+type PerformanceMetrics = {
+    personal_sales?: number;
+};
+
+type PerformanceRow = {
+    staff_id: string;
+    metrics: PerformanceMetrics | null;
+};
+
+type CalculatedSalaryRow = {
+    staff_id: string;
+    total_amount: number;
+    breakdown: SalaryBreakdown | null;
+    updated_at: string;
+    staff: StaffBasicInfo | null;
+};
+
+type SalaryBreakdown = {
+    base_salary?: number;
+    incentive_salary?: number;
+    class_salary?: number;
+    tax_deduction?: number;
+    total_salary?: number;
+    net_salary?: number;
+    details?: SalaryDetailItem[];
+    stats?: MonthlyScheduleStats;
+    reportStatus?: 'approved' | 'submitted' | 'rejected' | 'none';
+};
+
+type SalaryDetailItem = {
+    rule_name: string;
+    amount: number;
+    calculation?: string;
+    isDeduction?: boolean;
+};
+
+// Type for personal parameters (rule_id -> parameter values)
+type PersonalParameters = Record<string, Record<string, number>>;
 
 export default function SalaryCalculator() {
     const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
@@ -72,7 +143,7 @@ export default function SalaryCalculator() {
     const [selectedStaffForSetting, setSelectedStaffForSetting] = useState<StaffSalaryResult | null>(null);
     const [templates, setTemplates] = useState<SalaryTemplate[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-    const [personalParams, setPersonalParams] = useState<any>({});
+    const [personalParams, setPersonalParams] = useState<PersonalParameters>({});
     const [staffSalarySettings, setStaffSalarySettings] = useState<Record<string, StaffSalarySetting>>({});
 
     const supabase = createSupabaseClient();
@@ -113,7 +184,7 @@ export default function SalaryCalculator() {
                 .eq("gym_id", gymId);
 
             const staffNameToId: Record<string, string> = {};
-            (staffList || []).forEach((s: any) => {
+            (staffList || []).forEach((s: StaffBasicInfo) => {
                 if (s.name) staffNameToId[s.name] = s.id;
             });
 
@@ -136,7 +207,7 @@ export default function SalaryCalculator() {
             const salesByRegistrar: Record<string, number> = {}; // 이름 기준
             const salesByStaffId: Record<string, number> = {}; // staff_id 기준
 
-            (payments || []).forEach((p: any) => {
+            (payments || []).forEach((p: PaymentRecord) => {
                 const amount = Number(p.amount) || 0;
                 totalPTSales += amount;
 
@@ -276,7 +347,7 @@ export default function SalaryCalculator() {
             // 총 횟수 기준 내림차순 정렬
             stats.sort((a, b) => b.pt_total_count - a.pt_total_count);
             setStaffStats(stats);
-        } catch (error: any) {
+        } catch (error) {
             console.error("[SalaryCalculator] 월별 실적 조회 오류:", error);
         } finally {
             setIsStatsLoading(false);
@@ -301,8 +372,8 @@ export default function SalaryCalculator() {
 
             // 2. 템플릿 항목 조회 (template_items와 rules)
             const templateIds = (basicTemplates || []).map(t => t.id);
-            let itemsData: any[] = [];
-            let rulesData: any[] = [];
+            let itemsData: SalaryTemplateItemRow[] = [];
+            let rulesData: SalaryRuleRow[] = [];
 
             if (templateIds.length > 0) {
                 // salary_template_items 조회
@@ -350,7 +421,7 @@ export default function SalaryCalculator() {
             }
 
             const settingsMap: Record<string, StaffSalarySetting> = {};
-            (settingsData || []).forEach((s: any) => {
+            (settingsData || []).forEach((s: StaffSalarySettingRow) => {
                 const tmpl = templatesData.find(t => t.id === s.template_id);
                 settingsMap[s.staff_id] = {
                     staff_id: s.staff_id,
@@ -380,7 +451,7 @@ export default function SalaryCalculator() {
             // 템플릿의 default_parameters와 저장된 personal_parameters 병합
             const template = templates.find(t => t.id === setting.template_id);
             if (template && template.items) {
-                const mergedParams: Record<string, any> = {};
+                const mergedParams: PersonalParameters = {};
                 template.items.forEach(({ rule }) => {
                     // 템플릿 기본값을 먼저 설정
                     mergedParams[rule.id] = { ...rule.default_parameters };
@@ -401,7 +472,7 @@ export default function SalaryCalculator() {
     };
 
     // 급여 설정 저장 (모달에서 호출)
-    const handleSaveSettingFromModal = async (templateId: string, params: Record<string, any>) => {
+    const handleSaveSettingFromModal = async (templateId: string, params: PersonalParameters) => {
         if (!selectedStaffForSetting) return;
 
         try {
@@ -513,7 +584,7 @@ export default function SalaryCalculator() {
 
             const loadedSales: Record<string, number> = {};
             if (performances) {
-                performances.forEach((p: any) => {
+                (performances as PerformanceRow[]).forEach((p) => {
                     if (p.metrics?.personal_sales) {
                         loadedSales[p.staff_id] = Number(p.metrics.personal_sales);
                     }
@@ -535,7 +606,7 @@ export default function SalaryCalculator() {
 
             if (salaries && salaries.length > 0) {
                 // 저장된 데이터가 있으면 results 상태 복원
-                const savedResults: StaffSalaryResult[] = salaries.map((s: any) => {
+                const savedResults: StaffSalaryResult[] = (salaries as CalculatedSalaryRow[]).map((s) => {
                     const breakdown = s.breakdown || {};
                     // 이전 버전 호환성: tax_deduction, net_salary가 없는 경우
                     const taxDeduction = breakdown.tax_deduction || 0;
@@ -551,13 +622,19 @@ export default function SalaryCalculator() {
                         tax_deduction: taxDeduction,
                         total_salary: totalSalary,
                         net_salary: netSalary,
-                        details: breakdown.details || [],
+                        details: (breakdown.details || []).map(d => ({
+                            rule_name: d.rule_name,
+                            amount: d.amount,
+                            calculation: d.calculation || "",
+                            isDeduction: d.isDeduction
+                        })),
                         stats: breakdown.stats || {
                             pt_total_count: 0,
                             pt_inside_count: 0,
                             pt_outside_count: 0,
                             pt_weekend_count: 0,
-                            pt_holiday_count: 0
+                            pt_holiday_count: 0,
+                            bc_count: 0
                         },
                         reportStatus: breakdown.reportStatus || 'none'
                     };
@@ -745,7 +822,7 @@ export default function SalaryCalculator() {
 
                 if (hasSalarySettings && template) {
                     // 규칙 적용
-                    const rules = template.items.map((i: any) => i.rule).filter(Boolean);
+                    const rules = template.items.map((i: SalaryTemplateItem) => i.rule).filter(Boolean);
                     const params = setting.personal_parameters || {};
 
                     for (const rule of rules) {

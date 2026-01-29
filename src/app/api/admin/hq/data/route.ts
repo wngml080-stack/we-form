@@ -3,6 +3,29 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest, canAccessCompany, isAdmin } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
 
+type PaymentRecord = {
+  id: string;
+  member_name: string;
+  phone: string;
+  amount: number;
+  created_at: string;
+  gym_id: string;
+  membership_category: string;
+  trainer_name: string;
+};
+
+type MemberMembershipRecord = {
+  member_id: string;
+};
+
+type MemberFromPayments = {
+  id: string;
+  name: string;
+  phone: string;
+  gym_id: string;
+  payments: PaymentRecord[];
+};
+
 export async function GET(request: Request) {
   try {
     // 인증 확인
@@ -66,7 +89,7 @@ export async function GET(request: Request) {
     const gymIds = gyms.map(g => g.id);
 
     // 2단계: gym_id + company_id로 결제 데이터 조회 (통합회원관리와 동일한 방식)
-    let payments: any[] = [];
+    let payments: PaymentRecord[] = [];
     let monthlySales = 0;
     let activeMembersCount = 0;
 
@@ -111,7 +134,7 @@ export async function GET(request: Request) {
 
       // 활성 회원 수: 고유한 member_id 개수
       const activeMemberIds = new Set<string>();
-      (activeMembersResult.data || []).forEach((m: any) => {
+      (activeMembersResult.data || []).forEach((m: MemberMembershipRecord) => {
         if (m.member_id) activeMemberIds.add(m.member_id);
       });
       activeMembersCount = activeMemberIds.size;
@@ -119,7 +142,7 @@ export async function GET(request: Request) {
 
     // 전화번호 기준 중복 제거하여 회원 수 계산 (통합회원관리 방식)
     const uniquePhones = new Set<string>();
-    payments.forEach((p: any) => {
+    payments.forEach((p: PaymentRecord) => {
       if (p.phone) {
         uniquePhones.add(p.phone.replace(/-/g, ""));
       }
@@ -134,8 +157,8 @@ export async function GET(request: Request) {
     const totalMembersCount = uniquePhones.size;
 
     // payments에서 고유 회원 목록 생성 (전화번호 기준)
-    const memberMap = new Map<string, any>();
-    payments.forEach((p: any) => {
+    const memberMap = new Map<string, MemberFromPayments>();
+    payments.forEach((p: PaymentRecord) => {
       if (p.phone) {
         const normalizedPhone = p.phone.replace(/-/g, "");
         if (!memberMap.has(normalizedPhone)) {
@@ -147,7 +170,10 @@ export async function GET(request: Request) {
             payments: []
           });
         }
-        memberMap.get(normalizedPhone).payments.push(p);
+        const member = memberMap.get(normalizedPhone);
+        if (member) {
+          member.payments.push(p);
+        }
       }
     });
     const members = Array.from(memberMap.values());

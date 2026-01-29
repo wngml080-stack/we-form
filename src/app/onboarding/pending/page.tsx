@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Building2, Users, LogOut, RefreshCw, CheckCircle2, Sparkles, ArrowRight, Mail, Search, ShieldCheck } from "lucide-react";
+import { Clock, Building2, Users, LogOut, RefreshCw, CheckCircle2, Sparkles, Mail, Search, ShieldCheck } from "lucide-react";
 import { Suspense, useMemo, useState, useEffect } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";

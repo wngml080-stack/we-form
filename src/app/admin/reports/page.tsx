@@ -22,6 +22,11 @@ interface ReportStats {
   ot_count?: number;
   ot_inbody_count?: number;
   inbody_count?: number;
+  cancelled_pt_count?: number;
+  reserved_pt_count?: number;
+  reserved_ot_count?: number;
+  personal_inside_count?: number;
+  personal_outside_count?: number;
   [key: string]: number | undefined;
 }
 
@@ -497,7 +502,7 @@ export default function AdminReportsPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {expandedSchedules.map((schedule: any, idx: number) => {
+                            {expandedSchedules.map((schedule: ReportSchedule & { type?: string; date?: string; time?: string; member_name?: string; inbody_checked?: boolean }, idx: number) => {
                               // 타입 표시 로직
                               const getTypeLabel = () => {
                                 if (schedule.type === "PT") {

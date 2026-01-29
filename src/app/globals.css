@@ -81,6 +81,12 @@
   --foreground-muted: #4E5968;
   --foreground-subtle: #8B95A1;
 
+  /* Popover & Card */
+  --popover: #FFFFFF;
+  --popover-foreground: #191F28;
+  --card: #FFFFFF;
+  --card-foreground: #191F28;
+
   /* Primary: 토스 블루 (#3182F6 기반) */
   --primary: 216 98% 58%;
   --primary-hex: #3182F6;
@@ -165,6 +171,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-secondary: hsl(var(--secondary));

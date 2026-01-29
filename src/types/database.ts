@@ -10,7 +10,7 @@ export type EmploymentStatus = "재직" | "퇴사" | "휴직" | "가입대기";
 export type CompanyStatus = "active" | "pending" | "suspended" | "inactive";
 
 // 지점 상태 타입
-export type GymStatus = "active" | "inactive" | "pending";
+export type GymStatus = "active" | "inactive" | "pending" | "closed";
 
 // 스케줄 상태 타입
 export type ScheduleStatus = "scheduled" | "completed" | "cancelled" | "no_show" | "no_show_deducted";

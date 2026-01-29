@@ -6,19 +6,14 @@ import {
   Search, 
   Plus, 
   Filter, 
-  ArrowUpRight, 
   Clock, 
   AlertCircle,
   RefreshCcw,
   Calendar,
   ChevronRight,
   Target,
-  Users,
   Sparkles
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 
@@ -36,8 +31,8 @@ interface Consultation {
 }
 
 export default function ConsultationPage(props: {
-  params: Promise<any>;
-  searchParams: Promise<any>;
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   use(props.params);
   use(props.searchParams);
@@ -114,13 +109,13 @@ export default function ConsultationPage(props: {
           <div 
             key={stat.label} 
             className="stat-card-3d group"
-            style={{ 
+            style={{
               animationDelay: `${index * 100}ms`,
               '--gradient-primary': stat.color === 'blue' ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' :
                                    stat.color === 'indigo' ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' :
                                    stat.color === 'rose' ? 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)' :
                                    'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-            } as any}
+            } as React.CSSProperties}
           >
             <div className="flex justify-between items-start mb-4">
               <div className={cn(

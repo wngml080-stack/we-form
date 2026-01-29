@@ -6,7 +6,6 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { showSuccess, showError } from "@/lib/utils/error-handler";
-import { classifyScheduleType } from "@/lib/schedule-utils";
 import {
   calculateMonthlyStats as calcStats,
   enrichSchedulesWithSessionInfo as enrichSchedules,
@@ -40,6 +39,56 @@ export interface TimeSlot {
   staffId?: string;
 }
 
+// 스케줄 타입
+export interface ScheduleItem {
+  id: string;
+  start_time: string;
+  end_time: string;
+  member_id?: string;
+  staff_id?: string;
+  status: string;
+  type: string;
+  title?: string;
+  sub_type?: string;
+  is_locked?: boolean;
+  member?: { name: string };
+  staff?: { name: string };
+}
+
+// 스태프 타입
+export interface ScheduleStaff {
+  id: string;
+  name: string;
+  role: string;
+  gym_id: string;
+  work_start_time?: string;
+  work_end_time?: string;
+}
+
+// 회원 타입
+export interface ScheduleMember {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
+// 회원 멤버십 타입
+export interface ScheduleMembership {
+  id: string;
+  name: string;
+  remaining_sessions?: number;
+  total_sessions?: number;
+}
+
+// 월별 통계 타입
+export interface ScheduleMonthlyStats {
+  totalSchedules: number;
+  completedSchedules: number;
+  cancelledSchedules: number;
+  noShowSchedules: number;
+  [key: string]: number;
+}
+
 export function useSchedulePageData() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
@@ -47,10 +96,10 @@ export function useSchedulePageData() {
 
   const supabase = useMemo(() => createSupabaseClient(), []);
 
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [staffs, setStaffs] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
-  const [memberMemberships, setMemberMemberships] = useState<Record<string, any[]>>({});
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [staffs, setStaffs] = useState<ScheduleStaff[]>([]);
+  const [members, setMembers] = useState<ScheduleMember[]>([]);
+  const [memberMemberships, setMemberMemberships] = useState<Record<string, ScheduleMembership[]>>({});
   const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
 
   // 대시보드 필터에서 회사/지점 정보 사용
@@ -74,7 +123,7 @@ export function useSchedulePageData() {
   const [selectedDate, setSelectedDate] = useState(todayStr);
 
   // 월별 통계
-  const [monthlyStats, setMonthlyStats] = useState<any>(null);
+  const [monthlyStats, setMonthlyStats] = useState<ScheduleMonthlyStats | null>(null);
 
   // 로딩 상태
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +138,7 @@ export function useSchedulePageData() {
     isPersonal: false,
     personalTitle: "",
   });
-  const [selectedMemberMembership, setSelectedMemberMembership] = useState<any | null>(null);
+  const [selectedMemberMembership, setSelectedMemberMembership] = useState<ScheduleMembership | null>(null);
 
   // 선택된 강사의 스케줄 제출 관련 상태
   const [mySubmissionStatus, setMySubmissionStatus] = useState<"none" | "submitted" | "approved" | "rejected">("none");
@@ -110,7 +159,7 @@ export function useSchedulePageData() {
   }, [members, selectedStaffId]);
 
   // 스케줄 조회 함수 (memberships를 파라미터로 받아 클로저 문제 해결)
-  const fetchSchedules = async (gymId: string, staffIdFilter: string, memberships?: Record<string, any[]>) => {
+  const fetchSchedules = async (gymId: string, staffIdFilter: string, memberships?: Record<string, ScheduleMembership[]>) => {
     const current = new Date(selectedDate);
     const startDate = new Date(current.getFullYear(), current.getMonth() - 2, 1);
     const endDate = new Date(current.getFullYear(), current.getMonth() + 3, 0);
@@ -139,7 +188,7 @@ export function useSchedulePageData() {
 
   // 빠른 상태 변경 모달
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<any>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
 
   // 스케줄 수정 모달
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -176,7 +225,7 @@ export function useSchedulePageData() {
     }
 
     if (data) {
-      setMySubmissionStatus(data.status as any);
+      setMySubmissionStatus(data.status as typeof mySubmissionStatus);
       setMySubmittedAt(data.submitted_at);
       setMyReviewedAt(data.reviewed_at);
       setMyAdminMemo(data.admin_memo);
@@ -224,7 +273,7 @@ export function useSchedulePageData() {
           .eq("status", "active");
 
         if (membershipData) {
-          const grouped = membershipData.reduce((acc: Record<string, any[]>, m) => {
+          const grouped = membershipData.reduce((acc: Record<string, ScheduleMembership[]>, m) => {
             if (!acc[m.member_id]) acc[m.member_id] = [];
             acc[m.member_id].push(m);
             return acc;
@@ -245,7 +294,7 @@ export function useSchedulePageData() {
         const staffResult = await staffQuery.order("name", { ascending: true });
         if (staffResult.data) setStaffs(staffResult.data);
 
-        const groupedMemberships = membershipData?.reduce((acc: Record<string, any[]>, m) => {
+        const groupedMemberships = membershipData?.reduce((acc: Record<string, ScheduleMembership[]>, m) => {
           if (!acc[m.member_id]) acc[m.member_id] = [];
           acc[m.member_id].push(m);
           return acc;
@@ -302,7 +351,7 @@ export function useSchedulePageData() {
       setMySubmissionStatus("submitted");
       setMySubmittedAt(json.report?.submitted_at ?? null);
       fetchSchedules(selectedGymId, selectedStaffId);
-    } catch (e: any) {
+    } catch (e) {
       showError(e.message);
     }
   };
@@ -345,7 +394,7 @@ export function useSchedulePageData() {
   };
 
   // 스케줄 클릭 -> 빠른 상태 변경 모달 열기
-  const handleScheduleClick = (schedule: any) => {
+  const handleScheduleClick = (schedule: ScheduleItem) => {
     setSelectedSchedule(schedule);
     setIsStatusModalOpen(true);
   };

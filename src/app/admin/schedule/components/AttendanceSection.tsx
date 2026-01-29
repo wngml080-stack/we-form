@@ -13,7 +13,6 @@ import {
 import {
   Calendar,
   Clock,
-  User,
   CheckCircle2,
   XCircle,
   Zap,

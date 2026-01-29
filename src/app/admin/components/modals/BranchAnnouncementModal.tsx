@@ -1,14 +1,15 @@
 "use client";
 
-import { Bell, X, Calendar as CalendarIcon, Clock, MapPin, Info, Tag, User } from "lucide-react";
+import { X, Calendar as CalendarIcon, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import type { Announcement } from "../../hooks/useAdminDashboardData";
 
 interface BranchAnnouncementModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  announcement: any | null;
+  announcement: Announcement | null;
 }
 
 export function BranchAnnouncementModal({ isOpen, onOpenChange, announcement }: BranchAnnouncementModalProps) {

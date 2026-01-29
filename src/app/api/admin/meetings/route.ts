@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { authenticateRequest } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
-import type { MeetingCreateInput, MeetingFilters } from "@/types/meeting";
+import type { MeetingCreateInput } from "@/types/meeting";
 
 // 회의 목록 조회
 export async function GET(request: Request) {

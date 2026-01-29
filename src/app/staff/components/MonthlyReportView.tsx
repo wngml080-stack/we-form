@@ -4,9 +4,20 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type MonthlyStatsData = {
+  PT?: number;
+  OT?: number;
+  Consulting?: number;
+  completed?: number;
+  no_show_deducted?: number;
+  no_show?: number;
+  service?: number;
+  total?: number;
+};
+
 interface MonthlyReportViewProps {
   month: number;
-  monthlyStats: any;
+  monthlyStats: MonthlyStatsData | null;
   isMonthApproved: boolean;
   isMonthLocked: boolean;
   submissionStatus: string;

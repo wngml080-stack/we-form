@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
     Select,
     SelectContent,
@@ -74,15 +73,9 @@ export default function StaffSalaryPage() {
             setGymName(authGymName || "");
         };
         init();
-    }, [authLoading, authUser, isApproved, authGymName]);
+    }, [authLoading, authUser, isApproved, authGymName, router]);
 
-    useEffect(() => {
-        if (myStaffId && selectedMonth) {
-            fetchSalary();
-        }
-    }, [myStaffId, selectedMonth]);
-
-    const fetchSalary = async () => {
+    const fetchSalary = useCallback(async () => {
         if (!myStaffId) return;
         setIsLoading(true);
         try {
@@ -108,7 +101,13 @@ export default function StaffSalaryPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [myStaffId, selectedMonth, supabase]);
+
+    useEffect(() => {
+        if (myStaffId && selectedMonth) {
+            fetchSalary();
+        }
+    }, [myStaffId, selectedMonth, fetchSalary]);
 
     const handleDownloadExcel = async () => {
         if (!salaryData) return;

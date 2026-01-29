@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Bell } from "lucide-react";
 
 export function NoticeWidget() {

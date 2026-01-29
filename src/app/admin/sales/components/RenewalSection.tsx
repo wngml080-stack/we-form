@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Search, Plus, RefreshCw, FileUp, Download,
-  User, Calendar, Phone, AlertCircle, CheckCircle2,
-  Trash2, Mail, MessageCircle, MoreVertical, BarChart3, Users,
+  Search, Plus, RefreshCw, FileUp, Download, AlertCircle,
+  Trash2, BarChart3, Users,
   X, Save, Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +26,6 @@ import {
   activityStatusLabels,
   activityStatusColors,
   getExpiryType,
-  getExpiryTypeLabel,
   getDday,
 } from "../utils/renewal";
 
@@ -65,7 +63,7 @@ function getCurrentActivityStatus(member: RenewalMember): { label: string; color
 export function RenewalSection({
   selectedGymId,
   selectedCompanyId,
-  gymName,
+  gymName: _gymName,
   isInitialized
 }: {
   selectedGymId: string | null;

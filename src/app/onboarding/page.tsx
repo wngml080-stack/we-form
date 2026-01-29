@@ -4,12 +4,10 @@ export const dynamic = 'force-dynamic';
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, LogOut, ArrowLeft, ArrowRight, CheckCircle2, Building, Sparkles } from "lucide-react";
+import { Building2, Users, LogOut, ArrowLeft, ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 export default function OnboardingPage() {
   const router = useRouter();

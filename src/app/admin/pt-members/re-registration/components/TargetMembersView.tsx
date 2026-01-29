@@ -7,7 +7,6 @@ import {
   User,
   Trash2,
   Edit,
-  AlertTriangle,
   Calendar,
   TrendingDown,
 } from "lucide-react";

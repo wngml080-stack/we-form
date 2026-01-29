@@ -6,6 +6,30 @@ import { cn } from "@/lib/utils";
 import WeeklyTimetable from "@/components/WeeklyTimetable";
 import { MonthlyReportView } from "./MonthlyReportView";
 
+type ScheduleItem = {
+  id: string;
+  start_time: string;
+  end_time: string;
+  type?: string;
+  member_name?: string;
+  member_id?: string;
+  status: string;
+  is_locked?: boolean;
+  title?: string;
+  sub_type?: string;
+};
+
+type MonthlyStatsData = {
+  PT?: number;
+  OT?: number;
+  Consulting?: number;
+  completed?: number;
+  no_show_deducted?: number;
+  no_show?: number;
+  service?: number;
+  total?: number;
+};
+
 interface SchedulerSectionProps {
   viewType: 'day' | 'week' | 'month';
   setViewType: (type: 'day' | 'week' | 'month') => void;
@@ -14,14 +38,14 @@ interface SchedulerSectionProps {
   year: number;
   month: number;
   todayStr: string;
-  schedules: any[];
-  monthlyStats: any;
+  schedules: ScheduleItem[];
+  monthlyStats: MonthlyStatsData | null;
   isMonthApproved: boolean;
   isMonthLocked: boolean;
   submissionStatus: string;
   onPrevDate: () => void;
   onNextDate: () => void;
-  onScheduleClick: (schedule: any) => void;
+  onScheduleClick: (schedule: ScheduleItem) => void;
   onTimeSlotClick: (date: Date, time: string) => void;
   onSubmitMonth: () => void;
 }

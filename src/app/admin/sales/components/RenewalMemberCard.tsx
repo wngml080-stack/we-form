@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Phone, Calendar, User, MessageCircle } from "lucide-react";
 import { formatPhoneNumber } from "@/lib/utils/phone-format";
-import type { RenewalMember, ExpiryType, ActivityStatus } from "../types/renewal";
+import type { RenewalMember, ExpiryType } from "../types/renewal";
 import {
   getExpiryType,
   getDday,
@@ -70,7 +70,7 @@ function getCurrentActivityStatus(
 export function RenewalMemberCard({
   member,
   onAddActivity,
-  onEditActivity,
+  onEditActivity: _onEditActivity,
 }: RenewalMemberCardProps) {
   const expiryType = getExpiryType(member.endDate);
   const dday = getDday(member.endDate);

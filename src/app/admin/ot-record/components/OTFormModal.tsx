@@ -4,13 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { OTFormData, initialOTFormData, calculateOTFormCompletion } from "../types";
 import { OTBasicInfoSection } from "./OTBasicInfoSection";
 import { BodyCompositionSection } from "./BodyCompositionSection";
@@ -30,8 +28,7 @@ interface Props {
   existingData?: OTFormData;
 }
 
-import { cn } from "@/lib/utils";
-import { FileText, Save, Download, Sparkles, Clock, Activity, MessageCircle, Info } from "lucide-react";
+import { Save, Sparkles, Clock, Activity, MessageCircle, Info } from "lucide-react";
 
 export function OTFormModal({ isOpen, onClose, onSave, memberName, memberPhone, existingData }: Props) {
   const [formData, setFormData] = useState<OTFormData>(() => {

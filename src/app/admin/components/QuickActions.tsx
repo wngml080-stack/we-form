@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { DollarSign, Calendar, Users, Briefcase } from "lucide-react";
+import { DollarSign, Calendar, Users, Briefcase, type LucideIcon } from "lucide-react";
 
 interface QuickActionProps {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   href: string;
   color: string;

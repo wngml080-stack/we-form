@@ -7,7 +7,7 @@ import { isHQStaff } from "@/lib/api/chat-auth";
  * GET /api/admin/chat/rooms
  * 채팅방 목록 조회
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { staff, error: authError } = await authenticateRequest();
     if (authError) return authError;

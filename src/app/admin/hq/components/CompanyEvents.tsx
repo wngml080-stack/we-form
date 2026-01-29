@@ -4,13 +4,18 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Calendar, Activity, Clock, MapPin } from "lucide-react";
+import { HqCompanyEvent } from "../hooks/useHqData";
+
+type CompanyEventWithGym = HqCompanyEvent & {
+  gyms?: { name: string };
+};
 
 interface CompanyEventsProps {
-  companyEvents: any[];
+  companyEvents: CompanyEventWithGym[];
   onAddClick: () => void;
-  onEditClick: (event: any) => void;
+  onEditClick: (event: CompanyEventWithGym) => void;
   onDeleteClick: (id: string) => void;
-  onToggleActive: (event: any) => void;
+  onToggleActive: (event: CompanyEventWithGym) => void;
 }
 
 export function CompanyEvents({

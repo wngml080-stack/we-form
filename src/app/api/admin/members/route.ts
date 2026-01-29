@@ -48,7 +48,25 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     // 1. 회원 등록
-    const memberInsertData: Record<string, any> = {
+    type MemberInsertData = {
+      company_id: string;
+      gym_id: string;
+      name: string;
+      phone: string | null;
+      birth_date: string | null;
+      gender: string | null;
+      trainer_id: string | null;
+      registered_by: string;
+      exercise_goal: string | null;
+      weight: number | null;
+      body_fat_mass: number | null;
+      skeletal_muscle_mass: number | null;
+      memo: string | null;
+      status: string;
+      created_at?: string;
+    };
+
+    const memberInsertData: MemberInsertData = {
       company_id,
       gym_id,
       name,
@@ -181,7 +199,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. 추가 회원권 등록 (있는 경우)
-    const additionalMembershipResults: any[] = [];
+    const additionalMembershipResults: Record<string, unknown>[] = [];
     if (additional_memberships && Array.isArray(additional_memberships) && newMember) {
       for (const addMembership of additional_memberships) {
         if (!addMembership.product_id && !addMembership.amount) continue;
@@ -478,7 +496,7 @@ export async function GET(request: Request) {
     const membersWithActiveMemberships = data?.map(member => ({
       ...member,
       member_memberships: member.member_memberships?.filter(
-        (m: any) => m.status === 'active'
+        (m: { status?: string }) => m.status === 'active'
       ) || []
     })) || [];
 

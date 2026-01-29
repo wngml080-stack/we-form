@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { authenticateRequest, isAdmin } from "@/lib/api/auth";
+import { authenticateRequest } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
 
 // 직원별 연차 현황 요약

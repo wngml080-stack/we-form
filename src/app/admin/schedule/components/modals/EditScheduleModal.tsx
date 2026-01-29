@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, X, Pencil, Calendar as CalendarIcon, Clock, User, Activity, AlertTriangle, Info, CheckCircle2, Search } from "lucide-react";
+import { Trash2, X, Pencil, Calendar as CalendarIcon, Clock, Activity, AlertTriangle, Info, CheckCircle2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { useMemo, useState } from "react";

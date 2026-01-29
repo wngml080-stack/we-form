@@ -5,22 +5,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { EventForm } from "../../hooks/useHqData";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { EventForm, HqCompanyEvent, HqGym } from "../../hooks/useHqData";
 
 interface EventModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  editingEvent: any | null;
+  editingEvent: HqCompanyEvent | null;
   eventForm: EventForm;
   setEventForm: (form: EventForm) => void;
-  gyms: any[];
+  gyms: HqGym[];
   onSubmit: () => void;
   isLoading: boolean;
 }
 
-import { cn } from "@/lib/utils";
-import { Calendar, MapPin, Clock, Save, Plus, Pencil, Info, Users } from "lucide-react";
+import { Calendar, MapPin, Clock, Save, Plus, Pencil, Users } from "lucide-react";
 
 export function EventModal({
   isOpen,

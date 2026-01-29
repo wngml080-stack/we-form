@@ -38,13 +38,28 @@ const defaultSubCategoryMap: Record<string, string[]> = {
 // localStorage 키
 const CUSTOM_SUB_CATEGORIES_KEY = "expense_custom_sub_categories";
 
+interface NewExpenseRow {
+  id: string;
+  expense_date: string;
+  category: string;
+  sub_category: string;
+  description: string;
+  amount: number;
+  payment_method: string;
+  account_holder: string;
+  receipt_memo: string;
+  tax_invoice_issued: boolean;
+  tax_invoice_date: string | null;
+  card_receipt_collected: boolean;
+}
+
 interface ExpensesTableProps {
   expenses: Expense[];
-  newRows: any[];
+  newRows: NewExpenseRow[];
   categories: string[];
   paymentMethods: string[];
   onAddNewRow: () => void;
-  onUpdateNewRow: (id: string, field: string, value: any) => void;
+  onUpdateNewRow: (id: string, field: string, value: string | number | boolean | null) => void;
   onSaveNewRow: (id: string) => void;
   onRemoveNewRow: (id: string) => void;
   onDelete: (id: string) => void;
@@ -78,7 +93,7 @@ export function ExpensesTable({
   onAddNewRow,
   onUpdateNewRow,
   onSaveNewRow,
-  onRemoveNewRow,
+  onRemoveNewRow: _onRemoveNewRow,
   onDelete,
   onUpdate,
 }: ExpensesTableProps) {
@@ -213,7 +228,7 @@ export function ExpensesTable({
   };
 
   // 결제방법에 따른 추가 필드 렌더링 (새 행용)
-  const renderPaymentSpecificFields = (row: any, isNew: boolean) => {
+  const renderPaymentSpecificFields = (row: NewExpenseRow | Expense, isNew: boolean) => {
     const paymentMethod = isNew ? row.payment_method : editForm.payment_method;
 
     if (paymentMethod === "card") {

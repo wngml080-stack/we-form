@@ -30,12 +30,12 @@ export function AnnouncementCalendar({
   const startDayOfWeek = firstDay.getDay();
 
   // 날짜별 공지사항 맵 생성
-  const announcementsByDate: Record<string, any[]> = {};
+  const announcementsByDate: Record<string, BranchAnnouncement[]> = {};
   announcements.forEach((announcement) => {
     const startDate = new Date(announcement.start_date);
     const endDate = announcement.end_date ? new Date(announcement.end_date) : new Date(announcement.start_date);
 
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
       const dateKey = format(currentDate, "yyyy-MM-dd");
       if (!announcementsByDate[dateKey]) {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,15 +10,13 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { LeaveRequest, StaffRole } from "@/types/database";
-import { Check, X, Clock, Calendar, FileText, Plus, User, ArrowRight, AlertCircle, Trash2 } from "lucide-react";
+import { Check, X, Clock, Calendar, FileText, Plus, User, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import LeaveRequestModal from "./modals/LeaveRequestModal";
 import { cn } from "@/lib/utils";

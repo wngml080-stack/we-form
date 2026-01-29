@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AnnouncementForm } from "../../hooks/useSystemData";
 import { Bell, Save, X } from "lucide-react";
 
@@ -68,7 +68,7 @@ export function AnnouncementCreateModal({ isOpen, onOpenChange, form, setForm, o
             <div className="grid grid-cols-2 gap-6 pt-2">
               <div className="space-y-2.5">
                 <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">우선순위</Label>
-                <Select value={form.priority} onValueChange={(v: any) => setForm({...form, priority: v})}>
+                <Select value={form.priority} onValueChange={(v: string) => setForm({...form, priority: v})}>
                   <SelectTrigger className="h-14 px-6 rounded-2xl bg-slate-50 border-none focus:ring-orange-500 font-bold">
                     <SelectValue />
                   </SelectTrigger>
@@ -81,7 +81,7 @@ export function AnnouncementCreateModal({ isOpen, onOpenChange, form, setForm, o
               </div>
               <div className="space-y-2.5">
                 <Label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">공지 유형</Label>
-                <Select value={form.announcement_type} onValueChange={(v: any) => setForm({...form, announcement_type: v})}>
+                <Select value={form.announcement_type} onValueChange={(v: string) => setForm({...form, announcement_type: v})}>
                   <SelectTrigger className="h-14 px-6 rounded-2xl bg-slate-50 border-none focus:ring-orange-500 font-bold">
                     <SelectValue />
                   </SelectTrigger>

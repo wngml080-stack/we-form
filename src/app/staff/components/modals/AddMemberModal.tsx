@@ -4,15 +4,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, X, User, Phone, Search, Info, PlusCircle, CheckCircle2, Building2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { UserPlus, X, User, Phone, Search, Info, PlusCircle, CheckCircle2 } from "lucide-react";
 
 interface NewMemberData {
   name: string;
   phone: string;
   memo: string;
 }
+
+type MemberSearchResult = {
+  id: string;
+  name: string;
+  phone?: string;
+};
 
 interface AddMemberModalProps {
   isOpen: boolean;
@@ -27,8 +31,8 @@ interface AddMemberModalProps {
   setNewMemberPhone?: (phone: string) => void;
   onSubmit: () => void;
   isSearchingMembers?: boolean;
-  memberSearchResults?: any[];
-  onSelectExistingMember?: (member: any) => void;
+  memberSearchResults?: MemberSearchResult[];
+  onSelectExistingMember?: (member: MemberSearchResult) => void;
   searchMembers?: (query: string) => void;
 }
 

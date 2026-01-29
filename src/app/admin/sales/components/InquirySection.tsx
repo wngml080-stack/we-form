@@ -2,17 +2,10 @@
 
 import { useState } from "react";
 import { useInquiriesData } from "../../inquiries/hooks/useInquiriesData";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  MessageSquare, Calendar, Search, Plus, RefreshCw,
-  Clock, CheckCircle, AlertCircle, User, Settings, Filter, BarChart3
-} from "lucide-react";
+import { Plus, RefreshCw, Settings, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPhoneNumber } from "@/lib/utils/phone-format";
 
 // 모달 컴포넌트
 import { CreateInquiryModal } from "../../inquiries/components/modals/CreateInquiryModal";
@@ -23,56 +16,6 @@ import { KakaoChannelSettingsModal } from "../../inquiries/components/modals/Kak
 // 대시보드 컴포넌트
 import { NewMemberDashboard } from "./NewMemberDashboard";
 import { NewMemberList } from "./NewMemberList";
-
-const CHANNEL_LABELS: Record<string, string> = {
-  kakao: "카카오",
-  naver: "네이버",
-  phone: "전화",
-  walk_in: "방문",
-  website: "웹사이트",
-  instagram: "인스타그램",
-  other: "기타",
-};
-
-const CHANNEL_COLORS: Record<string, string> = {
-  kakao: "bg-yellow-100 text-yellow-800",
-  naver: "bg-green-100 text-green-800",
-  phone: "bg-blue-100 text-blue-800",
-  walk_in: "bg-purple-100 text-purple-800",
-  website: "bg-gray-100 text-gray-800",
-  instagram: "bg-pink-100 text-pink-800",
-  other: "bg-slate-100 text-slate-800",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  new: "신규",
-  in_progress: "진행중",
-  waiting: "대기중",
-  resolved: "완료",
-  converted: "전환됨",
-  cancelled: "취소",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  new: "bg-blue-100 text-blue-800",
-  in_progress: "bg-orange-100 text-orange-800",
-  waiting: "bg-yellow-100 text-yellow-800",
-  resolved: "bg-green-100 text-green-800",
-  converted: "bg-emerald-100 text-emerald-800",
-  cancelled: "bg-red-100 text-red-800",
-};
-
-const INQUIRY_TYPE_LABELS: Record<string, string> = {
-  price: "가격 문의",
-  schedule: "일정 문의",
-  location: "위치/교통",
-  trial: "체험 신청",
-  membership: "회원권",
-  pt: "PT 문의",
-  cancel: "해지/환불",
-  etc: "기타",
-  other: "기타",
-};
 
 interface InquirySectionProps {
   selectedGymId: string | null;
@@ -91,16 +34,9 @@ export function InquirySection({
   const [isKakaoSettingsOpen, setIsKakaoSettingsOpen] = useState(false);
 
   const {
-    inquiries,
     reservations,
     stats,
     isLoading,
-    statusFilter,
-    setStatusFilter,
-    channelFilter,
-    setChannelFilter,
-    searchQuery,
-    setSearchQuery,
     isCreateModalOpen,
     setIsCreateModalOpen,
     isDetailModalOpen,
@@ -115,7 +51,6 @@ export function InquirySection({
     deleteInquiry,
     createReservation,
     updateReservation,
-    openDetailModal,
     openReservationFromInquiry,
     refetch,
   } = useInquiriesData({
@@ -123,20 +58,6 @@ export function InquirySection({
     selectedCompanyId,
     filterInitialized: isInitialized,
   });
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const diffMinutes = Math.floor(diff / 60000);
-    const diffHours = Math.floor(diff / 3600000);
-    const diffDays = Math.floor(diff / 86400000);
-
-    if (diffMinutes < 60) return `${diffMinutes}분 전`;
-    if (diffHours < 24) return `${diffHours}시간 전`;
-    if (diffDays < 7) return `${diffDays}일 전`;
-    return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">

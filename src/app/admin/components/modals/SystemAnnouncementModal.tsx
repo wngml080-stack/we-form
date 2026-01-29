@@ -4,11 +4,23 @@ import { Bell, X, Calendar as CalendarIcon, Info, Sparkles, ChevronRight } from 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
+
+type SystemAnnouncementPriority = "urgent" | "update" | "info" | "general";
+
+interface SystemAnnouncementItem {
+  id: string;
+  title: string;
+  content: string;
+  priority: SystemAnnouncementPriority;
+  start_date?: string;
+  is_active: boolean;
+}
 
 interface SystemAnnouncementModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  announcements: any[];
+  announcements: SystemAnnouncementItem[];
 }
 
 export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }: SystemAnnouncementModalProps) {
@@ -42,7 +54,7 @@ export function SystemAnnouncementModal({ isOpen, onOpenChange, announcements }:
           {announcements.length > 0 ? (
             <div className="space-y-6">
               {announcements.map((announcement) => {
-                const priorityStyles: Record<string, { bg: string; text: string; label: string; icon: any }> = {
+                const priorityStyles: Record<SystemAnnouncementPriority, { bg: string; text: string; label: string; icon: ReactNode }> = {
                   urgent: { bg: "bg-rose-500", text: "text-rose-600", label: "URGENT", icon: <Info className="w-3.5 h-3.5" /> },
                   update: { bg: "bg-purple-500", text: "text-purple-600", label: "UPDATE", icon: <Sparkles className="w-3.5 h-3.5" /> },
                   info: { bg: "bg-cyan-500", text: "text-cyan-600", label: "INFO", icon: <Info className="w-3.5 h-3.5" /> },

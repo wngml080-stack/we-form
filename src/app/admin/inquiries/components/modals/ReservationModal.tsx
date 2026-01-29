@@ -18,8 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar, Clock, Phone, User, RefreshCw, ExternalLink, X, CheckCircle2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Calendar, Phone, User, RefreshCw, X, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Reservation {
@@ -65,7 +64,7 @@ export function ReservationModal({
   onCreate,
   onUpdate,
   gymId,
-  companyId,
+  companyId: _companyId,
 }: ReservationModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -200,7 +199,7 @@ export function ReservationModal({
       } else {
         alert(data.error || "동기화 실패");
       }
-    } catch (error) {
+    } catch {
       alert("동기화 중 오류가 발생했습니다.");
     } finally {
       setIsSyncing(false);

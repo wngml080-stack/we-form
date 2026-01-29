@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -94,9 +93,9 @@ export function CreateScheduleModal({
   filteredMembers,
   memberMemberships,
   setSelectedMemberMembership,
-  selectedStaffId,
-  schedules,
-  getSessionNumber,
+  selectedStaffId: _selectedStaffId,
+  schedules: _schedules,
+  getSessionNumber: _getSessionNumber,
   isLoading,
   onSubmit,
   isLocked = false,

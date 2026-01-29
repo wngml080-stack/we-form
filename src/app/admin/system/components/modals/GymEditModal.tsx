@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EditGymForm, CATEGORY_OPTIONS } from "../../hooks/useSystemData";
 
 interface GymEditModalProps {
@@ -17,7 +17,7 @@ interface GymEditModalProps {
 }
 
 import { cn } from "@/lib/utils";
-import { Building, Ruler, Calendar, Check, Save, Pencil } from "lucide-react";
+import { Ruler, Calendar, Check, Save, Pencil } from "lucide-react";
 
 export function GymEditModal({ isOpen, onOpenChange, form, setForm, toggleEditCategory, onSubmit }: GymEditModalProps) {
   return (
@@ -114,7 +114,7 @@ export function GymEditModal({ isOpen, onOpenChange, form, setForm, toggleEditCa
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-500 ml-1 uppercase tracking-widest">운영 상태</Label>
-                <Select value={form.status} onValueChange={(v: any) => setForm({...form, status: v})}>
+                <Select value={form.status} onValueChange={(v: string) => setForm({...form, status: v})}>
                   <SelectTrigger className="h-12 bg-white border-none rounded-2xl font-bold shadow-sm focus:ring-2 focus:ring-blue-100 transition-all">
                     <SelectValue />
                   </SelectTrigger>

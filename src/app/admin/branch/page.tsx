@@ -4,7 +4,7 @@ import { use } from "react";
 import dynamicImport from "next/dynamic";
 import { Users, DollarSign, BarChart3, Building, MessageSquare, Plus } from "lucide-react";
 import { useBranchData } from "./hooks/useBranchData";
-import { StatCard, QuickLinkCard } from "./components/StatCards";
+import { QuickLinkCard } from "./components/StatCards";
 import { AnnouncementCalendar } from "./components/AnnouncementCalendar";
 
 // Dynamic imports for modals (코드 스플리팅으로 초기 로드 성능 개선)
@@ -18,8 +18,8 @@ const DateAnnouncementsModal = dynamicImport(
 );
 
 export default function BranchManagementPage(props: {
-  params: Promise<any>;
-  searchParams: Promise<any>;
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // Next.js 15+에서 params와 searchParams는 Promise이므로 unwrap해야 합니다.
   use(props.params);

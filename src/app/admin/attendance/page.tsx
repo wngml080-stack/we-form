@@ -6,13 +6,8 @@ import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+
 import {
   Dialog,
   DialogContent,
@@ -189,7 +184,10 @@ export default function AdminAttendancePage() {
       if (error) throw error;
 
       // staff 배열을 객체로 변환
-      const transformedData = (data || []).map((schedule: any) => ({
+      type ScheduleWithStaffArray = Omit<Schedule, 'staff'> & {
+        staff: { id: string; name: string }[] | { id: string; name: string } | null;
+      };
+      const transformedData = (data || []).map((schedule: ScheduleWithStaffArray) => ({
         ...schedule,
         staff: Array.isArray(schedule.staff) && schedule.staff.length > 0
           ? schedule.staff[0]
@@ -300,8 +298,8 @@ export default function AdminAttendancePage() {
       setIsStatusModalOpen(false);
       setSelectedSchedule(null);
       fetchSchedules();
-    } catch (error: any) {
-      showError(error.message || "상태 변경에 실패했습니다.");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "상태 변경에 실패했습니다.");
     }
   };
 

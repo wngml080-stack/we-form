@@ -86,7 +86,7 @@ export default function MigrationsPage() {
         // RPC가 없으면 기본 테이블 목록 사용
         await checkMigrationStatus();
       } else if (data) {
-        setTables(data.map((t: any) => t.table_name));
+        setTables(data.map((t: { table_name: string }) => t.table_name));
       }
     } catch (error) {
       console.error("테이블 목록 조회 실패:", error);

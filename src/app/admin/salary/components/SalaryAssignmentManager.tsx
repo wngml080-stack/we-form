@@ -24,8 +24,25 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
 import { Plus, Trash2, Info, Calculator, Users } from "lucide-react";
+
+type SalaryParameter = Record<string, string | number | boolean | SalaryTier[]>;
+type SalaryTier = { min: number; max: number; rate: number };
+
+interface StaffDbRow {
+    id: string;
+    user_id: string;
+    name: string;
+    job_title?: string;
+    role: string;
+    gym_id: string;
+    salary_setting?: Array<{
+        id: string;
+        template_id: string;
+        template?: { name: string };
+        personal_parameters: SalaryParameter;
+    }>;
+}
 
 type Staff = {
     id: string;
@@ -33,18 +50,19 @@ type Staff = {
     name: string;
     role: string;
     gym_id: string;
+    job_title?: string;
     salary_setting?: {
         id: string;
         template_id: string;
         template_name: string;
-        personal_parameters: any;
+        personal_parameters: SalaryParameter;
     };
 };
 
 type SalaryTemplate = {
     id: string;
     name: string;
-    items: { rule: { id: string; name: string; calculation_type: string; default_parameters: any } }[];
+    items: { rule: { id: string; name: string; calculation_type: string; default_parameters: SalaryParameter } }[];
 };
 
 export default function SalaryAssignmentManager() {
@@ -60,7 +78,7 @@ export default function SalaryAssignmentManager() {
 
     // 폼 상태
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-    const [personalParams, setPersonalParams] = useState<any>({});
+    const [personalParams, setPersonalParams] = useState<SalaryParameter>({});
 
     // 계산기 상태
     const [calcAmount, setCalcAmount] = useState("");
@@ -74,7 +92,7 @@ export default function SalaryAssignmentManager() {
         }
     }, [filterInitialized, selectedGymId, selectedCompanyId]);
 
-    const fetchData = async (gymId: string, companyId: string) => {
+    const fetchData = async (gymId: string, _companyId: string) => {
         try {
             // 템플릿 조회: 먼저 기본 조회 시도
             let templatesData: SalaryTemplate[] = [];
@@ -122,12 +140,12 @@ export default function SalaryAssignmentManager() {
                         .from("staffs")
                         .select("id, user_id, name, job_title, role, gym_id")
                         .eq("gym_id", gymId);
-                    formattedStaffs = (basicStaffs || []).map((s: any) => ({
+                    formattedStaffs = (basicStaffs || []).map((s: StaffDbRow) => ({
                         ...s,
                         salary_setting: undefined
                     }));
                 } else {
-                    formattedStaffs = (staffData || []).map((s: any) => ({
+                    formattedStaffs = (staffData || []).map((s: StaffDbRow) => ({
                         ...s,
                         salary_setting: s.salary_setting?.[0] ? {
                             id: s.salary_setting[0].id,
@@ -143,7 +161,7 @@ export default function SalaryAssignmentManager() {
                     .from("staffs")
                     .select("id, user_id, name, job_title, role, gym_id")
                     .eq("gym_id", gymId);
-                formattedStaffs = (basicStaffs || []).map((s: any) => ({
+                formattedStaffs = (basicStaffs || []).map((s: StaffDbRow) => ({
                     ...s,
                     salary_setting: undefined
                 }));
@@ -175,13 +193,13 @@ export default function SalaryAssignmentManager() {
         setPersonalParams({});
     };
 
-    const handleParamChange = (ruleId: string, key: string, value: any) => {
+    const handleParamChange = (ruleId: string, key: string, value: string | number | boolean | SalaryTier[]) => {
         // value가 배열(tiers)인 경우 그대로 저장
         if (key === 'tiers') {
-            setPersonalParams((prev: any) => ({
+            setPersonalParams((prev) => ({
                 ...prev,
                 [ruleId]: {
-                    ...prev[ruleId],
+                    ...(typeof prev[ruleId] === 'object' && prev[ruleId] !== null ? prev[ruleId] as Record<string, unknown> : {}),
                     [key]: value
                 }
             }));
@@ -189,12 +207,12 @@ export default function SalaryAssignmentManager() {
         }
 
         // 숫자형 입력 처리
-        let finalValue = value;
+        let finalValue: string | number | boolean = value as string | number | boolean;
         if (typeof value === 'string' && !isNaN(Number(value)) && value !== "") {
              finalValue = Number(value);
         }
-        
-        setPersonalParams((prev: any) => ({
+
+        setPersonalParams((prev) => ({
             ...prev,
             [ruleId]: {
                 ...prev[ruleId],
@@ -257,11 +275,11 @@ export default function SalaryAssignmentManager() {
 
     // 그룹핑 함수
     const currentTemplate = templates.find(t => t.id === selectedTemplateId);
-    const groupedRules = {
-        basic: [] as any[],
-        class: [] as any[],
-        incentive: [] as any[],
-        others: [] as any[]
+    const groupedRules: { basic: SalaryRule[]; class: SalaryRule[]; incentive: SalaryRule[]; others: SalaryRule[] } = {
+        basic: [],
+        class: [],
+        incentive: [],
+        others: []
     };
 
     if (currentTemplate) {
@@ -323,7 +341,7 @@ export default function SalaryAssignmentManager() {
                                     </td>
                                     <td className="px-8 py-6">
                                         <span className="text-slate-500 font-bold text-sm bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">
-                                            {(staff as any).job_title || staff.role}
+                                            {staff.job_title || staff.role}
                                         </span>
                                     </td>
                                     <td className="px-8 py-6">
@@ -371,7 +389,7 @@ export default function SalaryAssignmentManager() {
                                 <div>
                                     <DialogTitle className="text-3xl font-black text-slate-900 tracking-tighter">급여 및 인센티브 설정</DialogTitle>
                                     <DialogDescription className="text-slate-500 font-bold text-base mt-1">
-                                        <span className="text-blue-600">{selectedStaff?.name}</span> / {(selectedStaff as any)?.job_title || selectedStaff?.role}
+                                        <span className="text-blue-600">{selectedStaff?.name}</span> / {selectedStaff?.job_title || selectedStaff?.role}
                                     </DialogDescription>
                                 </div>
                             </div>
@@ -539,7 +557,20 @@ export default function SalaryAssignmentManager() {
     );
 }
 
-function renderParamInputs(rule: any, values: any, onChange: (key: string, value: any) => void) {
+interface SalaryRule {
+    id: string;
+    name: string;
+    calculation_type: string;
+    default_parameters: SalaryParameter;
+}
+
+interface ParamValues {
+    amount?: string | number;
+    rate?: string | number;
+    tiers?: SalaryTier[];
+}
+
+function renderParamInputs(rule: SalaryRule, values: ParamValues, onChange: (key: string, value: string | number | SalaryTier[]) => void) {
     const inputClass = "bg-white border border-slate-200 text-slate-900 h-12 rounded-xl font-black text-right pr-10 focus:ring-2 focus:ring-blue-500/50 shadow-sm transition-all";
 
     switch(rule.calculation_type) {
@@ -599,8 +630,10 @@ function renderParamInputs(rule: any, values: any, onChange: (key: string, value
     }
 }
 
-// 구간별 설정 컴포넌트
-function TieredConfig({ tiers, onChange }: { tiers: any[], onChange: (tiers: any[]) => void }) {
+// 구간별 설정 컴포넌트 (향후 사용 예정)
+interface TierItem { min: number; max: number | null; value: number }
+// eslint-disable-next-line unused-imports/no-unused-vars
+function TieredConfig({ tiers, onChange }: { tiers: TierItem[], onChange: (tiers: TierItem[]) => void }) {
     const [testSales, setTestSales] = useState<string>("");
 
     const handleAddTier = () => {
@@ -612,7 +645,7 @@ function TieredConfig({ tiers, onChange }: { tiers: any[], onChange: (tiers: any
         onChange(newTiers);
     };
 
-    const handleUpdateTier = (index: number, field: string, value: any) => {
+    const handleUpdateTier = (index: number, field: string, value: string) => {
         const newTiers = [...tiers];
         newTiers[index] = { ...newTiers[index], [field]: value === "" ? null : Number(value) };
         onChange(newTiers);
@@ -703,6 +736,7 @@ function TieredConfig({ tiers, onChange }: { tiers: any[], onChange: (tiers: any
     );
 }
 
+// eslint-disable-next-line unused-imports/no-unused-vars
 function getCalculationLabel(type: string) {
     switch(type) {
         case 'fixed': return '고정급';

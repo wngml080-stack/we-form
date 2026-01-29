@@ -10,7 +10,6 @@ import {
   Clock,
   ListTodo,
   CheckCircle,
-  AlertCircle,
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,7 +30,7 @@ export function WeeklyRoutineSection({
   getCurrentWeekStart,
   getWeeklyRoutine,
   onUpdateRoutine,
-  hideHeaderCard,
+  hideHeaderCard: _hideHeaderCard,
 }: Props) {
   const [selectedWeek, setSelectedWeek] = useState(getCurrentWeekStart);
 
@@ -207,7 +206,7 @@ export function WeeklyRoutineSection({
                   <Checkbox
                     id={task.id}
                     checked={routine.mondayTasks[task.id as keyof typeof routine.mondayTasks] as boolean}
-                    onCheckedChange={(checked) => updateMondayTask(task.id as any, !!checked)}
+                    onCheckedChange={(checked) => updateMondayTask(task.id as keyof typeof routine.mondayTasks, !!checked)}
                     className="mt-1 w-5 h-5 rounded-lg border-slate-200 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
                   />
                   <Label htmlFor={task.id} className="cursor-pointer space-y-1">
@@ -278,7 +277,7 @@ export function WeeklyRoutineSection({
                   <Checkbox
                     id={task.id}
                     checked={routine.fridayTasks[task.id as keyof typeof routine.fridayTasks] as boolean}
-                    onCheckedChange={(checked) => updateFridayTask(task.id as any, !!checked)}
+                    onCheckedChange={(checked) => updateFridayTask(task.id as keyof typeof routine.fridayTasks, !!checked)}
                     className="mt-1 w-5 h-5 rounded-lg border-slate-200 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
                   />
                   <Label htmlFor={task.id} className="cursor-pointer space-y-1">

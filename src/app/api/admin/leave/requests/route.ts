@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
-import { authenticateRequest, isAdmin } from "@/lib/api/auth";
+import { authenticateRequest } from "@/lib/api/auth";
 import { getErrorMessage } from "@/types/common";
 
 // 휴가 신청 목록 조회

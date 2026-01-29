@@ -64,8 +64,24 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
   // 설정 모달
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // 새 행 타입
+  type NewExpenseRow = {
+    id: string;
+    expense_date: string;
+    category: string;
+    sub_category: string;
+    description: string;
+    amount: number;
+    payment_method: string;
+    account_holder: string;
+    receipt_memo: string;
+    tax_invoice_issued: boolean;
+    tax_invoice_date: string | null;
+    card_receipt_collected: boolean;
+  };
+
   // 새 행 추가
-  const [newRows, setNewRows] = useState<any[]>([]);
+  const [newRows, setNewRows] = useState<NewExpenseRow[]>([]);
 
   // 통계
   const [stats, setStats] = useState<ExpenseStats>({
@@ -119,7 +135,22 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
       const result = await response.json();
 
       if (result.success && result.expenses) {
-        const formattedExpenses: Expense[] = result.expenses.map((e: any) => ({
+        type RawExpense = {
+          id: string;
+          expense_date: string;
+          category?: string;
+          sub_category?: string;
+          description?: string;
+          amount?: number;
+          payment_method?: string;
+          account_holder?: string;
+          receipt_memo?: string;
+          tax_invoice_issued?: boolean;
+          tax_invoice_date?: string | null;
+          card_receipt_collected?: boolean;
+          created_at: string;
+        };
+        const formattedExpenses: Expense[] = result.expenses.map((e: RawExpense) => ({
           id: e.id,
           expense_date: e.expense_date,
           category: e.category || "",
@@ -261,7 +292,7 @@ export function useExpensesData({ selectedGymId, selectedCompanyId, filterInitia
     }]);
   };
 
-  const updateNewRow = (id: string, field: string, value: any) => {
+  const updateNewRow = (id: string, field: string, value: string | number | boolean | null) => {
     setNewRows(prev => prev.map(row =>
       row.id === id ? { ...row, [field]: value } : row
     ));

@@ -94,6 +94,15 @@ export interface GymInfo {
 export type SalesPeriod = "thisMonth" | "lastMonth" | "custom";
 export type SalesType = "all" | "fc" | "pt";
 
+export interface DetailedSale {
+  id: string;
+  amount: number;
+  type: string;
+  created_at: string;
+  member_name?: string;
+  description?: string;
+}
+
 export function useBranchData() {
   const { user, isLoading: authLoading } = useAuth();
   const { branchFilter, isInitialized: filterInitialized } = useAdminFilter();
@@ -142,7 +151,7 @@ export function useBranchData() {
     start: new Date().toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
-  const [detailedSales, setDetailedSales] = useState<any[]>([]);
+  const [detailedSales, setDetailedSales] = useState<DetailedSale[]>([]);
   const [salesSummary, setSalesSummary] = useState<SalesSummary>({
     totalRevenue: 0,
     fcRevenue: 0,
@@ -187,7 +196,7 @@ export function useBranchData() {
 
 
   // 지점 데이터 조회 - 회원/매출 테이블 임시 비활성화 (재연결 예정)
-  const fetchBranchData = useCallback(async (_gymId: string, _companyId: string, gym: any) => {
+  const fetchBranchData = useCallback(async (_gymId: string, _companyId: string, gym: GymInfo) => {
     const fcBep = gym.fc_bep || 75000000;
     const ptBep = gym.pt_bep || 100000000;
 
@@ -216,7 +225,7 @@ export function useBranchData() {
     if (announcementsData) setAnnouncements(announcementsData);
   }, [supabase]);
 
-  const openAnnouncementModal = useCallback((announcement: any = null) => {
+  const openAnnouncementModal = useCallback((announcement: BranchAnnouncement | null = null) => {
     if (announcement) {
       setEditingAnnouncement(announcement);
       setAnnouncementForm({
@@ -285,14 +294,14 @@ export function useBranchData() {
 
       setIsAnnouncementModalOpen(false);
       await fetchAnnouncements(selectedCompanyId, selectedGymId);
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     } finally {
       setIsLoading(false);
     }
   }, [announcementForm, editingAnnouncement, fetchAnnouncements, selectedCompanyId, selectedGymId, supabase, user]);
 
-  const handleToggleAnnouncementActive = useCallback(async (announcement: any) => {
+  const handleToggleAnnouncementActive = useCallback(async (announcement: BranchAnnouncement) => {
     try {
       const { error } = await supabase
         .from("announcements")
@@ -301,8 +310,8 @@ export function useBranchData() {
 
       if (error) throw error;
       await fetchAnnouncements(selectedCompanyId, selectedGymId);
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   }, [fetchAnnouncements, selectedCompanyId, selectedGymId, supabase]);
 
@@ -318,8 +327,8 @@ export function useBranchData() {
       if (error) throw error;
       toast.success("지점 공지사항이 삭제되었습니다.");
       await fetchAnnouncements(selectedCompanyId, selectedGymId);
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   }, [fetchAnnouncements, selectedCompanyId, selectedGymId, supabase]);
 

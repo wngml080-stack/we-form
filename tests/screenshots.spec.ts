@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { test, Page } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 
@@ -22,7 +22,7 @@ if (fs.existsSync(SCREENSHOT_DIR)) {
 }
 
 // 페이지 로딩 완료 대기
-async function waitForPageLoad(page: any, extraWait = 1500) {
+async function waitForPageLoad(page: Page, extraWait = 1500) {
   try {
     await page.waitForLoadState("networkidle", { timeout: 15000 });
   } catch {
@@ -32,7 +32,7 @@ async function waitForPageLoad(page: any, extraWait = 1500) {
 }
 
 // 전체 페이지 스크린샷 (여백 최소화)
-async function takeFullScreenshot(page: any, filename: string) {
+async function takeFullScreenshot(page: Page, filename: string) {
   try {
     // 실제 콘텐츠 높이 계산 (여백 제외)
     const contentHeight = await page.evaluate(() => {
@@ -70,7 +70,7 @@ async function takeFullScreenshot(page: any, filename: string) {
 }
 
 // 모달 스크린샷
-async function takeModalScreenshot(page: any, filename: string) {
+async function takeModalScreenshot(page: Page, filename: string) {
   try {
     await page.setViewportSize({ width: 1920, height: 1200 });
     await page.waitForTimeout(800);
@@ -86,7 +86,7 @@ async function takeModalScreenshot(page: any, filename: string) {
 }
 
 // 모달 닫기
-async function closeModal(page: any) {
+async function closeModal(page: Page) {
   try {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(500);
@@ -96,7 +96,7 @@ async function closeModal(page: any) {
 }
 
 // 안전하게 클릭
-async function safeClick(page: any, selector: string, timeout = 5000): Promise<boolean> {
+async function safeClick(page: Page, selector: string, timeout = 5000): Promise<boolean> {
   try {
     const element = page.locator(selector).first();
     if (await element.isVisible({ timeout })) {
@@ -110,7 +110,7 @@ async function safeClick(page: any, selector: string, timeout = 5000): Promise<b
 }
 
 // 텍스트로 요소 찾아 클릭
-async function clickByText(page: any, text: string, exact = false): Promise<boolean> {
+async function clickByText(page: Page, text: string, exact = false): Promise<boolean> {
   try {
     const element = page.getByText(text, { exact }).first();
     if (await element.isVisible({ timeout: 5000 })) {

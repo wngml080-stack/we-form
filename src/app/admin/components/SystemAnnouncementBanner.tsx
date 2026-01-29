@@ -2,8 +2,16 @@
 
 import { Bell } from "lucide-react";
 
+type AnnouncementPriority = 'urgent' | 'normal';
+
+interface Announcement {
+  id: string;
+  title: string;
+  priority: AnnouncementPriority;
+}
+
 interface SystemAnnouncementBannerProps {
-  announcements: any[];
+  announcements: Announcement[];
   onBannerClick: () => void;
 }
 

@@ -6,10 +6,8 @@ import type {
   MeetingDetail,
   MeetingCreateInput,
   MeetingUpdateInput,
-  MeetingFilters,
   MeetingStatus,
   MeetingType,
-  MeetingStatistics,
 } from "@/types/meeting";
 
 interface UseMeetingsDataProps {

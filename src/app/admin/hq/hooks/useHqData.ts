@@ -73,6 +73,61 @@ export interface Activity {
   badgeColor: string;
 }
 
+// HQ 데이터 타입 정의
+export interface HqGym {
+  id: string;
+  name: string;
+  status: string;
+  category?: string;
+  size?: string;
+  open_date?: string;
+  memo?: string;
+  company_id?: string;
+  created_at?: string;
+  fc_bep?: number;
+  pt_bep?: number;
+}
+
+export interface HqStaff {
+  id: string;
+  name: string;
+  user_id?: string;
+  gym_id?: string;
+  gyms?: { name: string };
+  job_title?: string;
+  role: string;
+  employment_status?: string;
+  created_at?: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface HqPayment {
+  member_id: string;
+  amount: number;
+  payment_date?: string;
+}
+
+export interface HqMember {
+  id: string;
+  name: string;
+  gym_id: string;
+  created_at: string;
+  status?: string;
+  payments?: HqPayment[];
+}
+
+export interface HqCompany {
+  id: string;
+  name: string;
+}
+
+export interface HqCompanyEvent extends EventForm {
+  id: string;
+  company_id?: string;
+  created_at?: string;
+}
+
 const initialFormData: GymFormData = {
   gymName: "",
   managerId: "",
@@ -99,10 +154,10 @@ const initialEventForm: EventForm = {
 
 export function useHqData() {
   // 기본 데이터 상태
-  const [gyms, setGyms] = useState<any[]>([]);
-  const [pendingStaffs, setPendingStaffs] = useState<any[]>([]);
-  const [allStaffs, setAllStaffs] = useState<any[]>([]);
-  const [members, setMembers] = useState<any[]>([]);
+  const [gyms, setGyms] = useState<HqGym[]>([]);
+  const [pendingStaffs, setPendingStaffs] = useState<HqStaff[]>([]);
+  const [allStaffs, setAllStaffs] = useState<HqStaff[]>([]);
+  const [members, setMembers] = useState<HqMember[]>([]);
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
 
   // 회사 정보
@@ -111,7 +166,7 @@ export function useHqData() {
   const [myRole, setMyRole] = useState<string>("");
 
   // system_admin용 회사 목록
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<HqCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
 
   // 통계 데이터
@@ -132,14 +187,14 @@ export function useHqData() {
   const [selectedGymFilter, setSelectedGymFilter] = useState<string>("all");
 
   // 지점 상세보기 모달
-  const [selectedGymDetail, setSelectedGymDetail] = useState<any | null>(null);
+  const [selectedGymDetail, setSelectedGymDetail] = useState<HqGym | null>(null);
   const [isGymDetailOpen, setIsGymDetailOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>("current");
   const [isEditingBep, setIsEditingBep] = useState(false);
   const [bepForm, setBepForm] = useState<BepForm>({ fc_bep: 75000000, pt_bep: 100000000 });
 
   // 직원 정보 수정 모달
-  const [editingStaff, setEditingStaff] = useState<any | null>(null);
+  const [editingStaff, setEditingStaff] = useState<HqStaff | null>(null);
   const [isStaffEditOpen, setIsStaffEditOpen] = useState(false);
   const [staffEditForm, setStaffEditForm] = useState<StaffEditForm>({
     job_title: "",
@@ -148,9 +203,9 @@ export function useHqData() {
   });
 
   // 회사 일정 & 행사 관리
-  const [companyEvents, setCompanyEvents] = useState<any[]>([]);
+  const [companyEvents, setCompanyEvents] = useState<HqCompanyEvent[]>([]);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<any | null>(null);
+  const [editingEvent, setEditingEvent] = useState<HqCompanyEvent | null>(null);
   const [eventForm, setEventForm] = useState<EventForm>(initialEventForm);
 
   // 지점 생성/수정 폼
@@ -240,8 +295,8 @@ export function useHqData() {
 
       // 회원 데이터 설정 (결제 정보 연결)
       if (memberData && paymentData) {
-        const membersWithPayments = memberData.map((member: any) => {
-          const payments = paymentData.filter((p: any) => p.member_id === member.id);
+        const membersWithPayments = memberData.map((member: HqMember) => {
+          const payments = paymentData.filter((p: { member_id: string }) => p.member_id === member.id);
           return { ...member, payments };
         });
         setMembers(membersWithPayments);
@@ -254,11 +309,11 @@ export function useHqData() {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const activities: Activity[] = [];
-      const recentStaffs = allData?.filter((s: any) =>
+      const recentStaffs = allData?.filter((s: HqStaff) =>
         s.created_at && new Date(s.created_at) >= thirtyDaysAgo
       ) || [];
 
-      recentStaffs.forEach((staff: any) => {
+      recentStaffs.forEach((staff: HqStaff) => {
         const gymName = staff.gyms?.name || '미배정';
         const isManualAdd = !staff.user_id;
         const activityType = isManualAdd ? '수동 추가' : '자체 가입';
@@ -290,10 +345,10 @@ export function useHqData() {
       firstDayOfMonth.setDate(1);
       firstDayOfMonth.setHours(0, 0, 0, 0);
 
-      const gymStatsData: GymStats[] = gymData?.map((gym: any) => {
-        const staffCount = allData?.filter((s: any) => s.gym_id === gym.id).length || 0;
-        const memberCount = memberData?.filter((m: any) => m.gym_id === gym.id).length || 0;
-        const newMembersCount = memberData?.filter((m: any) => {
+      const gymStatsData: GymStats[] = gymData?.map((gym: HqGym) => {
+        const staffCount = allData?.filter((s: HqStaff) => s.gym_id === gym.id).length || 0;
+        const memberCount = memberData?.filter((m: HqMember) => m.gym_id === gym.id).length || 0;
+        const newMembersCount = memberData?.filter((m: HqMember) => {
           if (m.gym_id !== gym.id) return false;
           const createdAt = new Date(m.created_at);
           return createdAt >= firstDayOfMonth;
@@ -342,13 +397,13 @@ export function useHqData() {
       } else {
         toast.error(result.error);
       }
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "오류가 발생했습니다.");
     }
   };
 
   // 회사 일정 & 행사 관리 함수들
-  const openEventModal = (event: any = null) => {
+  const openEventModal = (event: HqCompanyEvent | null = null) => {
     if (event) {
       setEditingEvent(event);
       setEventForm({
@@ -414,8 +469,8 @@ export function useHqData() {
 
       setIsEventModalOpen(false);
       fetchData(targetCompanyId);
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     } finally {
       setIsLoading(false);
     }
@@ -435,12 +490,12 @@ export function useHqData() {
       toast.success("회사 일정 & 행사가 삭제되었습니다.");
       const targetCompanyId = companyId || selectedCompanyId;
       fetchData(targetCompanyId);
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
-  const handleToggleEventActive = async (event: any) => {
+  const handleToggleEventActive = async (event: HqCompanyEvent) => {
     try {
       const response = await fetch("/api/admin/hq/events", {
         method: "PATCH",
@@ -456,8 +511,8 @@ export function useHqData() {
 
       const targetCompanyId = companyId || selectedCompanyId;
       fetchData(targetCompanyId);
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
@@ -495,8 +550,8 @@ export function useHqData() {
       setIsCreateOpen(false);
       setFormData(initialFormData);
       fetchData(targetCompanyId);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -523,15 +578,15 @@ export function useHqData() {
       setEditTargetId(null);
       setFormData(initialFormData);
       fetchData(companyId || selectedCompanyId);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
   };
 
   // 지점 수정 모달 열기
-  const openEditModal = (gym: any) => {
+  const openEditModal = (gym: HqGym) => {
     setEditTargetId(gym.id);
     setFormData({
       gymName: gym.name || "",
@@ -556,13 +611,13 @@ export function useHqData() {
 
       if (!result.success) throw new Error(result.error);
       fetchData(companyId || selectedCompanyId);
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
   // 직원 수정 모달 열기
-  const openStaffEditModal = (staff: any) => {
+  const openStaffEditModal = (staff: HqStaff) => {
     setEditingStaff(staff);
     setStaffEditForm({
       job_title: staff.job_title || "",
@@ -593,15 +648,15 @@ export function useHqData() {
       toast.success("직원 정보가 수정되었습니다.");
       setIsStaffEditOpen(false);
       fetchData(companyId || selectedCompanyId);
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }
   };
 
   // 지점 상세 모달 열기
-  const openGymDetailModal = (gym: any) => {
+  const openGymDetailModal = (gym: HqGym) => {
     const gymStat = gymStats.find(g => g.id === gym.id);
     setSelectedGymDetail({ ...gym, stats: gymStat });
     setBepForm({
@@ -639,8 +694,8 @@ export function useHqData() {
         fc_bep: bepForm.fc_bep,
         pt_bep: bepForm.pt_bep
       });
-    } catch (error: any) {
-      toast.error("오류: " + error.message);
+    } catch (error) {
+      toast.error("오류: " + (error instanceof Error ? error.message : "알 수 없는 오류"));
     }
   };
 
@@ -659,11 +714,11 @@ export function useHqData() {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const gymMonthlySales = gymMembers.reduce((sum, m) => {
       const payments = m.payments || [];
-      const monthlyPayments = payments.filter((p: any) => {
-        const paymentDate = new Date(p.payment_date);
+      const monthlyPayments = payments.filter((p: HqPayment) => {
+        const paymentDate = p.payment_date ? new Date(p.payment_date) : new Date(0);
         return paymentDate >= firstDayOfMonth;
       });
-      return sum + monthlyPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+      return sum + monthlyPayments.reduce((s: number, p: HqPayment) => s + (Number(p.amount) || 0), 0);
     }, 0);
 
     return {

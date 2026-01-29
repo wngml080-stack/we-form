@@ -78,7 +78,7 @@ interface AuthCache {
 }
 
 // localStorage 캐시 유틸리티
-function getStoredCache(): AuthCache | null {
+function _getStoredCache(): AuthCache | null {
   if (typeof window === "undefined") return null;
   try {
     const cached = localStorage.getItem(AUTH_CACHE_KEY);

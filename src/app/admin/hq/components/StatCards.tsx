@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, UserCheck, TrendingUp, Wallet } from "lucide-react";
+import { Building2, Users, UserCheck, Wallet } from "lucide-react";
 import { Stats } from "../hooks/useHqData";
 
 interface StatCardsProps {

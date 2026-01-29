@@ -30,13 +30,22 @@ import {
   CheckCircle2,
   Trash2
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+
+interface RenewalMember {
+  id: string;
+  name: string;
+  phone: string;
+  membershipName: string;
+  endDate: string;
+  status: string;
+  memo?: string;
+}
 
 interface RenewalDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  member: any;
-  onUpdate: (updatedMember: any) => void;
+  member: RenewalMember | null;
+  onUpdate: (updatedMember: RenewalMember) => void;
   onDelete: (id: string) => void;
 }
 
@@ -47,7 +56,7 @@ export function RenewalDetailModal({
   onUpdate,
   onDelete,
 }: RenewalDetailModalProps) {
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Partial<RenewalMember>>({});
 
   useEffect(() => {
     if (member) {
@@ -56,7 +65,9 @@ export function RenewalDetailModal({
   }, [member]);
 
   const handleSubmit = () => {
-    onUpdate(formData);
+    if (formData.id) {
+      onUpdate(formData as RenewalMember);
+    }
     onClose();
   };
 

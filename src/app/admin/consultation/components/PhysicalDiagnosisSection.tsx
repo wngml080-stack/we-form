@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";

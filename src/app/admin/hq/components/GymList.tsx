@@ -4,12 +4,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, MapPin, Calendar, User, Building2 } from "lucide-react";
+import { HqGym, HqStaff } from "../hooks/useHqData";
+
+type GymWithStaffs = HqGym & {
+  staffs?: HqStaff[];
+};
 
 interface GymListProps {
-  gyms: any[];
+  gyms: GymWithStaffs[];
   onCreateClick: () => void;
-  onGymDetailClick: (gym: any) => void;
-  onEditClick: (gym: any) => void;
+  onGymDetailClick: (gym: GymWithStaffs) => void;
+  onEditClick: (gym: GymWithStaffs) => void;
   onDeleteClick: (gymId: string) => void;
   getCategoryColor: (cat: string) => string;
 }
@@ -52,7 +57,7 @@ export function GymList({
           </div>
         ) : (
           gyms.map((gym) => {
-            const manager = gym.staffs?.find((s: any) => s.role === 'admin') || gym.staffs?.[0];
+            const manager = gym.staffs?.find((s) => s.role === 'admin') || gym.staffs?.[0];
             const categories = gym.category ? gym.category.split(", ") : [];
 
             return (

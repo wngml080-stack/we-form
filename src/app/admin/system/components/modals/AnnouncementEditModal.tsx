@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EditAnnouncementForm } from "../../hooks/useSystemData";
 
 interface AnnouncementEditModalProps {
@@ -16,8 +16,7 @@ interface AnnouncementEditModalProps {
   onSubmit: () => void;
 }
 
-import { cn } from "@/lib/utils";
-import { Megaphone, Save, Calendar, Pencil } from "lucide-react";
+import { Save, Calendar, Pencil } from "lucide-react";
 
 export function AnnouncementEditModal({ isOpen, onOpenChange, form, setForm, onSubmit }: AnnouncementEditModalProps) {
   return (
@@ -60,7 +59,7 @@ export function AnnouncementEditModal({ isOpen, onOpenChange, form, setForm, onS
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-500 ml-1 uppercase tracking-widest">우선순위</Label>
-                <Select value={form.priority} onValueChange={(v: any) => setForm({...form, priority: v})}>
+                <Select value={form.priority} onValueChange={(v: string) => setForm({...form, priority: v})}>
                   <SelectTrigger className="h-12 bg-white border-none rounded-2xl font-bold shadow-sm focus:ring-2 focus:ring-orange-100 transition-all">
                     <SelectValue/>
                   </SelectTrigger>
@@ -74,7 +73,7 @@ export function AnnouncementEditModal({ isOpen, onOpenChange, form, setForm, onS
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-black text-slate-500 ml-1 uppercase tracking-widest">유형</Label>
-                <Select value={form.announcement_type} onValueChange={(v: any) => setForm({...form, announcement_type: v})}>
+                <Select value={form.announcement_type} onValueChange={(v: string) => setForm({...form, announcement_type: v})}>
                   <SelectTrigger className="h-12 bg-white border-none rounded-2xl font-bold shadow-sm focus:ring-2 focus:ring-orange-100 transition-all">
                     <SelectValue/>
                   </SelectTrigger>

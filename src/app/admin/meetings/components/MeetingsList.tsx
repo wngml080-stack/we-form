@@ -24,8 +24,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  MEETING_STATUS_LABELS,
-  MEETING_STATUS_COLORS,
   MEETING_TYPE_LABELS,
   type MeetingListItem,
   type MeetingStatus,

@@ -19,6 +19,11 @@ interface Schedule {
   is_not_completed?: boolean;
 }
 
+type Staff = {
+  id: string;
+  name: string;
+};
+
 interface WeeklyTimetableProps {
   schedules: Schedule[];
   onScheduleClick?: (schedule: Schedule) => void;
@@ -28,7 +33,7 @@ interface WeeklyTimetableProps {
   workStartTime?: string | null;
   workEndTime?: string | null;
   selectedStaffId?: string;
-  staffs?: any[];
+  staffs?: Staff[];
 }
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -253,7 +258,7 @@ export default function WeeklyTimetable({
 
           {/* 바디 */}
           <tbody className="divide-y divide-slate-50">
-            {timeSlots.map((timeSlot, timeIdx) => (
+            {timeSlots.map((timeSlot, _timeIdx) => (
               <tr key={timeSlot} className="group">
                 {/* 시간 컬럼 */}
                 <td className="p-4 text-center text-[11px] font-black text-slate-400 sticky left-0 bg-slate-50/90 backdrop-blur-sm z-30 border-r border-slate-100 group-hover:text-blue-600 group-hover:bg-blue-50/50 transition-all">
@@ -290,7 +295,7 @@ export default function WeeklyTimetable({
                       }}
                     >
                       <div className="flex flex-col w-full h-full gap-1">
-                        {schedulesInSlot.map((schedule, sIdx) => (
+                        {schedulesInSlot.map((schedule, _sIdx) => (
                           <div
                             key={schedule.id}
                             onClick={(e) => {

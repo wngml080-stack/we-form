@@ -2,18 +2,27 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Pencil, Building2, X, Calendar as CalendarIcon, Ruler, Info, TrendingUp, Users, CreditCard, Banknote, Target, MapPin, Activity } from "lucide-react";
-import { HelpTooltip } from "@/components/ui/help-tooltip";
-import { BepForm } from "../../hooks/useHqData";
+import { Pencil, Building2, X, Calendar as CalendarIcon, Ruler, Info, TrendingUp, MapPin, Activity } from "lucide-react";
+import { BepForm, HqGym, HqMember, HqPayment } from "../../hooks/useHqData";
 import { cn } from "@/lib/utils";
+
+type GymDetailPayment = HqPayment & {
+  created_at?: string;
+  membership_type?: string;
+  registration_type?: string;
+  visit_route?: string;
+};
+
+type MemberWithPayments = Omit<HqMember, 'payments'> & {
+  payments?: GymDetailPayment[];
+};
 
 interface GymDetailModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedGymDetail: any | null;
-  members: any[];
+  selectedGymDetail: HqGym | null;
+  members: MemberWithPayments[];
   selectedMonth: string;
   setSelectedMonth: (month: string) => void;
   isEditingBep: boolean;
@@ -39,8 +48,8 @@ export function GymDetailModal({
   if (!selectedGymDetail) return null;
 
   const gymMembers = members.filter(m => m.gym_id === selectedGymDetail.id);
-  const allPayments = gymMembers.flatMap((m: any) => m.payments || []);
-  const isPT = (payment: any) => (payment.membership_type || '').toUpperCase().includes('PT');
+  const allPayments = gymMembers.flatMap((m) => m.payments || []);
+  const isPT = (payment: GymDetailPayment) => (payment.membership_type || '').toUpperCase().includes('PT');
 
   const now = new Date();
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -50,14 +59,15 @@ export function GymDetailModal({
 
   let filteredPayments = allPayments;
   if (selectedMonth === "current") {
-    filteredPayments = allPayments.filter(p => new Date(p.created_at) >= currentMonthStart);
+    filteredPayments = allPayments.filter(p => p.created_at && new Date(p.created_at) >= currentMonthStart);
   } else if (selectedMonth === "previous") {
     filteredPayments = allPayments.filter(p => {
+      if (!p.created_at) return false;
       const date = new Date(p.created_at);
       return date >= previousMonthStart && date <= previousMonthEnd;
     });
   } else if (selectedMonth === "recent3") {
-    filteredPayments = allPayments.filter(p => new Date(p.created_at) >= recent3MonthsStart);
+    filteredPayments = allPayments.filter(p => p.created_at && new Date(p.created_at) >= recent3MonthsStart);
   }
 
   const ptPayments = filteredPayments.filter(p => isPT(p));

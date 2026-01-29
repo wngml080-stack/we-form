@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, X, Users, User, MoreVertical } from "lucide-react";
+import { ArrowLeft, Users, User, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatRoomDetail } from "./hooks/useChatMessages";
 import {

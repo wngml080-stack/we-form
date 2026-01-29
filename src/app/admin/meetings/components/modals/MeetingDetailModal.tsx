@@ -18,9 +18,7 @@ import {
   Clock,
   ExternalLink,
   X,
-  Info,
   Sparkles,
-  ArrowRight,
   UserCheck,
   Send,
 } from "lucide-react";
@@ -28,9 +26,6 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,12 +33,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
-  MEETING_STATUS_LABELS,
-  MEETING_STATUS_COLORS,
   MEETING_TYPE_LABELS,
   PRIORITY_LABELS,
   PRIORITY_COLORS,
-  ACTION_ITEM_STATUS_LABELS,
   PARTICIPANT_ROLE_LABELS,
   ATTENDANCE_STATUS_LABELS,
   type MeetingDetail,
@@ -86,10 +78,10 @@ export function MeetingDetailModal({
   onClose,
   meeting,
   isLoading,
-  onUpdate,
+  onUpdate: _onUpdate,
   onDelete,
   onStatusChange,
-  onAddParticipants,
+  onAddParticipants: _onAddParticipants,
   onAddNote,
   onAddActionItem,
   onUpdateActionItemStatus,

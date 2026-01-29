@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   TrendingDown,
@@ -15,10 +14,6 @@ import {
   UserCheck,
   MessageSquare,
   RefreshCw,
-  Phone,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
 } from "lucide-react";
 
 interface Payment {
@@ -70,12 +65,12 @@ interface DetailedAnalysisProps {
 
 export function DetailedAnalysis({
   currentPayments,
-  previousPayments = [],
-  lastYearPayments = [],
+  previousPayments: _previousPayments = [],
+  lastYearPayments: _lastYearPayments = [],
   currentExpenses = [],
-  previousExpenses = [],
+  previousExpenses: _previousExpenses = [],
   selectedGymId,
-  selectedCompanyId,
+  selectedCompanyId: _selectedCompanyId,
   isInitialized = true
 }: DetailedAnalysisProps) {
   // 문의 통계 상태

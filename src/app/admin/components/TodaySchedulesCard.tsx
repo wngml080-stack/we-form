@@ -3,8 +3,16 @@
 import Link from "next/link";
 import { Calendar, ChevronRight } from "lucide-react";
 
+interface Schedule {
+  id: string;
+  type: string;
+  start_time: string;
+  member_name: string;
+  status: string;
+}
+
 interface TodaySchedulesCardProps {
-  schedules: any[];
+  schedules: Schedule[];
   getStatusColor: (status: string) => string;
 }
 

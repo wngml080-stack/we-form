@@ -50,8 +50,8 @@ export function useScheduleReports({ gymId, companyId, status = "all", yearMonth
       }
 
       setReports(result.reports || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
     } finally {
       setIsLoading(false);
     }

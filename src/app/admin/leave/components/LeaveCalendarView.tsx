@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Calendar, Clock, Sparkles } from "lucide-react";
 
 export default function LeaveCalendarView() {

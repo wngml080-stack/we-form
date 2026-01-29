@@ -7,6 +7,9 @@ import { useAdminFilter } from "@/contexts/AdminFilterContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSalesPageData, Payment, PaymentEditForm } from "./hooks/useSalesPageData";
 
+// 탭 타입
+type SalesTabId = "sales" | "expenses" | "new_inquiries" | "renewals" | "analysis";
+
 // 회원 상세 모달 관련 타입
 interface MemberSummary {
   id: string;
@@ -47,11 +50,9 @@ interface ActivityLogItem {
   created_by_name?: string;
 }
 import { useExpensesData } from "./hooks/useExpensesData";
-import { SalesHeader } from "./components/SalesHeader";
 import { SalesFilters } from "./components/SalesFilters";
 import { SalesStats } from "./components/SalesStats";
 import { ExpenseStats } from "./components/ExpenseStats";
-import { BEPCard } from "./components/BEPCard";
 import { exportSalesToExcel } from "./utils/excelExport";
 
 // 대형 컴포넌트 lazy loading (성능 최적화)
@@ -84,7 +85,7 @@ const SalesAnalysis = dynamic(
   () => import("./components/SalesAnalysis").then(mod => ({ default: mod.SalesAnalysis })),
   { ssr: false, loading: () => <div className="bg-white rounded-3xl p-8 animate-pulse h-64" /> }
 );
-import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, Target, Award, BarChart3, GitCompare } from "lucide-react";
+import { TrendingUp, TrendingDown, MessageSquare, Settings, Plus, Download, BarChart3, GitCompare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -615,7 +616,7 @@ export default function SalesPage() {
                 ].map((tab) => (
                   <button
                     key={tab.id}
-                    onClick={() => handleTabChange(tab.id as any)}
+                    onClick={() => handleTabChange(tab.id as SalesTabId)}
                     className={cn(
                       "flex items-center gap-1.5 xs:gap-2 px-3 xs:px-4 lg:px-5 py-2 xs:py-2.5 rounded-lg xs:rounded-xl text-xs xs:text-sm font-black transition-all whitespace-nowrap",
                       activeTab === tab.id

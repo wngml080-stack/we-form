@@ -23,7 +23,7 @@ interface Props {
   hideHeaderCard?: boolean;
 }
 
-export function MonthlyStatsSection({ stats, getMonthlyStats, hideHeaderCard }: Props) {
+export function MonthlyStatsSection({ stats, getMonthlyStats, hideHeaderCard: _hideHeaderCard }: Props) {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

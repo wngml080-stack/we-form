@@ -2,6 +2,22 @@
  * 급여 계산 관련 타입 정의
  */
 
+// 근무 통계 타입
+export type WorkStats = {
+  pt_total_count?: number;
+  pt_inside_count?: number;
+  pt_outside_count?: number;
+  pt_weekend_count?: number;
+  pt_holiday_count?: number;
+  ot_count?: number;
+  ot_inbody_count?: number;
+  personal_inside_count?: number;
+  personal_outside_count?: number;
+  reserved_pt_count?: number;
+  reserved_ot_count?: number;
+  cancelled_pt_count?: number;
+};
+
 // 직원 급여 계산 결과
 export type StaffSalaryResult = {
   staff_id: string;
@@ -14,7 +30,7 @@ export type StaffSalaryResult = {
   total_salary: number; // 세전 총 급여
   net_salary: number; // 세후 실수령액 (total_salary - tax_deduction)
   details: SalaryDetail[];
-  stats: any; // 근무 통계
+  stats: WorkStats; // 근무 통계
   reportStatus: ReportStatus;
 };
 
@@ -42,7 +58,7 @@ export type SalaryRule = {
   id: string;
   name: string;
   calculation_type: string;
-  default_parameters: Record<string, any>;
+  default_parameters: Record<string, number | string | boolean>;
 };
 
 // 직원별 급여 설정
@@ -50,7 +66,7 @@ export type StaffSalarySetting = {
   staff_id: string;
   template_id: string | null;
   template_name?: string;
-  personal_parameters: Record<string, any>;
+  personal_parameters: Record<string, number | string | boolean>;
 };
 
 // 직원별 실적 통계

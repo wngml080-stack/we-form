@@ -1,20 +1,20 @@
 "use client";
 
-import { UserPlus, X, User, Phone, ShoppingBag, CreditCard, Banknote, Save, Info, Sparkles, Activity } from "lucide-react";
+import { UserPlus, X, User, Phone, ShoppingBag, Info, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { NewMemberForm } from "../../hooks/useAdminDashboardData";
-import { cn } from "@/lib/utils";
+import { NewMemberForm, Product } from "../../hooks/useAdminDashboardData";
+import type { SVGProps } from "react";
 
 interface NewMemberModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   form: NewMemberForm;
   setForm: (form: NewMemberForm) => void;
-  products: any[];
+  products: Product[];
   onSubmit: () => void;
   isSaving: boolean;
 }
@@ -107,7 +107,7 @@ export function NewMemberModal({
                     if (product) {
                       setForm({
                         ...form,
-                        membership_type: product.membership_type,
+                        membership_type: product.membership_type ?? "",
                         membership_name: product.id,
                         sessions: product.default_sessions?.toString() || "",
                         amount: product.default_price?.toString() || ""
@@ -237,7 +237,7 @@ export function NewMemberModal({
   );
 }
 
-function CheckCircle2(props: any) {
+function CheckCircle2(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

@@ -8,7 +8,7 @@ import { isHQStaff } from "@/lib/api/chat-auth";
  * 메신저 사용 가능 직원 목록 조회
  * (같은 회사의 모든 직원)
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { staff, error: authError } = await authenticateRequest();
     if (authError) return authError;
@@ -32,7 +32,16 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     // gym 정보 포함하여 반환 (gyms는 배열로 반환됨)
-    const formattedUsers = users?.map((u: any) => ({
+    type UserWithGyms = {
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      job_title: string;
+      gym_id: string | null;
+      gyms: { name: string }[] | { name: string } | null;
+    };
+    const formattedUsers = users?.map((u: UserWithGyms) => ({
       id: u.id,
       name: u.name,
       email: u.email,
