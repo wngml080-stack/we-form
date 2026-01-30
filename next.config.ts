@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
 
+  // 서버 외부 패키지 - webpack 번들링에서 제외 (OpenTelemetry 동적 의존성 문제 방지)
+  serverExternalPackages: [
+    "@prisma/instrumentation",
+    "@opentelemetry/instrumentation",
+    "@opentelemetry/api",
+  ],
+
   // SWC 컴파일러 최적화 - 모던 브라우저 타겟
   compiler: {
     // 프로덕션에서 console.log 제거

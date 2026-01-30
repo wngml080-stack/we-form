@@ -87,8 +87,6 @@ export interface BranchAnnouncement {
 export interface GymInfo {
   id: string;
   name: string;
-  fc_bep?: number;
-  pt_bep?: number;
 }
 
 export type SalesPeriod = "thisMonth" | "lastMonth" | "custom";
@@ -197,8 +195,8 @@ export function useBranchData() {
 
   // 지점 데이터 조회 - 회원/매출 테이블 임시 비활성화 (재연결 예정)
   const fetchBranchData = useCallback(async (_gymId: string, _companyId: string, gym: GymInfo) => {
-    const fcBep = gym.fc_bep || 75000000;
-    const ptBep = gym.pt_bep || 100000000;
+    const fcBep = 75000000;
+    const ptBep = 100000000;
 
     setStats({
       totalMembers: 0,
@@ -337,12 +335,12 @@ export function useBranchData() {
     setSalesLoading(true);
     setDetailedSales([]);
     setFcStats({
-      bep: gymData?.fc_bep || 75000000,
+      bep: 75000000,
       totalSales: 0, bepRate: 0, avgPrice: 0, totalCount: 0,
       walkinCount: 0, onlineCount: 0, renewCount: 0, newRate: 0, newSales: 0
     });
     setPtStats({
-      bep: gymData?.pt_bep || 100000000,
+      bep: 100000000,
       totalSales: 0, bepRate: 0, avgPrice: 0, totalCount: 0,
       newCount: 0, renewCount: 0, renewRate: 0, newSales: 0, renewSales: 0
     });

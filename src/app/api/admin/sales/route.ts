@@ -22,14 +22,11 @@ type MemberPaymentRow = {
   registrar: string | null;
   memo: string | null;
   created_at: string;
-  payment_date: string | null;
   service_sessions: number | null;
   bonus_sessions: number | null;
   validity_per_session: number | null;
-  membership_start_date: string | null;
   start_date: string | null;
   visit_route: string | null;
-  visit_route_custom: string | null;
   expiry_type: string | null;
   gym_id: string;
   company_id: string;
@@ -595,7 +592,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("member_payments")
-      .select("id, member_name, phone, gender, birth_date, sale_type, membership_category, membership_name, amount, method, installment, trainer_id, trainer_name, registrar, memo, created_at, payment_date, service_sessions, bonus_sessions, validity_per_session, membership_start_date, visit_route, visit_route_custom, expiry_type, gym_id, company_id, created_by_staff_id")
+      .select("id, member_name, phone, gender, birth_date, sale_type, membership_category, membership_name, amount, method, installment, trainer_id, trainer_name, registrar, memo, created_at, service_sessions, bonus_sessions, validity_per_session, start_date, visit_route, expiry_type, gym_id, company_id, created_by_staff_id")
       .eq("gym_id", gymId)
       .eq("company_id", companyId);
 
@@ -708,6 +705,7 @@ export async function GET(request: NextRequest) {
         registrar: p.registrar || "", // 등록자 (수기 입력)
         memo: p.memo || "",
         created_at: p.created_at,
+        payment_date: p.created_at ? p.created_at.split("T")[0] : "",
         // PT 전용 필드
         service_sessions: p.service_sessions || 0,
         bonus_sessions: p.bonus_sessions || 0,

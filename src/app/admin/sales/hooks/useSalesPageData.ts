@@ -135,8 +135,6 @@ interface CustomOption {
 interface GymInfo {
   id: string;
   name: string;
-  fc_bep?: number;
-  pt_bep?: number;
 }
 
 interface UseSalesPageDataProps {
@@ -272,11 +270,11 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
 
   const fetchGymData = useCallback(async (gymId: string) => {
     try {
-      const { data, error } = await supabase.from("gyms").select("id, name, fc_bep, pt_bep, company_id").eq("id", gymId).maybeSingle();
+      const { data, error } = await supabase.from("gyms").select("id, name, company_id").eq("id", gymId).maybeSingle();
       if (!error && data) {
         setGymData(data);
-        setFcStats(prev => ({ ...prev, bep: data.fc_bep || 75000000 }));
-        setPtStats(prev => ({ ...prev, bep: data.pt_bep || 100000000 }));
+        setFcStats(prev => ({ ...prev, bep: 75000000 }));
+        setPtStats(prev => ({ ...prev, bep: 100000000 }));
       }
     } catch {}
   }, [supabase]);
@@ -285,8 +283,8 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     if (!selectedGymId || !selectedCompanyId) return;
     setSalesLoading(true);
     
-    const fcBep = gymData?.fc_bep || 75000000;
-    const ptBep = gymData?.pt_bep || 100000000;
+    const fcBep = 75000000;
+    const ptBep = 100000000;
 
     const fcPayments = payments.filter(p => p.membership_category !== "PT");
     const fcTotalSales = fcPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -490,8 +488,8 @@ export function useSalesPageData({ selectedGymId, selectedCompanyId, filterIniti
     methodFilter, setMethodFilter, membershipTypeFilter, setMembershipTypeFilter, registrationTypeFilter, setRegistrationTypeFilter,
     quickSelect, handleQuickSelect, newRows, addNewRow, updateNewRow, removeNewRow, deletePayment, updatePayment,
     addCustomOption, deleteCustomOption, gymData, fcStats, ptStats,
-    fcProgress: (gymData?.fc_bep || 75000000) > 0 ? (payments.filter(p => p.membership_category !== "PT").reduce((s, p) => s + p.amount, 0) / (gymData?.fc_bep || 75000000)) * 100 : 0,
-    ptProgress: (gymData?.pt_bep || 100000000) > 0 ? (payments.filter(p => p.membership_category === "PT").reduce((s, p) => s + p.amount, 0) / (gymData?.pt_bep || 100000000)) * 100 : 0,
+    fcProgress: (75000000) > 0 ? (payments.filter(p => p.membership_category !== "PT").reduce((s, p) => s + p.amount, 0) / (75000000)) * 100 : 0,
+    ptProgress: (100000000) > 0 ? (payments.filter(p => p.membership_category === "PT").reduce((s, p) => s + p.amount, 0) / (100000000)) * 100 : 0,
     salesSummary, comparisonData, salesLoading, isFcModalOpen, setIsFcModalOpen, isPtModalOpen, setIsPtModalOpen,
     isSalesModalOpen, setIsSalesModalOpen, salesPeriod, modalCustomDateRange, setModalCustomDateRange, openFcModal,
     openPtModal, openSalesModal, handlePeriodChange, fetchDetailedSales,

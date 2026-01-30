@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { createSupabaseClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminFilter } from "@/contexts/AdminFilterContext";
@@ -209,6 +209,9 @@ export function useAdminDashboardData() {
   // Supabase 클라이언트
   const supabase = useMemo(() => createSupabaseClient(), []);
 
+  // 캐시: 같은 gym/company 데이터 재요청 방지
+  const lastFetchKey = useRef<string>("");
+
   // AuthContext에서 사용자 정보 사용
   const userName = user?.name || "관리자";
   const myStaffId = user?.id || "";
@@ -336,6 +339,14 @@ export function useAdminDashboardData() {
           setIsLoading(false);
           return;
         }
+
+        // 같은 gym/company 데이터가 이미 로드되었으면 재요청 방지
+        const fetchKey = `${selectedGymId}-${selectedCompanyId}`;
+        if (lastFetchKey.current === fetchKey) {
+          setIsLoading(false);
+          return;
+        }
+        lastFetchKey.current = fetchKey;
 
         // 병렬 데이터 조회
         await Promise.allSettled([

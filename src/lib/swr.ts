@@ -27,18 +27,21 @@ export const postFetcher = <T>(url: string, body: unknown): Promise<T> =>
  */
 export const swrConfig: SWRConfiguration = {
   revalidateOnFocus: false,
-  dedupingInterval: 30000, // 30초 중복 요청 방지
+  revalidateOnReconnect: false,
+  dedupingInterval: 60000, // 1분 중복 요청 방지
   errorRetryCount: 2,
   keepPreviousData: true,
 };
 
 /**
- * 데이터 조회용 SWR 설정 (더 긴 캐시)
+ * 데이터 조회용 SWR 설정 (페이지 이동 시 캐시 활용)
+ * - revalidateIfStale: false → 캐시가 있으면 재요청하지 않음 (첫 방문은 정상 fetch)
+ * - dedupingInterval: 5분 → 같은 키 요청 중복 방지
  */
 export const swrDataConfig: SWRConfiguration = {
   ...swrConfig,
-  dedupingInterval: 60000, // 1분 캐싱
-  revalidateOnMount: true,
+  dedupingInterval: 300000, // 5분 캐싱
+  revalidateIfStale: false,
 };
 
 /**
