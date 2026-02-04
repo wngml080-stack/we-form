@@ -5,6 +5,7 @@ import {
   FileText,
   Briefcase,
   Building2,
+  BarChart3,
   DollarSign,
   ClipboardCheck,
   CalendarDays,
@@ -27,7 +28,8 @@ export const DASHBOARD_MENUS: NavMenuItem[] = [
 ];
 
 export const BRANCH_MENUS: NavMenuItem[] = [
-  { name: "센터관리", href: "/admin/sales?tab=sales", icon: Building2 },
+  { name: "운영현황", href: "/admin/branch", icon: BarChart3 },
+  { name: "매출&지출관리", href: "/admin/sales?tab=sales", icon: Building2 },
   { name: "급여관리", href: "/admin/salary", icon: DollarSign },
   { name: "직원관리", href: "/admin/staff", icon: ClipboardCheck },
   { name: "근태관리", href: "/admin/leave", icon: CalendarDays },
