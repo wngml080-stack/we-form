@@ -5,12 +5,14 @@ import dynamic from "next/dynamic";
 // Custom Hook
 import { useAdminDashboardData } from "../hooks/useAdminDashboardData";
 
+// QuickActions - 직접 import (캐시 문제 방지)
+import { QuickActions } from "./QuickActions";
+
 // Components - 지연 로드 가능한 컴포넌트 (로딩 후 표시)
 const BranchAnnouncementsCard = dynamic(() => import("./BranchAnnouncementsCard").then(mod => ({ default: mod.BranchAnnouncementsCard })), { ssr: false });
 const TodaySchedulesCard = dynamic(() => import("./TodaySchedulesCard").then(mod => ({ default: mod.TodaySchedulesCard })), { ssr: false });
 const CompanyEventsCalendar = dynamic(() => import("./CompanyEventsCalendar").then(mod => ({ default: mod.CompanyEventsCalendar })), { ssr: false });
 const AiCommandCenter = dynamic(() => import("./AiCommandCenter").then(mod => ({ default: mod.AiCommandCenter })), { ssr: false });
-const QuickActions = dynamic(() => import("./QuickActions").then(mod => ({ default: mod.QuickActions })), { ssr: false });
 const BannerWidget = dynamic(() => import("./BannerWidget").then(mod => ({ default: mod.BannerWidget })), { ssr: false });
 
 // Modals - 동적 import (사용자 액션 시에만 로드)
